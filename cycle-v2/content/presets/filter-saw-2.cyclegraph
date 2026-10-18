@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -21,7 +22,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 73.19998, "y": 150.0 },
+            "position": { "x": 57.99995, "y": 200.968 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 81.99995, "y": 608.0 },
+            "position": { "x": 42.79993, "y": 344.33334 },
             "parameters": {
                 "enabled": true,
                 "mode": "group",
@@ -135,10 +136,10 @@
                         { "time": 0.0, "phase": 0.50048304, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.7637871, "id": 33 },
                         { "time": 0.0, "phase": 0.50048304, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.7637871, "id": 34 },
                         { "time": 0.0, "phase": 0.50048304, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.7637871, "id": 35 },
-                        { "time": 1.0, "phase": 0.49479777, "amp": 0.0034843087, "key": 0.0, "mod": 0.0, "weight": 0.7637871, "id": 36 },
-                        { "time": 1.0, "phase": 0.49479777, "amp": 0.0034843087, "key": 0.0, "mod": 1.0, "weight": 0.7637871, "id": 37 },
-                        { "time": 1.0, "phase": 0.49479777, "amp": 0.0034843087, "key": 1.0, "mod": 0.0, "weight": 0.7637871, "id": 38 },
-                        { "time": 1.0, "phase": 0.49479777, "amp": 0.0034843087, "key": 1.0, "mod": 1.0, "weight": 0.7637871, "id": 39 },
+                        { "time": 1.0, "phase": 0.49479777, "amp": 0.003484309, "key": 0.0, "mod": 0.0, "weight": 0.7637871, "id": 36 },
+                        { "time": 1.0, "phase": 0.49479777, "amp": 0.003484309, "key": 0.0, "mod": 1.0, "weight": 0.7637871, "id": 37 },
+                        { "time": 1.0, "phase": 0.49479777, "amp": 0.003484309, "key": 1.0, "mod": 0.0, "weight": 0.7637871, "id": 38 },
+                        { "time": 1.0, "phase": 0.49479777, "amp": 0.003484309, "key": 1.0, "mod": 1.0, "weight": 0.7637871, "id": 39 },
                         { "time": 0.0, "phase": 0.5004831, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 0.7279916, "id": 40 },
                         { "time": 0.0, "phase": 0.5004831, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 0.7279916, "id": 41 },
                         { "time": 0.0, "phase": 0.5004831, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 0.7279916, "id": 42 },
@@ -359,7 +360,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 57.99997, "y": 320.0 },
+            "position": { "x": 42.79993, "y": 523.0 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.149532706, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -471,7 +472,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 42.79993, "y": 886.0 },
+            "position": { "x": 42.79992, "y": 794.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.15, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",

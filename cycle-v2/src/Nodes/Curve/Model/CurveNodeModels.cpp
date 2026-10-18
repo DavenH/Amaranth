@@ -1,3 +1,9 @@
+#include <Audio/CycleDsp/IrModel.h>
+#include <Curve/Mesh/Vertex.h>
+
+#include <algorithm>
+#include <cmath>
+
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 
 #include "Graph/InteractionComplexityDiagnostics.h"
@@ -6,12 +12,7 @@
 #include "Graph/NodeParameterMap.h"
 
 #include "Nodes/Envelope/EnvelopeMeshState.h"
-
-#include <Audio/CycleDsp/IrModel.h>
-#include <Curve/Mesh/Vertex.h>
-
-#include <algorithm>
-#include <cmath>
+#include "Nodes/Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {
 
@@ -352,9 +353,11 @@ CurveVertexId FlatCurveModel::nextIdentity() const {
     return nextVertexIdentity;
 }
 
-EnvelopeNodeModel::EnvelopeNodeModel() :
+EnvelopeNodeModel::EnvelopeNodeModel() : EnvelopeNodeModel(EnvelopePurpose::Control) {}
+
+EnvelopeNodeModel::EnvelopeNodeModel(EnvelopePurpose purpose) :
         mesh("CycleV2EnvelopeNodeModel") {
-    EnvelopeMeshState::initialiseDefault(mesh);
+    EnvelopeMeshState::initialiseDefault(mesh, purpose);
     EnvelopeCubeId identity = 1;
     for (size_t index = 0; index < mesh.getCubes().size(); ++index) {
         cubeIds.push_back(identity++);

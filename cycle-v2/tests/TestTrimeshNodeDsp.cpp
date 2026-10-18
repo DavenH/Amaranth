@@ -1337,7 +1337,8 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
     for (int i = 0; i < 3; ++i) {
         const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
         REQUIRE(parameterArea.contains(row));
-        REQUIRE(TrimeshSidePanelRenderer::vertexParameterRailBounds(row).getWidth() >= 72.f);
+        const Rectangle<float> rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(row);
+        REQUIRE(rail.getWidth() >= 72.f);
     }
 
     const Rectangle<float> rangeRow =
@@ -1370,6 +1371,9 @@ TEST_CASE("Production Trimesh controls place two-column vertex rows above morph 
             TrimeshSidePanelRenderer::vertexParameterRowBounds(vertex, 3);
     const Rectangle<float> curveRow =
             TrimeshSidePanelRenderer::vertexParameterRowBounds(vertex, 5);
+
+    REQUIRE(TrimeshSidePanelRenderer::vertexParameterRailBounds(timeRow).getX()
+            - timeRow.getX() >= 60.f);
 
     REQUIRE(vertex.getWidth() > sideArea.getWidth() * 0.9f);
     REQUIRE(timeRow.getX() == Catch::Approx(blueRow.getX()));

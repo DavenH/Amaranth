@@ -9,8 +9,9 @@
 
 #include <App/AppConstants.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
-#include <UI/Panels/TimeSurfaceStyles.h>
 #include <UI/MiscGraphics.h>
+#include <UI/Panels/OpenGLDiagnostics.h>
+#include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "UI/NodeCanvas.h"
 #include "UI/CanvasChromePalette.h"
@@ -27,6 +28,7 @@
 #include "UI/NodeViewModule.h"
 #include "UI/PresetPreviewGenerator.h"
 #include "UI/TransformCompactEditor.h"
+#include "UI/NodeInputQuickCreate.h"
 #include "UI/WorkspaceDockKeyboardNavigation.h"
 
 #include "Runtime/GraphAudioExecutor.h"
@@ -456,6 +458,7 @@ void NodeCanvas::mouseExit(const MouseEvent&) {
     const bool canvasChanged = guideShelfState.hoveredGuideId.isNotEmpty()
             || probeCanvasState.hoveredProbeId.isNotEmpty()
             || hoveredEdgeIndex >= 0
+            || hoveredQuickCreatePortId.isNotEmpty()
             || paletteChanged;
     const bool statusChanged = resolvedHoverText.isNotEmpty();
     pointerInsideCanvas = false;
@@ -463,6 +466,7 @@ void NodeCanvas::mouseExit(const MouseEvent&) {
     guideShelfState.hoveredGuideId = {};
     probeCanvasState.hoveredProbeId = {};
     hoveredEdgeIndex = -1;
+    hoveredQuickCreatePortId = {};
     setMouseCursor(MouseCursor::NormalCursor);
     const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
     performanceMetrics.recordHoverState(repaint != HoverRepaint::None);
@@ -478,6 +482,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
     const String previousGuideId = guideShelfState.hoveredGuideId;
     const String previousProbeId = probeCanvasState.hoveredProbeId;
     const int previousHoveredEdgeIndex = hoveredEdgeIndex;
+    const String previousQuickCreatePortId = hoveredQuickCreatePortId;
     const String previousHoverText = resolvedHoverText;
     const bool occluded = expandedEditorBoundsForOverlay().contains(position);
     pointerInsideCanvas = true;
@@ -488,10 +493,12 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
         guideShelfState.hoveredGuideId = {};
         probeCanvasState.hoveredProbeId = {};
         hoveredEdgeIndex = -1;
+        hoveredQuickCreatePortId = {};
         setMouseCursor(MouseCursor::NormalCursor);
         const bool canvasChanged = paletteChanged
                 || previousGuideId.isNotEmpty()
                 || previousProbeId.isNotEmpty()
+                || previousQuickCreatePortId.isNotEmpty()
                 || previousHoveredEdgeIndex >= 0;
         const bool statusChanged = previousHoverText.isNotEmpty();
         const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
@@ -509,6 +516,15 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
             document.revision(),
             &queries.presentationFacts().edgeIndex());
     resolvedHoverText = hitRouter.hoverTextFor(viewport, scene, position);
+    hoveredQuickCreatePortId = {};
+    if (const auto port = interaction.portAt(scene, position);
+            port.has_value() && port->input) {
+        const Node* node = graph.findNode(port->nodeId);
+        if (NodeInputQuickCreate::canCreate(
+                node, *port, queries.presentationFacts().edgeIndex())) {
+            hoveredQuickCreatePortId = port->nodeId + "." + port->portId;
+        }
+    }
     hoveredEdgeIndex = hitRouter.edgeAt(scene, position);
     if (hoveredEdgeIndex >= 0
             && hoveredEdgeIndex < (int) graph.getEdges().size()) {
@@ -550,7 +566,9 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
             setMouseCursor(addToSelectionCursor);
             break;
         case NodeCanvasCursorKind::Normal:
-            setMouseCursor(MouseCursor::NormalCursor);
+            setMouseCursor(hoveredQuickCreatePortId.isNotEmpty()
+                    ? MouseCursor::PointingHandCursor
+                    : MouseCursor::NormalCursor);
             break;
     }
     performanceMetrics.recordOperation(
@@ -560,6 +578,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
             || previousPaletteEntry != palette.activeEntry()
             || previousGuideId != guideShelfState.hoveredGuideId
             || previousProbeId != probeCanvasState.hoveredProbeId
+            || previousQuickCreatePortId != hoveredQuickCreatePortId
             || previousHoveredEdgeIndex != hoveredEdgeIndex;
     const bool statusChanged = previousHoverText != resolvedHoverText;
     const HoverRepaint repaint = hoverRepaintFor(canvasChanged, statusChanged);
@@ -873,6 +892,22 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         }
     }
     if (const auto hitPort = interaction.portAt(scene, event.position)) {
+        if (hitPort->input && !event.mods.isPopupMenu()) {
+            const Node* portNode = graph.findNode(hitPort->nodeId);
+            if (NodeInputQuickCreate::canCreate(
+                    portNode, *hitPort, queries.presentationFacts().edgeIndex())) {
+                const auto badge = NodeInputQuickCreate::badgeBounds(
+                        viewport.toScreen(NodeInputQuickCreate::socketWorldCentre(
+                                *portNode, *hitPort)),
+                        viewport.getZoom());
+                if (badge.contains(event.position) || event.getNumberOfClicks() >= 2) {
+                    applyAuthoringResult(authoring.createInputSource(*hitPort));
+                    updateHoverAt(event.position, event.mods);
+                    requestCanvasRepaint();
+                    return;
+                }
+            }
+        }
         interaction.beginConnection(graph, *hitPort, event.position);
         authoring.selectNode(hitPort->nodeId);
         requestCanvasRepaint();
@@ -1370,6 +1405,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 }
 
 void NodeCanvas::newOpenGLContextCreated() {
+    suppressOpenGLDebugNotifications();
     ++openGlContextCreateCount;
     renderer.initialize();
 }

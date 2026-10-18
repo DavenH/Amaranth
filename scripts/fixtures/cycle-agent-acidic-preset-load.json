@@ -1,0 +1,16 @@
+{
+  "commands": [
+    {
+      "command": "openFactoryPreset",
+      "preset": "Acidic1",
+      "waitForIdle": true,
+      "idleDelayMs": 700
+    },
+    {
+      "command": "assertState",
+      "path": "document",
+      "equals": "Acidic1"
+    }
+  ],
+  "quit": true
+}

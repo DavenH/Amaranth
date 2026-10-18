@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 646.69666, "y": 641.0 },
+            "position": { "x": 631.49658, "y": 343.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 6, "width": 17.261337869999998, "panSpread": 1.0, "phase": 0.592, "jitter": 0.4 },
             "model": {
                 "schema": "unisonVoices",
@@ -695,7 +696,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 646.69666, "y": 353.0 },
+            "position": { "x": 631.49658, "y": 530.0 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",

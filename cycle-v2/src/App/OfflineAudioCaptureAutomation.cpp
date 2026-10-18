@@ -157,7 +157,7 @@ bool parseRequest(
             (int) doubleProperty(command, "controlNoteOffset", 0.0));
     const var randomSeed = property(command, "randomSeed");
     if (!randomSeed.isVoid()) {
-        request.randomSeed = (int64_t) randomSeed;
+        request.randomSeed = static_cast<int64>(randomSeed);
         request.hasRandomSeed = true;
     }
     const String ratePolicy = stringProperty(command, "ratePolicy", "native");
@@ -176,9 +176,9 @@ bool parseRequest(
         return false;
     }
 
-    request.sampleCount = (size_t) jmax<int64>(
-            1,
-            (int64) std::round(durationMs * request.sampleRate / 1000.0));
+    const int64 sampleCount = static_cast<int64>(
+            std::round(durationMs * request.sampleRate / 1000.0));
+    request.sampleCount = static_cast<size_t>(sampleCount < 1 ? 1 : sampleCount);
     return parseSchedule(command, request, error);
 }
 
@@ -392,7 +392,7 @@ bool OfflineAudioCaptureAutomation::capture(
     object->setProperty("voiceDurationSeconds", request.voiceDurationSeconds);
     object->setProperty("controlNoteOffset", request.controlNoteOffset);
     if (request.hasRandomSeed) {
-        object->setProperty("randomSeed", request.randomSeed);
+        object->setProperty("randomSeed", static_cast<int64>(request.randomSeed));
     }
     object->setProperty(
             "ratePolicy",

@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -38,7 +39,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1481.12451, "y": 1211.0 },
+            "position": { "x": 1519.92712, "y": 1211.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -52,7 +53,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1096.40759, "y": 1211.0 },
+            "position": { "x": 1135.21021, "y": 1211.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,

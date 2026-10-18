@@ -3,6 +3,8 @@
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeDefinition.h"
 #include "UI/NodeCanvasQueryModel.h"
+#include "UI/NodeInputQuickCreate.h"
+#include "UI/VoiceContextCompactEditor.h"
 
 namespace CycleV2 {
 
@@ -162,10 +164,49 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
         return {};
     }
 
+    const auto quickSource = NodeInputQuickCreate::sourceFor(*node, address);
+    const bool quickCreateAvailable = NodeInputQuickCreate::canCreate(
+            node, address, presentationFacts().edgeIndex());
+    const String quickCreateHelp = quickCreateAvailable && quickSource.has_value()
+            ? " Click + to add " + quickSource->label + "."
+            : String();
+    if (node->kind == NodeKind::TrilinearMesh && address.input
+            && quickSource.has_value()
+            && quickSource->kind == NodeKind::ModulationTriple) {
+        return "Modulation Triple: controls the Yellow, Red, and Blue morph axes."
+                + quickCreateHelp;
+    }
+
     const Port* port = findPort(*node, address.portId, address.input);
 
     if (port == nullptr) {
         return {};
+    }
+
+    if (node->kind == NodeKind::VoiceContext && address.input) {
+        const auto& localEdges = presentationFacts().edgeIndex().edgesToInput(
+                node->id, port->id);
+        String help;
+        if (port->id == "modulation") {
+            help = "Modulation: voice control sources and routing.";
+        } else if (port->id == "unison") {
+            help = "Unison: voice count, spread, and detune.";
+        } else if (port->id == "pitch") {
+            help = "Pitch: changes pitch over the voice's lifetime.";
+        } else if (port->id == "scratch") {
+            help = "Scratch: sets the default scratch envelope for this Voice Context; without an attachment, voice time is used.";
+        }
+        if (!localEdges.empty()) {
+            const Node* source = findNode(graph.getEdges()[localEdges.front()].sourceNodeId);
+            return help + (source != nullptr
+                    ? " Connected to " + nodeDisplayLabel(*source) + "."
+                    : " Connected.");
+        }
+        return help + quickCreateHelp;
+    }
+
+    if (node->kind == NodeKind::ScratchDefaultOverride && !address.input) {
+        return "Uses voice time instead of the inherited scratch envelope.";
     }
 
     if (port->purpose == PortPurpose::ScratchAttachment) {
@@ -192,14 +233,12 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
                     });
             if (step != snapshot->compileResult.plan.steps.end()
                     && effectiveScratchSourceNodeId(*step).isNotEmpty()) {
-                return "Inherits the Voice Context scratch envelope. Attach here to override it.";
+                return "Inherits the Voice Context scratch envelope. Attach here to override it."
+                        + quickCreateHelp;
             }
         }
-        return "Uses voice time. Attach a scratch envelope here to override it.";
-    }
-
-    if (node->kind == NodeKind::ScratchDefaultOverride && !address.input) {
-        return hoverTextForNode(*node);
+        return "Uses voice time. Attach a scratch envelope here to override it."
+                + quickCreateHelp;
     }
 
     return signalDescription(port->domain)
@@ -208,6 +247,11 @@ String NodeCanvasQueryModel::hoverTextForPort(const PortAddress& address) const 
 }
 
 String NodeCanvasQueryModel::hoverTextForNode(const Node& node) const {
+    if (node.kind == NodeKind::VoiceContext) {
+        return "Voice Context: " + VoiceContextCompactEditor::summaryLabel(node)
+                + ". Inputs from top: modulation, unison, pitch, scratch."
+                + " Click + on an empty input to create its source.";
+    }
     const auto* definition = NodeDefinitionRegistry::instance().find(node.kind);
     if (definition != nullptr && definition->helpText.isNotEmpty()) {
         return definition->helpText;

@@ -28,7 +28,8 @@ constexpr float kRangeTopGap     = 6.f;
 constexpr float kRangeRowHeight  = 45.f;
 constexpr float kMorphColumnHeaderWidth = 24.f;
 constexpr float kAxisLabelW      = 62.f;
-constexpr float kVertexLabelW    = 42.f;
+constexpr float kVertexLabelW     = 42.f;
+constexpr float kWideVertexLabelW = 60.f;
 constexpr float kVertexGainSize  = 24.f;
 constexpr float kVertexGuideW    = 40.f;
 constexpr float kVertexCellGap   = 6.f;
@@ -278,8 +279,12 @@ Rectangle<float> vertexGuideBounds(Rectangle<float> row) {
     return row.removeFromRight(kVertexGuideW);
 }
 
+float vertexLabelWidth(Rectangle<float> row) {
+    return row.getWidth() >= 240.f ? kWideVertexLabelW : kVertexLabelW;
+}
+
 Rectangle<float> vertexLabelBounds(Rectangle<float> row) {
-    return row.removeFromLeft(kVertexLabelW).reduced(8.f, 0.f);
+    return row.removeFromLeft(vertexLabelWidth(row)).reduced(8.f, 0.f);
 }
 
 std::array<bool, 8> linkedCubeHighlights(
@@ -859,7 +864,7 @@ bool TrimeshSidePanelRenderer::showsGuideControlsForParameter(int parameterIndex
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRailBounds(
         Rectangle<float> parameterRow,
         GuideControls guideControls) {
-    parameterRow.removeFromLeft(kVertexLabelW + kVertexCellGap);
+    parameterRow.removeFromLeft(vertexLabelWidth(parameterRow) + kVertexCellGap);
     if (guideControls == GuideControls::Visible) {
         parameterRow.removeFromRight(
                 kVertexGuideW

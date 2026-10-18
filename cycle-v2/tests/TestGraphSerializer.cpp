@@ -671,7 +671,10 @@ TEST_CASE("A Trimesh vertex edit has a localized canonical JSON diff", "[cycle-v
 
 TEST_CASE("Graph JSON rounds floats and compacts shallow objects", "[cycle-v2][graph]") {
     GraphSerializer serializer;
-    NodeGraph graph = NodeGraph::createDemoGraph();
+    GraphLoadResult fixture = serializer.loadJsonString(
+            resource("with-spies.cyclegraph").loadFileAsString());
+    REQUIRE(fixture.succeeded());
+    NodeGraph graph = std::move(fixture.graph);
     const auto current = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
             graph.findNode("waveMesh")->model);
     REQUIRE(current != nullptr);
@@ -933,6 +936,20 @@ TEST_CASE("Astral retains the canonical spectral and Envelope control graph",
             }));
     REQUIRE(loaded.graph.findNode("magnitudeOp1") == nullptr);
     REQUIRE(loaded.graph.findNode("pan") == nullptr);
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
+}
+
+TEST_CASE("Astral 3 loads as a valid factory graph",
+        "[cycle-v2][graph][presets][astral]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    const GraphLoadResult loaded = GraphSerializer().loadJsonString(
+            contentPreset("astral-3.cyclegraph").loadFileAsString());
+    for (const auto& issue : loaded.issues) {
+        UNSCOPED_INFO(issue.message);
+    }
+    REQUIRE(loaded.succeeded());
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
@@ -1233,4 +1250,70 @@ TEST_CASE("Transform nodes compact legacy diagram widths when loading",
     const auto reloaded = serializer.loadJsonString(serializer.toJsonString(loaded.graph));
     REQUIRE(reloaded.succeeded());
     REQUIRE(serializer.toJsonString(reloaded.graph) == serializer.toJsonString(loaded.graph));
+}
+
+TEST_CASE("Unison width matches Envelope and preserves legacy right edges",
+        "[cycle-v2][serialization][unison][regression]") {
+    NodeGraph graph;
+    const Node envelope = GraphNodeFactory().createNode(
+            NodeKind::Envelope, "envelope", { 40.f, 50.f });
+    const Node unison = GraphNodeFactory().createNode(
+            NodeKind::Unison, "unison", { 100.f, 200.f });
+    REQUIRE(unison.bounds.getWidth() == Catch::Approx(envelope.bounds.getWidth()));
+    REQUIRE(unison.bounds.getWidth() == Catch::Approx(295.2f));
+    graph.addNode(envelope);
+    graph.addNode(unison);
+
+    GraphSerializer serializer;
+    var legacy = serializer.writeJSON(graph);
+    legacy.getDynamicObject()->removeProperty("unisonWidthLayoutVersion");
+    const auto loaded = serializer.readJSON(legacy);
+    INFO((loaded.issues.empty() ? String() : loaded.issues.front().message));
+    REQUIRE(loaded.succeeded());
+    const auto* restored = loaded.graph.findNode("unison");
+    REQUIRE(restored != nullptr);
+    REQUIRE(restored->bounds.getX() == Catch::Approx(60.8f));
+    REQUIRE(restored->bounds.getRight() == Catch::Approx(356.f));
+
+    const auto reloaded = serializer.loadJsonString(serializer.toJsonString(loaded.graph));
+    REQUIRE(reloaded.succeeded());
+    REQUIRE(reloaded.graph.findNode("unison")->bounds.getX()
+            == Catch::Approx(restored->bounds.getX()));
+}
+
+TEST_CASE("Voice Context preset sources follow port order without overlap",
+        "[cycle-v2][graph][presets][voice-context][regression]") {
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    for (const String name : { String("nordic-1.cyclegraph"),
+                               String("honerism-3.cyclegraph"),
+                               String("old/ooh-aah.cyclegraph") }) {
+        const auto loaded = GraphSerializer().loadJsonString(
+                contentPreset(name).loadFileAsString());
+        INFO(name + ": " + (loaded.issues.empty()
+                ? String() : loaded.issues.front().message));
+        REQUIRE(loaded.succeeded());
+
+        auto source = [&](const String& portId) -> const Node* {
+            for (const auto& edge : loaded.graph.getEdges()) {
+                if (edge.destNodeId == "voice" && edge.destPortId == portId) {
+                    return loaded.graph.findNode(edge.sourceNodeId);
+                }
+            }
+            return nullptr;
+        };
+        const Node* modulation = source("modulation");
+        const Node* unison = source("unison");
+        const Node* pitch = source("pitch");
+        const Node* scratch = source("scratch");
+        REQUIRE(modulation != nullptr);
+        REQUIRE(unison != nullptr);
+        REQUIRE(pitch != nullptr);
+        REQUIRE(scratch != nullptr);
+        REQUIRE(modulation->bounds.getBottom() + 24.f <= unison->bounds.getY() + 0.01f);
+        REQUIRE(unison->bounds.getBottom() + 24.f <= pitch->bounds.getY() + 0.01f);
+        REQUIRE(pitch->bounds.getBottom() + 24.f <= scratch->bounds.getY() + 0.01f);
+    }
+  #else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+  #endif
 }

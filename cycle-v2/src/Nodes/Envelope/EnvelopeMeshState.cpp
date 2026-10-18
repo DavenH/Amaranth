@@ -1,8 +1,9 @@
-#include "Nodes/Envelope/EnvelopeMeshState.h"
-
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Obj/MorphPosition.h>
+
+#include "Nodes/Envelope/EnvelopeMeshState.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 
 namespace CycleV2 {
 
@@ -58,6 +59,23 @@ void EnvelopeMeshState::initialiseDefault(EnvelopeMesh& mesh) {
     addCube(mesh, 1.075f, 0.6f, -1.f);
     addCube(mesh, 1.15f, 0.f, -1.f);
     addCube(mesh, 1.25f, 0.f, -1.f);
+}
+
+void EnvelopeMeshState::initialiseDefault(
+        EnvelopeMesh& mesh,
+        EnvelopePurpose purpose) {
+    if (purpose != EnvelopePurpose::Pitch && purpose != EnvelopePurpose::Scratch) {
+        initialiseDefault(mesh);
+        return;
+    }
+
+    mesh.destroy();
+    const float startAmplitude = purpose == EnvelopePurpose::Pitch ? 0.5f : 0.f;
+    const float endAmplitude = purpose == EnvelopePurpose::Pitch ? 0.5f : 1.f;
+    const float curve = purpose == EnvelopePurpose::Pitch ? -1.f : 1.f;
+    addCube(mesh, 0.f, startAmplitude, curve);
+    addCube(mesh, 0.999f, endAmplitude, curve);
+    mesh.setSustainToLast();
 }
 
 juce::String EnvelopeMeshState::defaultSnapshot() {

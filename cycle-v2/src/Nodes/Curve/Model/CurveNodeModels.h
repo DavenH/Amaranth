@@ -1,9 +1,5 @@
 #pragma once
 
-#include "Graph/NodeGraph.h"
-#include "Graph/NodeDefinition.h"
-#include "Nodes/Curve/Model/FlatCurveMeshState.h"
-
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/Mesh.h>
 
@@ -13,7 +9,13 @@
 #include <unordered_set>
 #include <vector>
 
+#include "Graph/NodeGraph.h"
+#include "Graph/NodeDefinition.h"
+#include "Nodes/Curve/Model/FlatCurveMeshState.h"
+
 namespace CycleV2 {
+
+enum class EnvelopePurpose : int;
 
 using CurveVertexId = uint64_t;
 using EnvelopeCubeId = uint64_t;
@@ -101,6 +103,7 @@ class EnvelopeNodeModel {
 public:
     static constexpr int currentVersion = 2;
 
+    explicit EnvelopeNodeModel(EnvelopePurpose purpose);
     EnvelopeNodeModel();
     ~EnvelopeNodeModel();
 

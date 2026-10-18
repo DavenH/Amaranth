@@ -1203,6 +1203,18 @@ EnvRasterizer* EnvelopeInter2D::getRast(int envEnum) {
     return nullptr;
 }
 
+void EnvelopeInter2D::rebindRasterizersToCurrentMeshes() {
+    auto& meshLibrary = getObj(MeshLibrary);
+
+    for (int groupId : { LayerGroups::GroupVolume,
+                         LayerGroups::GroupPitch,
+                         LayerGroups::GroupScratch }) {
+        EnvRasterizer* rast = getRast(groupId);
+        jassert(rast != nullptr);
+        rast->setMesh(meshLibrary.getCurrentEnvMesh(groupId));
+    }
+}
+
 bool EnvelopeInter2D::shouldDoDimensionCheck() {
     if (getSetting(CurrentEnvGroup) == LayerGroups::GroupWavePitch) {
         return false;

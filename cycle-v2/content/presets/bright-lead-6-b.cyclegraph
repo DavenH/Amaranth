@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 766.91309, "y": 417.07538 },
+            "position": { "x": 727.71307, "y": 417.07538 },
             "parameters": {
                 "enabled": true,
                 "mode": "individual",
@@ -683,7 +684,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 1510.0, "y": 1571.0 },
-            "parameters": { "gain": 0.106870229 }
+            "parameters": { "gain": 0.28187 }
         },
         {
             "id": "globalInput",

@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 436.51175, "y": 666.0 },
+            "position": { "x": 397.31174, "y": 666.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 4, "width": 0.0, "panSpread": 0.0, "phase": 0.874741834, "jitter": 0.0 },
             "model": {
                 "schema": "unisonVoices",
@@ -630,7 +631,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 388.23309, "y": 928.0 },
+            "position": { "x": 397.31171, "y": 870.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.037383176, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",

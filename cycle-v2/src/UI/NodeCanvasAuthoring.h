@@ -62,6 +62,8 @@ public:
 
     NodeCanvasAuthoringResult openEditor(const String& nodeId);
     NodeCanvasAuthoringResult addNode(NodeKind kind, Point<float> position);
+    NodeCanvasAuthoringResult createInputSource(
+            const PortAddress& destination);
     NodeCanvasAuthoringResult insertPanIntoEdge(int edgeIndex, Point<float> position);
     NodeCanvasAuthoringResult removePanFromCable(const String& nodeId);
     NodeCanvasAuthoringResult moveNode(const String& nodeId, Point<float> position);

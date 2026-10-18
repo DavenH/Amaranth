@@ -196,6 +196,26 @@ TEST_CASE("CurveWaveformBuilder marks empty and single-point inputs unsampleable
     REQUIRE_FALSE(builder.renderIntercepts(singlePoint, output, request).sampleable);
 }
 
+TEST_CASE("CurveWaveformBuilder rebuilds when partial waveform storage is empty",
+        "[rasterization][pointlist][pipeline]") {
+    CurveTableScope curveTableScope;
+    Rasterization::CurveWaveformBuilder builder;
+    Rasterization::RasterizationRequest request;
+    Rasterization::RenderResult output;
+    std::vector<Intercept> points = makePointList();
+
+    builder.renderIntercepts(points, output, request);
+    output.waveform.waveX = Buffer<float>(nullptr, output.waveform.waveX.size());
+    output.waveform.waveY = Buffer<float>(nullptr, output.waveform.waveY.size());
+
+    builder.rebakeAffectedRange(output, request, 0, 1);
+
+    REQUIRE(output.sampleable);
+    REQUIRE(output.waveform.isSampleable());
+    requireFinite(output.waveform.waveX);
+    requireFinite(output.waveform.waveY);
+}
+
 TEST_CASE("Rasterizer2D updates a partial waveform after a point edit", "[rasterization][pointlist]") {
     CurveTableScope curveTableScope;
     std::vector<Intercept> points = makePointList();

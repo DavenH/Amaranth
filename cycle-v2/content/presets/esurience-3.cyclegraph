@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -38,14 +39,14 @@
             "id": "ifft",
             "kind": "ifft",
             "definitionVersion": 1,
-            "position": { "x": 2571.0, "y": 734.0 },
+            "position": { "x": 2542.95239, "y": 563.80981 },
             "parameters": { "cycleFrames": 2048, "mode": "cyclic" }
         },
         {
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 191.8504, "y": 405.0 },
+            "position": { "x": 152.65039, "y": 405.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 6, "width": 21.5, "panSpread": 1.0, "phase": 1.0, "jitter": 0.724 },
             "model": {
                 "schema": "unisonVoices",
@@ -300,7 +301,7 @@
             "id": "magnitudeOp3",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2338.36987, "y": 463.00003 },
+            "position": { "x": 2310.32227, "y": 405.0 },
             "parameters": {}
         },
         {
@@ -374,7 +375,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2618.80005, "y": 1084.0 },
+            "position": { "x": 2420.12988, "y": 845.80969 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.149532706, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -422,10 +423,10 @@
                                 { "time": 1.0, "phase": 1.0682927, "amp": 0.20207255, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 29 },
                                 { "time": 1.0, "phase": 1.0682927, "amp": 0.20207255, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 30 },
                                 { "time": 1.0, "phase": 1.0682927, "amp": 0.20207255, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 31 },
-                                { "time": 0.0, "phase": 0.000021304702, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 0.6394569, "id": 32 },
-                                { "time": 0.0, "phase": 0.000021304702, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.6394569, "id": 33 },
-                                { "time": 0.0, "phase": 0.000021304702, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.6394569, "id": 34 },
-                                { "time": 0.0, "phase": 0.000021304702, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.6394569, "id": 35 },
+                                { "time": 0.0, "phase": 2.1304702e-05, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 0.6394569, "id": 32 },
+                                { "time": 0.0, "phase": 2.1304702e-05, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.6394569, "id": 33 },
+                                { "time": 0.0, "phase": 2.1304702e-05, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.6394569, "id": 34 },
+                                { "time": 0.0, "phase": 2.1304702e-05, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.6394569, "id": 35 },
                                 { "time": 1.0, "phase": 0.0, "amp": 0.8601036, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 36 },
                                 { "time": 1.0, "phase": 0.0, "amp": 0.8601036, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 37 },
                                 { "time": 1.0, "phase": 0.0, "amp": 0.8601036, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 38 },
@@ -809,7 +810,7 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 2994.0, "y": 886.0 },
+            "position": { "x": 2795.32983, "y": 647.80981 },
             "parameters": {}
         },
         {
@@ -837,7 +838,7 @@
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 3192.0, "y": 886.0 },
+            "position": { "x": 2993.32983, "y": 647.80981 },
             "parameters": {}
         }
     ],

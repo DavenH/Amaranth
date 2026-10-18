@@ -1,16 +1,31 @@
+#include <algorithm>
+#include <limits>
+
 #include "UI/NodeCanvasScene.h"
 #include "Graph/GraphEdgeIndex.h"
 #include "UI/ModulationCableBundle.h"
+#include "UI/NodeInputQuickCreate.h"
 #include "UI/NodePortGeometry.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
 #include "UI/NodeGroupPresentation.h"
 
-#include <algorithm>
-
 namespace CycleV2 {
 
 namespace {
+
+Rectangle<float> quickCreateHitBounds(
+        Rectangle<float> bounds,
+        Point<float> centre,
+        float zoom) {
+    const float rowHeight = NodePortGeometry::sidePortSpacing * zoom;
+    return {
+            bounds.getX() - 8.f,
+            centre.y - rowHeight * 0.5f,
+            bounds.getWidth() + 8.f,
+            rowHeight
+    };
+}
 
 int portIndexOnSide(const Node& node, const Port& port) {
     if (port.input && operationPortLayout(node) == OperationPortLayout::SideReversed) {
@@ -191,6 +206,149 @@ Path inlinePanPath(const InlinePanRoute& route) {
             route.sourcePort->side,
             route.destinationPort->side,
             1.f);
+}
+
+bool crossesNodeBody(
+        const Path& path,
+        const NodeCanvasSceneSnapshot& scene,
+        const juce::String& sourceNodeId,
+        const juce::String& destinationNodeId) {
+    const Rectangle<float> pathBounds = path.getBounds();
+    for (const auto& target : scene.targets) {
+        if (target.kind != NodeSceneTargetKind::Node
+                || target.nodeId == sourceNodeId
+                || target.nodeId == destinationNodeId
+                || !target.bounds.intersects(pathBounds)) {
+            continue;
+        }
+
+        const Rectangle<float> body = target.bounds.reduced(3.f);
+        const float length = path.getLength();
+        for (int sample = 1; sample < 32; ++sample) {
+            if (body.contains(path.getPointAlongPath(length * (float) sample / 32.f))) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+int fanOutLane(
+        const NodeGraph& graph,
+        const GraphEdgeIndex& edgeIndex,
+        const Edge& edge,
+        const Node& sourceNode,
+        const Node& destinationNode) {
+    int lane = 0;
+    const auto& graphEdges = graph.getEdges();
+    for (const size_t candidateIndex : edgeIndex.outgoingEdges(edge.sourceNodeId)) {
+        const Edge& candidate = graphEdges[candidateIndex];
+        if (candidate.sourcePortId != edge.sourcePortId
+                || candidate.connectionKind != edge.connectionKind) {
+            continue;
+        }
+        const Node* siblingDestination = graph.findNode(candidate.destNodeId);
+        if (siblingDestination == nullptr
+                || siblingDestination->bounds.getX() <= sourceNode.bounds.getRight()) {
+            continue;
+        }
+        if (siblingDestination->bounds.getX() < destinationNode.bounds.getX()) {
+            ++lane;
+        }
+    }
+    return lane;
+}
+
+float corridorTop(
+        const NodeCanvasSceneSnapshot& scene,
+        const juce::String& sourceNodeId,
+        float leadX,
+        float destinationX,
+        float destinationTop) {
+    float top = destinationTop;
+    for (const auto& target : scene.targets) {
+        if (target.kind == NodeSceneTargetKind::Node
+                && target.nodeId != sourceNodeId
+                && target.bounds.getX() < destinationX
+                && target.bounds.getRight() > leadX) {
+            top = std::min(top, target.bounds.getY());
+        }
+    }
+    return top;
+}
+
+Path cableDetourPath(
+        const NodeSceneEdge& presented,
+        float laneY,
+        float zoom) {
+    const float span = presented.destination.x - presented.source.x;
+    Path routed;
+    routed.startNewSubPath(presented.source);
+    routed.cubicTo(
+            { presented.source.x + span * 0.42f,
+                    std::min(presented.source.y, laneY) - 16.f * zoom },
+            { presented.destination.x - 30.f * zoom, laneY },
+            presented.destination);
+    return routed;
+}
+
+void routeObstructedCables(
+        const NodeGraph& graph,
+        const GraphEdgeIndex& edgeIndex,
+        const NodeCanvasViewport& viewport,
+        NodeCanvasSceneSnapshot& scene) {
+    const float zoom = viewport.getZoom();
+    const auto& graphEdges = graph.getEdges();
+    for (auto& presented : scene.edges) {
+        if (presented.inlinePan || !isPositiveAndBelow(
+                    presented.edgeIndex, (int) graphEdges.size())) {
+            continue;
+        }
+
+        const Edge& edge = graphEdges[(size_t) presented.edgeIndex];
+        const Node* sourceNode = graph.findNode(edge.sourceNodeId);
+        const Node* destinationNode = graph.findNode(edge.destNodeId);
+        if (sourceNode == nullptr || destinationNode == nullptr) {
+            continue;
+        }
+        const Port* sourcePort = findPort(*sourceNode, edge.sourcePortId, false);
+        if (sourcePort == nullptr || sourcePort->side != PortSide::Right) {
+            continue;
+        }
+
+        const Rectangle<float> destinationBounds = viewport.toScreen(destinationNode->bounds);
+        const bool entersLeft = std::abs(presented.destination.x - destinationBounds.getX())
+                <= 4.f * zoom;
+        if (!entersLeft || !crossesNodeBody(
+                    presented.cablePath, scene, edge.sourceNodeId, edge.destNodeId)) {
+            continue;
+        }
+
+        if (presented.destination.x <= presented.source.x + 72.f * zoom) {
+            continue;
+        }
+        const int lane = fanOutLane(
+                graph, edgeIndex, edge, *sourceNode, *destinationNode);
+        const float rowTop = corridorTop(
+                scene, edge.sourceNodeId, presented.source.x, presented.destination.x,
+                destinationBounds.getY());
+        Path routed;
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            const float laneY = rowTop
+                    - (30.f + (float) lane * 18.f + (float) attempt * 30.f) * zoom;
+            routed = cableDetourPath(presented, laneY, zoom);
+            if (!crossesNodeBody(routed, scene, edge.sourceNodeId, edge.destNodeId)) {
+                break;
+            }
+        }
+        if (crossesNodeBody(routed, scene, edge.sourceNodeId, edge.destNodeId)) {
+            continue;
+        }
+        presented.cablePath = std::move(routed);
+        presented.hitPath.clear();
+        PathStrokeType(22.f, PathStrokeType::curved, PathStrokeType::rounded)
+                .createStrokedPath(presented.hitPath, presented.cablePath);
+    }
 }
 
 std::optional<Point<float>> inlinePanCentre(
@@ -404,13 +562,21 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 const float hitPadding = node.kind == NodeKind::SpectralLayer
                         ? 4.f
                         : NodePortGeometry::hitPadding;
+                Rectangle<float> hitBounds = Rectangle<float>(size, size)
+                        .withCentre(centre)
+                        .expanded(hitPadding);
+                if (port.input && NodeInputQuickCreate::sourceFor(
+                            node, { node.id, port.id, true }).has_value()) {
+                    hitBounds = quickCreateHitBounds(
+                            hitBounds, centre, viewport.getZoom());
+                }
                 current.targets.push_back({
                         kind,
                         (port.input ? "input:" : "output:") + node.id + "." + port.id,
                         node.id,
                         port.id,
                         {},
-                        juce::Rectangle<float>(size, size).withCentre(centre).expanded(hitPadding),
+                        hitBounds,
                         -1,
                         10000 + zOrder++
                 });
@@ -427,14 +593,20 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                     ModulationCableBundle::worldCentre(node, input));
             const float size = ModulationCableBundle::socketDiameter
                     * viewport.getZoom() / NodePortGeometry::referenceZoom;
+            Rectangle<float> hitBounds = Rectangle<float>(size, size)
+                    .withCentre(centre).expanded(NodePortGeometry::hitPadding);
+            if (input && NodeInputQuickCreate::sourceFor(
+                        node, ModulationCableBundle::destinationAddress(node)).has_value()) {
+                hitBounds = quickCreateHitBounds(
+                        hitBounds, centre, viewport.getZoom());
+            }
             current.targets.push_back({
                     input ? NodeSceneTargetKind::InputPort : NodeSceneTargetKind::OutputPort,
                     (input ? "input:" : "output:") + node.id + ".modulationBundle",
                     node.id,
                     ModulationCableBundle::portId(),
                     {},
-                    juce::Rectangle<float>(size, size).withCentre(centre).expanded(
-                            NodePortGeometry::hitPadding),
+                    hitBounds,
                     -1,
                     20000 + zOrder++
             });
@@ -556,6 +728,7 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         });
     }
 
+    routeObstructedCables(graph, indexedEdges, viewport, current);
     return current;
 }
 
@@ -573,14 +746,26 @@ std::optional<NodeSceneTarget> NodeCanvasHitTester::hitTest(
         return *bestTarget;
     }
 
-    for (auto edge = scene.edges.rbegin(); edge != scene.edges.rend(); ++edge) {
-        if (edge->hitPath.contains(screenPosition)) {
-            NodeSceneTarget target;
-            target.kind = NodeSceneTargetKind::Edge;
-            target.semanticId = "edge:" + juce::String(edge->edgeIndex);
-            target.edgeIndex = edge->edgeIndex;
-            return target;
+    const NodeSceneEdge* closestEdge = nullptr;
+    float closestDistance = std::numeric_limits<float>::max();
+    for (const auto& edge : scene.edges) {
+        if (edge.hitPath.contains(screenPosition)) {
+            Point<float> nearest;
+            edge.cablePath.getNearestPoint(screenPosition, nearest);
+            const float distance = nearest.getDistanceFrom(screenPosition);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestEdge = &edge;
+            }
         }
+    }
+
+    if (closestEdge != nullptr) {
+        NodeSceneTarget target;
+        target.kind = NodeSceneTargetKind::Edge;
+        target.semanticId = "edge:" + juce::String(closestEdge->edgeIndex);
+        target.edgeIndex = closestEdge->edgeIndex;
+        return target;
     }
 
     return std::nullopt;

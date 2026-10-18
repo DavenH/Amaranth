@@ -44,7 +44,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 82.0, "y": 745.67175 },
+            "position": { "x": 82.0, "y": 634.16541 },
             "parameters": {
                 "enabled": true,
                 "mode": "group",
@@ -612,7 +612,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": -237.7099, "y": 585.0 },
+            "position": { "x": -237.7099, "y": 819.16541 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -882,7 +882,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 42.8, "y": 1021.0 },
+            "position": { "x": 42.8, "y": 1087.16541 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",

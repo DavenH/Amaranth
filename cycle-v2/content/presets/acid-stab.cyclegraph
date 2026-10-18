@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -681,7 +682,7 @@
             "kind": "delay",
             "definitionVersion": 1,
             "position": { "x": 426.94305, "y": 1073.10986 },
-            "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.316, "spin": 1.0, "spinIters": 0.6 }
+            "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.316, "spin": 1.0, "spinIters": 0.18182 }
         },
         {
             "id": "output",

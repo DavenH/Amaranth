@@ -1,5 +1,40 @@
 # Audio Bug Notes
 
+## Open: Ubuntu legacy BlockConvolver Dirac test loses about 0.1% per stage
+
+During the 2026-10-11 Reverb kernel portability fix, the isolated
+`ConvReverb Convolution Accuracy` test failed all 512 Dirac-response sample
+checks on Ubuntu. Errors were approximately `0.000978` in the first stage and
+`0.001957` in the second against a `0.0001` tolerance. The test does not use
+random kernel generation, while the focused Reverb kernel tests and all 14
+Cycle V2 Reverb tests pass. Artifact: `/tmp/convreverb-accuracy.log`. Status:
+open; inspect IPP real-FFT convolution scaling separately.
+
+## Resolved: Linux Cycle preset reload could rasterize a stale global mesh
+
+Loading an active preset after another active preset could leave the standalone
+audio path silent and could crash during teardown. The audio update queue ran
+global rasterization before globality rebuilt the scratch and mesh references,
+so the rasterizer could use objects destroyed by the preset load. The queue now
+rebuilds globality before rasterization.
+
+The regression fixture
+`scripts/fixtures/cycle-agent-preset-switch-audio.json` loads AfricanHorn,
+loads CalmingKeys, and captures a note with peak and RMS thresholds. The
+standalone debug run now completes the capture with peak `0.5975` and RMS
+`0.1884`; repeated runs through five preset changes also remained non-silent
+and produced no kernel SIGSEGV.
+
+Status: resolved 2026-09-18.
+
+## Open: Linux Cycle visual DSP logs a NaN assertion during preset startup
+
+The same debug automation still logs `VisualDsp.cpp:73` from
+`calcSpectrogram input postEnvCols` while the first preset is settling. The
+application continues and the audio capture succeeds, but the assertion is
+unrelated to the stale global mesh crash and remains open for a separate
+visual DSP investigation. Repro artifact: `/tmp/cycle-agent-preset-switch-audio.stderr`.
+
 ## Open: five broad realtime test failures reproduce with original grid warmup
 
 During the 2026-10-08 preset-load optimization, the broad
@@ -888,6 +923,12 @@ passes 61 assertions.
 
 Current status: open; restore the reference fixture or update that test to use
 the intended maintained preset.
+
+The 2026-10-11 Voice Context regression run also found that `Guitar 3 G uses
+implicit Voice Context Envelope modulation` stops at
+`TestGraphAudioExecutor.cpp:1176` because
+`content/presets/guitar-3-g.cyclegraph` is absent. This is another missing
+audio-test fixture; current status: open.
 
 ## P2: Broad Cycle V2 test run reaches a failed oscillator region render
 

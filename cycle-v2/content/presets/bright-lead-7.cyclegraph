@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 191.74786, "y": 1040.0 },
+            "position": { "x": 152.54788, "y": 723.19641 },
             "parameters": {
                 "enabled": true,
                 "mode": "group",
@@ -422,9 +423,9 @@
                                 { "time": 1.0, "phase": 1.0829304, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 0.090540275, "id": 30 },
                                 { "time": 1.0, "phase": 1.0829304, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 0.090540275, "id": 31 },
                                 { "time": 0.0, "phase": 0.0001999557, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 0.8792945, "id": 32 },
-                                { "time": 0.0, "phase": 0.00000015074329, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.82506126, "id": 33 },
+                                { "time": 0.0, "phase": 1.5074329e-07, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.82506126, "id": 33 },
                                 { "time": 0.0, "phase": 0.0001999557, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.8792945, "id": 34 },
-                                { "time": 0.0, "phase": 0.00000015074329, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.82506126, "id": 35 },
+                                { "time": 0.0, "phase": 1.5074329e-07, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.82506126, "id": 35 },
                                 { "time": 1.0, "phase": 0.11153779, "amp": 0.6971831, "key": 0.0, "mod": 0.0, "weight": 0.2554032, "id": 36 },
                                 { "time": 1.0, "phase": 0.11138358, "amp": 0.9681191, "key": 0.0, "mod": 1.0, "weight": 0.2554032, "id": 37 },
                                 { "time": 1.0, "phase": 0.11153779, "amp": 0.6971831, "key": 1.0, "mod": 0.0, "weight": 0.2554032, "id": 38 },
@@ -486,7 +487,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 152.54785, "y": 752.0 },
+            "position": { "x": 152.54793, "y": 916.19641 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.495327115, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",

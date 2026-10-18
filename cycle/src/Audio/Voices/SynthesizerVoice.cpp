@@ -480,6 +480,7 @@ void SynthesizerVoice::fetchEnvelopeMeshes() {
 
         if (numLocalEnvelopes != group.size()) {
             group.envGroup.clear();
+            group.envGroup.reserve(numLocalEnvelopes);
 
             for (int layerIndex = 0; layerIndex < size; ++layerIndex) {
                 MeshLibrary::Layer layer = meshLib->getLayer(group.layerGroup, layerIndex);

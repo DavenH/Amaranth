@@ -199,15 +199,19 @@ Buffer<float> Resampler::finalise() {
     source.sectionAtMost(lastread, history).zero();
     int sourceSize = lastread - (int) time;
 
-    if(fixed) {
-        ippsResamplePolyphaseFixed_32f(source, sourceSize, dest, resamplingScale, &time, &outLen, fixedState);
+    if (sourceSize > 0) {
+        if (fixed) {
+            ippsResamplePolyphaseFixed_32f(source, sourceSize, dest, resamplingScale, &time, &outLen, fixedState);
+        } else {
+            ippsResamplePolyphase_32f(source, sourceSize, dest, dstToSrc, resamplingScale, &time, &outLen, state);
+        }
     } else {
-        ippsResamplePolyphase_32f(source, sourceSize, dest, dstToSrc, resamplingScale, &time, &outLen, state);
+        outLen = 0;
     }
 
     haveReset = false;
 
-    if (sourceSize == 0) {
+    if (sourceSize <= 0) {
         outLen = 0;
     }
 
@@ -241,10 +245,14 @@ Buffer<float> Resampler::resample(Buffer<float> input) {
     int sourceSize = lastread - history - (int) time;
 
 #ifdef USE_IPP
-    if(fixed) {
-        ippsResamplePolyphaseFixed_32f(source, sourceSize, dest, resamplingScale, &time, &outLen, fixedState);
+    if (sourceSize > 0) {
+        if (fixed) {
+            ippsResamplePolyphaseFixed_32f(source, sourceSize, dest, resamplingScale, &time, &outLen, fixedState);
+        } else {
+            ippsResamplePolyphase_32f(source, sourceSize, dest, dstToSrc, resamplingScale, &time, &outLen, state);
+        }
     } else {
-        ippsResamplePolyphase_32f(source, sourceSize, dest, dstToSrc, resamplingScale, &time, &outLen, state);
+        outLen = 0;
     }
     int toMove = lastread + history - (int)time;
     VecOps::move(
@@ -255,7 +263,7 @@ Buffer<float> Resampler::resample(Buffer<float> input) {
     lastread -= (int)time - history;
     time -= (int)time - history;
 
-    if(sourceSize == 0) {
+    if(sourceSize <= 0) {
         outLen = 0;
     }
 #else
