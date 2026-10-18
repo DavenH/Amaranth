@@ -66,6 +66,22 @@ position closes the last interval; it does not create an extra band. This
 changes only GL column geometry and colour lookup count. It keeps mesh samples,
 harmonic positions, row colours, and gesture cost intact.
 
+The compact preview still used `ScalarSurfaceMaterialEvaluator::createImage`
+on a grid with seven rows at the untouched `acid-stab-3` pitch. That image gave
+all seven rows equal height, while the expanded `Panel3D` uses adjacent
+`LogRegions` positions as band boundaries. The compact path also consumed the
+display-resampled grid,
+which blends adjacent harmonic values. The compact magnitude renderer must
+consume `TrimeshGridRenderService`'s existing `linearFrequencySurface`, use
+`LogRegions` for the same per-column band boundaries, and sample the same
+gradient palette as the expanded panel. This is a render-product translation;
+it does not duplicate grid sampling or mesh traversal. Time, phase, Signal
+Spy, and other runtime heatmaps keep the existing scalar image path. The
+model-only `createTrimeshImage` boundary selects the stepped magnitude image;
+the old compact magnitude call through the scalar image evaluator is the
+deletion target. A compact tile refresh costs one local image draw; a
+position-only move still reuses the cached tile.
+
 The node canvas painted cached node tiles at rest but directly repainted every
 node during a move. That exposed a differently sampled compact heatmap and did
 unnecessary preview work. `NodeCanvasNodeLayerCache` now treats position alone
@@ -113,6 +129,13 @@ eligibility decision was added in graph or runtime code. The old compact
 `bridge.syncFromNode(..., 96)` path is the deletion target; compact painting
 must no longer replace the expanded panel's grid.
 
+The compact parity repair leaves `TrimeshWidget.cpp` at 878 lines, five more
+than its pre-repair size. It still owns only cache eligibility and forwards
+the target preview height to `TrimeshSurfaceRenderer`. The renderer is 192
+lines and owns image construction and the spectral magnitude pixel mapping.
+`LogRegions` owns the log positions and `TrimeshGridRenderService` owns the
+sample values. No graph, editor, or runtime layer makes a second bin decision.
+
 Current size review: `Panel3D.cpp` grew from 1,069 to 1,118 lines and owns
 expanded panel surface rendering, overlay drawing, and GL presentation. Its
 stable collaborators remain `PanelRenderer`, `ColorGradient`, and the panel
@@ -156,6 +179,9 @@ presentation file. The existing extraction direction in
       The rows remain discrete through drag and release.
 - [x] A compact spectral Trimesh preview retains the same row appearance while
       its node is moved and after release at the same pointer position.
+- [x] The compact magnitude preview uses the expanded panel's log interval
+      geometry, harmonic row values, and palette at the same pitch. A focused
+      rendered-image test and `acid-stab-3` capture reject uniform-height rows.
 
 Previous evidence used `organ.cyclegraph` with Red as the primary axis. It
 does not establish that `acid-stab-3` is fixed. A direct comparison in
@@ -204,3 +230,14 @@ undo-equivalent lookup, and a real context-key invalidation.
 
 The [captured compact preview after the node move](figures/cycle-v2-trimesh-spectral-preview-node-move.png)
 shows the same stepped bands as the held frame.
+
+The follow-up `python3 scripts/test_cycle_v2_trimesh_preview_parity.py` opens
+`acid-stab-3` twice at the same untouched parameter state and compares OS
+captures of the compact and expanded magnitude surfaces. The lowest band
+occupies 30.5% and 29.6% of their visible spectral heights, with 3.50 mean
+RGB levels of difference in the sampled columns. The focused image test
+asserts the shared `LogRegions` boundaries, source harmonic values, palette,
+and transparent area below the first position. The node-move fixture still
+reports zero tile misses and a 0.010 held/released mean RGB difference. Seven
+focused CTest cases pass, including the unchanged Signal Spy and FFT preview
+mapping boundaries.

@@ -1230,6 +1230,42 @@ TEST_CASE("Trimesh surface renderer creates vertically oriented heatmap images",
     requirePixelNear(1, 0, 0.90f);
 }
 
+TEST_CASE("Compact magnitude bands use expanded log intervals and source rows",
+        "[cycle-v2][nodes][trimesh][spectral][compact]") {
+    constexpr int midiNote = 105;
+    constexpr int imageHeight = 200;
+    const Buffer<float> ramp = LogRegions::getDefaultRegion(midiNote);
+    TrimeshRenderData renderData;
+    renderData.rows = ramp.size();
+    renderData.columns = 2;
+    renderData.midiNote = midiNote;
+    renderData.surface.resize((size_t) renderData.rows * 2, 0.4f);
+    renderData.linearFrequencySurface.resize((size_t) renderData.rows * 2, 0.2f);
+    renderData.linearFrequencySurface[0] = 0.9f;
+    renderData.linearFrequencySurface[1] = 0.1f;
+
+    const auto profile = TrimeshRenderProfile::fromDomain(
+            PortDomain::SpectralMagnitudeSignal);
+    const Image image = TrimeshSurfaceRenderer::createTrimeshImage(
+            renderData, profile, 1.f, imageHeight);
+    REQUIRE(image.isValid());
+    REQUIRE(image.getHeight() == imageHeight);
+
+    const int firstTop = roundToInt((1.f - ramp[1]) * (float) imageHeight);
+    const int firstBottom = roundToInt((1.f - ramp[0]) * (float) imageHeight);
+    const int secondTop = roundToInt((1.f - ramp[2]) * (float) imageHeight);
+    REQUIRE(firstBottom - firstTop > firstTop - secondTop);
+
+    const Image gradient = profile.getSurfaceStyle().gradientImage();
+    const int firstColourIndex = (int) (0.9f * (float) gradient.getWidth());
+    const int secondColourIndex = (int) (0.1f * (float) gradient.getWidth());
+    REQUIRE(image.getPixelAt(0, (firstTop + firstBottom) / 2)
+            == gradient.getPixelAt(firstColourIndex, 0));
+    REQUIRE(image.getPixelAt(0, (firstTop + secondTop) / 2)
+            == gradient.getPixelAt(secondColourIndex, 0));
+    REQUIRE(image.getPixelAt(0, imageHeight - 1).getAlpha() == 0);
+}
+
 TEST_CASE("Compact pitch columns use each key's harmonic range across the preview height",
         "[cycle-v2][nodes][trimesh][spectral][key-scale][compact]") {
     TrimeshRenderData renderData;
@@ -1239,10 +1275,12 @@ TEST_CASE("Compact pitch columns use each key's harmonic range across the previe
     renderData.surface.resize((size_t) renderData.rows * 3);
     const size_t highColumnOffset = (size_t) renderData.rows * 2;
     renderData.surface[highColumnOffset] = 1.f;
+    renderData.linearFrequencySurface = renderData.surface;
 
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(
             PortDomain::SpectralMagnitudeSignal);
-    const Image image = TrimeshSurfaceRenderer::createHeatmapImage(renderData, profile);
+    const Image image = TrimeshSurfaceRenderer::createTrimeshImage(
+            renderData, profile, 1.f, renderData.rows);
     REQUIRE(image.isValid());
     REQUIRE(image.getPixelAt(2, renderData.rows / 2)
             != TrimeshSurfaceRenderer::colourForProfile(0.f, profile));
