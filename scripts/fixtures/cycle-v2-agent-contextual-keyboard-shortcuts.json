@@ -16,6 +16,30 @@
     { "command": "assertState", "path": "performance.previewPlaying", "equals": true },
     { "command": "key", "area": "canvas", "key": "space" },
     { "command": "assertState", "path": "performance.previewPlaying", "equals": false },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "targetX": 0.35,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "targetX": 0.35,
+      "targetY": 0.5,
+      "downTargetX": 0.35,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.focusedMorphAxis",
+      "equals": "red"
+    },
     { "command": "key", "area": "canvas", "key": "left" },
     {
       "command": "assertNodeParameter",

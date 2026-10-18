@@ -98,6 +98,7 @@ public:
     }
 
     void focusGained(FocusChangeType) override {
+        owner.rememberMorphFocus(region);
         owner.repaint();
     }
 
@@ -127,6 +128,9 @@ void TrimeshControlsComponent::setDelegate(TrimeshControlsDelegate* nextDelegate
 }
 
 void TrimeshControlsComponent::setNode(const Node& nextNode) {
+    if (node.id != nextNode.id) {
+        keyboardMorphAxis.clear();
+    }
     node = nextNode;
     updateHitRegions();
 }
@@ -174,19 +178,7 @@ int TrimeshControlsComponent::getVertexGuideAttachmentButtonCount() const {
 }
 
 String TrimeshControlsComponent::focusedMorphAxis() const {
-    for (size_t index = 0; index < controlRegions.size(); ++index) {
-        if (!controlRegions[index]->hasKeyboardFocus(false)) {
-            continue;
-        }
-        const auto& region = controlHitRegions[index];
-        if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
-            return region.parameterId;
-        }
-        if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
-            return region.axisValue;
-        }
-    }
-    return {};
+    return keyboardMorphAxis;
 }
 
 void TrimeshControlsComponent::paint(Graphics& graphics) {
@@ -355,6 +347,7 @@ void TrimeshControlsComponent::beginControlDrag(
         const TrimeshExpandedHitRegion& region,
         Point<float> position,
         Rectangle<int> screenArea) {
+    rememberMorphFocus(region);
     float value {};
 
     switch (region.kind) {
@@ -496,6 +489,22 @@ bool TrimeshControlsComponent::adjustGuideGainFromKeyboard(
     return true;
 }
 
+void TrimeshControlsComponent::rememberMorphFocus(
+        const TrimeshExpandedHitRegion& region) {
+    String axis;
+    if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
+        axis = region.parameterId;
+    } else if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis
+            || region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
+        axis = region.axisValue;
+    }
+    if (axis.isEmpty() || axis == keyboardMorphAxis) {
+        return;
+    }
+    keyboardMorphAxis = axis;
+    repaint();
+}
+
 bool TrimeshControlsComponent::focusMorphControl(const String& axis) {
     for (size_t index = 0; index < controlRegions.size(); ++index) {
         const auto& region = controlHitRegions[index];
@@ -503,8 +512,9 @@ bool TrimeshControlsComponent::focusMorphControl(const String& axis) {
                 || region.parameterId != axis) {
             continue;
         }
+        keyboardMorphAxis = axis;
         controlRegions[index]->grabKeyboardFocus();
-        controlRegions[index]->repaint();
+        repaint();
         return true;
     }
     return false;

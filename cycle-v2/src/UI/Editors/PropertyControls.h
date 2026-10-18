@@ -120,6 +120,7 @@ juce::var propertyGroupLabelAutomationState(const PropertyGroupLabel& label);
 class PrecisionSlider final : public juce::Slider {
 public:
     using KeyboardStepper = std::function<double(double, bool, bool)>;
+    using KeyboardFocusHandler = std::function<void()>;
     using ValueSnapper = std::function<double(double, DragMode)>;
 
     struct Landmark {
@@ -132,6 +133,7 @@ public:
 
     void setKeyboardSteps(double ordinary, double fine);
     void setKeyboardStepper(KeyboardStepper stepper);
+    void setKeyboardFocusHandler(KeyboardFocusHandler handler);
     void setValueSnapper(ValueSnapper snapper);
     void setLandmarks(std::vector<Landmark> landmarks);
     void setTrackEndInset(float inset);
@@ -139,6 +141,7 @@ public:
     void setValueFromKeyboard(double value);
     float getTrackEndInset() const { return trackEndInset; }
     juce::Rectangle<float> visibleTrackBounds() const;
+    void focusGained(juce::Component::FocusChangeType cause) override;
     bool keyPressed(const juce::KeyPress& key) override;
     double snapValue(double attemptedValue, DragMode dragMode) override;
     void paint(juce::Graphics& graphics) override;
@@ -149,6 +152,7 @@ private:
     double ordinaryKeyboardStep { 0.01 };
     double fineKeyboardStep { 0.001 };
     KeyboardStepper keyboardStepper;
+    KeyboardFocusHandler keyboardFocusHandler;
     ValueSnapper valueSnapper;
     std::vector<Landmark> landmarks;
     std::optional<juce::Colour> morphAccent;

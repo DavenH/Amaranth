@@ -37,6 +37,10 @@ trailing slot outside the outline. Its rounded shell, two rows of round keys,
 and centered spacebar preserve the diagnostic proportions of the supplied
 keyboard reference at an 18 by 13 pixel production size. The outline and glyph
 are shared property-control presentation primitives, not a new icon family.
+The editor retains the last selected morph tuple when a child control loses
+transient JUCE focus, so pointer release and ordinary focus transfer do not
+remove the cue or leave Left/Right and L without a target. Selecting a different
+morph rail, Axis control, or Link control replaces that editor-local target.
 
 Cycle 1's other keys were reviewed separately. `A` remains the useful follow-on
 for selection, with its exact select-all/clear-selection context to be designed
@@ -51,7 +55,7 @@ prepare durable resources. Sidebar keys change presentation state only.
 ## Completion Criteria
 
 - Focus, pole, link, undo, and Space behavior have focused semantic tests for
-  Trimesh and Envelope.
+  Trimesh and Envelope, including arrow dispatch after component focus moves.
 - C/P select the matching sidebar tab only in canvas context.
 - The app automation protocol can dispatch the new printable keys, and a
   focused fixture exercises the real component path.
@@ -106,13 +110,21 @@ they do not duplicate layout constants or rendering policy. No touched file
 grows by 200 lines, and the existing extraction plans for files above the review
 threshold remain unchanged.
 
+The persistent-focus follow-up keeps one editor-local axis string in each morph
+editor. `PrecisionSlider` adds only a generic focus-gained callback; it owns no
+Envelope policy. `EnvelopeEditorComponent.cpp` grows from 881 to 892 lines and
+`TrimeshControlsComponent.cpp` from 532 to 542 lines. The former remains above
+the responsibility-review threshold for its pre-existing control-composition
+role, but this change adds no new collaborator or cross-subsystem policy.
+
 ## Validation
 
 - Standalone Debug build passes with `--parallel 10`.
-- The `[keyboard]` Cycle V2 suite passes 470 assertions in 27 cases.
-- `cycle-v2-agent-contextual-keyboard-shortcuts.json` passes all 45 commands,
-  including both editors, undoable poles, links, C/P tabs, and Space playback
-  while the performance keyboard is occluded.
+- The `[keyboard]` Cycle V2 suite passes 491 assertions in 27 cases, including
+  real peer-dispatched arrows after focus moves away from the morph control.
+- `cycle-v2-agent-contextual-keyboard-shortcuts.json` passes all 48 commands,
+  including both editors, undoable poles, links, C/P tabs, pointer release, and
+  Space playback while the performance keyboard is occluded.
 - Production-size app captures show the neutral tuple outline and trailing 18
   by 13 keyboard glyph in both expanded editors, with no slider-only focus ring.
 - The architecture audit, touched-file size review, scalar-math hot-loop check,

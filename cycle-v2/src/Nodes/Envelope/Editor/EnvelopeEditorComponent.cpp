@@ -142,6 +142,7 @@ struct EnvelopeEditorComponent::Impl {
     bool redLinked { true };
     bool blueLinked { true };
     String linkNodeId;
+    String keyboardMorphAxis;
     bool draggingMorph {};
     bool draggingParameter {};
     float guideGainDragStartY {};
@@ -155,6 +156,12 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(CurveEditorWidget& target) :
     bindContinuousControls({ &impl->redMorph, &impl->blueMorph });
     impl->redMorph.slider.addKeyListener(this);
     impl->blueMorph.slider.addKeyListener(this);
+    impl->redMorph.slider.setKeyboardFocusHandler([this] {
+        rememberMorphFocus("red");
+    });
+    impl->blueMorph.slider.setKeyboardFocusHandler([this] {
+        rememberMorphFocus("blue");
+    });
     impl->enabled.setComponentID("envelopeEditor.enabled");
     setHeaderAction(impl->enabled);
     bindDiscreteAction(impl->enabled, [] {});
@@ -220,13 +227,7 @@ bool EnvelopeEditorComponent::keyPressed(
 }
 
 String EnvelopeEditorComponent::focusedMorphAxis() const {
-    if (impl->redMorph.slider.hasKeyboardFocus(false)) {
-        return "red";
-    }
-    if (impl->blueMorph.slider.hasKeyboardFocus(false)) {
-        return "blue";
-    }
-    return {};
+    return impl->keyboardMorphAxis;
 }
 
 bool EnvelopeEditorComponent::handleMorphKeyboardShortcut(const KeyPress& key) {
@@ -255,6 +256,15 @@ bool EnvelopeEditorComponent::handleMorphKeyboardShortcut(const KeyPress& key) {
     return false;
 }
 
+void EnvelopeEditorComponent::rememberMorphFocus(const String& axis) {
+    if ((axis != "red" && axis != "blue")
+            || axis == impl->keyboardMorphAxis) {
+        return;
+    }
+    impl->keyboardMorphAxis = axis;
+    repaint();
+}
+
 bool EnvelopeEditorComponent::focusMorphAxis(const String& axis) {
     PrecisionSlider* slider = axis == "red"
             ? &impl->redMorph.slider
@@ -262,16 +272,16 @@ bool EnvelopeEditorComponent::focusMorphAxis(const String& axis) {
     if (slider == nullptr) {
         return false;
     }
+    rememberMorphFocus(axis);
     slider->grabKeyboardFocus();
-    slider->repaint();
     return true;
 }
 
 PrecisionSlider* EnvelopeEditorComponent::focusedMorphSlider() const {
-    if (impl->redMorph.slider.hasKeyboardFocus(false)) {
+    if (impl->keyboardMorphAxis == "red") {
         return &impl->redMorph.slider;
     }
-    if (impl->blueMorph.slider.hasKeyboardFocus(false)) {
+    if (impl->keyboardMorphAxis == "blue") {
         return &impl->blueMorph.slider;
     }
     return nullptr;
@@ -375,10 +385,6 @@ void EnvelopeEditorComponent::layoutEditor() {
     impl->fullVertical.setBounds(rangeGroup.reduced(pairedActionInset, 0));
 }
 
-void EnvelopeEditorComponent::focusOfChildComponentChanged(FocusChangeType) {
-    repaint();
-}
-
 void EnvelopeEditorComponent::syncEditorFromNode() {
     const EnvelopePurpose purpose = envelopePurposeFor(node);
     const NodeParameterMap parameters(node);
@@ -390,6 +396,7 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     impl->blueMorph.slider.setValue(parameters.floatValue("blue", 0.5f), dontSendNotification);
     if (impl->linkNodeId != node.id) {
         impl->linkNodeId = node.id;
+        impl->keyboardMorphAxis.clear();
         impl->redLinked = true;
         impl->blueLinked = true;
     }
@@ -736,11 +743,15 @@ bool EnvelopeEditorComponent::handleAxisMouseDown(
         Rectangle<float> controls) {
     for (int axis = 0; axis < 3; ++axis) {
         if (impl->presentation.axisBounds(controls, axis).contains(position)) {
+            if (axis > 0) {
+                rememberMorphFocus(axis == 1 ? "red" : "blue");
+            }
             impl->viewAxis = axis;
             requestRepaint();
             return true;
         }
         if (axis > 0 && impl->presentation.linkBounds(controls, axis).contains(position)) {
+            rememberMorphFocus(axis == 1 ? "red" : "blue");
             bool& linked = axis == 1 ? impl->redLinked : impl->blueLinked;
             linked = !linked;
             widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);

@@ -25,7 +25,6 @@ private:
     Rectangle<float> editorControlBounds() const override;
     void paintEditor(Graphics&) override;
     void layoutEditor() override;
-    void focusOfChildComponentChanged(juce::Component::FocusChangeType cause) override;
     void syncEditorFromNode() override;
     void applyEditorStateToWidget() override;
     bool editorInteractionIsSessionOnly(Point<float> position) const override;
@@ -42,6 +41,7 @@ private:
     bool dragVertexParameter(Point<float> position);
     bool keyPressed(const juce::KeyPress& key, juce::Component* source) override;
     bool handleMorphKeyboardShortcut(const juce::KeyPress& key);
+    void rememberMorphFocus(const juce::String& axis);
     bool focusMorphAxis(const juce::String& axis);
     PrecisionSlider* focusedMorphSlider() const;
 

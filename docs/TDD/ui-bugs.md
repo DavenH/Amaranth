@@ -640,3 +640,13 @@ On 2026-10-12, running the isolated zero-octave paint test produced JUCE
 after the assertion itself passed. The test now uses
 `ScopedJuceInitialiser_GUI`; rerunning the compact-editor test group passed
 without shutdown assertions. Current status: addressed.
+
+## P3: Trimesh pointer-ownership test cannot resolve its centre vertex
+
+On 2026-10-18, the focused `CycleV2_tests` case "Trimesh controls own expanded
+pointer interaction" failed reproducibly at `TestTrimeshNodeDsp.cpp:3353`:
+`findVertexSelectionAt` returned false for the centre of the expanded wave
+panel. The preceding control-routing assertions pass, and the contextual morph
+keyboard suite plus the app fixture pass. Current status: open and incidental
+to the keyboard-focus work; stabilize the test mesh/panel selection fixture or
+correct the hit-test expectation.

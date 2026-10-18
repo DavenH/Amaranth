@@ -4039,11 +4039,38 @@ TEST_CASE("Trimesh morph shortcuts focus, reach poles, toggle links, and preserv
 
     REQUIRE(editor->keyPressed(KeyPress('r')));
     REQUIRE(editor->focusedMorphAxis() == "red");
-    REQUIRE(editor->keyPressed(KeyPress(KeyPress::leftKey)));
+
+    Component focusSink;
+    focusSink.setWantsKeyboardFocus(true);
+    editor->addAndMakeVisible(focusSink);
+    focusSink.grabKeyboardFocus();
+    REQUIRE(focusSink.hasKeyboardFocus(false));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+
+    REQUIRE(owner.getPeer() != nullptr);
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::leftKey)));
     REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
             .floatValue("red", 0.5f) == Catch::Approx(0.f));
     REQUIRE(document.undo());
 
+    Component* blueMorph {};
+    for (Component* child : editor->getChildren()) {
+        blueMorph = child->findChildWithID("trimesh.morph.blue");
+        if (blueMorph != nullptr) {
+            break;
+        }
+    }
+    REQUIRE(blueMorph != nullptr);
+    blueMorph->grabKeyboardFocus();
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    focusSink.grabKeyboardFocus();
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::rightKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("blue", 0.5f) == Catch::Approx(1.f));
+    REQUIRE(document.undo());
+
+    REQUIRE(editor->keyPressed(KeyPress('r')));
     Component* redLink {};
     for (Component* child : editor->getChildren()) {
         redLink = child->findChildWithID("trimesh.link.red");
@@ -4102,11 +4129,36 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
 
     REQUIRE(editor->keyPressed(KeyPress('r')));
     REQUIRE(editor->focusedMorphAxis() == "red");
-    REQUIRE(editor->keyPressed(KeyPress(KeyPress::leftKey)));
+
+    Component focusSink;
+    focusSink.setWantsKeyboardFocus(true);
+    editor->addAndMakeVisible(focusSink);
+    focusSink.grabKeyboardFocus();
+    REQUIRE(focusSink.hasKeyboardFocus(false));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+
+    REQUIRE(owner.getPeer() != nullptr);
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::leftKey)));
     REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
             .floatValue("red", 0.5f) == Catch::Approx(0.f));
     REQUIRE(document.undo());
 
+    Component* blueMorph = editor->findChildWithID("envelopeEditor.morph.blue");
+    REQUIRE(blueMorph != nullptr);
+    blueMorph->grabKeyboardFocus();
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    focusSink.grabKeyboardFocus();
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::rightKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("blue", 0.5f) == Catch::Approx(1.f));
+    REQUIRE(document.undo());
+    REQUIRE(host.bind(
+            document.graph().findNode("env"),
+            owner.getLocalBounds(),
+            document.revision()));
+
+    REQUIRE(editor->keyPressed(KeyPress('r')));
     REQUIRE(editor->keyPressed(KeyPress('l')));
     DynamicObject state;
     host.appendAutomationState(state);

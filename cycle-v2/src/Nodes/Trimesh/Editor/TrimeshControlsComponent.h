@@ -84,6 +84,7 @@ private:
     bool adjustGuideGainFromKeyboard(
             const TrimeshExpandedHitRegion& region,
             float amount);
+    void rememberMorphFocus(const TrimeshExpandedHitRegion& region);
     bool focusMorphControl(const juce::String& axis);
     bool setFocusedMorphTo(float value);
     bool toggleFocusedMorphLink();
@@ -94,6 +95,7 @@ private:
     TrimeshControlsDelegate* delegate {};
     Node node;
     DragTarget dragTarget { DragTarget::None };
+    juce::String keyboardMorphAxis;
     juce::String activeParameterId;
     float guideGainDragStartY {};
     float guideGainDragStartValue {};

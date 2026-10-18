@@ -450,6 +450,10 @@ void PrecisionSlider::setKeyboardStepper(KeyboardStepper stepper) {
     keyboardStepper = std::move(stepper);
 }
 
+void PrecisionSlider::setKeyboardFocusHandler(KeyboardFocusHandler handler) {
+    keyboardFocusHandler = std::move(handler);
+}
+
 void PrecisionSlider::setValueSnapper(ValueSnapper snapper) {
     valueSnapper = std::move(snapper);
 }
@@ -481,6 +485,13 @@ Rectangle<float> PrecisionSlider::visibleTrackBounds() const {
             .withSizeKeepingCentre(
                     bounds.getWidth(),
                     PropertyControlMetrics::visibleTrackHeight);
+}
+
+void PrecisionSlider::focusGained(FocusChangeType cause) {
+    Slider::focusGained(cause);
+    if (keyboardFocusHandler != nullptr) {
+        keyboardFocusHandler();
+    }
 }
 
 bool PrecisionSlider::keyPressed(const KeyPress& key) {
