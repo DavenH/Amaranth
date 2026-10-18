@@ -28,6 +28,8 @@ constexpr float visibleTrackHeight = 4.f;
 constexpr float thumbWidth = 8.f;
 constexpr float indicatorWidth = 1.5f;
 constexpr float indicatorHeight = 17.f;
+constexpr float morphRowHeight = 36.f;
+constexpr float morphRowStride = 44.f;
 constexpr float morphKeyboardFocusSlotWidth = 24.f;
 
 }

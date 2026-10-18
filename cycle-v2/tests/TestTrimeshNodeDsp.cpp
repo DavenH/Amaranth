@@ -36,6 +36,7 @@
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/Editors/PropertyControls.h"
 
 #include <App/SingletonRepo.h>
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
@@ -1344,9 +1345,19 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
         REQUIRE(primary.getHeight() == Catch::Approx(link.getHeight()));
         REQUIRE(focus.contains(primary));
         REQUIRE(focus.contains(link));
+        REQUIRE(focus.getHeight() == Catch::Approx(
+                PropertyControlMetrics::morphRowHeight - 2.f));
         REQUIRE(icon.getX() > link.getRight());
         REQUIRE(icon.getRight() <= sideArea.getRight());
     }
+
+    const Rectangle<float> yellowFocus =
+            TrimeshSidePanelRenderer::keyboardFocusBounds(sideArea, 0, true);
+    const Rectangle<float> redFocus =
+            TrimeshSidePanelRenderer::keyboardFocusBounds(sideArea, 1, true);
+    REQUIRE(redFocus.getY() - yellowFocus.getBottom() == Catch::Approx(
+            PropertyControlMetrics::morphRowStride
+                    - PropertyControlMetrics::morphRowHeight + 2.f));
 
     for (int i = 0; i < 3; ++i) {
         const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);

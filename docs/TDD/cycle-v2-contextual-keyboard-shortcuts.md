@@ -51,6 +51,9 @@ the selected tuple before the following arrow key.
 The shared focus frame keeps the Trimesh label comfortably inside its left edge,
 uses 1 px vertical row insets, leaves 5 px beyond the Link control, and separates
 the keyboard glyph by 4 px. The reserved slot retains 3 px after the glyph.
+Trimesh and Envelope share a 36 px morph row on a 44 px vertical rhythm, giving
+their 34 px focus frames equal control padding and 10 px between adjacent
+frames.
 
 Cycle 1's other keys were reviewed separately. `A` remains the useful follow-on
 for selection, with its exact select-all/clear-selection context to be designed

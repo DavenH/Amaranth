@@ -19,7 +19,6 @@ const Colour kGroupBorder { 0xff536171 };
 const Colour kSelectedFill { 0xff2b415a };
 constexpr float kMorphLabelY = 0.f;
 constexpr float kMorphRowsY = 28.f;
-constexpr float kMorphRowStride = 44.f;
 constexpr float kActionTopInset = 4.f;
 constexpr float kActionBottomInset = 12.f;
 constexpr float kActionColumnGap = 28.f;
@@ -109,8 +108,11 @@ Rectangle<float> EnvelopeMorphControls::morphGroupLabelBounds(Rectangle<float> c
 
 Rectangle<float> EnvelopeMorphControls::morphRow(Rectangle<float> controls, int axis) const {
     auto row = railColumn(controls);
-    row.removeFromTop(kMorphRowsY + kMorphRowStride * static_cast<float>(axis));
-    return row.removeFromTop(36.f);
+    row.removeFromTop(
+            kMorphRowsY
+                    + PropertyControlMetrics::morphRowStride
+                            * static_cast<float>(axis));
+    return row.removeFromTop(PropertyControlMetrics::morphRowHeight);
 }
 
 Rectangle<float> EnvelopeMorphControls::morphSliderBounds(

@@ -17,7 +17,6 @@ const Colour kText      { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 constexpr float kSideInset       = 9.f;
 constexpr float kMorphHeaderH    = 18.f;
-constexpr float kMorphRowHeight  = 31.f;
 constexpr float kAxisButtonSize  = 20.f;
 constexpr float kRowButtonGap    = 6.f;
 constexpr float kVertexGap       = 10.f;
@@ -135,8 +134,9 @@ bool usesWideColumnLayout(Rectangle<float> sideArea) {
 float morphControlsHeight(bool showOutputScale) {
     const float morphHeight = kMorphHeaderH
             + kMorphTopGap
-            + 3.f * kMorphRowHeight
-            + 2.f * 5.f;
+            + 3.f * PropertyControlMetrics::morphRowHeight
+            + 2.f * (PropertyControlMetrics::morphRowStride
+                    - PropertyControlMetrics::morphRowHeight);
     return showOutputScale
             ? morphHeight + kRangeSectionGap + kMorphHeaderH + kRangeTopGap + kRangeRowHeight
             : morphHeight;
@@ -248,9 +248,10 @@ Rectangle<float> axisRowBounds(
 
     return {
             controls.getX(),
-            controls.getY() + (float) axisIndex * (kMorphRowHeight + 5.f),
+            controls.getY()
+                    + (float) axisIndex * PropertyControlMetrics::morphRowStride,
             controls.getWidth(),
-            kMorphRowHeight
+            PropertyControlMetrics::morphRowHeight
     };
 }
 

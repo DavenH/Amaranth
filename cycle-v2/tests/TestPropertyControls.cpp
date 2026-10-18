@@ -72,9 +72,17 @@ TEST_CASE("Envelope morph focus contains the tuple and reserves a trailing icon 
         REQUIRE(slider.getRight() < axisButton.getX());
         REQUIRE(focus.contains(axisButton));
         REQUIRE(focus.contains(link));
+        REQUIRE(focus.getHeight() == Catch::Approx(
+                PropertyControlMetrics::morphRowHeight - 2.f));
         REQUIRE(icon.getX() > link.getRight());
         REQUIRE(icon.getRight() <= row.getRight());
     }
+
+    const Rectangle<float> redFocus = controls.keyboardFocusBounds(area, 1);
+    const Rectangle<float> blueFocus = controls.keyboardFocusBounds(area, 2);
+    REQUIRE(blueFocus.getY() - redFocus.getBottom() == Catch::Approx(
+            PropertyControlMetrics::morphRowStride
+                    - PropertyControlMetrics::morphRowHeight + 2.f));
 }
 
 TEST_CASE("Property group labels establish scope without a surrounding box",
