@@ -49,7 +49,7 @@ Letter selection changes only this editor-local target; it deliberately leaves
 native child focus untouched so the child that received the letter cannot race
 the selected tuple before the following arrow key.
 The shared focus frame keeps the Trimesh label comfortably inside its left edge,
-uses 2 px vertical row insets, leaves 5 px beyond the Link control, and separates
+uses 1 px vertical row insets, leaves 5 px beyond the Link control, and separates
 the keyboard glyph by 4 px. The reserved slot retains 3 px after the glyph.
 
 Cycle 1's other keys were reviewed separately. `A` remains the useful follow-on

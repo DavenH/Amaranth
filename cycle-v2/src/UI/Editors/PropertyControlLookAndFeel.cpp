@@ -168,9 +168,9 @@ Rectangle<float> morphKeyboardFocusOutlineBounds(
         Rectangle<float> trailingControlBounds) {
     return Rectangle<float>::leftTopRightBottom(
             rowBounds.getX() + 1.f,
-            rowBounds.getY() + 2.f,
+            rowBounds.getY() + 1.f,
             trailingControlBounds.getRight() + 5.f,
-            rowBounds.getBottom() - 2.f);
+            rowBounds.getBottom() - 1.f);
 }
 
 Rectangle<float> keyboardFocusIndicatorBounds(Rectangle<float> focusOutlineBounds) {
