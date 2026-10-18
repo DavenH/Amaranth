@@ -390,11 +390,10 @@ void drawSpectralLayerPreview(
     const float rightAffinity = pan;
     const Colour colour = colourForDomain(domain);
 
-    constexpr float startAngle = MathConstants<float>::pi * 23.f / 18.f;
-    constexpr float endAngle = MathConstants<float>::pi * 49.f / 18.f;
-    constexpr float endpointVerticalFactor = 0.64278761f;
-    const float radius = (rightPad.getCentreX() - leftPad.getCentreX()) * 0.5f;
-    const float centreY = leftPad.getCentreY() - radius * endpointVerticalFactor;
+    constexpr float startAngle = MathConstants<float>::pi * 43.f / 36.f;
+    constexpr float endAngle = MathConstants<float>::pi * 101.f / 36.f;
+    const float radius = icon.getWidth() * 0.43f;
+    const float centreY = icon.getY() + icon.getHeight() * 0.46f;
     Path headband;
     headband.addCentredArc(
             icon.getCentreX(), centreY, radius, radius, 0.f,
