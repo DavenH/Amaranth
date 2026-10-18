@@ -174,6 +174,10 @@ public:
             juce::Rectangle<float> content,
             bool showOutputScale,
             const juce::String& outputScaleParameter = "range");
+    static juce::Rectangle<float> expandedMorphKeyboardFocusBounds(
+            juce::Rectangle<float> content,
+            int axisIndex,
+            bool showOutputScale = false);
 
 private:
     void syncExpandedNode(const Node& node, juce::Rectangle<float> content);

@@ -30,11 +30,13 @@ The shortcut contract is:
 - On the bare canvas, C selects Curves and P selects Presets. Presets retains its
   existing delayed search-field focus.
 
-The focused morph control shows a small keyboard glyph as a shape cue in
-addition to the existing focus colour. Its rounded shell, two rows of round
-keys, and centered spacebar preserve the diagnostic proportions of the supplied
-keyboard reference at an 18 by 13 pixel production size. The glyph is a shared
-property-control presentation primitive, not a new icon family.
+Keyboard focus belongs to the complete morph tuple: label, rail, Axis control,
+and Link control. A subtle neutral outline encloses that row, while the slider
+keeps its ordinary value styling. A small keyboard glyph sits in a reserved
+trailing slot outside the outline. Its rounded shell, two rows of round keys,
+and centered spacebar preserve the diagnostic proportions of the supplied
+keyboard reference at an 18 by 13 pixel production size. The outline and glyph
+are shared property-control presentation primitives, not a new icon family.
 
 Cycle 1's other keys were reviewed separately. `A` remains the useful follow-on
 for selection, with its exact select-all/clear-selection context to be designed
@@ -53,8 +55,9 @@ prepare durable resources. Sidebar keys change presentation state only.
 - C/P select the matching sidebar tab only in canvas context.
 - The app automation protocol can dispatch the new printable keys, and a
   focused fixture exercises the real component path.
-- Production-size captures show the focused keyboard glyph without obscuring
-  the rail, label, Axis button, or Link button.
+- Production-size captures show one subtle focus outline around the complete
+  morph tuple and the keyboard glyph beyond its trailing edge, without a second
+  slider-only focus ring.
 - Architecture audit, touched-file sizes, diff review, style checks, and
   relevant tests pass.
 
@@ -71,7 +74,7 @@ existing `NodeCanvas` extraction work in `docs/TDD/refactors.md` remains the
 appropriate deletion plan; creating another shortcut facade here would add a
 switchboard without removing a responsibility.
 
-`EnvelopeEditorComponent.cpp` grows from 772 to 865 lines. Its responsibilities
+`EnvelopeEditorComponent.cpp` grows from 772 to 881 lines. Its responsibilities
 remain the Envelope editor's control composition, curve-transaction adapter,
 and session-only presentation state. Keyboard handling translates keys into
 those existing controls and does not add graph-command or serialization policy.
@@ -92,15 +95,26 @@ The stable policy owners are:
 No policy is duplicated across callers. The canvas supplies only context and
 routing, while each editor supplies its own available-axis facts.
 
+The tuple-focus refinement keeps geometry in the existing owners:
+`EnvelopeMorphControls` and `TrimeshSidePanelRenderer`. From the preceding
+shortcut slice, `EnvelopeEditorComponent.cpp` grows by 16 lines to paint and
+publish its row-level focus state, `TrimeshSidePanelRenderer.cpp` grows by 19
+lines for the reserved slot and tuple bounds, `TrimeshWidget.cpp` grows by 10
+lines as a literal geometry adapter, and `TrimeshControlsComponent.cpp` grows by
+14 lines to paint the overlay. The latter two retain interaction routing only;
+they do not duplicate layout constants or rendering policy. No touched file
+grows by 200 lines, and the existing extraction plans for files above the review
+threshold remain unchanged.
+
 ## Validation
 
 - Standalone Debug build passes with `--parallel 10`.
-- The `[keyboard]` Cycle V2 suite passes 455 assertions in 26 cases.
+- The `[keyboard]` Cycle V2 suite passes 470 assertions in 27 cases.
 - `cycle-v2-agent-contextual-keyboard-shortcuts.json` passes all 45 commands,
   including both editors, undoable poles, links, C/P tabs, and Space playback
   while the performance keyboard is occluded.
-- Production-size app captures show the 18 by 13 keyboard glyph within the
-  focused Blue rail in both expanded editors.
+- Production-size app captures show the neutral tuple outline and trailing 18
+  by 13 keyboard glyph in both expanded editors, with no slider-only focus ring.
 - The architecture audit, touched-file size review, scalar-math hot-loop check,
   and `git diff --check` pass. Existing scalar math reported by the check is in
   untouched formatting/automation code, not a modified hot loop.

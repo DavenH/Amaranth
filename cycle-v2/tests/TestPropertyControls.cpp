@@ -1,6 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertyControls.h"
 #include "UI/Editors/PropertySegmentedSelector.h"
@@ -36,16 +37,42 @@ TEST_CASE("Property slider layout preserves useful travel or switches compact fo
     REQUIRE_FALSE(compact.track.intersects(compact.value.toFloat()));
 }
 
-TEST_CASE("Keyboard focus indicator stays inside a morph control",
+TEST_CASE("Keyboard focus presentation scopes a morph tuple before its icon",
         "[cycle-v2][ui][property-controls][keyboard]") {
-    const Rectangle<float> control { 20.f, 30.f, 180.f, 30.f };
-    const Rectangle<float> icon = keyboardFocusIndicatorBounds(control);
+    const Rectangle<float> row { 20.f, 30.f, 220.f, 36.f };
+    const Rectangle<float> link { 190.f, 38.f, 20.f, 20.f };
+    const Rectangle<float> outline = morphKeyboardFocusOutlineBounds(row, link);
+    const Rectangle<float> icon = keyboardFocusIndicatorBounds(outline);
 
-    REQUIRE(control.contains(icon));
+    REQUIRE(row.contains(outline));
+    REQUIRE(outline.getX() == Catch::Approx(row.getX() + 1.f));
+    REQUIRE(outline.getRight() == Catch::Approx(link.getRight() + 3.f));
+    REQUIRE(icon.getX() - outline.getRight() == Catch::Approx(3.f));
+    REQUIRE(icon.getCentreY() == Catch::Approx(outline.getCentreY()));
     REQUIRE(icon.getWidth() == Catch::Approx(18.f));
     REQUIRE(icon.getHeight() == Catch::Approx(13.f));
     REQUIRE(icon.getWidth() / icon.getHeight() == Catch::Approx(18.f / 13.f));
-    REQUIRE(control.getRight() - icon.getRight() == Catch::Approx(2.f));
+}
+
+TEST_CASE("Envelope morph focus contains the tuple and reserves a trailing icon slot",
+        "[cycle-v2][ui][property-controls][keyboard][geometry]") {
+    const EnvelopeMorphControls controls;
+    const Rectangle<float> area { 0.f, 0.f, 900.f, 310.f };
+
+    for (int axis : { 1, 2 }) {
+        const Rectangle<float> row = controls.morphRow(area, axis);
+        const Rectangle<float> slider = controls.morphSliderBounds(area, axis);
+        const Rectangle<float> axisButton = controls.axisBounds(area, axis);
+        const Rectangle<float> link = controls.linkBounds(area, axis);
+        const Rectangle<float> focus = controls.keyboardFocusBounds(area, axis);
+        const Rectangle<float> icon = keyboardFocusIndicatorBounds(focus);
+
+        REQUIRE(slider.getRight() < axisButton.getX());
+        REQUIRE(focus.contains(axisButton));
+        REQUIRE(focus.contains(link));
+        REQUIRE(icon.getX() > link.getRight());
+        REQUIRE(icon.getRight() <= row.getRight());
+    }
 }
 
 TEST_CASE("Property group labels establish scope without a surrounding box",

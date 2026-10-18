@@ -755,7 +755,11 @@ Rectangle<float> TrimeshSidePanelRenderer::morphRailBounds(
         bool showOutputScale) {
     auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
     row.removeFromLeft(kAxisLabelW + 10.f);
-    row.removeFromRight(kAxisButtonSize * 2.f + kRowButtonGap * 3.f + 6.f);
+    row.removeFromRight(
+            PropertyControlMetrics::morphKeyboardFocusSlotWidth
+                    + kAxisButtonSize * 2.f
+                    + kRowButtonGap * 3.f
+                    + 6.f);
     return row.withSizeKeepingCentre(jmax(36.f, row.getWidth()), 7.f);
 }
 
@@ -778,7 +782,10 @@ Rectangle<float> TrimeshSidePanelRenderer::primaryAxisBounds(
         bool showOutputScale) {
     auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
     return {
-            row.getRight() - kAxisButtonSize * 2.f - kRowButtonGap * 2.f,
+            row.getRight()
+                    - PropertyControlMetrics::morphKeyboardFocusSlotWidth
+                    - kAxisButtonSize * 2.f
+                    - kRowButtonGap * 2.f,
             row.getCentreY() - kAxisButtonSize * 0.5f,
             kAxisButtonSize,
             kAxisButtonSize
@@ -791,11 +798,23 @@ Rectangle<float> TrimeshSidePanelRenderer::linkToggleBounds(
         bool showOutputScale) {
     auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
     return {
-            row.getRight() - kAxisButtonSize - kRowButtonGap,
+            row.getRight()
+                    - PropertyControlMetrics::morphKeyboardFocusSlotWidth
+                    - kAxisButtonSize
+                    - kRowButtonGap,
             row.getCentreY() - kAxisButtonSize * 0.5f,
             kAxisButtonSize,
             kAxisButtonSize
     };
+}
+
+Rectangle<float> TrimeshSidePanelRenderer::keyboardFocusBounds(
+        Rectangle<float> sideArea,
+        int axisIndex,
+        bool showOutputScale) {
+    return morphKeyboardFocusOutlineBounds(
+            axisRowBounds(sideArea, axisIndex, showOutputScale),
+            linkToggleBounds(sideArea, axisIndex, showOutputScale));
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::outputScaleRowBounds(Rectangle<float> sideArea) {

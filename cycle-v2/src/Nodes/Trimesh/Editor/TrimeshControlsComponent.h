@@ -57,6 +57,7 @@ public:
     void continuePointerInteraction(juce::Point<float> position);
     void endPointerInteraction();
 
+    void paint(juce::Graphics& graphics) override;
     void resized() override;
     bool keyPressed(const juce::KeyPress& key) override;
 

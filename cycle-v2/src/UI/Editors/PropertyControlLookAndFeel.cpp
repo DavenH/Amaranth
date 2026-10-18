@@ -163,16 +163,27 @@ Rectangle<float> morphSliderIndicatorBounds(
             .withCentre({ position, bounds.getCentreY() });
 }
 
-Rectangle<float> keyboardFocusIndicatorBounds(Rectangle<float> bounds) {
-    return Rectangle<float>(18.f, 13.f).withPosition(
-            bounds.getRight() - 20.f,
-            bounds.getY() + 1.f);
+Rectangle<float> morphKeyboardFocusOutlineBounds(
+        Rectangle<float> rowBounds,
+        Rectangle<float> trailingControlBounds) {
+    return Rectangle<float>::leftTopRightBottom(
+            rowBounds.getX() + 1.f,
+            rowBounds.getY() + 2.f,
+            trailingControlBounds.getRight() + 3.f,
+            rowBounds.getBottom() - 2.f);
+}
+
+Rectangle<float> keyboardFocusIndicatorBounds(Rectangle<float> focusOutlineBounds) {
+    return Rectangle<float>(18.f, 13.f).withCentre({
+            focusOutlineBounds.getRight() + 12.f,
+            focusOutlineBounds.getCentreY()
+    });
 }
 
 void paintKeyboardFocusIndicator(
         Graphics& graphics,
-        Rectangle<float> controlBounds) {
-    const Rectangle<float> icon = keyboardFocusIndicatorBounds(controlBounds);
+        Rectangle<float> focusOutlineBounds) {
+    const Rectangle<float> icon = keyboardFocusIndicatorBounds(focusOutlineBounds);
     graphics.setColour(Colour(0xff111820).withAlpha(0.96f));
     graphics.fillRoundedRectangle(icon, 3.f);
 
@@ -195,6 +206,17 @@ void paintKeyboardFocusIndicator(
             icon.withSizeKeepingCentre(8.f, 1.5f)
                     .withY(icon.getBottom() - 3.1f),
             0.75f);
+}
+
+void paintMorphKeyboardFocus(
+        Graphics& graphics,
+        Rectangle<float> focusOutlineBounds) {
+    graphics.setColour(Colour(0xff8793a1).withAlpha(0.42f));
+    graphics.drawRoundedRectangle(
+            focusOutlineBounds,
+            CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
+    paintKeyboardFocusIndicator(graphics, focusOutlineBounds);
 }
 
 void paintPropertySlider(
@@ -228,7 +250,6 @@ void paintMorphSlider(
         double normalizedValue,
         Colour accent,
         bool hovered,
-        bool focused,
         bool enabled) {
     const Rectangle<float> track = bounds.withSizeKeepingCentre(
             bounds.getWidth(),
@@ -242,15 +263,6 @@ void paintMorphSlider(
     graphics.fillRoundedRectangle(track.withRight(marker.getCentreX()), 2.f);
     graphics.setColour(accent.withAlpha(0.98f * alpha));
     graphics.fillRect(marker);
-
-    if (focused) {
-        graphics.setColour(propertyControlFocusColour().withAlpha(0.72f * alpha));
-        graphics.drawRoundedRectangle(
-                bounds.reduced(0.75f),
-                CanvasChromeMetrics::controlCornerRadius,
-                CanvasChromeMetrics::focusRingWidth);
-        paintKeyboardFocusIndicator(graphics, bounds);
-    }
 }
 
 LookAndFeel& propertyControlLookAndFeel() {

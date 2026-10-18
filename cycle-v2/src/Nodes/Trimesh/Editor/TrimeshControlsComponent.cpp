@@ -61,13 +61,6 @@ public:
                 : "TrimeshControlTarget");
     }
 
-    void paint(Graphics& graphics) override {
-        if (region.kind == TrimeshExpandedHitRegionKind::MorphControl
-                && hasKeyboardFocus(false)) {
-            paintKeyboardFocusIndicator(graphics, getLocalBounds().toFloat());
-        }
-    }
-
     void mouseDown(const MouseEvent& event) override {
         owner.beginControlDrag(region, ownerPosition(event.position), getScreenBounds());
     }
@@ -105,11 +98,11 @@ public:
     }
 
     void focusGained(FocusChangeType) override {
-        repaint();
+        owner.repaint();
     }
 
     void focusLost(FocusChangeType) override {
-        repaint();
+        owner.repaint();
     }
 
 private:
@@ -182,12 +175,33 @@ int TrimeshControlsComponent::getVertexGuideAttachmentButtonCount() const {
 
 String TrimeshControlsComponent::focusedMorphAxis() const {
     for (size_t index = 0; index < controlRegions.size(); ++index) {
-        if (controlHitRegions[index].kind == TrimeshExpandedHitRegionKind::MorphControl
-                && controlRegions[index]->hasKeyboardFocus(false)) {
-            return controlHitRegions[index].parameterId;
+        if (!controlRegions[index]->hasKeyboardFocus(false)) {
+            continue;
+        }
+        const auto& region = controlHitRegions[index];
+        if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
+            return region.parameterId;
+        }
+        if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
+            return region.axisValue;
         }
     }
     return {};
+}
+
+void TrimeshControlsComponent::paint(Graphics& graphics) {
+    const String axis = focusedMorphAxis();
+    if (axis.isEmpty()) {
+        return;
+    }
+
+    const int axisIndex = axis == "yellow" ? 0 : axis == "red" ? 1 : 2;
+    paintMorphKeyboardFocus(
+            graphics,
+            TrimeshWidget::expandedMorphKeyboardFocusBounds(
+                    contentBounds,
+                    axisIndex,
+                    widget.showsOutputScale()));
 }
 
 void TrimeshControlsComponent::resized() {

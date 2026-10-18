@@ -522,7 +522,6 @@ void PrecisionSlider::paint(Graphics& graphics) {
                 normalized,
                 *morphAccent,
                 isMouseOverOrDragging(),
-                hasKeyboardFocus(false),
                 isEnabled());
     } else {
         Slider::paint(graphics);

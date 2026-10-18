@@ -301,6 +301,14 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
             impl->loop.getToggleState(),
             impl->sustain.getToggleState());
 
+    const String focusedAxis = focusedMorphAxis();
+    if (focusedAxis.isNotEmpty()) {
+        const int axis = focusedAxis == "red" ? 1 : 2;
+        paintMorphKeyboardFocus(
+                graphics,
+                impl->presentation.keyboardFocusBounds(controls, axis));
+    }
+
     const std::array<String, 6> guides = delegate != nullptr
             ? delegate->envelopeGuideLabels(widget.selectedEnvelopeGuideCubeIndex())
             : std::array<String, 6> {};
@@ -344,12 +352,10 @@ void EnvelopeEditorComponent::layoutEditor() {
     auto timeRow = impl->presentation.morphRow(controls, 0).toNearestInt();
     impl->timeLabel.setBounds(timeRow.removeFromLeft(42));
 
-    auto redRow = impl->presentation.morphRow(controls, 1).toNearestInt();
-    redRow.removeFromRight(58);
+    auto redRow = impl->presentation.morphSliderBounds(controls, 1).toNearestInt();
     impl->redMorph.setBounds(redRow, 42, 0);
 
-    auto blueRow = impl->presentation.morphRow(controls, 2).toNearestInt();
-    blueRow.removeFromRight(58);
+    auto blueRow = impl->presentation.morphSliderBounds(controls, 2).toNearestInt();
     impl->blueMorph.setBounds(blueRow, 42, 0);
 
     auto markerGroup = impl->presentation.markerGroupBounds(controls).toNearestInt();
@@ -367,6 +373,10 @@ void EnvelopeEditorComponent::layoutEditor() {
     impl->fitVertical.setBounds(
             rangeGroup.removeFromLeft(rangeWidth).reduced(pairedActionInset, 0));
     impl->fullVertical.setBounds(rangeGroup.reduced(pairedActionInset, 0));
+}
+
+void EnvelopeEditorComponent::focusOfChildComponentChanged(FocusChangeType) {
+    repaint();
 }
 
 void EnvelopeEditorComponent::syncEditorFromNode() {
@@ -469,18 +479,24 @@ std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
 
 void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const {
     const auto controls = editorControlBounds();
+    const Rectangle<float> redFocus = impl->presentation.keyboardFocusBounds(controls, 1);
+    const Rectangle<float> blueFocus = impl->presentation.keyboardFocusBounds(controls, 2);
     state.setProperty("redMorph", impl->redMorph.slider.getValue());
     state.setProperty("enabled", impl->enabled.getToggleState());
     state.setProperty("blueMorph", impl->blueMorph.slider.getValue());
     state.setProperty("focusedMorphAxis", focusedMorphAxis());
     state.setProperty(
             "redMorphKeyboardIconBounds",
-            editorBoundsToVar(keyboardFocusIndicatorBounds(
-                    impl->redMorph.slider.getBounds().toFloat())));
+            editorBoundsToVar(keyboardFocusIndicatorBounds(redFocus)));
     state.setProperty(
             "blueMorphKeyboardIconBounds",
-            editorBoundsToVar(keyboardFocusIndicatorBounds(
-                    impl->blueMorph.slider.getBounds().toFloat())));
+            editorBoundsToVar(keyboardFocusIndicatorBounds(blueFocus)));
+    state.setProperty(
+            "redMorphKeyboardFocusBounds",
+            editorBoundsToVar(redFocus));
+    state.setProperty(
+            "blueMorphKeyboardFocusBounds",
+            editorBoundsToVar(blueFocus));
     state.setProperty("viewAxis", impl->viewAxis);
     state.setProperty("modeLabel", "Purpose");
     state.setProperty("mode", envelopePurposeLabel(impl->mode.purpose()));

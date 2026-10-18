@@ -25,6 +25,7 @@ private:
     Rectangle<float> editorControlBounds() const override;
     void paintEditor(Graphics&) override;
     void layoutEditor() override;
+    void focusOfChildComponentChanged(juce::Component::FocusChangeType cause) override;
     void syncEditorFromNode() override;
     void applyEditorStateToWidget() override;
     bool editorInteractionIsSessionOnly(Point<float> position) const override;

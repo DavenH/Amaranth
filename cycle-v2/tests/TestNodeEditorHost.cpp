@@ -4044,6 +4044,16 @@ TEST_CASE("Trimesh morph shortcuts focus, reach poles, toggle links, and preserv
             .floatValue("red", 0.5f) == Catch::Approx(0.f));
     REQUIRE(document.undo());
 
+    Component* redLink {};
+    for (Component* child : editor->getChildren()) {
+        redLink = child->findChildWithID("trimesh.link.red");
+        if (redLink != nullptr) {
+            break;
+        }
+    }
+    REQUIRE(redLink != nullptr);
+    redLink->grabKeyboardFocus();
+    REQUIRE(editor->focusedMorphAxis() == "red");
     REQUIRE(editor->keyPressed(KeyPress('l')));
     REQUIRE_FALSE(NodeParameterMap(*document.graph().findNode("mesh"))
             .boolValue("link.red", true));

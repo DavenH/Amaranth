@@ -35,6 +35,7 @@
 #include "Nodes/Trimesh/Rendering/OutputScaleControlRenderer.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
 
 #include <App/SingletonRepo.h>
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
@@ -1325,6 +1326,9 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
                 TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, i, true);
         const Rectangle<float> link =
                 TrimeshSidePanelRenderer::linkToggleBounds(sideArea, i, true);
+        const Rectangle<float> focus =
+                TrimeshSidePanelRenderer::keyboardFocusBounds(sideArea, i, true);
+        const Rectangle<float> icon = keyboardFocusIndicatorBounds(focus);
 
         REQUIRE(sideArea.contains(morphRail));
         REQUIRE(morphRail.getWidth() >= 96.f);
@@ -1332,6 +1336,10 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
         REQUIRE(sideArea.contains(link));
         REQUIRE(primary.getWidth() == Catch::Approx(link.getWidth()));
         REQUIRE(primary.getHeight() == Catch::Approx(link.getHeight()));
+        REQUIRE(focus.contains(primary));
+        REQUIRE(focus.contains(link));
+        REQUIRE(icon.getX() > link.getRight());
+        REQUIRE(icon.getRight() <= sideArea.getRight());
     }
 
     for (int i = 0; i < 3; ++i) {

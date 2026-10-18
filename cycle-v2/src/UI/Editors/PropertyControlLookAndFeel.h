@@ -10,11 +10,18 @@ juce::Rectangle<float> propertySliderIndicatorBounds(juce::Rectangle<float> thum
 juce::Rectangle<float> morphSliderIndicatorBounds(
         juce::Rectangle<float> bounds,
         double normalizedValue);
-juce::Rectangle<float> keyboardFocusIndicatorBounds(juce::Rectangle<float> bounds);
+juce::Rectangle<float> morphKeyboardFocusOutlineBounds(
+        juce::Rectangle<float> rowBounds,
+        juce::Rectangle<float> trailingControlBounds);
+juce::Rectangle<float> keyboardFocusIndicatorBounds(
+        juce::Rectangle<float> focusOutlineBounds);
 juce::Colour propertyControlFocusColour();
 void paintKeyboardFocusIndicator(
         juce::Graphics& graphics,
-        juce::Rectangle<float> controlBounds);
+        juce::Rectangle<float> focusOutlineBounds);
+void paintMorphKeyboardFocus(
+        juce::Graphics& graphics,
+        juce::Rectangle<float> focusOutlineBounds);
 void paintPropertySlider(
         juce::Graphics& graphics,
         juce::Rectangle<float> bounds,
@@ -29,7 +36,6 @@ void paintMorphSlider(
         double normalizedValue,
         juce::Colour accent,
         bool hovered = false,
-        bool focused = false,
         bool enabled = true);
 juce::LookAndFeel& propertyControlLookAndFeel();
 
