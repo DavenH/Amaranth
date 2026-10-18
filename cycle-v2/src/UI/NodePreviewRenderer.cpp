@@ -390,13 +390,21 @@ void drawSpectralLayerPreview(
     const float rightAffinity = pan;
     const Colour colour = colourForDomain(domain);
 
-    const float shoulderY = icon.getY() + icon.getHeight() * 0.36f;
+    const float shoulderY = icon.getY() + icon.getHeight() * 0.45f;
+    const float centreX = icon.getCentreX();
+    const float radius = (rightPad.getCentreX() - leftPad.getCentreX()) * 0.5f;
+    const float topY = shoulderY - radius;
+    const float quarterCircleControl = radius * 0.55228475f;
     Path headband;
     headband.startNewSubPath(leftPad.getCentreX(), leftPad.getCentreY());
     headband.lineTo(leftPad.getCentreX(), shoulderY);
     headband.cubicTo(
-            leftPad.getCentreX(), icon.getY() + icon.getHeight() * 0.06f,
-            rightPad.getCentreX(), icon.getY() + icon.getHeight() * 0.06f,
+            leftPad.getCentreX(), shoulderY - quarterCircleControl,
+            centreX - quarterCircleControl, topY,
+            centreX, topY);
+    headband.cubicTo(
+            centreX + quarterCircleControl, topY,
+            rightPad.getCentreX(), shoulderY - quarterCircleControl,
             rightPad.getCentreX(), shoulderY);
     headband.lineTo(rightPad.getCentreX(), rightPad.getCentreY());
     graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.94f));
