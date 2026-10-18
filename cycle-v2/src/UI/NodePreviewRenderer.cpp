@@ -390,23 +390,16 @@ void drawSpectralLayerPreview(
     const float rightAffinity = pan;
     const Colour colour = colourForDomain(domain);
 
-    const float shoulderY = icon.getY() + icon.getHeight() * 0.45f;
-    const float centreX = icon.getCentreX();
-    const float radius = (rightPad.getCentreX() - leftPad.getCentreX()) * 0.5f;
-    const float topY = shoulderY - radius;
-    const float quarterCircleControl = radius * 0.55228475f;
+    constexpr float startAngle = MathConstants<float>::pi * 11.f / 8.f;
+    constexpr float endAngle = MathConstants<float>::pi * 21.f / 8.f;
+    constexpr float endpointHorizontalFactor = 0.92387953f;
+    const float radius = (rightPad.getCentreX() - leftPad.getCentreX())
+            / (2.f * endpointHorizontalFactor);
+    const float centreY = icon.getY() + icon.getHeight() * 0.06f + radius;
     Path headband;
-    headband.startNewSubPath(leftPad.getCentreX(), leftPad.getCentreY());
-    headband.lineTo(leftPad.getCentreX(), shoulderY);
-    headband.cubicTo(
-            leftPad.getCentreX(), shoulderY - quarterCircleControl,
-            centreX - quarterCircleControl, topY,
-            centreX, topY);
-    headband.cubicTo(
-            centreX + quarterCircleControl, topY,
-            rightPad.getCentreX(), shoulderY - quarterCircleControl,
-            rightPad.getCentreX(), shoulderY);
-    headband.lineTo(rightPad.getCentreX(), rightPad.getCentreY());
+    headband.addCentredArc(
+            icon.getCentreX(), centreY, radius, radius, 0.f,
+            startAngle, endAngle, true);
     graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.94f));
     graphics.strokePath(
             headband,
