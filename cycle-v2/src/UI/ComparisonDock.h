@@ -13,6 +13,7 @@ namespace CycleV2 {
 
 class StandaloneAudioEngine;
 class ComparisonSurfaceView;
+class ReferencePitchEditor;
 
 class ComparisonDock : public juce::Component {
 public:
@@ -24,6 +25,9 @@ public:
 
     void refreshCaptures();
     void syncAuditionState();
+    void importReference();
+    bool openPitchEditorForAutomation(const juce::String& id);
+    juce::Rectangle<int> pitchCurveBoundsForAutomation() const;
     void renderOpenGL(float scaleFactor);
     void releaseOpenGLResources();
     juce::var exportAutomationState() const;
@@ -40,7 +44,7 @@ private:
     struct Card {
         juce::String id;
         juce::String title;
-        juce::String detail;
+        juce::String duration;
         std::vector<float> surface;
         const std::vector<float>* sampleSurface {};
         const PitchedSample* sampleIdentity {};
@@ -49,6 +53,7 @@ private:
         size_t rows {};
         PortDomain domain { PortDomain::TimeSignal };
         int midiNote {};
+        float displayGain { 1.f };
         bool sample {};
         bool connected {};
         bool spectral {};
@@ -60,37 +65,33 @@ private:
 
     class CardStrip;
 
-    void importReference();
-    void showReferenceMenu();
-    void showSpyMenu();
+    void showAddMenu();
+    void showCardMenu(const Card& card, juce::Point<int> position);
+    void openPitchEditor(const juce::String& id);
+    void closePitchEditor();
+    void toggleAudition();
     void selectReference(const juce::String& id);
     void updateCards();
-    void updateNoteControl();
     void paintCard(juce::Graphics& graphics, const Card& card, juce::Rectangle<float> bounds);
-    static juce::Rectangle<float> pitchBounds(juce::Rectangle<float> cardBounds);
-    void commitPitchPoint(size_t pointIndex, juce::Point<float> position);
     static juce::PopupMenu::Options menuOptionsFor(juce::Component& target);
 
     NodeCanvas& canvas;
     ReferenceLibrary& library;
     StandaloneAudioEngine& audioEngine;
-    juce::TextButton importButton { "Import Reference" };
-    juce::TextButton referenceButton { "Reference" };
-    juce::TextButton spyButton { "Add Spy" };
-    juce::TextButton playButton { "Play" };
-    juce::TextButton undoButton { "Undo" };
-    juce::TextButton redoButton { "Redo" };
-    juce::Slider noteSlider;
+    class AddButton;
+    std::unique_ptr<AddButton> addButton;
     std::unique_ptr<juce::FileChooser> chooser;
     std::vector<Card> cards;
     std::vector<std::unique_ptr<ComparisonSurfaceView>> surfaceViews;
     std::vector<std::unique_ptr<ComparisonSurfaceView>> retiredViews;
     std::unique_ptr<CardStrip> strip;
+    std::unique_ptr<ReferencePitchEditor> pitchEditor;
     juce::Viewport viewport;
     std::function<void(int)> heightChangeCallback;
     int resizeStartHeight {};
     bool resizing {};
     uint64_t captureCount {};
+    bool lastAuditioning {};
     juce::CriticalSection surfaceLock;
 };
 

@@ -49,6 +49,8 @@ TEST_CASE("Imported references reload with pitch edits independently of presets"
     String error;
     String id;
     int originalNote {};
+    size_t editedPointIndex {};
+    float editedPointPitch {};
     {
         ReferenceLibrary library({}, root);
         REQUIRE(library.importFile(referenceWave("sax-growl.wav"), error));
@@ -62,6 +64,25 @@ TEST_CASE("Imported references reload with pitch edits independently of presets"
         REQUIRE(library.selectedAnalysis()->sample->fundNote == originalNote);
         REQUIRE(library.redoPitchEdit());
         REQUIRE(library.selectedAnalysis()->sample->fundNote == originalNote + 1);
+        auto path = library.selectedAnalysis()->pitchPath;
+        const auto beforePathEdit = library.selectedAnalysis()->cyclogram;
+        const size_t middle = path.size() / 2;
+        path[middle].y = juce::jlimit(0.f, 1.f,
+                path[middle].y < 0.5f ? path[middle].y + 0.2f
+                        : path[middle].y - 0.2f);
+        REQUIRE(std::adjacent_find(path.begin(), path.end(),
+                [](const auto& left, const auto& right) {
+                    return left.x == right.x;
+                }) != path.end());
+        REQUIRE(library.replacePitchPath(path));
+        REQUIRE(library.selectedAnalysis()->pitchPath == path);
+        REQUIRE(library.selectedAnalysis()->cyclogram != beforePathEdit);
+        REQUIRE(library.undoPitchEdit());
+        REQUIRE(library.selectedAnalysis()->cyclogram == beforePathEdit);
+        REQUIRE(library.redoPitchEdit());
+        REQUIRE(library.selectedAnalysis()->pitchPath == path);
+        editedPointIndex = middle;
+        editedPointPitch = path[middle].y;
     }
     {
         ReferenceLibrary library({}, root);
@@ -69,6 +90,8 @@ TEST_CASE("Imported references reload with pitch edits independently of presets"
         REQUIRE(library.select(id, error));
         REQUIRE(library.selectedAnalysis()->sample->fundNote == originalNote + 1);
         REQUIRE(library.selectedAnalysis()->pitchPath.size() >= 2);
+        REQUIRE(library.selectedAnalysis()->pitchPath[editedPointIndex].y
+                == editedPointPitch);
     }
     root.deleteRecursively();
 }

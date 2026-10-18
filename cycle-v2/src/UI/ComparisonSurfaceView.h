@@ -17,7 +17,7 @@ public:
     ~ComparisonSurfaceView() override;
 
     void setGrid(const std::vector<float>& values, size_t columns, size_t rows,
-            PortDomain domain, int note);
+            PortDomain domain, int note, float displayGain = 1.f);
     void setCamera(const ZoomRect& camera);
     ZoomRect camera();
     bool renderOpenGL(float scaleFactor);

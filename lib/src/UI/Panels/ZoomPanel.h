@@ -65,6 +65,7 @@ public:
     void panelComponentChanged(Component* newComponent, Component* oldComponent = nullptr);
     void panelZoomChanged(bool cmdDown);
     void panHorizontal(float wheelDelta);
+    void setScrollbarsVisible(bool visible);
     void scrollBarMoved (ScrollBar* bar, double newRangeStart) override;
     void setBounds(int x, int y, int width, int height) override;
     void resized() override;
@@ -97,5 +98,6 @@ private:
     ZoomContext context;
 
     ScrollBar horz, vert;
+    bool scrollbarsVisible { true };
     ListenerList<ZoomListener> listeners;
 };

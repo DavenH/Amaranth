@@ -66,6 +66,10 @@ public:
     bool openNodeEditorForAutomation(const String& nodeId);
     bool pinComparisonSpyForAutomation(const String& probeId);
     bool selectReferenceForAutomation(const String& referenceId);
+    bool openReferencePitchEditorForAutomation(const String& referenceId) {
+        return comparisonDock.openPitchEditorForAutomation(referenceId);
+    }
+    void importWaveReference() { comparisonDock.importReference(); }
     bool addNodeForAutomation(const String& kind, Point<float> position, String& nodeId);
     bool moveNodeForAutomation(const String& nodeId, Point<float> position);
     bool connectPortsForAutomation(

@@ -6,9 +6,22 @@
 #include "Graph/GraphSerializer.h"
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphPreviewExecutor.h"
+#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "UI/NodePreviewRenderer.h"
 
 using namespace CycleV2;
+
+TEST_CASE("Comparison time surfaces translate signed samples to unit material values",
+        "[cycle-v2][comparison][surface]") {
+    const std::vector<float> sample { -0.5f, 0.f, 0.5f, 0.25f };
+    const std::vector<float> output { -3.f, 0.f, 3.f, 1.5f };
+    const std::vector<float> expected { 0.f, 0.5f, 1.f, 0.75f };
+    const auto profile = TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal);
+    REQUIRE(profile.mapGridToDisplay(sample, 2, 2, 60, 2.f) == expected);
+    REQUIRE(profile.mapGridToDisplay(output, 2, 2, 60, 1.f / 3.f) == expected);
+    REQUIRE(sample.front() == -0.5f);
+    REQUIRE(output.front() == -3.f);
+}
 
 TEST_CASE("Icy-hot Spy previews match saved lab programs", "[surface-program]") {
     const File fixtures = File(CYCLE_V2_SOURCE_DIR).getParentDirectory()

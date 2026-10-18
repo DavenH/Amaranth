@@ -53,6 +53,7 @@ public:
     public:
         enum Command : CommandID {
             CommandOpenGraph = 0x3000,
+            CommandImportWaveReference,
             CommandSaveGraph,
             CommandSaveGraphAs,
             CommandSpyRefreshOnRelease,
@@ -162,6 +163,7 @@ public:
 
             if (menuIndex == 0) {
                 menu.addCommandItem(&commandManager, CommandOpenGraph);
+                menu.addCommandItem(&commandManager, CommandImportWaveReference);
 
                 PopupMenu recentMenu;
                 if (fileHistory.addRecentMenuItems(recentMenu) > 0) {
@@ -220,6 +222,7 @@ public:
         void getAllCommands(Array<CommandID>& commands) override {
             commands.addArray({
                     CommandOpenGraph,
+                    CommandImportWaveReference,
                     CommandSaveGraph,
                     CommandSaveGraphAs,
                     CommandSpyRefreshOnRelease,
@@ -232,6 +235,11 @@ public:
                 case CommandOpenGraph:
                     result.setInfo("Open Preset...", "Open a Cycle V2 preset", "File", 0);
                     result.addDefaultKeypress('o', ModifierKeys::commandModifier);
+                    break;
+
+                case CommandImportWaveReference:
+                    result.setInfo("Import Wave Reference...",
+                            "Add audio to the shared comparison library", "File", 0);
                     break;
 
                 case CommandSaveGraph:
@@ -276,6 +284,10 @@ public:
             switch (info.commandID) {
                 case CommandOpenGraph:
                     chooseOpenGraph();
+                    return true;
+
+                case CommandImportWaveReference:
+                    workspace->importWaveReference();
                     return true;
 
                 case CommandSaveGraph:

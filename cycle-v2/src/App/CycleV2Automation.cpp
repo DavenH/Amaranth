@@ -336,6 +336,13 @@ var CycleV2Automation::runCommand(const var& commandValue) {
                     ? okResult("selectReference", snapshotState())
                     : failedResult("selectReference", "Could not select reference: " + referenceId);
         }
+        case Command::OpenReferencePitchEditor: {
+            const String referenceId = stringProperty(commandValue, "referenceId");
+            return workspace.openReferencePitchEditorForAutomation(referenceId)
+                    ? okResult("openReferencePitchEditor", snapshotState())
+                    : failedResult("openReferencePitchEditor",
+                            "Could not open pitch envelope: " + referenceId);
+        }
         case Command::AddNode:
             return workspaceCommands->addNode(commandValue);
         case Command::MoveNode:
@@ -531,6 +538,8 @@ var CycleV2Automation::generatePresetPreview(const var& commandValue) {
 var CycleV2Automation::listMenuItems() const {
     Array<var> items;
     items.add(menuItemToVar("file.openGraph", "File", "Open Preset...", true));
+    items.add(menuItemToVar("file.importWaveReference", "File",
+            "Import Wave Reference...", true));
     for (const auto& entry : TimeSurfaceStyles::entries) {
         items.add(menuItemToVar("view.surface." + String(entry.id),
                 "View > Time Surface Colour", entry.label, true));
@@ -566,6 +575,10 @@ var CycleV2Automation::invokeMenuItem(const var& commandValue) {
 
     if (id == "file.openGraph") {
         return openGraph(commandValue);
+    }
+    if (id == "file.importWaveReference") {
+        workspace.importWaveReference();
+        return okResult("invokeMenuItem", snapshotState());
     }
     if (id == "view.spectralSurface.default") {
         workspace.setBipolarSpectralSurfaceStyle(std::nullopt);

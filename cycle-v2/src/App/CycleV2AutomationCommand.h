@@ -33,6 +33,7 @@ enum class CycleV2AutomationCommand {
     OpenNodeEditor,
     PinComparisonSpy,
     SelectReference,
+    OpenReferencePitchEditor,
     AddNode,
     MoveNode,
     ConnectPorts,

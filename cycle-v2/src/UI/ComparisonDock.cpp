@@ -3,30 +3,55 @@
 #include "UI/ComparisonDock.h"
 
 #include "App/StandaloneAudioEngine.h"
+#include "Graph/DefaultOutputProbeResolver.h"
 
+#include "UI/CanvasChromeMetrics.h"
+#include "UI/CanvasChromePalette.h"
 #include "UI/ComparisonSurfaceView.h"
+#include "UI/ReferencePitchEditor.h"
+#include "UI/WorkspaceDock.h"
 
 namespace CycleV2 {
 
 namespace {
 
 constexpr float kCardWidth = 300.f;
-constexpr float kCardGap = 12.f;
-constexpr float kCardInset = 12.f;
-constexpr float kHeaderHeight = 42.f;
-constexpr float kCardTitleHeight = 30.f;
-constexpr float kPitchHeight = 44.f;
+constexpr float kCardGap = 8.f;
+constexpr float kCardInset = 8.f;
+constexpr float kHeaderHeight = 34.f;
+constexpr float kCardTitleHeight = 28.f;
 
 juce::Rectangle<float> cardBounds(int index, int height) {
     return {
             kCardInset + (float) index * (kCardWidth + kCardGap),
-            8.f,
+            5.f,
             kCardWidth,
-            (float) height - 16.f
+            (float) height - 10.f
     };
 }
 
 }
+
+class ComparisonDock::AddButton final : public juce::Button {
+public:
+    AddButton() : juce::Button("Add comparison source") {
+        setTooltip("Open or import a wave reference, or pin a Spy");
+        setMouseCursor(juce::MouseCursor::PointingHandCursor);
+        setWantsKeyboardFocus(true);
+    }
+
+    void paintButton(juce::Graphics& graphics, bool hovered, bool pressed) override {
+        WorkspaceDock::paintIconButton(
+                graphics, getLocalBounds().toFloat(), WorkspaceDockIcon::Add,
+                hasKeyboardFocus(false));
+        if (hovered || pressed) {
+            graphics.setColour(CanvasChromePalette::text.withAlpha(
+                    pressed ? 0.12f : 0.06f));
+            graphics.fillRoundedRectangle(getLocalBounds().toFloat(),
+                    CanvasChromeMetrics::controlCornerRadius);
+        }
+    }
+};
 
 class ComparisonDock::CardStrip : public juce::Component {
 public:
@@ -39,56 +64,16 @@ public:
         }
     }
 
-    void mouseDown(const juce::MouseEvent& event) override {
-        const auto* analysis = owner.library.selectedAnalysis();
-        if (analysis == nullptr || owner.cards.empty()
-                || !owner.cards.front().sample) {
-            return;
-        }
-        const auto graph = ComparisonDock::pitchBounds(cardBounds(0, getHeight()));
-        if (!graph.contains(event.position)) {
-            return;
-        }
-        float nearestDistance = 10.f;
-        for (size_t index = 0; index < analysis->pitchPath.size(); ++index) {
-            const auto& point = analysis->pitchPath[index];
-            const juce::Point<float> pixel(
-                    graph.getX() + point.x * graph.getWidth(),
-                    graph.getBottom() - point.y * graph.getHeight());
-            const float distance = pixel.getDistanceFrom(event.position);
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                draggedPoint = index;
-                draggedPosition = { point.x, point.y };
-            }
-        }
-    }
-
-    void mouseDrag(const juce::MouseEvent& event) override {
-        if (!draggedPoint.has_value()) {
-            return;
-        }
-        const auto graph = ComparisonDock::pitchBounds(cardBounds(0, getHeight()));
-        draggedPosition = {
-                juce::jlimit(0.f, 1.f,
-                        (event.position.x - graph.getX()) / graph.getWidth()),
-                juce::jlimit(0.f, 1.f,
-                        (graph.getBottom() - event.position.y) / graph.getHeight())
-        };
-        repaint(graph.toNearestInt());
-    }
-
     void mouseUp(const juce::MouseEvent& event) override {
-        if (draggedPoint.has_value()) {
-            owner.commitPitchPoint(*draggedPoint, draggedPosition);
-            draggedPoint.reset();
-            return;
-        }
         const int index = (int) ((event.position.x - kCardInset) / (kCardWidth + kCardGap));
         if (index < 0 || index >= (int) owner.cards.size()) {
             return;
         }
         const auto& card = owner.cards[(size_t) index];
+        if (event.mods.isPopupMenu()) {
+            owner.showCardMenu(card, event.position.toInt());
+            return;
+        }
         const auto close = cardBounds(index, getHeight()).removeFromRight(26.f)
                 .removeFromTop(kCardTitleHeight);
         if (close.contains(event.position)) {
@@ -98,13 +83,28 @@ public:
             } else {
                 owner.canvas.unpinComparisonSpy(card.id);
             }
-        } else if (card.sample && card.id != owner.library.selectedId()) {
-            owner.selectReference(card.id);
+        } else if (card.sample) {
+            auto play = cardBounds(index, getHeight());
+            play.removeFromRight(26.f);
+            play = play.removeFromRight(26.f).removeFromTop(kCardTitleHeight);
+            if (play.contains(event.position)) {
+                if (card.id != owner.library.selectedId()) {
+                    owner.selectReference(card.id);
+                }
+                owner.toggleAudition();
+            } else if (card.id != owner.library.selectedId()) {
+                owner.selectReference(card.id);
+            }
         }
     }
 
-    std::optional<size_t> draggedPoint;
-    juce::Point<float> draggedPosition;
+    void mouseDoubleClick(const juce::MouseEvent& event) override {
+        const int index = (int) ((event.position.x - kCardInset) / (kCardWidth + kCardGap));
+        if (juce::isPositiveAndBelow(index, (int) owner.cards.size())
+                && owner.cards[(size_t) index].sample) {
+            owner.openPitchEditor(owner.cards[(size_t) index].id);
+        }
+    }
 
 private:
     ComparisonDock& owner;
@@ -117,58 +117,28 @@ ComparisonDock::ComparisonDock(
         canvas(canvasToUse)
     ,   library(libraryToUse)
     ,   audioEngine(engine)
-    ,   strip(std::make_unique<CardStrip>(*this)) {
+    ,   addButton(std::make_unique<AddButton>())
+    ,   strip(std::make_unique<CardStrip>(*this))
+    ,   pitchEditor(std::make_unique<ReferencePitchEditor>(libraryToUse)) {
     setOpaque(true);
-    addAndMakeVisible(importButton);
-    addAndMakeVisible(referenceButton);
-    addAndMakeVisible(spyButton);
-    addAndMakeVisible(playButton);
-    addAndMakeVisible(undoButton);
-    addAndMakeVisible(redoButton);
-    addAndMakeVisible(noteSlider);
+    addAndMakeVisible(*addButton);
     addAndMakeVisible(viewport);
+    addAndMakeVisible(*pitchEditor);
+    pitchEditor->setVisible(false);
+    pitchEditor->onEdited = [this] { refreshCaptures(); };
+    pitchEditor->onClose = [this] { closePitchEditor(); };
+    pitchEditor->onRenderRequested = [this] { canvas.requestComparisonRendering(); };
     viewport.setViewedComponent(strip.get(), false);
-    viewport.setScrollBarsShown(false, true, false, false);
+    viewport.setScrollBarsShown(false, true, false, true);
     viewport.setScrollBarThickness(7);
 
-    importButton.onClick = [this] { importReference(); };
-    referenceButton.onClick = [this] { showReferenceMenu(); };
-    spyButton.onClick = [this] { showSpyMenu(); };
-    playButton.onClick = [this] {
-        if (playButton.getButtonText() == "Stop") {
-            audioEngine.stopReferenceAudition();
-            playButton.setButtonText("Play");
-        } else if (const auto* analysis = library.selectedAnalysis()) {
-            if (audioEngine.startReferenceAudition(*analysis->sample)) {
-                playButton.setButtonText("Stop");
-            }
-        }
-    };
-    undoButton.onClick = [this] {
-        if (library.undoPitchEdit()) {
-            refreshCaptures();
-        }
-    };
-    redoButton.onClick = [this] {
-        if (library.redoPitchEdit()) {
-            refreshCaptures();
-        }
-    };
-    noteSlider.setSliderStyle(juce::Slider::LinearHorizontal);
-    noteSlider.setRange(0, 127, 1);
-    noteSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 38, 22);
-    noteSlider.setChangeNotificationOnlyOnRelease(true);
-    noteSlider.onValueChange = [this] {
-        if (library.setFundamental((int) noteSlider.getValue())) {
-            refreshCaptures();
-        }
-    };
-    updateNoteControl();
+    addButton->onClick = [this] { showAddMenu(); };
     updateCards();
 }
 
 ComparisonDock::~ComparisonDock() {
     audioEngine.stopReferenceAudition();
+    pitchEditor.reset();
     surfaceViews.clear();
     retiredViews.clear();
     viewport.setViewedComponent(nullptr, false);
@@ -208,47 +178,50 @@ void ComparisonDock::importReference() {
             });
 }
 
-void ComparisonDock::showReferenceMenu() {
+void ComparisonDock::showAddMenu() {
     juce::PopupMenu menu;
-    int item = 1;
-    for (const auto& record : library.records()) {
-        menu.addItem(item++, record.name,
-                true, record.id == library.selectedId());
-    }
+    menu.addItem(1, "Import Wave Reference...");
     const auto records = library.records();
-    menu.showMenuAsync(menuOptionsFor(referenceButton),
-            [safeThis = juce::Component::SafePointer<ComparisonDock>(this), records](int choice) {
-                if (safeThis != nullptr && choice > 0
-                        && choice <= (int) records.size()) {
-                    safeThis->selectReference(records[(size_t) choice - 1].id);
-                }
-            });
-}
-
-void ComparisonDock::showSpyMenu() {
-    juce::PopupMenu menu;
-    std::vector<ComparisonSpyOption> options = canvas.comparisonSpyOptions();
-    const auto createOptions = canvas.unprobedTrimeshOutputs();
-    int item = 1;
-    for (const auto& option : options) {
-        const auto& pins = canvas.comparisonSpyPins();
-        const bool pinned = std::find(pins.begin(), pins.end(), option.id) != pins.end();
-        menu.addItem(item++, option.label, true, pinned);
-    }
-    if (!createOptions.empty()) {
+    if (!records.empty()) {
         menu.addSeparator();
-        for (const auto& option : createOptions) {
-            menu.addItem(item++, "Create Spy on " + option.label);
+        menu.addSectionHeader("Wave References");
+        for (size_t index = 0; index < records.size(); ++index) {
+            const auto& record = records[index];
+            menu.addItem(100 + (int) index,
+                    record.name + (record.factory ? "  /  Factory" : ""),
+                    true, record.id == library.selectedId());
         }
     }
-    menu.showMenuAsync(menuOptionsFor(spyButton),
+    const std::vector<ComparisonSpyOption> options = canvas.comparisonSpyOptions();
+    const auto createOptions = canvas.unprobedTrimeshOutputs();
+    if (!options.empty() || !createOptions.empty()) {
+        menu.addSeparator();
+        menu.addSectionHeader("Pin Spy");
+    }
+    for (size_t index = 0; index < options.size(); ++index) {
+        const auto& option = options[index];
+        const auto& pins = canvas.comparisonSpyPins();
+        const bool pinned = std::find(pins.begin(), pins.end(), option.id) != pins.end();
+        menu.addItem(1000 + (int) index, option.label, true, pinned);
+    }
+    if (!createOptions.empty()) {
+        for (size_t index = 0; index < createOptions.size(); ++index) {
+            menu.addItem(2000 + (int) index,
+                    "Create Spy on " + createOptions[index].label);
+        }
+    }
+    menu.showMenuAsync(menuOptionsFor(*addButton),
             [safeThis = juce::Component::SafePointer<ComparisonDock>(this),
-                    options, createOptions](int choice) {
+                    records, options, createOptions](int choice) {
                 if (safeThis == nullptr || choice <= 0) {
                     return;
                 }
-                if (choice <= (int) options.size()) {
-                    const auto& id = options[(size_t) choice - 1].id;
+                if (choice == 1) {
+                    safeThis->importReference();
+                } else if (choice >= 100 && choice < 100 + (int) records.size()) {
+                    safeThis->selectReference(records[(size_t) choice - 100].id);
+                } else if (choice >= 1000 && choice < 1000 + (int) options.size()) {
+                    const auto& id = options[(size_t) choice - 1000].id;
                     const auto& pins = safeThis->canvas.comparisonSpyPins();
                     const bool pinned = std::find(pins.begin(), pins.end(), id) != pins.end();
                     if (pinned) {
@@ -256,14 +229,111 @@ void ComparisonDock::showSpyMenu() {
                     } else {
                         safeThis->canvas.pinComparisonSpy(id);
                     }
-                } else {
-                    const int createIndex = choice - (int) options.size() - 1;
-                    if (juce::isPositiveAndBelow(createIndex, (int) createOptions.size())) {
-                        safeThis->canvas.createAndPinTrimeshOutputSpy(
-                                createOptions[(size_t) createIndex].id);
-                    }
+                } else if (choice >= 2000
+                        && choice < 2000 + (int) createOptions.size()) {
+                    safeThis->canvas.createAndPinTrimeshOutputSpy(
+                            createOptions[(size_t) choice - 2000].id);
                 }
             });
+}
+
+void ComparisonDock::showCardMenu(const Card& card, juce::Point<int> position) {
+    juce::PopupMenu menu;
+    if (card.sample) {
+        menu.addItem(1, audioEngine.isReferenceAuditioning()
+                && card.id == library.selectedId() ? "Stop Audition" : "Audition Sample");
+        if (card.id != library.selectedId()) {
+            menu.addItem(2, "Use as Comparison Target");
+        }
+        menu.addSeparator();
+        menu.addItem(7, "Edit Pitch Envelope...");
+        menu.addItem(3, "Undo Pitch Edit", card.id == library.selectedId());
+        menu.addItem(4, "Redo Pitch Edit", card.id == library.selectedId());
+        menu.addSeparator();
+        menu.addItem(5, "Close Reference");
+    } else {
+        menu.addItem(6, "Unpin Spy");
+    }
+    const auto screen = strip->localPointToGlobal(position);
+    const auto target = juce::PopupMenu::Options()
+            .withTargetComponent(strip.get())
+            .withTargetScreenArea({ screen.x, screen.y, 1, 1 });
+    const juce::String id = card.id;
+    menu.showMenuAsync(target,
+            [safeThis = juce::Component::SafePointer<ComparisonDock>(this), id](int choice) {
+                if (safeThis == nullptr) {
+                    return;
+                }
+                switch (choice) {
+                    case 1:
+                        if (id != safeThis->library.selectedId()) {
+                            safeThis->selectReference(id);
+                        }
+                        safeThis->toggleAudition();
+                        break;
+                    case 2: safeThis->selectReference(id); break;
+                    case 3:
+                        if (safeThis->library.undoPitchEdit()) {
+                            safeThis->refreshCaptures();
+                        }
+                        break;
+                    case 4:
+                        if (safeThis->library.redoPitchEdit()) {
+                            safeThis->refreshCaptures();
+                        }
+                        break;
+                    case 5:
+                        safeThis->library.close(id);
+                        safeThis->refreshCaptures();
+                        break;
+                    case 6: safeThis->canvas.unpinComparisonSpy(id); break;
+                    case 7: safeThis->openPitchEditor(id); break;
+                    default: break;
+                }
+            });
+}
+
+void ComparisonDock::openPitchEditor(const juce::String& id) {
+    if (id != library.selectedId()) {
+        selectReference(id);
+    }
+    if (!pitchEditor->open(id)) {
+        return;
+    }
+    viewport.setVisible(false);
+    pitchEditor->setVisible(true);
+    pitchEditor->toFront(true);
+    pitchEditor->setBounds(0, (int) kHeaderHeight, getWidth(),
+            juce::jmax(0, getHeight() - (int) kHeaderHeight));
+    canvas.requestComparisonRendering();
+}
+
+bool ComparisonDock::openPitchEditorForAutomation(const juce::String& id) {
+    openPitchEditor(id);
+    return pitchEditor->isVisible() && library.selectedId() == id;
+}
+
+juce::Rectangle<int> ComparisonDock::pitchCurveBoundsForAutomation() const {
+    return pitchEditor->isVisible()
+            ? pitchEditor->curveBounds().translated(
+                    pitchEditor->getX(), pitchEditor->getY())
+            : juce::Rectangle<int>();
+}
+
+void ComparisonDock::closePitchEditor() {
+    pitchEditor->setVisible(false);
+    viewport.setVisible(true);
+    canvas.requestComparisonRendering();
+}
+
+void ComparisonDock::toggleAudition() {
+    if (audioEngine.isReferenceAuditioning()) {
+        audioEngine.stopReferenceAudition();
+    } else if (const auto* analysis = library.selectedAnalysis()) {
+        audioEngine.startReferenceAudition(*analysis->sample);
+    }
+    lastAuditioning = audioEngine.isReferenceAuditioning();
+    strip->repaint();
 }
 
 void ComparisonDock::selectReference(const juce::String& id) {
@@ -275,7 +345,9 @@ void ComparisonDock::selectReference(const juce::String& id) {
         return;
     }
     audioEngine.stopReferenceAudition();
-    playButton.setButtonText("Play");
+    if (pitchEditor->isVisible()) {
+        pitchEditor->open(id);
+    }
     refreshCaptures();
 }
 
@@ -284,26 +356,14 @@ void ComparisonDock::refreshCaptures() {
         juce::String error;
         library.select(library.records().front().id, error);
     }
-    updateNoteControl();
     updateCards();
 }
 
 void ComparisonDock::syncAuditionState() {
-    if (!audioEngine.isReferenceAuditioning()
-            && playButton.getButtonText() == "Stop") {
-        playButton.setButtonText("Play");
-    }
-}
-
-void ComparisonDock::updateNoteControl() {
-    const auto* analysis = library.selectedAnalysis();
-    noteSlider.setEnabled(analysis != nullptr);
-    playButton.setEnabled(analysis != nullptr);
-    undoButton.setEnabled(analysis != nullptr);
-    redoButton.setEnabled(analysis != nullptr);
-    if (analysis != nullptr) {
-        noteSlider.setValue(analysis->sample->fundNote,
-                juce::NotificationType::dontSendNotification);
+    const bool auditioning = audioEngine.isReferenceAuditioning();
+    if (lastAuditioning != auditioning) {
+        lastAuditioning = auditioning;
+        strip->repaint();
     }
 }
 
@@ -326,9 +386,8 @@ void ComparisonDock::updateCards() {
         Card card;
         card.id = record->id;
         card.title = record->name;
-        card.detail = juce::String(sampleAnalysis->sample->lengthSeconds(), 2) + " s  ·  MIDI "
-                + juce::String(sampleAnalysis->sample->fundNote)
-                + (sampleAnalysis->lowConfidence ? "  ·  Check pitch" : "");
+        card.duration = juce::String(sampleAnalysis->sample->lengthSeconds(), 2) + " s";
+        card.displayGain = 2.f;
         card.sampleSurface = &sampleAnalysis->cyclogram;
         card.sampleIdentity = sampleAnalysis->sample.get();
         card.surfaceRevision = sampleAnalysis->cyclogramRevision;
@@ -357,13 +416,16 @@ void ComparisonDock::updateCards() {
         card.title = found != options.end() ? found->label : "Disconnected Spy";
         const double captureSeconds = (double) GraphPreviewExecutor::sourceFrameCountForMidiNote(note)
                 / 44100.0;
-        card.detail = juce::String(captureSeconds * 1000.0, 1) + " ms capture  ·  MIDI "
-                + juce::String(note);
+        card.duration = juce::String(captureSeconds * 1000.0, 1) + " ms";
+        card.displayGain = card.id == DefaultOutputProbeResolver::probeId
+                ? 1.f / 3.f : 1.f;
         if (index < previews.size() && previews[index].has_value()) {
             const auto& preview = *previews[index];
             card.connected = preview.connected;
             card.spectral = preview.domain != PortDomain::TimeSignal;
-            card.detail += card.spectral ? "  ·  Spectral" : "  ·  Time";
+            if (card.spectral) {
+                card.title += "  /  Spectral";
+            }
             card.surface = preview.values;
             card.columns = preview.gridColumns;
             card.rows = preview.gridRows;
@@ -416,7 +478,7 @@ void ComparisonDock::updateCards() {
                 && oldCard->surfaceRevision == card.surfaceRevision;
         if (!sampleUnchanged) {
             view->setGrid(card.surfaceValues(), card.columns, card.rows,
-                    card.domain, card.midiNote);
+                    card.domain, card.midiNote, card.displayGain);
         }
         view->onCameraChanged = [this, source = index](const ZoomRect& camera) {
             for (size_t target = 0; target < surfaceViews.size(); ++target) {
@@ -429,8 +491,7 @@ void ComparisonDock::updateCards() {
         };
         const auto bounds = cardBounds((int) index, viewport.getHeight());
         auto surface = bounds.withTrimmedTop(kCardTitleHeight + 3.f)
-                .withTrimmedBottom(27.f + (card.sample ? kPitchHeight + 5.f : 0.f))
-                .reduced(8.f, 1.f);
+                .reduced(6.f, 5.f);
         view->setBounds(surface.toNearestInt());
         surfaceViews.push_back(std::move(view));
     }
@@ -457,6 +518,10 @@ void ComparisonDock::renderOpenGL(float scaleFactor) {
     if (!isVisible()) {
         return;
     }
+    if (pitchEditor->isVisible()) {
+        pitchEditor->renderOpenGL(scaleFactor);
+        return;
+    }
     for (const auto& view : surfaceViews) {
         if (view != nullptr) {
             if (view->renderOpenGL(scaleFactor)) {
@@ -473,6 +538,7 @@ void ComparisonDock::renderOpenGL(float scaleFactor) {
 
 void ComparisonDock::releaseOpenGLResources() {
     const juce::ScopedLock lock(surfaceLock);
+    pitchEditor->releaseOpenGLResources();
     for (const auto& view : surfaceViews) {
         if (view != nullptr) {
             view->releaseOpenGLResources();
@@ -492,6 +558,7 @@ juce::var ComparisonDock::exportAutomationState() const {
     state->setProperty("cardCount", (int) cards.size());
     state->setProperty("captureCount", (int64) captureCount);
     state->setProperty("selectedReferenceId", library.selectedId());
+    state->setProperty("pitchEditor", pitchEditor->exportAutomationState());
     if (const auto* analysis = library.selectedAnalysis()) {
         state->setProperty("comparisonMidiNote", analysis->sample->fundNote);
     }
@@ -518,100 +585,79 @@ void ComparisonDock::paintCard(
         juce::Graphics& graphics,
         const Card& card,
         juce::Rectangle<float> bounds) {
-    const juce::Rectangle<float> fullBounds = bounds;
-    graphics.setColour(juce::Colour(0xff202c36));
-    graphics.fillRoundedRectangle(bounds, 7.f);
-    graphics.setColour(juce::Colour(0xff4c6370));
-    graphics.drawRoundedRectangle(bounds, 7.f, 1.f);
-    graphics.setColour(juce::Colour(0xffecf0ef));
-    graphics.setFont(14.f);
-    const auto titleBounds = bounds.removeFromTop(kCardTitleHeight);
-    graphics.drawText(card.title, titleBounds.reduced(10.f, 2.f),
+    const bool selected = card.sample && card.id == library.selectedId();
+    graphics.setColour(CanvasChromePalette::insetBackground);
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::tileCornerRadius);
+    graphics.setColour(selected
+            ? CanvasChromePalette::selectionOutline
+            : CanvasChromePalette::border.withAlpha(0.72f));
+    graphics.drawRoundedRectangle(bounds, CanvasChromeMetrics::tileCornerRadius,
+            selected ? CanvasChromeMetrics::activeBorderWidth
+                    : CanvasChromeMetrics::restingBorderWidth);
+
+    auto titleBounds = bounds.removeFromTop(kCardTitleHeight);
+    auto textBounds = titleBounds.reduced(9.f, 2.f);
+    textBounds.removeFromRight(card.sample ? 100.f : 56.f);
+    graphics.setColour(CanvasChromePalette::text);
+    graphics.setFont(13.f);
+    graphics.drawText(card.title, textBounds,
             juce::Justification::centredLeft, true);
-    auto closeBounds = titleBounds;
-    graphics.drawText(juce::String::charToString(0x00d7),
-            closeBounds.removeFromRight(26.f),
+    auto closeBounds = titleBounds.removeFromRight(26.f);
+    graphics.setColour(CanvasChromePalette::mutedText);
+    graphics.setFont(16.f);
+    graphics.drawText(juce::String::charToString(0x00d7), closeBounds,
             juce::Justification::centred);
+    auto durationBounds = titleBounds.removeFromRight(card.sample ? 67.f : 55.f);
+    if (card.sample) {
+        const bool playing = selected && audioEngine.isReferenceAuditioning();
+        const auto playBounds = titleBounds.removeFromRight(26.f);
+        graphics.setColour(selected ? CanvasChromePalette::text
+                : CanvasChromePalette::mutedText);
+        if (playing) {
+            graphics.fillRect(playBounds.withSizeKeepingCentre(8.f, 8.f));
+        } else {
+            juce::Path play;
+            play.addTriangle(
+                    playBounds.getCentreX() - 3.f, playBounds.getCentreY() - 5.f,
+                    playBounds.getCentreX() + 5.f, playBounds.getCentreY(),
+                    playBounds.getCentreX() - 3.f, playBounds.getCentreY() + 5.f);
+            graphics.fillPath(play);
+        }
+    }
+    graphics.setColour(CanvasChromePalette::mutedText);
+    graphics.setFont(11.f);
+    graphics.drawText(card.duration, durationBounds,
+            juce::Justification::centredRight, true);
+
     if (!card.connected || card.surfaceValues().empty()) {
-        graphics.setColour(juce::Colour(0xffaeb9bb));
+        graphics.setColour(CanvasChromePalette::mutedText);
         graphics.drawText("Disconnected", bounds,
                 juce::Justification::centred);
         return;
     }
-
-    const auto detailBounds = bounds.removeFromBottom(24.f);
-    if (card.sample) {
-        bounds.removeFromBottom(kPitchHeight + 5.f);
-    }
-    graphics.setColour(juce::Colour(0xff101b24));
-    graphics.fillRect(bounds.reduced(8.f, 2.f));
-    graphics.setColour(juce::Colour(0xffbed0d1));
-    graphics.setFont(11.f);
-    graphics.drawText(card.detail, detailBounds.reduced(9.f, 1.f),
-            juce::Justification::centredLeft, true);
-
-    if (card.sample) {
-        const auto graph = pitchBounds(fullBounds);
-        graphics.setColour(juce::Colour(0xff111c25));
-        graphics.fillRect(graph);
-        const auto* analysis = library.selectedAnalysis();
-        if (analysis != nullptr) {
-            juce::Path path;
-            for (size_t index = 0; index < analysis->pitchPath.size(); ++index) {
-                const auto& point = analysis->pitchPath[index];
-                const juce::Point<float> pixel(
-                        graph.getX() + point.x * graph.getWidth(),
-                        graph.getBottom() - point.y * graph.getHeight());
-                if (index == 0) {
-                    path.startNewSubPath(pixel);
-                } else {
-                    path.lineTo(pixel);
-                }
-                graphics.setColour(juce::Colour(0xff65d3d6));
-                graphics.fillEllipse(pixel.x - 2.f, pixel.y - 2.f, 4.f, 4.f);
-            }
-            graphics.setColour(juce::Colour(0xff65d3d6));
-            graphics.strokePath(path, juce::PathStrokeType(1.4f));
-        }
-    }
-}
-
-juce::Rectangle<float> ComparisonDock::pitchBounds(juce::Rectangle<float> bounds) {
-    bounds.removeFromBottom(24.f);
-    return bounds.removeFromBottom(kPitchHeight + 5.f).reduced(8.f, 3.f);
-}
-
-void ComparisonDock::commitPitchPoint(size_t pointIndex, juce::Point<float> position) {
-    if (library.movePitchPoint(pointIndex, position)) {
-        refreshCaptures();
-    }
+    graphics.setColour(CanvasChromePalette::canvasBackground);
+    graphics.fillRect(bounds.reduced(6.f, 5.f));
 }
 
 void ComparisonDock::paint(juce::Graphics& graphics) {
-    graphics.fillAll(juce::Colour(0xff14212b));
-    graphics.setColour(juce::Colour(0xff4b626e));
-    graphics.fillRect(0, 0, getWidth(), 2);
-    graphics.setColour(juce::Colour(0xff81a1a8));
+    graphics.fillAll(CanvasChromePalette::canvasBackground);
+    graphics.setColour(CanvasChromePalette::border);
+    graphics.fillRect(0, 0, getWidth(), 1);
+    graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.7f));
     graphics.fillRoundedRectangle(
-            (float) getWidth() * 0.5f - 22.f, 3.f, 44.f, 3.f, 2.f);
-    graphics.setColour(juce::Colour(0xffe5ecec));
+            (float) getWidth() * 0.5f - 22.f, 2.f, 44.f, 2.f, 1.f);
+    graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(13.f);
-    graphics.drawText("COMPARE", 12, 10, 85, 28, juce::Justification::centredLeft);
-    graphics.drawText("NOTE", getWidth() - 197, 11, 42, 26,
+    graphics.drawText("COMPARE", 12, 5, 100, 24,
             juce::Justification::centredLeft);
 }
 
 void ComparisonDock::resized() {
     const juce::ScopedLock lock(surfaceLock);
-    importButton.setBounds(104, 9, 132, 26);
-    referenceButton.setBounds(244, 9, 105, 26);
-    spyButton.setBounds(357, 9, 82, 26);
-    playButton.setBounds(447, 9, 62, 26);
-    undoButton.setBounds(517, 9, 59, 26);
-    redoButton.setBounds(584, 9, 59, 26);
-    noteSlider.setBounds(juce::jmax(654, getWidth() - 155), 9,
-            juce::jlimit(0, 150, getWidth() - 658), 26);
+    addButton->setBounds(110, 5, 26, 24);
     viewport.setBounds(0, (int) kHeaderHeight, getWidth(),
+            juce::jmax(0, getHeight() - (int) kHeaderHeight));
+    pitchEditor->setBounds(0, (int) kHeaderHeight, getWidth(),
             juce::jmax(0, getHeight() - (int) kHeaderHeight));
     strip->setSize(juce::jmax(viewport.getWidth(),
                     (int) (kCardInset * 2.f
@@ -623,8 +669,7 @@ void ComparisonDock::resized() {
         }
         const auto bounds = cardBounds((int) index, viewport.getHeight());
         auto surface = bounds.withTrimmedTop(kCardTitleHeight + 3.f)
-                .withTrimmedBottom(27.f + (cards[index].sample ? kPitchHeight + 5.f : 0.f))
-                .reduced(8.f, 1.f);
+                .reduced(6.f, 5.f);
         surfaceViews[index]->setBounds(surface.toNearestInt());
     }
     canvas.requestComparisonRendering();

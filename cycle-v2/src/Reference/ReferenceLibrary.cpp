@@ -340,6 +340,25 @@ bool ReferenceLibrary::movePitchPoint(size_t index, juce::Point<float> position)
     return applyPitchEdit(std::move(edit), true);
 }
 
+bool ReferenceLibrary::replacePitchPath(std::vector<Vertex2> points) {
+    if (points.size() < 2) {
+        return false;
+    }
+    for (size_t index = 0; index < points.size(); ++index) {
+        if (points[index].x < 0.f || points[index].x > 1.f
+                || points[index].y < 0.f || points[index].y > 1.f
+                || (index > 0 && points[index].x < points[index - 1].x)) {
+            return false;
+        }
+    }
+    PitchEdit edit = currentPitchEdit();
+    if (edit.path == points) {
+        return false;
+    }
+    edit.path = std::move(points);
+    return applyPitchEdit(std::move(edit), true);
+}
+
 bool ReferenceLibrary::undoPitchEdit() {
     if (undoStack.empty()) {
         return false;

@@ -34,6 +34,7 @@ public:
     bool importFile(const juce::File& source, juce::String& error);
     bool setFundamental(int midiNote);
     bool movePitchPoint(size_t index, juce::Point<float> position);
+    bool replacePitchPath(std::vector<Vertex2> points);
     bool undoPitchEdit();
     bool redoPitchEdit();
 

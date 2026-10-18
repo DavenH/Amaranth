@@ -19,6 +19,11 @@ File factoryReferenceDirectory() {
 }
 
 File userReferenceDirectory() {
+    for (const auto& argument : juce::JUCEApplicationBase::getCommandLineParameterArray()) {
+        if (argument.startsWith("--reference-library-dir=")) {
+            return File(argument.fromFirstOccurrenceOf("=", false, false));
+        }
+    }
     return File::getSpecialLocation(File::userApplicationDataDirectory)
             .getChildFile("Amaranth Audio/Cycle V2/References");
 }
@@ -470,6 +475,13 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
         dockTarget.getDynamicObject()->setProperty("screenBounds",
                 rectangleToVar(comparisonDock.getScreenBounds().toFloat()));
         targets->add(dockTarget);
+        const auto curve = comparisonDock.pitchCurveBoundsForAutomation();
+        if (!curve.isEmpty()) {
+            targets->add(pointerTarget("referencePitch.curve", "referencePitchCurve",
+                    curve.toFloat().translated(
+                            (float) comparisonDock.getX(),
+                            (float) comparisonDock.getY())));
+        }
     }
     for (const auto& [id, bounds] : canvas.presetSidebarPointerTargetsForAutomation()) {
         targets->add(pointerTarget(id, "presetSidebar", bounds));

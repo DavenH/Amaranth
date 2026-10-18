@@ -143,3 +143,50 @@ The focused 1000x700 gesture fixture passes after the parameter-only change;
 a vertex edit fixture confirms the model-changing path captures after the
 downstream refresh. The full-size screenshot and architecture audit were
 rechecked after both paths passed.
+
+## UI revision (2026-10-18)
+
+The comparison dock now uses the existing Cycle icon-button treatment and a
+single source menu. File > Import Wave Reference provides a global entry point;
+the dock menu lists factory and user references, existing Spies, the implicit
+pre-wet output, and eligible Trimesh-output probe creation. A wave reference
+remains library-owned because it is an authoring target shared across presets,
+with no audio edge or graph lifecycle to represent as a node. Per-card audition
+and context actions replace the permanent text-button row. The sample's note
+and pitch path live in an expanded view backed by the existing envelope curve
+panel, not a second curve interaction implementation. The panel commits a path
+once on gesture release and the reference library owns undo, persistence, and
+cyclogram refresh. Valid simplified paths may contain equal adjacent times;
+the point-path boundary preserves their order.
+
+The time surface's scalar renderer expects unit material values. The dock now
+uses `TrimeshRenderProfile::mapGridToDisplay` to convert signed time values
+from `[-1, 1]` to `[0, 1]`, with source display gain applied before the
+conversion. Raw sample and Spy values remain unchanged. The sample's display
+gain compensates for Cycle 1 period folding's half gain; the implicit output
+Spy's display gain compensates for its existing threefold preview boost.
+Spectral cards continue through the profile's spectral mapping. Per-card
+scrollbars are hidden while camera and zoom remain linked; the rail's neutral
+scrollbar appears only when cards overflow.
+
+The focused reference test covers pitch path commit, undo/redo, cyclogram
+change, and reload using a real Cycle WAV whose simplified path contains equal
+adjacent times. The surface test covers signed input and implicit-output
+scaling without source mutation. The
+`scripts/fixtures/cycle-v2-agent-reference-pitch-edit.json` fixture opens the
+expanded view, performs a real move/down/drag/drag/up curve gesture, and
+asserts one cyclogram revision after release. Run it with
+`CYCLE_APP_ARGS="--reference-library-dir=$PWD/.context/reference-pitch-fixture-library-<fresh-id>"`
+with a new directory each run to isolate persistent edits from the normal
+reference library. The full-size
+and smaller-window captures are review artifacts under `.context/`.
+
+The responsibility review found the dock at 696 lines after this revision,
+below the 800-line review trigger. It owns card placement, the source menu,
+and presentation routing; `ReferencePitchEditor` owns the curve view,
+`ReferenceLibrary` owns pitch state, and `TrimeshRenderProfile` owns display
+mapping. `NodeWorkspace.cpp` remains a layout and automation target owner at
+906 lines; `CycleV2Automation.cpp` remains command routing at 1,014 lines.
+Their new calls forward facts and actions without repeating import, pitch,
+capture, or eligibility policy. No graph, audio, mesh, or renderer policy moved
+into these high-level files.

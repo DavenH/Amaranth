@@ -33,6 +33,7 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "openNodeEditor", Command::OpenNodeEditor },
             { "pinComparisonSpy", Command::PinComparisonSpy },
             { "selectReference", Command::SelectReference },
+            { "openReferencePitchEditor", Command::OpenReferencePitchEditor },
             { "openMeshPopup", Command::OpenNodeEditor },
             { "addNode", Command::AddNode },
             { "moveNode", Command::MoveNode },

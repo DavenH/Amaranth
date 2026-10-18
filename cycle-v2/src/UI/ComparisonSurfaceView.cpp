@@ -6,6 +6,7 @@
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
+#include <Array/Buffer.h>
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/GLPanelRenderer.h>
 #include <UI/Panels/GLSurfaceCache.h>
@@ -23,15 +24,19 @@ namespace {
 
 class ComparisonGridSource final : public Panel3D::DataRetriever {
 public:
-    void setGrid(const std::vector<float>& values, size_t columns, size_t rows, int note) {
+    void setGrid(const std::vector<float>& values, size_t columns, size_t rows,
+            PortDomain domain, int note, float sourceGain) {
         const juce::ScopedLock lock(gridLock);
         storage = values;
         panelColumns.clear();
         if (columns < 2 || rows < 2 || storage.size() < columns * rows) {
             storage.clear();
+            displayStorage.clear();
             ++revision;
             return;
         }
+        displayStorage = TrimeshRenderProfile::fromDomain(domain)
+                .mapGridToDisplay(storage, columns, rows, note, sourceGain);
         panelColumns.reserve(columns);
         for (size_t index = 0; index < columns; ++index) {
             panelColumns.emplace_back(storage.data() + index * rows,
@@ -45,7 +50,11 @@ public:
                 ? Buffer<float>() : Buffer<float>(storage.data(), (int) storage.size());
     }
 
-    Buffer<float> getScalarSurfaceArray() override { return getColumnArray(); }
+    Buffer<float> getScalarSurfaceArray() override {
+        return displayStorage.empty()
+                ? Buffer<float>()
+                : Buffer<float>(displayStorage.data(), (int) displayStorage.size());
+    }
     const std::vector<Column>& getColumns() override { return panelColumns; }
     juce::CriticalSection& getGridLock() override { return gridLock; }
     uint64_t getScalarSurfaceRevision() const override { return revision; }
@@ -53,6 +62,7 @@ public:
 
 private:
     std::vector<float> storage;
+    std::vector<float> displayStorage;
     std::vector<Column> panelColumns;
     juce::CriticalSection gridLock;
     uint64_t revision {};
@@ -75,6 +85,7 @@ public:
         panel.initWithExternalComponent(inputHost.get());
         panel.configureViewport({ 0.f, 1.f });
         panel.getZoomPanel()->addListener(this);
+        panel.getZoomPanel()->setScrollbarsVisible(false);
         owner.addAndMakeVisible(panel.getZoomPanel());
     }
 
@@ -85,8 +96,8 @@ public:
     }
 
     void setGrid(const std::vector<float>& values, size_t columns, size_t rows,
-            PortDomain domain, int note) {
-        source.setGrid(values, columns, rows, note);
+            PortDomain domain, int note, float displayGain) {
+        source.setGrid(values, columns, rows, domain, note, displayGain);
         panel.setRenderProfile(TrimeshRenderProfile::fromDomain(domain));
         panel.setPreviewMidiNote(note);
         panel.bakeTexturesNextRepaint();
@@ -216,8 +227,9 @@ void ComparisonSurfaceView::setGrid(
         size_t columns,
         size_t rows,
         PortDomain domain,
-        int note) {
-    impl->setGrid(values, columns, rows, domain, note);
+        int note,
+        float displayGain) {
+    impl->setGrid(values, columns, rows, domain, note, displayGain);
 }
 
 void ComparisonSurfaceView::setCamera(const ZoomRect& camera) {
