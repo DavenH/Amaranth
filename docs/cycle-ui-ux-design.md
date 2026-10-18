@@ -122,7 +122,8 @@ against these observable checks:
   does.
 - Adding a Spy opens a menu of available sources; an already pinned source is
   recognizable. Commands for one card live on that card or its menu.
-- The top band contains only controls needed while comparing. It does not
+- The source menu shares the card row at its fixed left edge. The resize grip
+  remains above it, without a separate Compare header. The dock does not
   permanently show separate text buttons for Undo, Redo, Play, and Add Spy or
   a detached note slider.
 - A card at rest presents its name and surface without a miniature pitch

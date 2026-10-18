@@ -169,6 +169,14 @@ Spectral cards continue through the profile's spectral mapping. Per-card
 scrollbars are hidden while camera and zoom remain linked; the rail's neutral
 scrollbar appears only when cards overflow.
 
+The separate Compare header was removed after a space audit. The source menu
+occupies a fixed left gutter beside the scrollable cards, so it remains
+available when the rail overflows. A 6 px strip retains the resize grip above
+the cards. At 1000x700, the surface view height increased from 199 to 227 px;
+the focused gesture fixture still reports one comparison capture on release.
+The production-size dock screenshot is
+`.context/comparison-dock-layout.png`.
+
 The focused reference test covers pitch path commit, undo/redo, cyclogram
 change, and reload using a real Cycle WAV whose simplified path contains equal
 adjacent times. The surface test covers signed input and implicit-output

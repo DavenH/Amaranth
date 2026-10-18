@@ -18,7 +18,8 @@ namespace {
 constexpr float kCardWidth = 300.f;
 constexpr float kCardGap = 8.f;
 constexpr float kCardInset = 8.f;
-constexpr float kHeaderHeight = 34.f;
+constexpr int kResizeGripHeight = 6;
+constexpr int kSourceControlWidth = 42;
 constexpr float kCardTitleHeight = 28.f;
 
 juce::Rectangle<float> cardBounds(int index, int height) {
@@ -301,10 +302,11 @@ void ComparisonDock::openPitchEditor(const juce::String& id) {
         return;
     }
     viewport.setVisible(false);
+    addButton->setVisible(false);
     pitchEditor->setVisible(true);
     pitchEditor->toFront(true);
-    pitchEditor->setBounds(0, (int) kHeaderHeight, getWidth(),
-            juce::jmax(0, getHeight() - (int) kHeaderHeight));
+    pitchEditor->setBounds(0, kResizeGripHeight, getWidth(),
+            juce::jmax(0, getHeight() - kResizeGripHeight));
     canvas.requestComparisonRendering();
 }
 
@@ -323,6 +325,7 @@ juce::Rectangle<int> ComparisonDock::pitchCurveBoundsForAutomation() const {
 void ComparisonDock::closePitchEditor() {
     pitchEditor->setVisible(false);
     viewport.setVisible(true);
+    addButton->setVisible(true);
     canvas.requestComparisonRendering();
 }
 
@@ -646,19 +649,16 @@ void ComparisonDock::paint(juce::Graphics& graphics) {
     graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.7f));
     graphics.fillRoundedRectangle(
             (float) getWidth() * 0.5f - 22.f, 2.f, 44.f, 2.f, 1.f);
-    graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(13.f);
-    graphics.drawText("COMPARE", 12, 5, 100, 24,
-            juce::Justification::centredLeft);
 }
 
 void ComparisonDock::resized() {
     const juce::ScopedLock lock(surfaceLock);
-    addButton->setBounds(110, 5, 26, 24);
-    viewport.setBounds(0, (int) kHeaderHeight, getWidth(),
-            juce::jmax(0, getHeight() - (int) kHeaderHeight));
-    pitchEditor->setBounds(0, (int) kHeaderHeight, getWidth(),
-            juce::jmax(0, getHeight() - (int) kHeaderHeight));
+    addButton->setBounds(8, kResizeGripHeight + 7, 26, 24);
+    viewport.setBounds(kSourceControlWidth, kResizeGripHeight,
+            juce::jmax(0, getWidth() - kSourceControlWidth),
+            juce::jmax(0, getHeight() - kResizeGripHeight));
+    pitchEditor->setBounds(0, kResizeGripHeight, getWidth(),
+            juce::jmax(0, getHeight() - kResizeGripHeight));
     strip->setSize(juce::jmax(viewport.getWidth(),
                     (int) (kCardInset * 2.f
                             + (float) cards.size() * (kCardWidth + kCardGap))),
@@ -676,7 +676,7 @@ void ComparisonDock::resized() {
 }
 
 void ComparisonDock::mouseDown(const juce::MouseEvent& event) {
-    if (event.position.y <= 8.f) {
+    if (event.position.y < (float) kResizeGripHeight) {
         resizeStartHeight = getHeight();
         resizing = true;
     }

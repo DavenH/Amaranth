@@ -55,6 +55,12 @@
     { "command": "assertState", "path": "comparison.cards.1.hasSurface", "equals": true },
     {
       "command": "assertState",
+      "path": "comparison.cards.0.surfaceView.height",
+      "op": "greaterThan",
+      "value": 220
+    },
+    {
+      "command": "assertState",
       "path": "comparison.cards.0.surfaceView.contextCreateCount",
       "op": "greaterThan",
       "value": 0
