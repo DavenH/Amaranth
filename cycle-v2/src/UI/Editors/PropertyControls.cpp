@@ -469,6 +469,10 @@ void PrecisionSlider::setMorphPresentation(Colour accent) {
     repaint();
 }
 
+void PrecisionSlider::setValueFromKeyboard(double value) {
+    applyKeyboardStep(value - getValue());
+}
+
 Rectangle<float> PrecisionSlider::visibleTrackBounds() const {
     const Rectangle<float> bounds = getLookAndFeel()
             .getSliderLayout(const_cast<PrecisionSlider&>(*this))

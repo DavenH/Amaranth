@@ -48,6 +48,7 @@ public:
     int getVertexParameterSliderCount() const;
     int getVertexGuideGainKnobCount() const;
     int getVertexGuideAttachmentButtonCount() const;
+    juce::String focusedMorphAxis() const;
 
     juce::MouseCursor cursorFor(juce::Point<float> position);
     void beginPointerInteraction(
@@ -57,6 +58,7 @@ public:
     void endPointerInteraction();
 
     void resized() override;
+    bool keyPressed(const juce::KeyPress& key) override;
 
 private:
     class ControlTarget;
@@ -81,6 +83,9 @@ private:
     bool adjustGuideGainFromKeyboard(
             const TrimeshExpandedHitRegion& region,
             float amount);
+    bool focusMorphControl(const juce::String& axis);
+    bool setFocusedMorphTo(float value);
+    bool toggleFocusedMorphLink();
     bool isControlEnabled(const TrimeshExpandedHitRegion& region) const;
     void updateControlEnabledStates();
 

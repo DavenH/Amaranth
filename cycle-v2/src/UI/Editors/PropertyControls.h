@@ -135,6 +135,7 @@ public:
     void setLandmarks(std::vector<Landmark> landmarks);
     void setTrackEndInset(float inset);
     void setMorphPresentation(juce::Colour accent);
+    void setValueFromKeyboard(double value);
     float getTrackEndInset() const { return trackEndInset; }
     juce::Rectangle<float> visibleTrackBounds() const;
     bool keyPressed(const juce::KeyPress& key) override;

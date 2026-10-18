@@ -17,6 +17,7 @@
 #include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UI/Editors/MorphKeyboardShortcuts.h"
 #include "UI/NodeCanvasCursorPolicy.h"
 #include "UI/NodeGroupPresentation.h"
 #include "UI/NodeGroupRenameCallout.h"
@@ -1312,6 +1313,26 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
         return true;
     }
 
+    if (isMorphKeyboardShortcut(key) && expandedNodeId.isNotEmpty()) {
+        if (Component* editor = editorCoordinator.host().component()) {
+            if (editor->keyPressed(key)) {
+                return true;
+            }
+        }
+    }
+
+    const Component* focused = Component::getCurrentlyFocusedComponent();
+    const bool canvasContext = focused == nullptr || focused == this;
+    if (canvasContext
+            && expandedNodeId.isEmpty()
+            && !guideEditorCoordinator.isOpen()
+            && presetSidebar != nullptr) {
+        if (const auto tab = workspaceSidebarTabForShortcut(key)) {
+            presetSidebar->setActiveTab(*tab);
+            return true;
+        }
+    }
+
     if (keyCode == KeyPress::upKey || keyCode == KeyPress::downKey) {
         const Node* selected = queries.findNode(selectedNodeId);
         if (selected != nullptr && selected->kind == NodeKind::Output) {
@@ -2051,6 +2072,9 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.selectedNodeId = selectedNodeId;
     result.selectedNodeIds = selectedNodeIds;
     result.expandedNodeId = expandedNodeId;
+    if (presetSidebar != nullptr) {
+        result.sidebarTab = workspaceSidebarTabName(presetSidebar->activeTab());
+    }
     result.editStatusMessage = editStatusMessage;
     const CanvasPerformanceMetrics::Snapshot metrics = performanceMetrics.snapshot();
     result.hoverRepaintRequestCount = metrics.triggers[

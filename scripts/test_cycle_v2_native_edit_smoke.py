@@ -45,18 +45,19 @@ class NativeEditSmoke:
                 matching.add(int(pid))
         return matching
 
-    def start(self):
-        pointer_probe = subprocess.run(
-            [CLICK, "p"],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if (pointer_probe.returncode != 0
-                or "Accessibility privileges not enabled" in pointer_probe.stderr):
-            raise AssertionError(
-                "CycleV2 native edit smoke requires Accessibility permission for cliclick"
+    def start(self, require_native_pointer=True):
+        if require_native_pointer:
+            pointer_probe = subprocess.run(
+                [CLICK, "p"],
+                check=False,
+                capture_output=True,
+                text=True,
             )
+            if (pointer_probe.returncode != 0
+                    or "Accessibility privileges not enabled" in pointer_probe.stderr):
+                raise AssertionError(
+                    "CycleV2 native edit smoke requires Accessibility permission for cliclick"
+                )
 
         existing_pids = self.app_pids()
         environment = os.environ.copy()
@@ -518,6 +519,25 @@ class NativeEditSmoke:
         self.focus_app()
         subprocess.run([
             "osascript", "-e", 'tell application "System Events" to key code 51'
+        ], check=True)
+        time.sleep(SETTLE_SECONDS)
+
+    def press_native_key(self, key):
+        self.focus_app()
+        key_codes = {
+            "left": 123,
+            "right": 124,
+            "space": 49,
+            "escape": 53,
+        }
+        if key in key_codes:
+            event = f"key code {key_codes[key]}"
+        else:
+            event = f'keystroke "{key}"'
+        subprocess.run([
+            "osascript",
+            "-e",
+            f'tell application "System Events" to {event}',
         ], check=True)
         time.sleep(SETTLE_SECONDS)
 
@@ -2270,6 +2290,70 @@ class NativeEditSmoke:
             slider,
         )
 
+    def contextual_keyboard_shortcut_sequence(self):
+        self.open_editor("waveMesh", trimesh=True)
+        self.command({
+            "command": "pointer",
+            "targetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+            "event": "click",
+        })
+
+        self.press_native_key("r")
+        state = self.graph_state()
+        assert state["expandedNodeControls"]["focusedMorphAxis"] == "red", state
+        self.press_native_key("left")
+        assert float(self.parameters(self.inspect("waveMesh"))["red"]) == 0.0
+        self.press_native_key("l")
+        assert self.parameters(self.inspect("waveMesh"))["link.red"] == "1"
+        self.press_native_key("b")
+        self.press_native_key("right")
+        assert float(self.parameters(self.inspect("waveMesh"))["blue"]) == 1.0
+
+        self.press_native_key("space")
+        assert self.graph_state()["performance"]["previewPlaying"]
+        self.press_native_key("space")
+        assert not self.graph_state()["performance"]["previewPlaying"]
+
+        self.press_native_key("escape")
+        state = self.graph_state()
+        assert state["expandedNodeId"] == ""
+        self.command({
+            "command": "pointer",
+            "area": "canvas",
+            "event": "click",
+            "x": round(state["width"] * 0.8),
+            "y": round(state["height"] * 0.85),
+        })
+        self.press_native_key("c")
+        assert self.graph_state()["sidebarTab"] == "Curves"
+        self.press_native_key("p")
+        assert self.graph_state()["sidebarTab"] == "Presets"
+
+        self.open_editor("env")
+        self.command({
+            "command": "pointer",
+            "targetId": "expanded:env.envelopeEditor.morph.blue",
+            "event": "click",
+        })
+        self.press_native_key("r")
+        state = self.graph_state()
+        controls = state["expandedNodeControls"]["effect2D"]
+        assert controls["focusedMorphAxis"] == "red", controls
+        self.press_native_key("left")
+        assert float(self.parameters(self.inspect("env"))["red"]) == 0.0
+        self.press_native_key("l")
+        state = self.graph_state()
+        controls = state["expandedNodeControls"]["effect2D"]
+        assert not controls["panelState"]["redLinked"], controls
+        self.press_native_key("b")
+        self.press_native_key("right")
+        assert float(self.parameters(self.inspect("env"))["blue"]) == 1.0
+
+        self.press_native_key("space")
+        assert self.graph_state()["performance"]["previewPlaying"]
+        self.press_native_key("space")
+        assert not self.graph_state()["performance"]["previewPlaying"]
+
     def reverb_preview_sequence(self):
         self.command({
             "command": "openGraph",
@@ -2317,7 +2401,9 @@ class NativeEditSmoke:
         self.release_drag(second_destination)
 
     def run(self, sequences):
-        self.start()
+        self.start(require_native_pointer=any(
+            sequence != "keyboard-shortcuts" for sequence in sequences
+        ))
         try:
             self.command({
                 "command": "openGraph",
@@ -2339,6 +2425,7 @@ class NativeEditSmoke:
                 "spectral-trimesh": self.spectral_trimesh_sequence,
                 "causal-trimesh": self.causal_trimesh_sequence,
                 "trimesh-morph-drag": self.trimesh_morph_drag_sequence,
+                "keyboard-shortcuts": self.contextual_keyboard_shortcut_sequence,
                 "reverb-preview": self.reverb_preview_sequence,
                 "hover-cursor": self.hover_cursor_sequence,
             }
@@ -2373,6 +2460,7 @@ if __name__ == "__main__":
         "spectral-trimesh",
         "causal-trimesh",
         "trimesh-morph-drag",
+        "keyboard-shortcuts",
         "reverb-preview",
         "hover-cursor",
     }

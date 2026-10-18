@@ -13,6 +13,8 @@
 #include "UI/EnvelopeToolbarMetrics.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/EffectEnableButton.h"
+#include "UI/Editors/MorphKeyboardShortcuts.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UiIconData.h"
 
 namespace CycleV2 {
@@ -92,6 +94,8 @@ struct EnvelopeEditorComponent::Impl {
         purposeLabel.setJustificationType(Justification::centredRight);
         redMorph.slider.setMorphPresentation(Colour(0xffd65a5a));
         blueMorph.slider.setMorphPresentation(Colour(0xff5f91e8));
+        redMorph.slider.setComponentID("envelopeEditor.morph.red");
+        blueMorph.slider.setComponentID("envelopeEditor.morph.blue");
         owner.addAndMakeVisible(timeLabel);
         owner.addAndMakeVisible(purposeLabel);
         owner.addAndMakeVisible(mode);
@@ -149,6 +153,8 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(CurveEditorWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
     bindContinuousControls({ &impl->redMorph, &impl->blueMorph });
+    impl->redMorph.slider.addKeyListener(this);
+    impl->blueMorph.slider.addKeyListener(this);
     impl->enabled.setComponentID("envelopeEditor.enabled");
     setHeaderAction(impl->enabled);
     bindDiscreteAction(impl->enabled, [] {});
@@ -177,7 +183,10 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(CurveEditorWidget& target) :
     };
 }
 
-EnvelopeEditorComponent::~EnvelopeEditorComponent() = default;
+EnvelopeEditorComponent::~EnvelopeEditorComponent() {
+    impl->redMorph.slider.removeKeyListener(this);
+    impl->blueMorph.slider.removeKeyListener(this);
+}
 
 String EnvelopeEditorComponent::getTooltip() {
     const Point<float> position = getLocalPoint(
@@ -191,6 +200,81 @@ String EnvelopeEditorComponent::getTooltip() {
         return impl->sustain.getTooltip();
     }
     return {};
+}
+
+bool EnvelopeEditorComponent::keyPressed(const KeyPress& key) {
+    if (key.getKeyCode() == KeyPress::spaceKey) {
+        return false;
+    }
+    return handleMorphKeyboardShortcut(key);
+}
+
+bool EnvelopeEditorComponent::keyPressed(
+        const KeyPress& key,
+        Component* source) {
+    if (source != &impl->redMorph.slider
+            && source != &impl->blueMorph.slider) {
+        return false;
+    }
+    return keyPressed(key);
+}
+
+String EnvelopeEditorComponent::focusedMorphAxis() const {
+    if (impl->redMorph.slider.hasKeyboardFocus(false)) {
+        return "red";
+    }
+    if (impl->blueMorph.slider.hasKeyboardFocus(false)) {
+        return "blue";
+    }
+    return {};
+}
+
+bool EnvelopeEditorComponent::handleMorphKeyboardShortcut(const KeyPress& key) {
+    const String axis = morphAxisForKeyboardShortcut(key);
+    if (axis.isNotEmpty()) {
+        return focusMorphAxis(axis);
+    }
+
+    PrecisionSlider* slider = focusedMorphSlider();
+    if (slider == nullptr) {
+        return false;
+    }
+    if (const auto pole = morphPoleForKeyboardShortcut(key)) {
+        slider->setValueFromKeyboard(*pole);
+        return true;
+    }
+    if (isMorphLinkKeyboardShortcut(key)) {
+        bool& linked = slider == &impl->redMorph.slider
+                ? impl->redLinked
+                : impl->blueLinked;
+        linked = !linked;
+        widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
+        requestRepaint();
+        return true;
+    }
+    return false;
+}
+
+bool EnvelopeEditorComponent::focusMorphAxis(const String& axis) {
+    PrecisionSlider* slider = axis == "red"
+            ? &impl->redMorph.slider
+            : axis == "blue" ? &impl->blueMorph.slider : nullptr;
+    if (slider == nullptr) {
+        return false;
+    }
+    slider->grabKeyboardFocus();
+    slider->repaint();
+    return true;
+}
+
+PrecisionSlider* EnvelopeEditorComponent::focusedMorphSlider() const {
+    if (impl->redMorph.slider.hasKeyboardFocus(false)) {
+        return &impl->redMorph.slider;
+    }
+    if (impl->blueMorph.slider.hasKeyboardFocus(false)) {
+        return &impl->blueMorph.slider;
+    }
+    return nullptr;
 }
 
 Rectangle<float> EnvelopeEditorComponent::editorControlBounds() const {
@@ -388,6 +472,15 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty("redMorph", impl->redMorph.slider.getValue());
     state.setProperty("enabled", impl->enabled.getToggleState());
     state.setProperty("blueMorph", impl->blueMorph.slider.getValue());
+    state.setProperty("focusedMorphAxis", focusedMorphAxis());
+    state.setProperty(
+            "redMorphKeyboardIconBounds",
+            editorBoundsToVar(keyboardFocusIndicatorBounds(
+                    impl->redMorph.slider.getBounds().toFloat())));
+    state.setProperty(
+            "blueMorphKeyboardIconBounds",
+            editorBoundsToVar(keyboardFocusIndicatorBounds(
+                    impl->blueMorph.slider.getBounds().toFloat())));
     state.setProperty("viewAxis", impl->viewAxis);
     state.setProperty("modeLabel", "Purpose");
     state.setProperty("mode", envelopePurposeLabel(impl->mode.purpose()));

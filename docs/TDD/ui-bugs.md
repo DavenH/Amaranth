@@ -1,5 +1,21 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Full CTest run has broad pre-existing Cycle V2 failures
+
+On 2026-10-18, `ctest --test-dir build/tests -V` passed 1,267 of 1,353 tests
+while contextual-keyboard work was under verification. The 86 unrelated
+failures span previously recorded preset-fixture, Trimesh model/guide, graph
+audio, and spectral-reference issues. Four cases ended in `SIGSEGV`, including
+`A Trimesh vertex edit has a localized canonical JSON diff` and
+`Trimesh node model preserves live mesh pointers for equivalent publications`.
+The canonical-JSON case reproduces in isolation at
+`TestGraphSerializer.cpp:652` (exit 139).
+The four new `[keyboard]` cases pass within the focused 26-case keyboard suite
+(454 assertions), and the 45-command UI fixture passes. Artifact:
+`build/tests/Testing/Temporary/LastTest.log`; failed-case index:
+`build/tests/Testing/Temporary/LastTestsFailed.log`. Status: open and unrelated;
+continue tracking the existing broad-suite baseline separately.
+
 ## P2: Factory preset graph tests expect stale saved topology
 
 On 2026-10-17, `[cycle-v2][graph][presets]` reported five failures in nine

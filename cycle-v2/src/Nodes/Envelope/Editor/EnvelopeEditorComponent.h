@@ -6,13 +6,18 @@
 
 namespace CycleV2 {
 
+class PrecisionSlider;
+
 class EnvelopeEditorComponent final : public CurveExpandedEditorComponent,
-                                      public TooltipClient {
+                                      public TooltipClient,
+                                      private juce::KeyListener {
 public:
-    explicit EnvelopeEditorComponent(CurveEditorWidget& widget);
+    explicit EnvelopeEditorComponent(CurveEditorWidget& target);
     ~EnvelopeEditorComponent() override;
 
     String getTooltip() override;
+    bool keyPressed(const juce::KeyPress& key) override;
+    juce::String focusedMorphAxis() const;
 
 private:
     struct Impl;
@@ -34,6 +39,10 @@ private:
     bool handleVertexParameterMouseDown(Point<float> position, Rectangle<float> controls);
     bool dragMorph(Point<float> position);
     bool dragVertexParameter(Point<float> position);
+    bool keyPressed(const juce::KeyPress& key, juce::Component* source) override;
+    bool handleMorphKeyboardShortcut(const juce::KeyPress& key);
+    bool focusMorphAxis(const juce::String& axis);
+    PrecisionSlider* focusedMorphSlider() const;
 
     std::unique_ptr<Impl> impl;
 };

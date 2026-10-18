@@ -14,6 +14,37 @@ constexpr int contentInset = 10;
 
 }
 
+std::optional<WorkspaceSidebarTab> workspaceSidebarTabForShortcut(
+        const juce::KeyPress& key) {
+    if (key.getModifiers().isAnyModifierKeyDown()) {
+        return std::nullopt;
+    }
+    const int keyCode = juce::CharacterFunctions::toLowerCase(key.getKeyCode());
+    if (keyCode == 'c') {
+        return WorkspaceSidebarTab::Curves;
+    }
+    if (keyCode == 'p') {
+        return WorkspaceSidebarTab::Presets;
+    }
+    return std::nullopt;
+}
+
+juce::String workspaceSidebarTabName(WorkspaceSidebarTab tab) {
+    switch (tab) {
+        case WorkspaceSidebarTab::Curves:
+            return "Curves";
+        case WorkspaceSidebarTab::Presets:
+            return "Presets";
+        case WorkspaceSidebarTab::Patterns:
+            return "Patterns";
+        case WorkspaceSidebarTab::Nodes:
+            return "Nodes";
+    }
+
+    jassertfalse;
+    return {};
+}
+
 class InlinePresetBrowser::CompactList final : public juce::Component {
 public:
     using Callback = std::function<void()>;
@@ -339,22 +370,29 @@ void InlinePresetBrowser::setPatterns(
 
 void InlinePresetBrowser::setActiveTab(WorkspaceSidebarTab nextTab) {
     if (tab == nextTab) {
+        if (tab == WorkspaceSidebarTab::Presets) {
+            focusPresetSearch();
+        }
         return;
     }
     tab = nextTab;
     updateVisibility();
     if (tab == WorkspaceSidebarTab::Presets) {
-        juce::Timer::callAfterDelay(
-                0,
-                [safeSearch = juce::Component::SafePointer<juce::TextEditor>(
-                        &toolbar.searchField())] {
-                    if (safeSearch != nullptr && safeSearch->isShowing()) {
-                        safeSearch->grabKeyboardFocus();
-                    }
-                });
+        focusPresetSearch();
     }
     onTabChanged(tab);
     repaint();
+}
+
+void InlinePresetBrowser::focusPresetSearch() {
+    juce::Timer::callAfterDelay(
+            0,
+            [safeSearch = juce::Component::SafePointer<juce::TextEditor>(
+                    &toolbar.searchField())] {
+                if (safeSearch != nullptr && safeSearch->isShowing()) {
+                    safeSearch->grabKeyboardFocus();
+                }
+            });
 }
 
 int InlinePresetBrowser::visiblePresetCount() const {

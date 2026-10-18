@@ -36,6 +36,17 @@ TEST_CASE("Property slider layout preserves useful travel or switches compact fo
     REQUIRE_FALSE(compact.track.intersects(compact.value.toFloat()));
 }
 
+TEST_CASE("Keyboard focus indicator stays inside a morph control",
+        "[cycle-v2][ui][property-controls][keyboard]") {
+    const Rectangle<float> control { 20.f, 30.f, 180.f, 30.f };
+    const Rectangle<float> icon = keyboardFocusIndicatorBounds(control);
+
+    REQUIRE(control.contains(icon));
+    REQUIRE(icon.getWidth() == Catch::Approx(14.f));
+    REQUIRE(icon.getHeight() == Catch::Approx(10.f));
+    REQUIRE(control.getRight() - icon.getRight() == Catch::Approx(2.f));
+}
+
 TEST_CASE("Property group labels establish scope without a surrounding box",
         "[cycle-v2][ui][property-controls][group-label]") {
     ScopedJuceInitialiser_GUI juce;

@@ -75,6 +75,7 @@ struct NodeCanvasAutomationPresentation {
     uint64_t statusRepaintRequestCount {};
     std::vector<juce::String> selectedNodeIds;
     int hoveredEdgeIndex { -1 };
+    juce::String sidebarTab;
 };
 
 struct NodeCanvasAutomationContext {

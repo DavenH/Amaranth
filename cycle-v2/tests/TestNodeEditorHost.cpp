@@ -5,6 +5,7 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeParameterMap.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
@@ -15,6 +16,7 @@
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Envelope/Editor/EnvelopeAxisScaleSelector.h"
+#include "Nodes/Envelope/Editor/EnvelopeEditorComponent.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
@@ -3997,6 +3999,118 @@ TEST_CASE("Clicking an open Trimesh Guide selector dismisses its popup",
     REQUIRE(commands.showTrimeshGuideAttachmentMenu(
             "mesh", "amp", { 100, 100, 40, 30 }));
     REQUIRE_FALSE(commands.hasOpenTrimeshGuideAttachmentMenuFor("mesh", "amp"));
+}
+
+TEST_CASE("Trimesh morph shortcuts focus, reach poles, toggle links, and preserve Space",
+        "[cycle-v2][editor][trimesh][keyboard]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    owner.setBounds(0, 0, 900, 620);
+    owner.addToDesktop(ComponentPeer::windowIsTemporary);
+    owner.setVisible(true);
+
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+
+    REQUIRE(host.bind(
+            document.graph().findNode("mesh"),
+            owner.getLocalBounds(),
+            document.revision()));
+    auto* editor = dynamic_cast<TrimeshExpandedEditorComponent*>(host.component());
+    REQUIRE(editor != nullptr);
+    REQUIRE_FALSE(editor->keyPressed(KeyPress(KeyPress::spaceKey)));
+
+    REQUIRE(editor->keyPressed(KeyPress('r')));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::leftKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.f));
+    REQUIRE(document.undo());
+
+    REQUIRE(editor->keyPressed(KeyPress('l')));
+    REQUIRE_FALSE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .boolValue("link.red", true));
+    REQUIRE(document.undo());
+
+    REQUIRE(editor->keyPressed(KeyPress('y')));
+    REQUIRE(editor->focusedMorphAxis() == "yellow");
+    REQUIRE(editor->keyPressed(KeyPress('b')));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("blue", 0.5f) == Catch::Approx(1.f));
+}
+
+TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
+        "[cycle-v2][editor][envelope][keyboard]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    owner.setBounds(0, 0, 900, 684);
+    owner.addToDesktop(ComponentPeer::windowIsTemporary);
+    owner.setVisible(true);
+
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    EnvelopeEditorResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+
+    REQUIRE(host.bind(
+            document.graph().findNode("env"),
+            owner.getLocalBounds(),
+            document.revision()));
+    auto* editor = dynamic_cast<EnvelopeEditorComponent*>(host.component());
+    REQUIRE(editor != nullptr);
+    REQUIRE_FALSE(editor->keyPressed(KeyPress(KeyPress::spaceKey)));
+    REQUIRE_FALSE(editor->keyPressed(KeyPress('y')));
+
+    REQUIRE(editor->keyPressed(KeyPress('r')));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::leftKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.f));
+    REQUIRE(document.undo());
+
+    REQUIRE(editor->keyPressed(KeyPress('l')));
+    DynamicObject state;
+    host.appendAutomationState(state);
+    const var effectState = state.getProperty("effect2D");
+    const var panelState = effectState
+            .getProperty("panelState", {});
+    REQUIRE_FALSE((bool) panelState.getProperty("redLinked", true));
+    REQUIRE_FALSE(document.isDirty());
+
+    REQUIRE(editor->keyPressed(KeyPress('b')));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("blue", 0.5f) == Catch::Approx(1.f));
 }
 
 TEST_CASE("Trimesh link toggles survive rebind and undo",

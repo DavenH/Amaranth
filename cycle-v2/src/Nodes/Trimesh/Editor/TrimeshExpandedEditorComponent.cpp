@@ -275,6 +275,17 @@ void TrimeshExpandedEditorComponent::mouseUp(const MouseEvent&) {
     controls.endPointerInteraction();
 }
 
+bool TrimeshExpandedEditorComponent::keyPressed(const KeyPress& key) {
+    if (key.getKeyCode() == KeyPress::spaceKey) {
+        return false;
+    }
+    return controls.keyPressed(key);
+}
+
+String TrimeshExpandedEditorComponent::focusedMorphAxis() const {
+    return controls.focusedMorphAxis();
+}
+
 void TrimeshExpandedEditorComponent::setTrimeshPrimaryAxis(const String& axis) {
     if (delegate != nullptr) {
         delegate->setTrimeshPrimaryAxisValue(axis);
