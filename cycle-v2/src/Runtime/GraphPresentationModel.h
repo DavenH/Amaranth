@@ -117,6 +117,12 @@ public:
             const String& probeId,
             size_t rasterRowCount,
             int midiNote);
+    std::vector<std::optional<GraphPreviewResult::SignalProbePreview>> captureProbePreviews(
+            const NodeGraph& graph,
+            const std::vector<String>& probeIds,
+            size_t rasterRowCount,
+            int midiNote);
+    bool prepareProbeCaptureForNode(const NodeGraph& graph, const String& nodeId);
 
 private:
     using AsyncRefresh = PresentationRefreshScheduler::AsyncRefresh;
@@ -136,6 +142,9 @@ private:
             const NodeGraph& graph,
             GraphExecutionPlan& plan,
             const std::vector<String>& nodeIds);
+    void refreshConfigurationForStep(
+            const NodeGraph& graph,
+            GraphExecutionStep& step);
     void refreshPreviewMorphBindings();
     bool executeAsyncProducts(
             AsyncRefresh& refresh,

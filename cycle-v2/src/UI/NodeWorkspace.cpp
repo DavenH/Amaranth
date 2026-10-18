@@ -4,6 +4,25 @@ namespace CycleV2 {
 
 namespace {
 
+File factoryReferenceDirectory() {
+    const File bundle = File::getSpecialLocation(File::currentExecutableFile)
+            .getParentDirectory().getParentDirectory()
+            .getChildFile("Resources/References");
+    if (bundle.isDirectory()) {
+        return bundle;
+    }
+  #if defined(CYCLE_V2_SOURCE_DIR)
+    return File(CYCLE_V2_SOURCE_DIR).getChildFile("content/references");
+  #else
+    return {};
+  #endif
+}
+
+File userReferenceDirectory() {
+    return File::getSpecialLocation(File::userApplicationDataDirectory)
+            .getChildFile("Amaranth Audio/Cycle V2/References");
+}
+
 var rectangleToVar(Rectangle<float> bounds) {
     auto* object = new DynamicObject();
     object->setProperty("x", bounds.getX());
@@ -25,12 +44,27 @@ var pointerTarget(const String& id, const String& kind, Rectangle<float> bounds)
 
 NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
         audioEngine(engine)
+    ,   referenceLibrary(factoryReferenceDirectory(), userReferenceDirectory())
+    ,   comparisonDock(canvas, referenceLibrary, engine)
     ,   keyboard(keyboardState, engine) {
     setOpaque(true);
     addAndMakeVisible(canvas);
+    addAndMakeVisible(comparisonDock);
+    comparisonDock.setVisible(false);
+    comparisonDock.setHeightChangeCallback([this](int height) {
+        comparisonDockHeight = height;
+        resized();
+    });
+    canvas.setComparisonRefreshCallback([this] {
+        comparisonDock.refreshCaptures();
+    });
+    canvas.setComparisonRenderCallbacks(
+            [this](float scaleFactor) { comparisonDock.renderOpenGL(scaleFactor); },
+            [this] { comparisonDock.releaseOpenGLResources(); });
     canvas.addAndMakeVisible(keyboard);
     canvas.setOverlayOcclusionChangedCallback([this] {
         layoutPerformanceKeyboard();
+        updateComparisonVisibility();
     });
     canvas.setPreviewPlaybackToggleCallback([this] {
         togglePreviewPlayback();
@@ -66,6 +100,8 @@ NodeWorkspace::~NodeWorkspace() {
     stopTimer();
     audioEngine.setMidiRecordingEnabled(false);
     canvas.setOverlayOcclusionChangedCallback({});
+    canvas.setComparisonRefreshCallback({});
+    canvas.clearComparisonRenderCallbacks();
     canvas.setPreviewPlaybackToggleCallback({});
     keyboard.setControllerValueChangedCallback({});
     keyboard.setControllerGestureStartedCallback({});
@@ -269,6 +305,8 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     publishAudioPlan(status, true);
     layoutPerformanceKeyboard();
+    updateComparisonVisibility();
+    comparisonDock.refreshCaptures();
     canvas.presetLoadWorkspaceStageCompleted(
             CanvasPerformanceMetrics::PresetLoadWorkspaceStage::Layout);
     return true;
@@ -294,6 +332,7 @@ var NodeWorkspace::exportAutomationState() const {
     if (auto* object = state.getDynamicObject()) {
         object->setProperty("performance", performanceStateForAutomation());
         object->setProperty("liveOutputMeter", outputMeterStateForAutomation());
+        object->setProperty("comparison", comparisonDock.exportAutomationState());
     }
     return state;
 }
@@ -304,6 +343,19 @@ String NodeWorkspace::exportGraphJson() const {
 
 bool NodeWorkspace::openNodeEditorForAutomation(const String& nodeId) {
     return canvas.openNodeEditorForAutomation(nodeId);
+}
+
+bool NodeWorkspace::pinComparisonSpyForAutomation(const String& probeId) {
+    return canvas.pinComparisonSpy(probeId);
+}
+
+bool NodeWorkspace::selectReferenceForAutomation(const String& referenceId) {
+    String error;
+    if (!referenceLibrary.select(referenceId, error)) {
+        return false;
+    }
+    comparisonDock.refreshCaptures();
+    return true;
 }
 
 bool NodeWorkspace::addNodeForAutomation(const String& kind, Point<float> position, String& nodeId) {
@@ -406,6 +458,18 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
     Array<var>* targets = resultObject->getProperty("targets").getArray();
     if (targets == nullptr) {
         return result;
+    }
+    var workspaceTarget = pointerTarget("comparisonWorkspace", "workspace",
+            getLocalBounds().toFloat());
+    workspaceTarget.getDynamicObject()->setProperty("screenBounds",
+            rectangleToVar(getScreenBounds().toFloat()));
+    targets->add(workspaceTarget);
+    if (comparisonDockVisible) {
+        var dockTarget = pointerTarget("comparisonDock", "comparison",
+                comparisonDock.getBounds().toFloat());
+        dockTarget.getDynamicObject()->setProperty("screenBounds",
+                rectangleToVar(comparisonDock.getScreenBounds().toFloat()));
+        targets->add(dockTarget);
     }
     for (const auto& [id, bounds] : canvas.presetSidebarPointerTargetsForAutomation()) {
         targets->add(pointerTarget(id, "presetSidebar", bounds));
@@ -694,11 +758,31 @@ StandaloneAudioEngine::LiveCapture NodeWorkspace::captureLiveAudioForAutomation(
 }
 
 void NodeWorkspace::resized() {
-    canvas.setBounds(getLocalBounds());
+    auto bounds = getLocalBounds();
+    if (comparisonDockVisible) {
+        comparisonDock.setBounds(bounds.removeFromBottom(
+                juce::jmin(comparisonDockHeight, juce::jmax(0, bounds.getHeight() - 380))));
+    }
+    canvas.setBounds(bounds);
     layoutPerformanceKeyboard();
 }
 
+void NodeWorkspace::updateComparisonVisibility() {
+    const bool shouldShow = canvas.hasTrimeshEditorOpen();
+    if (comparisonDockVisible == shouldShow) {
+        return;
+    }
+    comparisonDockVisible = shouldShow;
+    comparisonDock.setVisible(shouldShow);
+    resized();
+    if (shouldShow) {
+        comparisonDock.refreshCaptures();
+    }
+}
+
 void NodeWorkspace::timerCallback() {
+    updateComparisonVisibility();
+    comparisonDock.syncAuditionState();
     drainRecordedMidi();
     const auto status = audioEngine.status();
     updateOutputMeter(status);

@@ -2,6 +2,7 @@
 
 #include "Nodes/Trimesh/Panel/TrimeshPanel2D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
+#include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelHostDelegate.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelHosts.h"

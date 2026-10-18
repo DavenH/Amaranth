@@ -295,3 +295,55 @@ TEST_CASE("Signal probe commands reattach remove and restore through undo", "[cy
     REQUIRE(document.undo());
     REQUIRE(document.graph().findSignalProbe(probeId) != nullptr);
 }
+
+TEST_CASE("Pinned Spy batch matches targeted capture at one comparison note",
+        "[cycle-v2][probe][comparison][batch]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal,
+            ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal,
+            ConnectionKind::Signal });
+    graph.addEdge({ "add", "out", "out", "time", PortDomain::TimeSignal,
+            ConnectionKind::Signal });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 2, 0.5f).succeeded());
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(graph, graph.getRevision()));
+
+    std::vector<String> ids;
+    for (const auto& probe : graph.getSignalProbes()) {
+        ids.push_back(probe.id);
+    }
+    ids.push_back(DefaultOutputProbeResolver::probeId);
+    constexpr int note = 57;
+    const size_t rows = GraphPreviewExecutor::sourceFrameCountForMidiNote(note);
+    const auto batch = presentation.captureProbePreviews(graph, ids, rows, note);
+    REQUIRE(batch.size() == ids.size());
+    for (size_t index = 0; index < ids.size(); ++index) {
+        const auto single = presentation.captureProbePreview(graph, ids[index], rows, note);
+        REQUIRE(batch[index].has_value() == single.has_value());
+        if (single.has_value()) {
+            REQUIRE(batch[index]->values == single->values);
+            REQUIRE(batch[index]->domain == single->domain);
+        }
+    }
+
+    const auto& plan = presentation.compileResult().plan;
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = note;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    GraphAudioExecutor executor;
+    const auto batched = executor.processProbes(
+            plan, plan.signalProbes, rows, {}, voice, 512);
+    size_t separateStepVisits {};
+    for (const auto& probe : plan.signalProbes) {
+        separateStepVisits += executor.processProbe(
+                plan, probe, rows, {}, voice, 512).processedStepCount;
+    }
+    REQUIRE(batched.processedStepCount <= separateStepVisits);
+}

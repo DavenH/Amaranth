@@ -62,6 +62,7 @@ struct PresetPresentation {
     std::optional<juce::Point<float>> outputSpyPosition;
     bool outputSpyVisible { true };
     bool outputSpyFrequencyView { true };
+    std::vector<juce::String> comparisonSpyPins;
 
     bool empty() const;
 };

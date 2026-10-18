@@ -2,6 +2,9 @@
 
 #include <algorithm>
 
+#include <Algo/Resampling.h>
+#include <Array/Buffer.h>
+
 namespace CycleV2 {
 
 using namespace juce;
@@ -78,6 +81,10 @@ void StandaloneAudioEngine::stop() {
     pendingGraph.store(nullptr, std::memory_order_release);
     retiredGraph.store(nullptr, std::memory_order_release);
     graphOwners.clear();
+    activeReference = nullptr;
+    pendingReference.store(nullptr, std::memory_order_release);
+    referenceOwners.clear();
+    referencePlaying.store(false, std::memory_order_release);
 }
 
 bool StandaloneAudioEngine::publishGraph(
@@ -142,6 +149,53 @@ StandaloneAudioEngine::LiveCapture StandaloneAudioEngine::captureLiveAudio(
     return liveCapture.waitForCompletion((int) timeoutMs);
 }
 
+bool StandaloneAudioEngine::startReferenceAudition(const PitchedSample& sample) {
+    if (sample.size() == 0 || sample.samplerate <= 0) {
+        return false;
+    }
+    const double rate = currentSampleRate.load(std::memory_order_acquire);
+    if (rate <= 0.0) {
+        return false;
+    }
+    const auto found = std::find_if(referenceOwners.begin(), referenceOwners.end(),
+            [&](const auto& owner) {
+                return owner->sourcePath == sample.lastLoadedFilePath
+                        && owner->outputSampleRate == rate;
+            });
+    if (found != referenceOwners.end()) {
+        referenceStopRequested.store(false, std::memory_order_release);
+        pendingReference.store(found->get(), std::memory_order_release);
+        referencePlaying.store(true, std::memory_order_release);
+        return true;
+    }
+
+    auto prepared = std::make_unique<PreparedReference>();
+    prepared->sourcePath = sample.lastLoadedFilePath;
+    prepared->outputSampleRate = rate;
+    const int count = juce::jmax(2,
+            juce::roundToInt((double) sample.size() * rate / sample.samplerate));
+    prepared->left.resize((size_t) count);
+    prepared->right.resize((size_t) count);
+    Resampling::linResample(sample.audio.left,
+            Buffer<float>(prepared->left.data(), count));
+    const Buffer<float> right = sample.audio.numChannels > 1
+            ? sample.audio.right : sample.audio.left;
+    Resampling::linResample(right,
+            Buffer<float>(prepared->right.data(), count));
+
+    PreparedReference* pointer = prepared.get();
+    referenceOwners.push_back(std::move(prepared));
+    referenceStopRequested.store(false, std::memory_order_release);
+    pendingReference.store(pointer, std::memory_order_release);
+    referencePlaying.store(true, std::memory_order_release);
+    return true;
+}
+
+void StandaloneAudioEngine::stopReferenceAudition() {
+    referenceStopRequested.store(true, std::memory_order_release);
+    referencePlaying.store(false, std::memory_order_release);
+}
+
 bool StandaloneAudioEngine::enqueueMidiMessage(
         const MidiMessage& message,
         MidiEventSource source) {
@@ -199,6 +253,7 @@ void StandaloneAudioEngine::audioDeviceIOCallbackWithContext(
             currentSampleRate.load(std::memory_order_relaxed),
             currentTimeSeconds(),
             measuredSample);
+    renderReferenceAudition(outputChannelData, outputChannelCount, frameCount);
 
     {
         AudioPerformanceMetrics::ScopedRealtimeStage stage(
@@ -212,6 +267,44 @@ void StandaloneAudioEngine::audioDeviceIOCallbackWithContext(
     }
     if (measuredSample != nullptr) {
         audioPerformanceMetrics.publishRealtimeSample(*measuredSample);
+    }
+}
+
+void StandaloneAudioEngine::renderReferenceAudition(
+        float* const* outputChannelData,
+        int outputChannelCount,
+        int frameCount) {
+    if (referenceStopRequested.exchange(false, std::memory_order_acq_rel)) {
+        activeReference = nullptr;
+        pendingReference.store(nullptr, std::memory_order_release);
+        referencePlaying.store(false, std::memory_order_release);
+        return;
+    }
+    if (PreparedReference* pending = pendingReference.exchange(
+                nullptr, std::memory_order_acq_rel)) {
+        activeReference = pending;
+        referencePosition = 0;
+    }
+    if (activeReference == nullptr || outputChannelCount <= 0) {
+        return;
+    }
+
+    const size_t remaining = activeReference->left.size() - referencePosition;
+    const int count = (int) juce::jmin((size_t) frameCount, remaining);
+    if (count > 0) {
+        if (outputChannelData[0] != nullptr) {
+            Buffer<float>(activeReference->left.data() + referencePosition, count)
+                    .copyTo(Buffer<float>(outputChannelData[0], count));
+        }
+        if (outputChannelCount > 1 && outputChannelData[1] != nullptr) {
+            Buffer<float>(activeReference->right.data() + referencePosition, count)
+                    .copyTo(Buffer<float>(outputChannelData[1], count));
+        }
+        referencePosition += (size_t) count;
+    }
+    if (referencePosition >= activeReference->left.size()) {
+        activeReference = nullptr;
+        referencePlaying.store(false, std::memory_order_release);
     }
 }
 

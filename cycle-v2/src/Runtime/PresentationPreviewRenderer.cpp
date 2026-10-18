@@ -238,4 +238,57 @@ PresentationPreviewRenderer::captureProbePreview(
     return preview;
 }
 
+std::vector<std::optional<GraphPreviewResult::SignalProbePreview>>
+PresentationPreviewRenderer::captureProbePreviews(
+        const NodeGraph& graph,
+        const GraphExecutionPlan& plan,
+        const std::vector<String>& probeIds,
+        size_t rasterRowCount,
+        int midiNote,
+        const std::array<int, 128>& controllerValues,
+        GraphPresentationPerformanceMetrics& performance) const {
+    std::vector<std::optional<GraphPreviewResult::SignalProbePreview>> previews(
+            probeIds.size());
+    std::vector<CompiledSignalProbe> addresses;
+    std::vector<size_t> destinationIndices;
+    for (size_t index = 0; index < probeIds.size(); ++index) {
+        const auto address = probeAddressFor(graph, plan, probeIds[index]);
+        if (address.has_value()) {
+            addresses.push_back(*address);
+            destinationIndices.push_back(index);
+        }
+    }
+    if (addresses.empty()) {
+        return previews;
+    }
+
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = jlimit(0, 127, midiNote);
+    for (size_t controller = 0; controller < controllerValues.size(); ++controller) {
+        voice.controls.controllers[controller] = (float) controllerValues[controller] / 127.f;
+    }
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+
+    GraphAudioExecutor captureExecutor;
+    const uint64_t executionStartedAt = performance.timestamp();
+    const GraphAudioResult audio = captureExecutor.processProbes(
+            plan, addresses, rasterRowCount, {}, voice, kExpandedProbeColumnCount);
+    performance.record(GraphPresentationPerformanceMetrics::Stage::ExpandedProbeExecution,
+            performance.timestamp() - executionStartedAt);
+
+    const uint64_t extractionStartedAt = performance.timestamp();
+    GraphPreviewExecutor extractor;
+    for (size_t index = 0; index < addresses.size(); ++index) {
+        auto preview = extractor.captureProbe(plan, audio, addresses[index]);
+        if (preview.connected) {
+            GraphPreviewExecutor::reduceProbeRows(preview,
+                    std::min(rasterRowCount, kMaximumExpandedProbeRows));
+            previews[destinationIndices[index]] = std::move(preview);
+        }
+    }
+    performance.record(GraphPresentationPerformanceMetrics::Stage::ExpandedProbeExtraction,
+            performance.timestamp() - extractionStartedAt);
+    return previews;
+}
+
 }

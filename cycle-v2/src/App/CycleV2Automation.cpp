@@ -297,6 +297,15 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return exportGraph(commandValue);
         case Command::OpenGraph:
             return openGraph(commandValue);
+        case Command::ResizeWindow: {
+            const int width = intProperty(commandValue, "width");
+            const int height = intProperty(commandValue, "height");
+            if (width < 640 || height < 480) {
+                return failedResult("resizeWindow", "Window size is too small");
+            }
+            window.setSize(width, height);
+            return okResult("resizeWindow", snapshotState());
+        }
         case Command::SaveGraph:
             return saveGraph(commandValue);
         case Command::GeneratePresetPreview:
@@ -315,6 +324,18 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return captureLiveAudio(commandValue);
         case Command::OpenNodeEditor:
             return workspaceCommands->openNodeEditor(commandValue);
+        case Command::PinComparisonSpy: {
+            const String probeId = stringProperty(commandValue, "probeId");
+            return workspace.pinComparisonSpyForAutomation(probeId)
+                    ? okResult("pinComparisonSpy", snapshotState())
+                    : failedResult("pinComparisonSpy", "Could not pin Spy: " + probeId);
+        }
+        case Command::SelectReference: {
+            const String referenceId = stringProperty(commandValue, "referenceId");
+            return workspace.selectReferenceForAutomation(referenceId)
+                    ? okResult("selectReference", snapshotState())
+                    : failedResult("selectReference", "Could not select reference: " + referenceId);
+        }
         case Command::AddNode:
             return workspaceCommands->addNode(commandValue);
         case Command::MoveNode:

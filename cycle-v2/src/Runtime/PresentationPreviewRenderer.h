@@ -30,6 +30,14 @@ public:
             int midiNote,
             const std::array<int, 128>& controllerValues,
             GraphPresentationPerformanceMetrics& performance) const;
+    std::vector<std::optional<GraphPreviewResult::SignalProbePreview>> captureProbePreviews(
+            const NodeGraph& graph,
+            const GraphExecutionPlan& plan,
+            const std::vector<String>& probeIds,
+            size_t rasterRowCount,
+            int midiNote,
+            const std::array<int, 128>& controllerValues,
+            GraphPresentationPerformanceMetrics& performance) const;
 
     void resetExecutionState() { audioExecutor.resetExecutionState(); }
     size_t diagnosticProcessCount(const String& nodeId) const {

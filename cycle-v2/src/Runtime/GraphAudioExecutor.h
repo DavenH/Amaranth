@@ -26,6 +26,7 @@ struct GraphAudioResult {
     SignalPayload output;
     std::vector<NodeAudioResult> nodes;
     bool cancelled {};
+    size_t processedStepCount {};
 };
 
 struct GraphAudioResultView {
@@ -96,6 +97,13 @@ public:
             AudioProcessTiming timing,
             const AudioVoiceContext& voice,
             size_t traversalColumnCount) const;
+    GraphAudioResult processProbes(
+            const GraphExecutionPlan& plan,
+            const std::vector<CompiledSignalProbe>& probes,
+            size_t frameCount,
+            AudioProcessTiming timing,
+            const AudioVoiceContext& voice,
+            size_t traversalColumnCount) const;
     GraphAudioResultView processIncremental(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,
@@ -152,6 +160,7 @@ private:
         size_t traversalColumnCount {};
         const std::vector<uint8_t>* activeSteps {};
         int capturedStepIndex { -1 };
+        const std::vector<uint8_t>* capturedSteps {};
     };
 
     struct IncrementalDiagnosticExecution {

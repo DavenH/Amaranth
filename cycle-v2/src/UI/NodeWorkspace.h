@@ -5,8 +5,10 @@
 
 #include "App/StandaloneAudioEngine.h"
 #include "UI/NodeCanvas.h"
+#include "UI/ComparisonDock.h"
 #include "UI/PerformanceKeyboard.h"
 #include "Graph/PatternLibrary.h"
+#include "Reference/ReferenceLibrary.h"
 
 namespace CycleV2 {
 
@@ -62,6 +64,8 @@ public:
     NodeCanvas& getCanvas() { return canvas; }
     PerformanceKeyboardPanel& performanceKeyboardForAutomation() { return keyboard; }
     bool openNodeEditorForAutomation(const String& nodeId);
+    bool pinComparisonSpyForAutomation(const String& probeId);
+    bool selectReferenceForAutomation(const String& referenceId);
     bool addNodeForAutomation(const String& kind, Point<float> position, String& nodeId);
     bool moveNodeForAutomation(const String& nodeId, Point<float> position);
     bool connectPortsForAutomation(
@@ -133,11 +137,16 @@ private:
             const StandaloneAudioEngine::Status& status,
             bool forcePublication);
     void layoutPerformanceKeyboard();
+    void updateComparisonVisibility();
     void updateOutputMeter(const StandaloneAudioEngine::Status& status);
     var outputMeterStateForAutomation() const;
 
     StandaloneAudioEngine& audioEngine;
     NodeCanvas canvas;
+    ReferenceLibrary referenceLibrary;
+    ComparisonDock comparisonDock;
+    int comparisonDockHeight { 284 };
+    bool comparisonDockVisible {};
     MidiKeyboardState keyboardState;
     PerformanceKeyboardPanel keyboard;
     std::unique_ptr<PatternLibrary> patternLibrary;

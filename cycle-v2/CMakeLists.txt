@@ -72,6 +72,15 @@ file(GLOB_RECURSE APP_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
 
+file(GLOB FACTORY_REFERENCE_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/content/references/*"
+)
+set_source_files_properties(${FACTORY_REFERENCE_FILES} PROPERTIES
+    HEADER_FILE_ONLY TRUE
+    MACOSX_PACKAGE_LOCATION "Resources/References"
+)
+list(APPEND APP_SOURCES ${FACTORY_REFERENCE_FILES})
+
 list(APPEND APP_SOURCES
     ${NODE_ICON_FILES}
     ${ENVELOPE_PURPOSE_ICON_FILES}
@@ -466,6 +475,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationAssertions.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationProtocol.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/OfflineAudioCaptureAutomation.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/Reference/ReferenceSampleAnalysis.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/Reference/ReferenceLibrary.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserPage.cpp"
             ${TEST_SOURCES}
         )

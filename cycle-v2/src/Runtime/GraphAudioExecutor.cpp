@@ -145,6 +145,39 @@ GraphAudioResult GraphAudioExecutor::processProbe(
             });
 }
 
+GraphAudioResult GraphAudioExecutor::processProbes(
+        const GraphExecutionPlan& plan,
+        const std::vector<CompiledSignalProbe>& probes,
+        size_t frameCount,
+        AudioProcessTiming timing,
+        const AudioVoiceContext& voice,
+        size_t traversalColumnCount) const {
+    std::vector<int> sources;
+    sources.reserve(probes.size());
+    for (const auto& probe : probes) {
+        if (probe.sourceStepIndex >= 0
+                && (size_t) probe.sourceStepIndex < plan.steps.size()) {
+            sources.push_back(probe.sourceStepIndex);
+        }
+    }
+    if (sources.empty()) {
+        return {};
+    }
+
+    const auto activeSteps = probeExecutionSteps(plan, sources);
+    std::vector<uint8_t> capturedSteps(plan.steps.size());
+    for (const int source : sources) {
+        capturedSteps[(size_t) source] = 1;
+    }
+    return processInternal(plan, frameCount, timing, voice,
+            CompleteDiagnosticExecution {
+                    traversalColumnCount,
+                    &activeSteps,
+                    -1,
+                    &capturedSteps
+            });
+}
+
 GraphAudioResultView GraphAudioExecutor::processIncremental(
         const NodeGraph& graph,
         const GraphExecutionPlan& plan,
@@ -429,6 +462,9 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         if (activeSteps != nullptr && (*activeSteps)[stepIndex] == 0) {
             continue;
         }
+        if (captureDiagnostics) {
+            ++result.processedStepCount;
+        }
         if (dirtyNodes != nullptr
                 && cancellationCheck != nullptr
                 && *cancellationCheck
@@ -440,8 +476,10 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         }
         const auto& step = plan.steps[stepIndex];
         const bool captureNodeResult = completeDiagnostics == nullptr
-                || completeDiagnostics->capturedStepIndex < 0
-                || completeDiagnostics->capturedStepIndex == (int) stepIndex;
+                || (completeDiagnostics->capturedSteps != nullptr
+                        ? (*completeDiagnostics->capturedSteps)[stepIndex] != 0
+                        : completeDiagnostics->capturedStepIndex < 0
+                                || completeDiagnostics->capturedStepIndex == (int) stepIndex);
         if (pass == ProcessingPass::Complete && step.kind == NodeKind::GlobalInput) {
             loadCompleteVoiceBoundary(plan, frameCount);
         }
