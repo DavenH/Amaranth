@@ -125,6 +125,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `scripts/run_cycle_agent.sh` — Run one Cycle 1 automation fixture with reports, logs, screenshots, or video.
 - `scripts/run_cycle_v2_agent.sh` — Run one Cycle 2 automation fixture with the same artifact conventions.
 - `scripts/capture_cycle_ui.sh` — Capture a UI screenshot plus filtered and raw launch logs.
+- `scripts/capture_cycle_v2_ui.sh` — Capture Cycle 2 without manually overriding Cycle 1 defaults.
 - `scripts/cycle_v2_architecture_audit.py` — Report CycleV2 file-size review triggers for touched production code.
 - `scripts/check_code_map.py` — Validate semantic-map paths, description lengths, and fixed size budgets.
 - `scripts/compare_cycle_audio.py` — Render declared-equivalent Cycle 1/2 presets and compare audio output.

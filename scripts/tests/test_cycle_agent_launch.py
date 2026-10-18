@@ -13,13 +13,18 @@ RUNNER = REPO_ROOT / "scripts" / "run_cycle_agent.sh"
 
 
 class CycleAgentLaunchTest(unittest.TestCase):
-    def run_launcher(self, focus_on_launch):
+    def run_launcher(
+        self,
+        focus_on_launch,
+        fixture_name="fixture.json",
+        bundle_id="com.amaranthaudio.test-cycle",
+    ):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             app = root / "Cycle.app"
             (app / "Contents").mkdir(parents=True)
             (app / "Contents" / "Info.plist").write_text("", encoding="utf-8")
-            fixture = root / "fixture.json"
+            fixture = root / fixture_name
             fixture.write_text("[]\n", encoding="utf-8")
             report = root / "report.json"
             log = root / "commands.log"
@@ -29,7 +34,7 @@ class CycleAgentLaunchTest(unittest.TestCase):
             self.write_executable(fake_bin / "plutil", """
                 #!/bin/zsh
                 if [[ "$*" == *CFBundleIdentifier* ]]; then
-                    print -r -- "com.amaranthaudio.test-cycle"
+                    print -r -- "$TEST_BUNDLE_ID"
                 else
                     print -r -- "Cycle"
                 fi
@@ -59,6 +64,7 @@ class CycleAgentLaunchTest(unittest.TestCase):
             environment.update({
                 "PATH": f"{fake_bin}:{environment['PATH']}",
                 "COMMAND_LOG": str(log),
+                "TEST_BUNDLE_ID": bundle_id,
                 "CYCLE_APP_PATH": str(app),
                 "CYCLE_PROCESS_NAME": "TestCycle",
                 "CYCLE_FOCUS_ON_LAUNCH": "1" if focus_on_launch else "0",
@@ -78,23 +84,36 @@ class CycleAgentLaunchTest(unittest.TestCase):
                 text=True,
                 env=environment,
             )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            return log.read_text(encoding="utf-8")
+            commands = log.read_text(encoding="utf-8") if log.exists() else ""
+            return result, commands
 
     def write_executable(self, path, source):
         path.write_text(textwrap.dedent(source).lstrip(), encoding="utf-8")
         path.chmod(0o755)
 
     def test_semantic_launch_does_not_take_focus_by_default(self):
-        commands = self.run_launcher(focus_on_launch=False)
+        result, commands = self.run_launcher(focus_on_launch=False)
 
+        self.assertEqual(result.returncode, 0, result.stderr)
         self.assertNotIn("to activate", commands)
         self.assertNotIn("set frontmost", commands)
 
     def test_launch_focus_remains_available_as_an_explicit_opt_in(self):
-        commands = self.run_launcher(focus_on_launch=True)
+        result, commands = self.run_launcher(focus_on_launch=True)
 
+        self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("to activate", commands)
+
+    def test_cycle_v2_fixture_rejects_partial_target_metadata(self):
+        result, commands = self.run_launcher(
+            focus_on_launch=False,
+            fixture_name="cycle-v2-agent-test.json",
+            bundle_id="com.amaranthaudio.cycle-v2",
+        )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Use scripts/run_cycle_v2_agent.sh", result.stderr)
+        self.assertEqual(commands, "")
 
 
 if __name__ == "__main__":

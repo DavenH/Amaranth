@@ -43,6 +43,13 @@ characters or fewer and run `python3 scripts/check_code_map.py`.
 - Common presets: `standalone-debug`, `plugin-debug`, `tests`.
 - Test with `ctest --preset tests`; narrow with `-R '<name>'` when appropriate.
 - Always use `--parallel 10` or higher for CMake builds.
+- Build the exact app target before runtime checks; automation runners do not build it.
+- Use `run_cycle_agent.sh`/`capture_cycle_ui.sh` for Cycle 1 and
+  `run_cycle_v2_agent.sh`/`capture_cycle_v2_ui.sh` for Cycle 2. Run GUI
+  automation sequentially.
+- Command execution approval and macOS privacy permissions are separate.
+  `CYCLE_PREFLIGHT_PERMISSIONS` controls only the latter; do not escalate a
+  normal runner command merely because its privacy preflight is enabled.
 
 ## Core Engineering Boundaries
 
