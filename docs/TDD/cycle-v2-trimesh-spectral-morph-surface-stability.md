@@ -66,3 +66,6 @@ mode before, during, and after the gesture. Its captured video is
 `.context/trimesh-morph-fixed.mp4`; the cropped grid in settled drag and
 release frames was visually stable. `clang-tidy` completed with no warnings
 on changed lines, and `git diff --check` passed.
+
+The [captured expanded editor](figures/cycle-v2-trimesh-spectral-morph-stable-editor.png)
+shows the preserved spectral surface after the morph drag.
