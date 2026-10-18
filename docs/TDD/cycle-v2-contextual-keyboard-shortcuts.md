@@ -25,6 +25,10 @@ The shortcut contract is:
 - Envelope: R/B focuses the matching morph slider; Left/Right sends it to
   zero/one; L toggles its session-only link. There is no editable Time morph in
   the Envelope model, so Y has no Envelope target.
+- Up/Down moves the active tuple through the editor's visible morph rows and
+  clamps at the first/last row. Shift+Left/Down changes the active value by
+  -20 percentage points; Shift+Right/Up changes it by +20, clamped to the
+  parameter range.
 - Space always bubbles to `NodeCanvas` preview playback, including while an
   expanded morph control owns keyboard focus.
 - On the bare canvas, C selects Curves and P selects Presets. Presets retains its
@@ -41,6 +45,9 @@ The editor retains the last selected morph tuple when a child control loses
 transient JUCE focus, so pointer release and ordinary focus transfer do not
 remove the cue or leave Left/Right and L without a target. Selecting a different
 morph rail, Axis control, or Link control replaces that editor-local target.
+Letter selection changes only this editor-local target; it deliberately leaves
+native child focus untouched so the child that received the letter cannot race
+the selected tuple before the following arrow key.
 The shared focus frame keeps the Trimesh label comfortably inside its left edge,
 uses 2 px vertical row insets, leaves 5 px beyond the Link control, and separates
 the keyboard glyph by 4 px. The reserved slot retains 3 px after the glyph.
@@ -114,26 +121,42 @@ grows by 200 lines, and the existing extraction plans for files above the review
 threshold remain unchanged.
 
 The persistent-focus follow-up keeps one editor-local axis string in each morph
-editor. `PrecisionSlider` adds only a generic focus-gained callback; it owns no
-Envelope policy. `EnvelopeEditorComponent.cpp` grows from 881 to 892 lines and
+editor. `PrecisionSlider` adds only a generic keyboard-target callback; it owns
+no Envelope policy. `EnvelopeEditorComponent.cpp` grows from 881 to 892 lines and
 `TrimeshControlsComponent.cpp` from 532 to 542 lines. The former remains above
 the responsibility-review threshold for its pre-existing control-composition
 role, but this change adds no new collaborator or cross-subsystem policy.
 
+The arrow-navigation correction keeps axis ordering in each editor and key
+decoding in the shared shortcut header. `PrecisionSlider` now offers generic
+target and shortcut callbacks so Envelope can route an arrow before the
+physically focused slider applies its ordinary value step. Trimesh reads a
+coarse step's starting value through its existing controls delegate from the
+expanded editor's live local node; this is narrow state translation and avoids
+using the controls layer's stale bind snapshot. `EnvelopeEditorComponent.cpp`
+is 902 lines and `TrimeshControlsComponent.cpp` is 577 lines after the change.
+Their responsibilities and collaborators are unchanged, no file grows by 200
+lines, and no graph scan, mesh copy, serialization, or resource preparation is
+introduced.
+
 ## Validation
 
 - Standalone Debug build passes with `--parallel 10`.
-- The `[keyboard]` Cycle V2 suite passes 491 assertions in 27 cases, including
-  real peer-dispatched arrows after focus moves away from the morph control.
-- `cycle-v2-agent-contextual-keyboard-shortcuts.json` passes all 48 commands,
+- The corrected `[keyboard]` Cycle V2 suite passes 529 assertions in 27 cases,
+  including a Blue child retaining native focus while Y/R selects and edits a
+  different tuple, Up/Down boundary navigation, ±20% steps, undo, and Space.
+- `cycle-v2-agent-contextual-keyboard-shortcuts.json` passes all 58 commands,
   including both editors, undoable poles, links, C/P tabs, pointer release, and
-  Space playback while the performance keyboard is occluded.
+  Space playback while the performance keyboard is occluded. It also proves
+  consecutive 0 → 0.2 and 1 → 0.8 coarse edits use live values.
 - Production-size app captures show the neutral tuple outline and trailing 18
   by 13 keyboard glyph in both expanded editors, with no slider-only focus ring.
 - The architecture audit, touched-file size review, scalar-math hot-loop check,
   and `git diff --check` pass. Existing scalar math reported by the check is in
   untouched formatting/automation code, not a modified hot loop.
 - A native macOS-key sequence is registered in
-  `test_cycle_v2_native_edit_smoke.py`. Its local run is externally blocked
-  because this process lacks Accessibility permission to send System Events
-  keystrokes; deterministic component-path and fixture coverage pass.
+  `test_cycle_v2_native_edit_smoke.py`, including Up/Down and shifted arrows.
+  Its local rerun remains externally blocked because `osascript` lacks macOS
+  Accessibility permission to send System Events keystrokes; Screen Recording
+  permission alone does not authorize keyboard injection. Deterministic
+  component-path and fixture coverage pass.

@@ -120,7 +120,8 @@ juce::var propertyGroupLabelAutomationState(const PropertyGroupLabel& label);
 class PrecisionSlider final : public juce::Slider {
 public:
     using KeyboardStepper = std::function<double(double, bool, bool)>;
-    using KeyboardFocusHandler = std::function<void()>;
+    using KeyboardTargetHandler = std::function<void()>;
+    using KeyboardShortcutHandler = std::function<bool(const juce::KeyPress&)>;
     using ValueSnapper = std::function<double(double, DragMode)>;
 
     struct Landmark {
@@ -133,7 +134,8 @@ public:
 
     void setKeyboardSteps(double ordinary, double fine);
     void setKeyboardStepper(KeyboardStepper stepper);
-    void setKeyboardFocusHandler(KeyboardFocusHandler handler);
+    void setKeyboardTargetHandler(KeyboardTargetHandler handler);
+    void setKeyboardShortcutHandler(KeyboardShortcutHandler handler);
     void setValueSnapper(ValueSnapper snapper);
     void setLandmarks(std::vector<Landmark> landmarks);
     void setTrackEndInset(float inset);
@@ -141,6 +143,7 @@ public:
     void setValueFromKeyboard(double value);
     float getTrackEndInset() const { return trackEndInset; }
     juce::Rectangle<float> visibleTrackBounds() const;
+    void mouseDown(const juce::MouseEvent& event) override;
     void focusGained(juce::Component::FocusChangeType cause) override;
     bool keyPressed(const juce::KeyPress& key) override;
     double snapValue(double attemptedValue, DragMode dragMode) override;
@@ -152,7 +155,8 @@ private:
     double ordinaryKeyboardStep { 0.01 };
     double fineKeyboardStep { 0.001 };
     KeyboardStepper keyboardStepper;
-    KeyboardFocusHandler keyboardFocusHandler;
+    KeyboardTargetHandler keyboardTargetHandler;
+    KeyboardShortcutHandler keyboardShortcutHandler;
     ValueSnapper valueSnapper;
     std::vector<Landmark> landmarks;
     std::optional<juce::Colour> morphAccent;

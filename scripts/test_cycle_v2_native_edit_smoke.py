@@ -522,11 +522,13 @@ class NativeEditSmoke:
         ], check=True)
         time.sleep(SETTLE_SECONDS)
 
-    def press_native_key(self, key):
+    def press_native_key(self, key, shift=False):
         self.focus_app()
         key_codes = {
             "left": 123,
             "right": 124,
+            "down": 125,
+            "up": 126,
             "space": 49,
             "escape": 53,
         }
@@ -534,6 +536,8 @@ class NativeEditSmoke:
             event = f"key code {key_codes[key]}"
         else:
             event = f'keystroke "{key}"'
+        if shift:
+            event += " using {shift down}"
         subprocess.run([
             "osascript",
             "-e",
@@ -2301,8 +2305,14 @@ class NativeEditSmoke:
         self.press_native_key("r")
         state = self.graph_state()
         assert state["expandedNodeControls"]["focusedMorphAxis"] == "red", state
+        self.press_native_key("down")
+        assert self.graph_state()["expandedNodeControls"]["focusedMorphAxis"] == "blue"
+        self.press_native_key("up")
+        assert self.graph_state()["expandedNodeControls"]["focusedMorphAxis"] == "red"
         self.press_native_key("left")
         assert float(self.parameters(self.inspect("waveMesh"))["red"]) == 0.0
+        self.press_native_key("right", shift=True)
+        assert abs(float(self.parameters(self.inspect("waveMesh"))["red"]) - 0.2) < 0.001
         self.press_native_key("l")
         assert self.parameters(self.inspect("waveMesh"))["link.red"] == "1"
         self.press_native_key("b")
@@ -2339,8 +2349,16 @@ class NativeEditSmoke:
         state = self.graph_state()
         controls = state["expandedNodeControls"]["effect2D"]
         assert controls["focusedMorphAxis"] == "red", controls
+        self.press_native_key("down")
+        controls = self.graph_state()["expandedNodeControls"]["effect2D"]
+        assert controls["focusedMorphAxis"] == "blue", controls
+        self.press_native_key("up")
+        controls = self.graph_state()["expandedNodeControls"]["effect2D"]
+        assert controls["focusedMorphAxis"] == "red", controls
         self.press_native_key("left")
         assert float(self.parameters(self.inspect("env"))["red"]) == 0.0
+        self.press_native_key("up", shift=True)
+        assert abs(float(self.parameters(self.inspect("env"))["red"]) - 0.2) < 0.001
         self.press_native_key("l")
         state = self.graph_state()
         controls = state["expandedNodeControls"]["effect2D"]

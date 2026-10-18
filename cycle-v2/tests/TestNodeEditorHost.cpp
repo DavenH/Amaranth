@@ -4061,13 +4061,42 @@ TEST_CASE("Trimesh morph shortcuts focus, reach poles, toggle links, and preserv
         }
     }
     REQUIRE(blueMorph != nullptr);
+    REQUIRE(editor->keyPressed(KeyPress('b')));
+    const float initialBlue = NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("blue", 0.5f);
     blueMorph->grabKeyboardFocus();
     REQUIRE(editor->focusedMorphAxis() == "blue");
-    focusSink.grabKeyboardFocus();
-    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress('y')));
+    REQUIRE(editor->focusedMorphAxis() == "yellow");
+    REQUIRE(blueMorph->hasKeyboardFocus(false));
     REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::rightKey)));
     REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
-            .floatValue("blue", 0.5f) == Catch::Approx(1.f));
+            .floatValue("yellow", 0.5f) == Catch::Approx(1.f));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("blue", 0.5f) == Catch::Approx(initialBlue));
+    REQUIRE(editor->focusedMorphAxis() == "yellow");
+    REQUIRE(document.undo());
+
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::downKey)));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::downKey)));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::downKey)));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::upKey)));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::leftKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.f));
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(
+            KeyPress::rightKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.2f));
+    REQUIRE(document.undo());
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.f));
     REQUIRE(document.undo());
 
     REQUIRE(editor->keyPressed(KeyPress('r')));
@@ -4142,16 +4171,43 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
     REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
             .floatValue("red", 0.5f) == Catch::Approx(0.f));
     REQUIRE(document.undo());
+    REQUIRE(host.bind(
+            document.graph().findNode("env"),
+            owner.getLocalBounds(),
+            document.revision()));
 
     Component* blueMorph = editor->findChildWithID("envelopeEditor.morph.blue");
     REQUIRE(blueMorph != nullptr);
+    REQUIRE(editor->keyPressed(KeyPress('b')));
     blueMorph->grabKeyboardFocus();
     REQUIRE(editor->focusedMorphAxis() == "blue");
-    focusSink.grabKeyboardFocus();
-    REQUIRE(editor->focusedMorphAxis() == "blue");
-    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::rightKey)));
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress('r')));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(blueMorph->hasKeyboardFocus(false));
+    REQUIRE(blueMorph->keyPressed(KeyPress(KeyPress::leftKey)));
     REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
-            .floatValue("blue", 0.5f) == Catch::Approx(1.f));
+            .floatValue("red", 0.5f) == Catch::Approx(0.f));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("blue", 0.5f) == Catch::Approx(0.5f));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(document.undo());
+    REQUIRE(host.bind(
+            document.graph().findNode("env"),
+            owner.getLocalBounds(),
+            document.revision()));
+
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::downKey)));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::downKey)));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::upKey)));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(editor->keyPressed(KeyPress(
+            KeyPress::upKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.7f));
     REQUIRE(document.undo());
     REQUIRE(host.bind(
             document.graph().findNode("env"),

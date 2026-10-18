@@ -63,7 +63,26 @@
       "path": "expandedNodeControls.focusedMorphAxis",
       "equals": "yellow"
     },
-    { "command": "key", "area": "canvas", "key": "b" },
+    { "command": "key", "area": "canvas", "key": "left" },
+    { "command": "key", "area": "canvas", "key": "right", "shift": true },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "yellow",
+      "equals": "0.200"
+    },
+    { "command": "key", "area": "canvas", "key": "down" },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.focusedMorphAxis",
+      "equals": "red"
+    },
+    { "command": "key", "area": "canvas", "key": "down" },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.focusedMorphAxis",
+      "equals": "blue"
+    },
     { "command": "key", "area": "canvas", "key": "right" },
     {
       "command": "assertNodeParameter",
@@ -74,9 +93,17 @@
     {
       "command": "screenshot",
       "area": "canvas",
-      "path": "/private/tmp/cycle-v2-contextual-shortcuts-trimesh.png"
+      "path": "/Users/daven/conductor/workspaces/Amaranth/spokane/.context/cycle-v2-contextual-shortcuts-trimesh.png"
     },
     { "command": "key", "area": "canvas", "key": "escape" },
+    { "command": "waitForIdle", "idleDelayMs": 100 },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "click",
+      "normalizedX": 0.8,
+      "normalizedY": 0.85
+    },
     { "command": "key", "area": "canvas", "key": "c" },
     { "command": "assertState", "path": "sidebarTab", "equals": "Curves" },
     { "command": "key", "area": "canvas", "key": "p" },
@@ -100,6 +127,13 @@
       "parameterId": "red",
       "equals": "1"
     },
+    { "command": "key", "area": "canvas", "key": "left", "shift": true },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "scratchEnvelope1",
+      "parameterId": "red",
+      "equals": "0.8"
+    },
     { "command": "undo", "waitForIdle": true, "idleDelayMs": 150 },
     { "command": "key", "area": "canvas", "key": "l" },
     {
@@ -107,7 +141,7 @@
       "path": "expandedNodeControls.effect2D.panelState.redLinked",
       "equals": false
     },
-    { "command": "key", "area": "canvas", "key": "b" },
+    { "command": "key", "area": "canvas", "key": "down" },
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.focusedMorphAxis",
@@ -127,7 +161,7 @@
     {
       "command": "screenshot",
       "area": "canvas",
-      "path": "/private/tmp/cycle-v2-contextual-shortcuts-envelope.png"
+      "path": "/Users/daven/conductor/workspaces/Amaranth/spokane/.context/cycle-v2-contextual-shortcuts-envelope.png"
     },
     { "command": "inspectTargets", "area": "canvas" }
   ],

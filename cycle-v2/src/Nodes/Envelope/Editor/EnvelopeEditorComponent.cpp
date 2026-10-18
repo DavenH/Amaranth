@@ -154,12 +154,16 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(CurveEditorWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
     bindContinuousControls({ &impl->redMorph, &impl->blueMorph });
-    impl->redMorph.slider.addKeyListener(this);
-    impl->blueMorph.slider.addKeyListener(this);
-    impl->redMorph.slider.setKeyboardFocusHandler([this] {
+    impl->redMorph.slider.setKeyboardShortcutHandler([this](const KeyPress& key) {
+        return keyPressed(key);
+    });
+    impl->blueMorph.slider.setKeyboardShortcutHandler([this](const KeyPress& key) {
+        return keyPressed(key);
+    });
+    impl->redMorph.slider.setKeyboardTargetHandler([this] {
         rememberMorphFocus("red");
     });
-    impl->blueMorph.slider.setKeyboardFocusHandler([this] {
+    impl->blueMorph.slider.setKeyboardTargetHandler([this] {
         rememberMorphFocus("blue");
     });
     impl->enabled.setComponentID("envelopeEditor.enabled");
@@ -190,10 +194,7 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(CurveEditorWidget& target) :
     };
 }
 
-EnvelopeEditorComponent::~EnvelopeEditorComponent() {
-    impl->redMorph.slider.removeKeyListener(this);
-    impl->blueMorph.slider.removeKeyListener(this);
-}
+EnvelopeEditorComponent::~EnvelopeEditorComponent() = default;
 
 String EnvelopeEditorComponent::getTooltip() {
     const Point<float> position = getLocalPoint(
@@ -216,16 +217,6 @@ bool EnvelopeEditorComponent::keyPressed(const KeyPress& key) {
     return handleMorphKeyboardShortcut(key);
 }
 
-bool EnvelopeEditorComponent::keyPressed(
-        const KeyPress& key,
-        Component* source) {
-    if (source != &impl->redMorph.slider
-            && source != &impl->blueMorph.slider) {
-        return false;
-    }
-    return keyPressed(key);
-}
-
 String EnvelopeEditorComponent::focusedMorphAxis() const {
     return impl->keyboardMorphAxis;
 }
@@ -233,7 +224,10 @@ String EnvelopeEditorComponent::focusedMorphAxis() const {
 bool EnvelopeEditorComponent::handleMorphKeyboardShortcut(const KeyPress& key) {
     const String axis = morphAxisForKeyboardShortcut(key);
     if (axis.isNotEmpty()) {
-        return focusMorphAxis(axis);
+        return selectMorphAxis(axis);
+    }
+    if (const auto direction = morphAxisNavigationForKeyboardShortcut(key)) {
+        return selectAdjacentMorphAxis(*direction);
     }
 
     PrecisionSlider* slider = focusedMorphSlider();
@@ -242,6 +236,13 @@ bool EnvelopeEditorComponent::handleMorphKeyboardShortcut(const KeyPress& key) {
     }
     if (const auto pole = morphPoleForKeyboardShortcut(key)) {
         slider->setValueFromKeyboard(*pole);
+        return true;
+    }
+    if (const auto amount = morphStepForKeyboardShortcut(key)) {
+        slider->setValueFromKeyboard(jlimit(
+                0.0,
+                1.0,
+                slider->getValue() + *amount));
         return true;
     }
     if (isMorphLinkKeyboardShortcut(key)) {
@@ -265,15 +266,24 @@ void EnvelopeEditorComponent::rememberMorphFocus(const String& axis) {
     repaint();
 }
 
-bool EnvelopeEditorComponent::focusMorphAxis(const String& axis) {
-    PrecisionSlider* slider = axis == "red"
-            ? &impl->redMorph.slider
-            : axis == "blue" ? &impl->blueMorph.slider : nullptr;
-    if (slider == nullptr) {
+bool EnvelopeEditorComponent::selectMorphAxis(const String& axis) {
+    if (axis != "red" && axis != "blue") {
         return false;
     }
     rememberMorphFocus(axis);
-    slider->grabKeyboardFocus();
+    return true;
+}
+
+bool EnvelopeEditorComponent::selectAdjacentMorphAxis(int direction) {
+    if (impl->keyboardMorphAxis.isEmpty()) {
+        return selectMorphAxis(direction < 0 ? "blue" : "red");
+    }
+    if (direction < 0 && impl->keyboardMorphAxis == "blue") {
+        return selectMorphAxis("red");
+    }
+    if (direction > 0 && impl->keyboardMorphAxis == "red") {
+        return selectMorphAxis("blue");
+    }
     return true;
 }
 

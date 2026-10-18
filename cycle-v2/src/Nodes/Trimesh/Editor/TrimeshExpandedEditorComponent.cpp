@@ -298,6 +298,11 @@ void TrimeshExpandedEditorComponent::toggleTrimeshLinkAxis(const String& axis) {
     }
 }
 
+float TrimeshExpandedEditorComponent::trimeshMorphControlValue(
+        const String& id) const {
+    return NodeParameterMap(node).floatValue(id, 0.5f);
+}
+
 void TrimeshExpandedEditorComponent::beginTrimeshMorphControlEdit(
         const String& id,
         float value) {

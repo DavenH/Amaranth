@@ -192,6 +192,12 @@ var CycleV2AutomationInput::key(const var& commandValue) {
     if (!automationKeyPress(keyName, keyPress)) {
         return failedResult("key", "Unknown key: " + keyName);
     }
+    if (boolProperty(commandValue, "shift")) {
+        keyPress = KeyPress(
+                keyPress.getKeyCode(),
+                keyPress.getModifiers().withFlags(ModifierKeys::shiftModifier),
+                keyPress.getTextCharacter());
+    }
 
     const bool handled = component->keyPressed(keyPress);
     var data = makeObject();

@@ -15,6 +15,7 @@ public:
     virtual ~TrimeshControlsDelegate() = default;
     virtual void setTrimeshPrimaryAxis(const juce::String& axis) = 0;
     virtual void toggleTrimeshLinkAxis(const juce::String& axis) = 0;
+    virtual float trimeshMorphControlValue(const juce::String& id) const = 0;
     virtual void beginTrimeshMorphControlEdit(const juce::String& id, float value) = 0;
     virtual void updateTrimeshMorphControlEdit(float value) = 0;
     virtual void endTrimeshMorphControlEdit() = 0;
@@ -85,8 +86,10 @@ private:
             const TrimeshExpandedHitRegion& region,
             float amount);
     void rememberMorphFocus(const TrimeshExpandedHitRegion& region);
-    bool focusMorphControl(const juce::String& axis);
+    bool selectMorphControl(const juce::String& axis);
+    bool selectAdjacentMorphControl(int direction);
     bool setFocusedMorphTo(float value);
+    bool adjustFocusedMorphBy(float amount);
     bool toggleFocusedMorphLink();
     bool isControlEnabled(const TrimeshExpandedHitRegion& region) const;
     void updateControlEnabledStates();

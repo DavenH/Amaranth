@@ -450,8 +450,12 @@ void PrecisionSlider::setKeyboardStepper(KeyboardStepper stepper) {
     keyboardStepper = std::move(stepper);
 }
 
-void PrecisionSlider::setKeyboardFocusHandler(KeyboardFocusHandler handler) {
-    keyboardFocusHandler = std::move(handler);
+void PrecisionSlider::setKeyboardTargetHandler(KeyboardTargetHandler handler) {
+    keyboardTargetHandler = std::move(handler);
+}
+
+void PrecisionSlider::setKeyboardShortcutHandler(KeyboardShortcutHandler handler) {
+    keyboardShortcutHandler = std::move(handler);
 }
 
 void PrecisionSlider::setValueSnapper(ValueSnapper snapper) {
@@ -487,14 +491,24 @@ Rectangle<float> PrecisionSlider::visibleTrackBounds() const {
                     PropertyControlMetrics::visibleTrackHeight);
 }
 
+void PrecisionSlider::mouseDown(const MouseEvent& event) {
+    if (keyboardTargetHandler != nullptr) {
+        keyboardTargetHandler();
+    }
+    Slider::mouseDown(event);
+}
+
 void PrecisionSlider::focusGained(FocusChangeType cause) {
     Slider::focusGained(cause);
-    if (keyboardFocusHandler != nullptr) {
-        keyboardFocusHandler();
+    if (cause == focusChangedByTabKey && keyboardTargetHandler != nullptr) {
+        keyboardTargetHandler();
     }
 }
 
 bool PrecisionSlider::keyPressed(const KeyPress& key) {
+    if (keyboardShortcutHandler != nullptr && keyboardShortcutHandler(key)) {
+        return true;
+    }
     if (!isArrowKey(key)) {
         return Slider::keyPressed(key);
     }

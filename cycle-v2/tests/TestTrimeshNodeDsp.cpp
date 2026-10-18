@@ -172,14 +172,19 @@ class RecordingTrimeshControlsDelegate final : public TrimeshControlsDelegate {
 public:
     void setTrimeshPrimaryAxis(const String& axis) override { primaryAxis = axis; }
     void toggleTrimeshLinkAxis(const String& axis) override { linkedAxis = axis; }
+    float trimeshMorphControlValue(const String&) const override { return morphValue; }
 
     void beginTrimeshMorphControlEdit(const String& id, float value) override {
         activeParameter = id;
         beginValue = value;
+        morphValue = value;
         ++morphBeginCount;
     }
 
-    void updateTrimeshMorphControlEdit(float value) override { updateValue = value; }
+    void updateTrimeshMorphControlEdit(float value) override {
+        updateValue = value;
+        morphValue = value;
+    }
     void endTrimeshMorphControlEdit() override { ++morphEndCount; }
 
     void beginTrimeshOutputScaleControlEdit(const String& id, float value) override {
@@ -215,6 +220,7 @@ public:
     int selectedVertex { -1 };
     float beginValue {};
     float updateValue {};
+    float morphValue { 0.5f };
     String activeParameter;
     String primaryAxis;
     String linkedAxis;

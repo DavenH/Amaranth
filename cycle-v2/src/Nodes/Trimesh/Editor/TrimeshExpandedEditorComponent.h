@@ -91,6 +91,7 @@ private:
     void setLocalMorphValue(const juce::String& id, float value);
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
     void toggleTrimeshLinkAxis(const juce::String& axis) override;
+    float trimeshMorphControlValue(const juce::String& id) const override;
     void beginTrimeshMorphControlEdit(const juce::String& id, float value) override;
     void updateTrimeshMorphControlEdit(float value) override;
     void endTrimeshMorphControlEdit() override;
