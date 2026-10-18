@@ -1,5 +1,10 @@
-#include "Graph/GraphSerializer.h"
+#include <array>
+#include <charconv>
+#include <cmath>
+#include <unordered_map>
+#include <unordered_set>
 
+#include "Graph/GraphSerializer.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphValidator.h"
 #include "Graph/GlobalAudioGraphRepresentationMigration.h"
@@ -9,13 +14,6 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
-
-#include <array>
-#include <cmath>
-#include <iomanip>
-#include <sstream>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace CycleV2 {
 
@@ -439,9 +437,10 @@ String meshScalarToJSON(const var& value) {
     if (number == 0.f) {
         return "0.0";
     }
-    std::ostringstream stream;
-    stream << std::fixed << std::setprecision(9) << number;
-    String result(stream.str());
+    char buffer[64];
+    const auto conversion = std::to_chars(buffer, buffer + sizeof(buffer), number);
+    jassert(conversion.ec == std::errc());
+    String result = String::fromUTF8(buffer, (int) (conversion.ptr - buffer));
     if (!result.containsChar('.')
             && !result.containsChar('e')
             && !result.containsChar('E')) {

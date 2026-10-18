@@ -671,7 +671,10 @@ TEST_CASE("A Trimesh vertex edit has a localized canonical JSON diff", "[cycle-v
 
 TEST_CASE("Graph JSON rounds floats and compacts shallow objects", "[cycle-v2][graph]") {
     GraphSerializer serializer;
-    NodeGraph graph = NodeGraph::createDemoGraph();
+    GraphLoadResult fixture = serializer.loadJsonString(
+            resource("with-spies.cyclegraph").loadFileAsString());
+    REQUIRE(fixture.succeeded());
+    NodeGraph graph = std::move(fixture.graph);
     const auto current = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
             graph.findNode("waveMesh")->model);
     REQUIRE(current != nullptr);
