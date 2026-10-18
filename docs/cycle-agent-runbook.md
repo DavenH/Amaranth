@@ -24,20 +24,44 @@ a broad automation change.
 
 ## One-Shot Fixture Runs
 
-Build the standalone app first if the touched code has not been built:
+Build the exact standalone target first. The runners never build, and stale
+app bundles have repeatedly produced misleading failures and screenshots.
+For Cycle 1:
 
 ```sh
 cmake --build --preset standalone-debug --parallel 10
 ```
 
-Run one fixture through the LaunchServices-aware wrapper:
+For Cycle 2:
+
+```sh
+cmake --build --preset standalone-debug --target CycleV2 --parallel 10
+```
+
+Use the product-specific wrapper. `run_cycle_agent.sh` and
+`capture_cycle_ui.sh` default to Cycle 1; the Cycle 2 wrappers supply the app
+path, process name, and bundle identifier together:
 
 ```sh
 scripts/run_cycle_agent.sh \
     scripts/fixtures/cycle-agent-modmatrix-dialog.json \
     /private/tmp/cycle-agent-modmatrix-dialog-report.json \
     /private/tmp/cycle-agent-modmatrix-dialog-logs.txt
+
+scripts/run_cycle_v2_agent.sh \
+    scripts/fixtures/cycle-v2-agent-readonly.json \
+    /private/tmp/cycle-v2-readonly-report.json \
+    /private/tmp/cycle-v2-readonly-logs.txt
+
+scripts/capture_cycle_v2_ui.sh \
+    /private/tmp/cycle-v2-ui.png \
+    /private/tmp/cycle-v2-ui-logs.txt
 ```
+
+Each wrapper prints the exact app path it will launch. Confirm that line before
+trusting a runtime result, especially when several worktrees contain apps with
+the same display name. A `cycle-v2-*` fixture passed to the Cycle 1 runner now
+fails before launch.
 
 Run GUI automation fixtures sequentially. The wrapper launches Cycle through
 LaunchServices and writes one report/log pair per app instance; concurrent runs
@@ -210,14 +234,14 @@ the exact app path so another Cycle instance cannot receive the fixture.
 ```sh
 cmake --build --preset standalone-debug --target CycleV2 --parallel 10
 CYCLE_APP_PATH="$PWD/build/standalone-debug/cycle-v2/CycleV2.app" \
-CYCLE_WAIT_SECONDS=120 scripts/run_cycle_agent.sh \
+CYCLE_WAIT_SECONDS=120 scripts/run_cycle_v2_agent.sh \
     scripts/fixtures/cycle-v2-agent-preset-load-latency.json \
     /private/tmp/cycle-v2-load-debug-report.json \
     /private/tmp/cycle-v2-load-debug-log.txt
 
 cmake --build --preset standalone-release --target CycleV2 --parallel 10
 CYCLE_APP_PATH="$PWD/build/standalone-release/cycle-v2/CycleV2.app" \
-CYCLE_WAIT_SECONDS=120 scripts/run_cycle_agent.sh \
+CYCLE_WAIT_SECONDS=120 scripts/run_cycle_v2_agent.sh \
     scripts/fixtures/cycle-v2-agent-preset-load-latency.json \
     /private/tmp/cycle-v2-load-release-report.json \
     /private/tmp/cycle-v2-load-release-log.txt
@@ -248,13 +272,13 @@ broader refresh occurs when the gesture commits.
 
 ```sh
 CYCLE_APP_PATH="$PWD/build/standalone-debug/cycle-v2/CycleV2.app" \
-CYCLE_WAIT_SECONDS=120 scripts/run_cycle_agent.sh \
+CYCLE_WAIT_SECONDS=120 scripts/run_cycle_v2_agent.sh \
     scripts/fixtures/cycle-v2-agent-trimesh-editor-canvas-isolation-live.json \
     /private/tmp/cycle-v2-morph-live-report.json \
     /private/tmp/cycle-v2-morph-live-log.txt
 
 CYCLE_APP_PATH="$PWD/build/standalone-release/cycle-v2/CycleV2.app" \
-CYCLE_WAIT_SECONDS=120 scripts/run_cycle_agent.sh \
+CYCLE_WAIT_SECONDS=120 scripts/run_cycle_v2_agent.sh \
     scripts/fixtures/cycle-v2-agent-trimesh-editor-canvas-isolation-release.json \
     /private/tmp/cycle-v2-morph-release-report.json \
     /private/tmp/cycle-v2-morph-release-log.txt
@@ -294,6 +318,11 @@ The fixture must inspect the target first so the report contains
 On macOS, the wrapper preflights Accessibility permission by default and
 preflights Screen Recording when OS screenshots are requested. If permission is
 missing, it opens the relevant System Settings pane and exits with instructions.
+These are macOS privacy checks, not agent/shell execution approvals.
+`CYCLE_PREFLIGHT_PERMISSIONS=0` skips only the privacy probes; it does not grant
+or request command execution. An AppleScript or LaunchServices connection error
+is not by itself proof that privacy permission is missing, so inspect the exact
+error before directing someone to System Settings.
 
 ## UI Video
 

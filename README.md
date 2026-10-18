@@ -63,6 +63,10 @@ Read more in [`installer/README.md`](installer/README.md).
 └── scripts/
 ```
 
+Use [`docs/code-map.md`](docs/code-map.md) to find subsystem ownership,
+reusable cores, key entry points, and focused discovery commands. It is kept
+as a bounded semantic index rather than an exhaustive file listing.
+
 ## Prerequisites
 
 For a normal developer checkout, do not install JUCE, the VST3 SDK, or Catch2 by

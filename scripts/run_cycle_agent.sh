@@ -59,6 +59,17 @@ REPORT_PATH="${REPORT_PATH:A}"
 LOG_PATH="${LOG_PATH:A}"
 RAW_LOG_PATH="${RAW_LOG_PATH:A}"
 CRASH_REPORT_PATH="${CRASH_REPORT_PATH:A}"
+APP_BUNDLE_ID="$(plutil -extract CFBundleIdentifier raw -o - "$APP_PATH/Contents/Info.plist")"
+APP_EXECUTABLE_NAME="$(plutil -extract CFBundleExecutable raw -o - "$APP_PATH/Contents/Info.plist")"
+
+if [[ "${SCRIPT_PATH:t}" == cycle-v2-* \
+        && ( "$APP_BUNDLE_ID" != "com.amaranthaudio.cycle-v2" || "$PROCESS_NAME" != "CycleV2" ) ]]; then
+    echo "Cycle V2 fixture has mismatched app or process metadata: $APP_PATH ($PROCESS_NAME)" >&2
+    echo "Use scripts/run_cycle_v2_agent.sh for cycle-v2-* fixtures." >&2
+    exit 2
+fi
+
+echo "Cycle automation target: $APP_PATH" >&2
 
 if [[ -n "$OS_SCREENSHOT_PATH" ]]; then
     OS_SCREENSHOT_PATH="${OS_SCREENSHOT_PATH:A}"
@@ -446,8 +457,6 @@ if [[ "$REUSE_EXISTING" != "1" ]] && process_exists; then
 fi
 
 LAUNCH_TIME="$(date +%s)"
-APP_BUNDLE_ID="$(plutil -extract CFBundleIdentifier raw -o - "$APP_PATH/Contents/Info.plist")"
-APP_EXECUTABLE_NAME="$(plutil -extract CFBundleExecutable raw -o - "$APP_PATH/Contents/Info.plist")"
 start_os_video
 
 launch_args=(

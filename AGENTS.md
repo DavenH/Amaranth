@@ -1,158 +1,96 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-- root: CMake entry (`CMakeLists.txt`, `CMakePresets.json`), `.clang-tidy`, `.env` (required).
-- `lib/`: Shared Amaranth library (JUCE modules vendored under `JuceLibraryCode/`), unit tests in `lib/tests/`.
-- `cycle/`: Main synth app/plugin; sources in `cycle/src/`, tests under `cycle/tests/`. `cycle/README.md` has a lot of context about the design.
-- `oscillo/`: Standalone utility; sources in `oscillo/src/`, tests in `oscillo/tests/`.
-- `docs/`: Style and contributor notes. `scripts/`: setup helpers.
+## Start With The Smallest Relevant Context
 
-## Build, Test, and Development Commands
-- Bootstrap SDKs: `./scripts/install_deps.sh` (JUCE, VST3, Catch2; IPP on Linux).
-- Write env file: `./scripts/make_env.sh` (creates `.env` with `JUCE_MODULES_DIR`, `VST3_SDK_DIR`, `CATCH2_CMAKE_DIR`, and optional `IPP_DIR`).
-- List presets: `cmake --list-presets`.
-- Configure + build (examples):
-    - Standalone Debug: `cmake --preset standalone-debug && cmake --build --preset standalone-debug --parallel 10`
-    - Plugin Debug: `cmake --preset plugin-debug && cmake --build --preset plugin-debug --parallel 10`
-    - Tests: `cmake --preset tests && cmake --build --preset tests --parallel 10`
-- Always use `--parallel 10` or higher when running `cmake --build`.
-- Run tests: `ctest --test-dir build/tests -V` (Catch2 discovery is enabled).
-- Capture Cycle UI screenshots and filtered launch logs for regression checks and UI bug fixes: `scripts/capture_cycle_ui.sh /tmp/cycle-ui.png /tmp/cycle-logs.txt`. The script also writes the complete unfiltered log to `/tmp/cycle-logs.txt.raw`; inspect the filtered log first to avoid unnecessary token use.
-- Cycle agent automation runbook: `docs/cycle-agent-runbook.md`. Use this for targeted UI bug reproduction, focused fixture runs, agent screenshots, state export/assertions, OpenGL panel capture, crash `.ips` collection, and long-running session IPC.
+- Work from the repository root unless a command explicitly requires another directory.
+- For an unfamiliar subsystem, read only its branch in `docs/code-map.md`, then
+  use `rg` to locate the concrete symbols and callers. Do not inventory the
+  whole repository before a narrow change.
+- For production C++ edits, read `docs/style-guide.md` before editing. It is the
+  authoritative style reference and stays separate from this always-loaded file.
+- For nontrivial architecture, DSP, interaction, graph, or UI work, read the
+  relevant sections of `docs/engineering-policy.md` and the active TDD/ADR.
+- Read `docs/juce.md` before changing JUCE integration or writing generic
+  framework-like utilities. Prefer an existing JUCE or Amaranth facility.
+- For Cycle UI reproduction or screenshots, use `docs/cycle-agent-runbook.md`.
 
-## Coding Style & Naming Conventions
-- C++17, 4‑space indentation, braces on the same line; always brace single statements.
-- Headers start with `#pragma once`; system includes before project includes with a blank line.
-- Prefer `enum class`; use `override` on overrides; pointer/reference bind to type (`Foo* p`).
-- Follow `docs/style-guide.md` for alignment and initializer‑list formatting.
-- Observe the instructions about JUCE SDK library in  `docs/juce.md`
-- Linting: `.clang-tidy` is configured; example: `clang-tidy -p build/standalone-debug path/to/file.cpp`.
+## Repository Map
 
-## Style Enforcement
-- Before making code edits, read `docs/style-guide.md` and treat it as authoritative.
-- In DSP, analysis, and visualization hot paths, use `Buffer`/`VecOps` array operations for transforms, normalization, nonlinear shaping, and reductions.
-- Do not use scalar `std::<math>` calls (for example `std::pow`, `std::sqrt`, `std::abs`, `std::isfinite`) inside per-sample/per-bin/per-pixel loops when `Buffer`/`VecOps` equivalents are available.
-- Keep inner loops minimal: indexing, lookup, and write only. Move math outside loops.
-- Only if `Buffer`/`VecOps` cannot express an operation should we introduce scalar fallback logic.
-- Before finalizing a change touching DSP or visualization paths, run a self-check on modified files for scalar `std::<math>` usage in hot loops and fix violations.
+- `lib/`: reusable Amaranth engine, DSP, mesh, interaction, UI, persistence, and utilities.
+- `cycle/`: mature Cycle 1 synth/app/plugin; authoritative for established product behavior.
+- `cycle-v2/`: node-graph Cycle 2 app, graph model, runtime, nodes, and canvas UI.
+- `oscillo/`: standalone tuner and pitch-analysis app.
+- `installer/`: product-neutral package installer.
+- `docs/`: architecture, design, workflow, and session guidance.
+- `scripts/`: setup, analysis, migration, UI automation, and regression helpers.
 
-## Architectural Boundaries & Existing Implementations
-- Before implementing nontrivial DSP, rasterization, mesh interaction, graph traversal, serialization, or UI behavior, search for an existing implementation in the repository.
-- Treat existing mature implementations as authoritative when porting or extending equivalent behavior. Prefer adapter/facade code around existing behavior over reimplementation.
-- Before adding a compatibility layer or adapter, write down the authoritative implementation, the exact behavior reused unchanged, the translation performed at the boundary, and the intended deletion or stable end state. An adapter may translate types, events, ownership, and lifecycle; it must not copy interaction, rendering, topology, DSP, or domain state-machine behavior.
-- If reuse would require copying mature behavior, stop. Extract a shared core used by both callers or document the blocked extraction in a TDD and request architectural direction. Do not ship the copied behavior as a transitional implementation.
-- Treat a compatibility/bridge class that grows beyond narrow boundary translation, accumulates domain-specific branches, or mixes unrelated node families as an architectural failure. Do not continue adding to it. A large new adapter, repeated `NodeKind` switching, or shared code containing one client's domain types requires explicit architectural justification before implementation.
-- Before accepting a nontrivial implementation, inspect the production diff size, largest changed files, new type/kind branches, and overlap with mature sources. Unexpected code volume is evidence to re-check the design, not merely a review inconvenience.
-- Do not duplicate complex domain logic locally just to satisfy a narrow test, preview, or temporary workflow. If reuse is blocked, document the blocker and stop at the appropriate abstraction boundary.
-- Keep abstraction levels separated. High-level orchestration code should coordinate routing, lifecycle, and ownership; it should not contain domain algorithms.
-- Domain-specific behavior belongs behind domain-specific interfaces or modules, with blockwise/realtime, gridwise/analysis, UI/model, and adapter layers separated where appropriate.
-- If an implementation would require approximating existing behavior, record the missing adapter/refactor in the relevant TDD or refactor document instead of shipping the approximation.
-- Tests must preserve product intent and architectural intent. Do not write or update tests to bless simplified behavior when the requirement is parity with an existing mature implementation.
-- Prefer fewer, higher-signal tests that guard the intended contract over narrow tests that lock in scaffolding, fake data, or implementation accidents.
-- When a test creates pressure to add low-quality production code, change the design or test boundary rather than weakening the architecture.
-- Do not mark a TDD implemented while its principal architecture, deletion targets, negative boundaries, or completion criteria remain unfinished. Use a partial/in-progress status and state the remaining work explicitly.
+`docs/code-map.md` is the semantic source-tree index. Update it in the same
+change when adding, removing, renaming, or changing the role of a source
+boundary, entry point, reusable core, or canonical workflow. Replace or prune
+stale entries instead of appending indefinitely. Keep descriptions at 120
+characters or fewer and run `python3 scripts/check_code_map.py`.
 
-## Architecture Review Triggers
-- For every nontrivial Cycle V2 production change, run `python3 scripts/cycle_v2_architecture_audit.py`, measure the touched C++ files with `wc -l`, and inspect `git diff --stat`. A `.cpp` file at 800 lines or a header at 300 lines triggers a responsibility and composition review. A file at 1,200/450 lines respectively, or growth of 200 lines in one change, requires a recorded extraction plan or a specific reason the file is cohesive before adding more behavior. These are review triggers, not automatic split targets.
-- During that review, name the file's responsibilities, its stable collaborators, and the owner of each policy it applies. Search for the same policy in other UI, graph, runtime, and node layers. If two callers decide the same lifecycle, invalidation, transaction, preparation, or eligibility rule, place the decision behind one authoritative boundary and make callers supply only domain facts.
-- Measure improvement by removed responsibilities and duplicate decision sites, narrower public interfaces and dependencies, and reduced size of the original high-level file. Moving identical code into another large switchboard or adding a facade without deleting the old path does not count as completion.
-- For cross-subsystem refactors, record baseline and after sizes, policy decision sites, dependency direction, deletion targets, and semantic/operation-count proof in the active TDD. Do not use a line-count decrease alone as proof of better design.
+## Discovery And Common Commands
 
-## Cycle V2 Graph Mutation Rules
-- UI and editor code must express semantic edits through `GraphCommandDispatcher` or a domain command service. It must not mutate `NodeGraph`, call `GraphEditor`, publish document changes, or manage undo directly.
-- `GraphDocument::graph()` is the durable committed graph. `GraphCommandDispatcher::editingGraph()` is the current read view during a gesture and may be transient. Do not use a revision read from `editingGraph()` as a durable concurrency token.
-- A gesture captures its durable base revision once. Every publication in that gesture retains that base; the dispatcher alone translates it to the current transient snapshot and commits or cancels the transaction.
-- Revisions identify immutable model content, not UI events. Parameter-only updates may reuse the current model revision only inside a dispatcher-owned transient edit; equal-revision differences remain conflicts in the durable graph.
-- A successful semantic command must merge every changed field into one `GraphEditResult`/`GraphChangeSet`. Scheduling and repaint decisions must use that consolidated result so parameter-only and model-only edits cannot disappear.
-- Any new live editing path needs a sequence test with at least two updates in one gesture, commit, observable downstream refresh/effect, and undo. Single-update tests do not prove transient revision correctness.
+- Files: `rg --files <area>`; symbols/callers: `rg -n '<term>' <areas>`.
+- Read focused ranges with `sed -n '<start>,<end>p'`; inspect changes with
+  `git status --short`, `git diff --stat`, and `git diff --check`.
+- Bootstrap dependencies with `./scripts/install_deps.sh`; create the required
+  `.env` with `./scripts/make_env.sh`.
+- List presets with `cmake --list-presets`.
+- Configure/build: `cmake --preset <preset>` then
+  `cmake --build --preset <preset> --parallel 10`.
+- Common presets: `standalone-debug`, `plugin-debug`, `tests`.
+- Test with `ctest --preset tests`; narrow with `-R '<name>'` when appropriate.
+- Always use `--parallel 10` or higher for CMake builds.
+- Build the exact app target before runtime checks; automation runners do not build it.
+- Use `run_cycle_agent.sh`/`capture_cycle_ui.sh` for Cycle 1 and
+  `run_cycle_v2_agent.sh`/`capture_cycle_v2_ui.sh` for Cycle 2. Run GUI
+  automation sequentially.
+- Command execution approval and macOS privacy permissions are separate.
+  `CYCLE_PREFLIGHT_PERMISSIONS` controls only the latter; do not escalate a
+  normal runner command merely because its privacy preflight is enabled.
 
-## Interaction Complexity Parity
-- Before porting or changing a mature Cycle 1 interaction, document the Cycle 1 cost of pointer-down, each movement update, and commit. Cycle 2 must not increase the asymptotic cost of any phase.
-- Work for a semantic delta may scale only with the objects changed by that delta and with an explicitly required local render product. It must not scale with unrelated graph nodes, edges, resources, audio samples, mesh vertices, or editor-state size.
-- A live movement update must not clone `NodeGraph`, deep-copy a complete `Mesh` or node model, serialize state, stringify JSON for equality, rebuild unrelated presentation, or prepare durable resources.
-- Undo capture may occur once at a gesture boundary as a temporary fallback, but it must copy the smallest affected domain state and never unrelated graph or audio-resource content. The intended end state is an invertible semantic delta: apply the delta for edit/redo and its inverse for undo.
-- Gesture tests must use operation counters in addition to timing. Scale unrelated graph and domain data while holding the edited delta constant, and assert unchanged copy, serialization, lookup, preparation, and rebuild counts.
-- Treat a Cycle 1 O(1) operation that becomes O(n) in Cycle 2 as a correctness regression, not a performance optimization opportunity.
+## Core Engineering Boundaries
 
-## Engineering Loop
+- Search for the mature implementation before writing DSP, rasterization,
+  interpolation, mesh interaction/traversal, serialization, or UI behavior.
+- Reuse or extract shared behavior. Adapters may translate types, events,
+  ownership, and lifecycle; they must not copy domain algorithms or state machines.
+- Keep orchestration separate from domain algorithms and realtime/blockwise,
+  analysis/gridwise, model, presentation, and adapter responsibilities.
+- In DSP, analysis, and visualization hot paths, prefer `Buffer`/`VecOps`
+  operations. Do not put scalar `std::<math>` work in per-sample/bin/pixel loops
+  when a vectorized operation exists. Never allocate on the audio thread.
+- Cycle 2 UI/editor code expresses semantic edits through
+  `GraphCommandDispatcher` or a domain command service; it does not mutate
+  `NodeGraph`, publish document changes, or manage undo directly.
+- Preserve Cycle 1 interaction complexity when porting behavior. A live gesture
+  update must not copy/serialize/rebuild unrelated graph, mesh, or audio state.
+- Tests protect observable behavior and architectural intent, not scaffolding,
+  trivial getters, or approximations of mature behavior.
 
-For every nontrivial implementation, execute these stages in order. Treat each
-stage as an active task with evidence; do not assume passive awareness of an
-instruction is sufficient.
+## Change Workflow
 
-1. **Technical design**: identify the authoritative implementation, ownership,
-   thread/lifecycle boundaries, semantic contracts, expected complexity, and
-   deletion targets. Create or update a TDD when the change crosses subsystem
-   boundaries or contains multiple coherent slices.
-2. **Technical implementation**: implement the smallest complete slice against
-   the design. Reuse mature code and keep domain logic below orchestration
-   layers.
-3. **Refactor pass**: after behavior works, reread the production diff. Extract
-   leaked low-level mechanics, remove duplication and scaffolding, split mixed
-   abstraction levels, and verify high-level classes read as orchestration.
-   Passing tests do not make this stage optional.
-4. **Style check**: reread every changed production file against
-   `docs/style-guide.md`, run `git diff --check`, inspect hot loops, and run
-   applicable clang-tidy checks where available. Correct compressed formatting,
-   oversized functions, mixed declarations, and misleading names before
-   final verification.
-5. **Commit**: run proportionate semantic tests and commit the coherent slice
-   with an imperative subject. For an explicitly requested implementation train,
-   continue through this stage without waiting for a separate commit prompt
-   unless the user asked to leave changes uncommitted.
-6. **Continue to completion**: reread the active TDD and return to step 2 for
-   the next incomplete slice. Repeat implementation, refactor, style, testing,
-   and commit until every completion criterion and deletion target is satisfied.
-   Stop only for a genuine unresolved design ambiguity, an external blocker, or
-   explicit user direction. A passing slice, a clean commit, limited remaining
-   time, or the availability of further useful work is not a stopping point.
+1. Identify ownership, authoritative implementations, lifecycle/thread rules,
+   expected complexity, and deletion targets. Create/update a TDD for
+   cross-subsystem or multi-slice work.
+2. Implement the smallest complete slice, then reread the production diff and
+   remove duplicated mechanics, leaked policy, and mixed abstraction levels.
+3. Recheck changed production files against `docs/style-guide.md`; run
+   `git diff --check`, focused tests, and applicable lint/automation.
+4. For nontrivial Cycle 2 production changes, run
+   `python3 scripts/cycle_v2_architecture_audit.py`, inspect `git diff --stat`,
+   and apply the size/responsibility review in `docs/engineering-policy.md`.
+5. Commit each coherent completed slice with an imperative subject. Continue
+   through the active TDD until its criteria and deletion targets are complete.
 
-Before committing, report internally against this checklist in sequence. If a
-stage uncovers an architectural defect that cannot be corrected within scope,
-record it in the active TDD/refactor document rather than silently proceeding.
-After committing, actively inspect the TDD for remaining work; do not wait for
-the user to prompt the next slice or to act as the implementation scheduler.
-
-## Reuse Before Reimplementation
-- If you are about to write interpolation, rasterization, curve evaluation, oversampling, convolution, envelope/loop semantics, mesh traversal, or DSP transfer logic, stop and locate the existing implementation first. Reuse it or create a narrow adapter. Do not reimplement it in place.
-
-## Refactors
-
-If confusing code patterns, reuse possibilities, or better abstractions are detected, check `docs/TDD/refactors.md` if a suggestion to fix it is already present. If not record refactor wishes there.
-
-## Popup Menu Placement
-
-- For JUCE canvas context menus, anchor `PopupMenu::Options` with an explicit
-  screen-space click rectangle via `withTargetScreenArea`, after
-  `withTargetComponent` when the component's display scale is needed. Using
-  `withTargetComponent(this)` alone anchors the menu at the component origin
-  and has repeatedly placed new menus at `(0, 0)`.
-- Convert local canvas coordinates with `localPointToGlobal`, or use the mouse
-  event's screen position. Verify a new menu at a non-origin click in a focused
-  UI fixture; `withMousePosition()` can miss synthesized automation events.
-
-## Testing Guidelines
-- Framework: Catch2.
-- Locations: `lib/tests/*.cpp`, `cycle/tests/*.cpp`, `oscillo/tests/*.cpp`.
-- Naming: begin test files with `Test*.cpp` or place under a `tests/` subfolder.
-- Coverage: prefer tests for new DSP modules and bugfixes; include edge‑rate/sample‑rate cases.
-- Tests must assert observable semantic behavior or an architectural boundary. Avoid tests that merely execute scaffolding, restate implementation details, check trivial getters, or bless fake/approximate behavior. For interaction work, cover the complete event sequence and resulting visible/model state, not only isolated helper methods.
-- Every UI interaction regression should receive a focused automation fixture or assertion that fails for the reported behavior: hover/current highlighting, drag movement, selection stability, editor publication, and downstream effects as applicable.
-- UI regressions: use `scripts/capture_cycle_ui.sh /tmp/cycle-ui.png /tmp/cycle-logs.txt` to capture the Cycle UI and filtered launch logs before/after visual changes or when investigating UI bugs. Read `/tmp/cycle-logs.txt` first; only read `/tmp/cycle-logs.txt.raw` when detailed rasterizer/mesh logs are needed.
-- UI automation: prefer a focused fixture with `scripts/run_cycle_agent.sh` over the full smoke suite while debugging. Add small, stable fixtures under `scripts/fixtures/` for regressions that agents should be able to reproduce. See `docs/cycle-agent-runbook.md`.
-- When assertions, crashes, or suspicious runtime failures appear incidentally and are not the direct cause of the current feature/fix work, record a concise note in `docs/TDD/ui-bugs.md` or `docs/TDD/audio-bugs.md` as appropriate. Use `audio-bugs.md` for realtime audio pipeline issues; otherwise prefer `ui-bugs.md`. Include the assertion text, context, repro artifact/log path when available, and whether it is still open or was addressed.
-
-## Commit & Pull Request Guidelines
-- Commits: short, imperative subject (“Fix buffer wraparound”), optional body for context.
-- PRs: include description, linked issues, platform (Linux/macOS), and screenshots for UI changes.
-- CI/local proof: show build preset used and `ctest` output when adding tests.
-
-## Runtime & Configuration Tips
-- `.env` is mandatory at configure time; CMake reads it to locate SDKs.
-- Linux uses Intel IPP; macOS uses Accelerate/vDSP. Do not allocate on audio threads—preallocate and reuse buffers (see `docs/contributing.md`).
+Record incidental assertions, crashes, or suspicious runtime failures in
+`docs/TDD/ui-bugs.md` or `docs/TDD/audio-bugs.md` with concise repro evidence.
 
 ## Chat Playbook
-- Consult `docs/chats/README.md` and recent files in `docs/chats/` when a session establishes durable user preferences, naming direction, ambiguity-resolution rules, or workflow expectations.
-- Update `docs/chats/` before any conversation compaction and whenever the user explicitly asks to preserve new guidance from the session.
-- Treat the exact phrase `update playbook` as a direct instruction to add or refresh the relevant `docs/chats/` session summary immediately.
-- Keep chat-playbook updates concise, generalized, and semantic; do not store raw transcript dumps.
+
+Consult `docs/chats/README.md` and recent entries when a session establishes
+durable preferences, naming, ambiguity-resolution, or workflow expectations.
+Update it before compaction or when the user says `update playbook`; keep entries
+semantic and concise rather than storing transcript chronology.
