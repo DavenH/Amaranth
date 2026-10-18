@@ -36,7 +36,7 @@ def run_fixture(name, fixture):
     return video, result
 
 
-def surface_column(video, result):
+def panel_video_geometry(video, result):
     dimensions = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "v:0",
          "-show_entries", "stream=width,height", "-of", "csv=p=0", str(video)],
@@ -48,6 +48,11 @@ def surface_column(video, result):
     editor = diagnostics["expandedEditorBounds"]
     panel = next(panel["bounds"] for panel in diagnostics["panels"]
                  if panel["id"] == "trimeshPanel3D")
+    return width, height, editor, panel
+
+
+def surface_column(video, result):
+    width, height, editor, panel = panel_video_geometry(video, result)
     x = 2 * round((editor["x"] + panel["x"] + 0.25 * panel["width"]) / 2)
     y = 2 * round((height - result["snapshot"]["height"]
                    + editor["y"] + panel["y"] + 0.03 * panel["height"]) / 2)
@@ -66,6 +71,34 @@ def surface_column(video, result):
     if len(column) != sample_height:
         raise AssertionError(f"Could not decode the spectral panel in {video}")
     return column
+
+
+def lowest_harmonic_height(video, result):
+    width, height, editor, panel = panel_video_geometry(video, result)
+    x = round(editor["x"] + panel["x"] + 0.067 * panel["width"])
+    y = round(height - result["snapshot"]["height"] + editor["y"] + panel["y"])
+    panel_height = round(panel["height"])
+    if x < 0 or x + 4 > width or y < 0 or y + panel_height > height:
+        raise AssertionError("Lowest harmonic sample falls outside the recorded window")
+
+    frame = subprocess.run(
+        ["ffmpeg", "-loglevel", "error", "-sseof", "-0.25", "-i", str(video),
+         "-frames:v", "1", "-vf", f"crop=4:{panel_height}:{x}:{y},format=rgb24",
+         "-f", "rawvideo", "-"],
+        check=True, capture_output=True,
+    ).stdout
+    if len(frame) != 4 * panel_height * 3:
+        raise AssertionError(f"Could not decode the lowest harmonic in {video}")
+
+    orange_rows = 0
+    for row in range(round(0.65 * panel_height), panel_height):
+        pixels = frame[row * 12:(row + 1) * 12]
+        red = sum(pixels[0::3]) / 4
+        green = sum(pixels[1::3]) / 4
+        blue = sum(pixels[2::3]) / 4
+        if red > green + 10 and red > blue + 15:
+            orange_rows += 1
+    return orange_rows, panel_height
 
 
 def held_fixture():
@@ -115,8 +148,12 @@ def main():
             f"Spectral surface changed on release or lost its stepped rows: "
             f"mean difference={mean_difference:.1f}, transitions={transitions}"
         )
+    lowest_rows, panel_height = lowest_harmonic_height(released_video, released_result)
+    if lowest_rows < 0.08 * panel_height:
+        raise AssertionError(f"Lowest harmonic is too thin: {lowest_rows}/{panel_height} pixels")
     print(f"Spectral rows stable through release: mean difference={mean_difference:.1f}, "
-          f"transitions={transitions}; no surface rebuild on mouse-up")
+          f"transitions={transitions}, lowest harmonic={lowest_rows}/{panel_height} pixels; "
+          "no surface rebuild on mouse-up")
     print(f"Captures: {ARTIFACTS}")
 
 

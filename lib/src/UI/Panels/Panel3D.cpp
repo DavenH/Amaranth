@@ -598,9 +598,12 @@ void Panel3D::setSteppedVertices(int column, Buffer<float>& vertices) const {
     const Float32 x0 = scaledX[column - 1];
     const Float32 x1 = scaledX[column];
     const Float32* y = scaledY.get();
+    const Float32 lowerEdge = sy(0.f);
     for (int row = 0; row < draw.sizeY; ++row) {
-        const Float32 start = row == 0 ? y[0] + 15.f : y[row - 1];
-        const Float32 end = y[row];
+        const Float32 start = row == 0
+                ? lowerEdge : 0.5f * (y[row - 1] + y[row]);
+        const Float32 end = row + 1 == draw.sizeY
+                ? y[row] : 0.5f * (y[row] + y[row + 1]);
         *vertexPtr++ = x0;
         *vertexPtr++ = start;
         *vertexPtr++ = x1;

@@ -1,0 +1,22 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/acid-stab-3.cyclegraph" },
+    { "command": "waitForIdle", "idleDelayMs": 400 },
+    { "command": "snapshotState" },
+    { "command": "pointer", "event": "down", "targetId": "node:magnitudeLayer1", "targetX": 0.5, "targetY": 0.3 },
+    { "command": "waitForIdle", "idleDelayMs": 150 },
+    { "command": "resetCanvasPerformance" },
+    { "command": "pointer", "event": "drag", "targetId": "node:magnitudeLayer1", "downTargetId": "node:magnitudeLayer1", "targetX": 0.72, "targetY": 0.3, "downTargetX": 0.5, "downTargetY": 0.3 },
+    { "command": "waitForIdle", "idleDelayMs": 150 },
+    { "command": "pointer", "event": "drag", "targetId": "node:magnitudeLayer1", "downTargetId": "node:magnitudeLayer1", "targetX": 0.66, "targetY": 0.3, "downTargetX": 0.5, "downTargetY": 0.3 },
+    { "command": "waitForIdle", "idleDelayMs": 300 },
+    { "command": "inspectCanvasPerformance" },
+    { "command": "snapshotState" },
+    { "command": "pointer", "event": "up", "targetId": "node:magnitudeLayer1", "downTargetId": "node:magnitudeLayer1", "targetX": 0.66, "targetY": 0.3, "downTargetX": 0.5, "downTargetY": 0.3, "waitForIdle": true, "idleDelayMs": 400 },
+    { "command": "inspectCanvasPerformance" },
+    { "command": "snapshotState" },
+    { "command": "undo" },
+    { "command": "snapshotState" }
+  ],
+  "quit": true
+}
