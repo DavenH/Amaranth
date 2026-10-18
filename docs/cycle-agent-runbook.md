@@ -319,10 +319,11 @@ CYCLE_AGENT_SMOKE_FIXTURES=readonly CYCLE_AGENT_SMOKE_RESET_PRESET= \
     scripts/run_cycle_agent_smokes.sh
 ```
 
-The aggregate report defaults to `.context/cycle-automation/cycle1/smokes`.
-The standard reset preset is `ooh-aah`; override it if that factory preset is
-unavailable in the current build. The Cycle 2 smoke wrapper invokes focused
-product aliases one fixture at a time.
+The aggregate report defaults to a run-scoped directory under
+`.context/cycle-automation/cycle1/`. The standard reset preset is `OohAah`;
+override it when a fixture needs another baseline. The
+Cycle 2 smoke alias reads its fixture manifest and records one report per
+fixture under its own run directory.
 
 ## Practical Rules
 

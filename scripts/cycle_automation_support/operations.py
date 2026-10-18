@@ -1,9 +1,12 @@
 """Fixture, capture, debug, and evidence operations for one validated instance."""
 
+import ctypes
 from datetime import datetime
 import json
+import os
 import shutil
 import signal
+import struct
 import subprocess
 import time
 from pathlib import Path
@@ -12,6 +15,23 @@ from .identity import valid_instance
 from .lifecycle import compiled_helper, stop_instance
 from .registry import lease
 from .session import command
+
+
+def preflight(accessibility=False, screen=False):
+    if os.environ.get("CYCLE_PREFLIGHT_PERMISSIONS", "1") == "0":
+        return
+    if accessibility:
+        application_services = ctypes.CDLL(
+            "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices")
+        application_services.AXIsProcessTrusted.restype = ctypes.c_bool
+        if not application_services.AXIsProcessTrusted():
+            raise RuntimeError("macOS Accessibility permission is required for the calling terminal/app")
+    if screen:
+        core_graphics = ctypes.CDLL(
+            "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics")
+        core_graphics.CGPreflightScreenCaptureAccess.restype = ctypes.c_bool
+        if not core_graphics.CGPreflightScreenCaptureAccess():
+            raise RuntimeError("macOS Screen Recording permission is required for the calling terminal/app")
 
 
 def write_logs(record, artifacts, started):
@@ -78,9 +98,22 @@ def fixture_commands(path):
     return commands
 
 
+def resolve_fixture_paths(value, fixture_dir):
+    if isinstance(value, list):
+        return [resolve_fixture_paths(item, fixture_dir) for item in value]
+    if isinstance(value, dict):
+        return {key: (str((fixture_dir / item).resolve())
+                      if key == "path" and isinstance(item, str)
+                      and item.startswith(("./", "../"))
+                      else resolve_fixture_paths(item, fixture_dir))
+                for key, item in value.items()}
+    return value
+
+
 def run_fixture(record, fixture, report):
     results = []
-    for index, item in enumerate(fixture_commands(fixture)):
+    commands = resolve_fixture_paths(fixture_commands(fixture), fixture.parent)
+    for index, item in enumerate(commands):
         if not valid_instance(record):
             raise RuntimeError(f"Owned PID {record['pid']} exited during fixture")
         response = command(record["socket"], item, timeout=30, require_ok=False)
@@ -104,13 +137,18 @@ def focus(record):
 
 def capture(record, owner, destination, rect=None, wait=0):
     with lease("foreground", owner, "capture", wait=wait):
+        preflight(accessibility=bool(rect), screen=True)
         destination.parent.mkdir(parents=True, exist_ok=True)
         if rect:
             focus(record)
             if not valid_instance(record):
                 raise RuntimeError(f"Owned PID {record['pid']} changed before capture")
             subprocess.run(["screencapture", "-x", "-R", rect, str(destination)], check=True)
-            metadata = {"method": "foreground-region", "bounds": rect}
+            values = [int(value) for value in rect.split(",")]
+            if len(values) != 4:
+                raise ValueError(f"Invalid capture rectangle: {rect}")
+            metadata = {"method": "foreground-region", "window_id": None,
+                        "bounds": dict(zip(("x", "y", "width", "height"), values))}
         else:
             if not valid_instance(record):
                 raise RuntimeError(f"Owned PID {record['pid']} changed before capture")
@@ -126,13 +164,20 @@ def capture(record, owner, destination, rect=None, wait=0):
             }
         if not destination.is_file() or destination.stat().st_size == 0:
             raise RuntimeError(f"Screenshot missing: {destination}")
+        with destination.open("rb") as image:
+            header = image.read(24)
+        if not header.startswith(b"\x89PNG\r\n\x1a\n"):
+            raise RuntimeError(f"Screenshot is not PNG: {destination}")
+        width, height = struct.unpack(">II", header[16:24])
+        metadata["pixels"] = {"width": width, "height": height}
     return {**metadata, "pid": record["pid"], "path": str(destination)}
 
 
 def recorded_fixture(record, fixture, report, video, owner, wait):
     if video is None:
-        return run_fixture(record, fixture, report)
+        return run_fixture(record, fixture, report), None
     with lease("foreground", owner, "video", wait=wait):
+        preflight(screen=True)
         if not valid_instance(record):
             raise RuntimeError(f"Owned PID {record['pid']} changed before video capture")
         video.parent.mkdir(parents=True, exist_ok=True)
@@ -140,11 +185,13 @@ def recorded_fixture(record, fixture, report, video, owner, wait):
             [str(compiled_helper("capture_cycle_window.swift")),
              str(record["pid"]), str(video), "30"],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        outcome = None
+        errors = ""
         try:
             time.sleep(1)
             if recorder.poll() is not None:
                 raise RuntimeError(f"Video recorder exited early: {recorder.stderr.read()}")
-            return run_fixture(record, fixture, report)
+            outcome = run_fixture(record, fixture, report)
         finally:
             if recorder.poll() is None:
                 recorder.send_signal(signal.SIGINT)
@@ -153,6 +200,17 @@ def recorded_fixture(record, fixture, report, video, owner, wait):
                 raise RuntimeError(f"Video recorder failed: {errors}")
             if not video.is_file() or video.stat().st_size == 0:
                 raise RuntimeError(f"Video missing: {video}")
+        line = next((line for line in errors.splitlines()
+                     if line.startswith("Cycle window: pid=")), None)
+        if not line:
+            raise RuntimeError(f"Video window metadata missing: {errors}")
+        fields = dict(field.split("=", 1) for field in line.split()[2:])
+        metadata = {"method": "pid-window-video", "path": str(video),
+                    "pid": record["pid"], "window_id": int(fields["window"]),
+                    "bounds": {key: int(fields[key]) for key in
+                               ("x", "y", "width", "height")},
+                    "pixels": {key: int(fields[key]) for key in ("width", "height")}}
+        return outcome, metadata
 
 
 def debug_fixture(record, fixture, report, commands_path, log_path, artifacts):

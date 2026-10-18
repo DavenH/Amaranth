@@ -70,7 +70,9 @@ struct CycleWindowRecorder {
         guard let window = selectedWindow else {
             throw RecorderError.windowMissing(pid, discovered)
         }
-        fputs("Cycle window: pid=\(pid) id=\(window.windowID) \(window.title ?? "") \(window.frame)\n", stderr)
+        fputs("Cycle window: pid=\(pid) window=\(window.windowID) "
+            + "x=\(Int(window.frame.minX)) y=\(Int(window.frame.minY)) "
+            + "width=\(Int(window.frame.width)) height=\(Int(window.frame.height))\n", stderr)
 
         let filter = SCContentFilter(desktopIndependentWindow: window)
         let streamConfiguration = SCStreamConfiguration()

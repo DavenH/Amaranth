@@ -4,7 +4,8 @@
 
 In Progress. The coordinator, PID launcher, registry, leases, persistent
 sessions, scoped runs, capture, video, LLDB, native-input routing, and product
-aliases are implemented. Remaining integration evidence is listed below.
+aliases are implemented. Native Accessibility acceptance remains before the
+TDD can be marked Implemented.
 
 ## Problem
 
@@ -475,9 +476,9 @@ ordinary registry and policy coverage.
   paths. After: coordinator defaults use hashed workspace/product sockets and
   `.context/cycle-automation/<product>/<run-id>/`; fixture-authored absolute
   output paths remain explicit inputs.
-- Coordinator production sizes: CLI 222 lines; largest support module 198
-  lines. The Swift launcher is 45 lines, screenshot helper 56, recorder 122.
-- Focused unit and alias tests: 12 passed. Both exact standalone targets built;
+- Coordinator production sizes: CLI 271 lines; largest support module 256
+  lines. The Swift launcher is 45 lines, screenshot helper 56, recorder 124.
+- Focused unit and alias tests: 13 passed. Both exact standalone targets built;
   Cycle 1 and Cycle 2 readonly fixtures passed through aliases. Cycle 1 focused
   session smoke passed with an empty reset preset.
 - A detached second Git worktree with a copied Cycle 1 bundle produced PID
@@ -491,18 +492,24 @@ ordinary registry and policy coverage.
 - Rebuilding Cycle 1 restarted only its workspace instance; another registered
   instance retained its PID. A `--clean` fixture launched and stopped a scoped
   instance while leaving the persistent record intact.
+- Abrupt-exit recovery, exact-PID crash report association, and bounded
+  lifecycle waiting passed against live macOS processes. Evidence is in
+  `.context/crash-recovery/evidence.json` and the private lease event log.
+- Cycle 1 and Cycle 2 smoke wrappers are thin aliases. Fixture lists, optional
+  visual assertions, and reset settings live in declarative manifests.
+- Broad Cycle 1 smoke: 25 ordinary fixtures plus the expected-failure fixture
+  passed; 9 older fixtures failed because they request archived preset names
+  such as `calming-keys` and `african-horn`. Broad Cycle 2 smoke: 10 passed,
+  while `graph-editing`, `pointer`, and `ported-presets` failed existing graph/UI
+  assertions against the current app. Relative graph fixture paths now resolve
+  from their fixture directory; `audio-capture` passed after that correction.
 
 Remaining before `Implemented`:
 
 - Native `cliclick` integration was attempted but the calling process lacked
   macOS Accessibility permission; rerun its focused authoring sequence once
   that permission is available.
-- Exercise abrupt-exit recovery against two live worktrees and verify exact-PID
-  crash report association. Exercise concurrent lifecycle launches and bounded
-  wait in the macOS integration harness.
-- Review the specialized Cycle 1/Cycle 2 smoke-suite drivers against the
-  thin-alias end state; they now delegate lifecycle but retain suite selection
-  and artifact policy.
-- The full Cycle 1 smoke suite cannot use its default `ooh-aah` reset preset in
-  this build because that factory preset is absent. Run it with an available
-  reset preset or no preset after confirming fixture preconditions.
+- Run an optional foreground visual smoke after Accessibility permission is
+  available for the calling process.
+- The smoke manifest uses the current `OohAah` factory preset; the older
+  `ooh-aah` name resolves only to an archived preset and failed reset.

@@ -1,5 +1,19 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Broad automation suites contain stale fixture expectations
+
+On 2026-10-18, the coordinated Cycle 2 smoke suite passed 10 of 13 fixtures.
+`graph-editing` could not connect `env2.env` to `waveMesh.scratch`, `pointer`
+failed `expandedNodeId` assertions, and `ported-presets` expected controls and
+graph counts absent after opening the saved graph. Report:
+`.context/cycle-automation/cycle-v2/31b4903fc578/report.json`. The Cycle 1
+suite passed 25 ordinary fixtures plus its expected-failure fixture; nine
+fixtures requested archived preset names such as `calming-keys` and
+`african-horn`. Report:
+`.context/cycle-automation/cycle1/baed9339362f/report.json`. Status: open;
+reconcile fixture expectations and preset names separately from coordinator
+ownership.
+
 ## P2: Factory preset graph tests expect stale saved topology
 
 On 2026-10-17, `[cycle-v2][graph][presets]` reported five failures in nine

@@ -30,6 +30,14 @@ class CycleAgentAliasTest(unittest.TestCase):
                 self.assertEqual(passed[1:4], ["run", "--product", expected])
                 self.assertEqual(passed[4:], ["--fixture", "fixture.json"])
 
+            for script, expected in (("run_cycle_agent_smokes.sh", "cycle1"),
+                                     ("run_cycle_v2_agent_smokes.sh", "cycle-v2")):
+                subprocess.run(["/bin/zsh", str(SCRIPTS / script), "readonly"],
+                               env=environment, check=True)
+                passed = arguments.read_text().splitlines()
+                self.assertEqual(passed[1:4], ["suite", "--product", expected])
+                self.assertEqual(passed[-1], "readonly")
+
 
 if __name__ == "__main__":
     unittest.main()

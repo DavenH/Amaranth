@@ -15,8 +15,10 @@ from cycle_automation_support.identity import valid_instance, workspace
 from cycle_automation_support.lifecycle import build, ensure, stop
 from cycle_automation_support.profiles import PRODUCTS, ROOT
 from cycle_automation_support.registry import lease, recover, registry
+from cycle_automation_support.smokes import run_fresh_manifest, run_manifest
 from cycle_automation_support.operations import (
-    capture, collect_crash, debug_fixture, recorded_fixture, report_rect, write_logs
+    capture, collect_crash, debug_fixture, preflight, recorded_fixture,
+    report_rect, write_logs
 )
 
 
@@ -60,9 +62,12 @@ def main():
             sub.add_argument("--allow-failures", action="store_true")
             sub.add_argument("--startup", action="store_true")
         if name == "suite":
-            sub.add_argument("--fixture", action="append", required=True)
+            sub.add_argument("--fixture", action="append", default=[])
+            sub.add_argument("--manifest", type=Path)
             sub.add_argument("--report", type=Path)
             sub.add_argument("--smoke-arg", action="append", default=[])
+            sub.add_argument("--visual", action="store_true")
+            sub.add_argument("names", nargs="*")
         if name == "debug":
             sub.add_argument("--fixture", type=Path, required=True)
             sub.add_argument("--report", type=Path)
@@ -90,6 +95,12 @@ def main():
     profile = PRODUCTS[args.product]
     run_id = uuid.uuid4().hex[:12]
     artifacts = output_base(profile.name, run_id)
+    if args.operation == "suite":
+        artifact_env = ("CYCLE_AGENT_ARTIFACT_DIR" if profile.name == "cycle1"
+                        else "CYCLE_V2_AGENT_ARTIFACT_DIR")
+        if os.environ.get(artifact_env):
+            artifacts = Path(os.environ[artifact_env]).expanduser().resolve()
+            artifacts.mkdir(parents=True, exist_ok=True)
     owner = {"workspace_id": identity, "workspace_path": path, "run_id": run_id, "app_pid": None}
     if args.operation == "stop":
         record = stop(profile, owner, short_id, args.wait)
@@ -105,6 +116,10 @@ def main():
             if args.operation == "debug" and args.commands and not args.commands.is_file():
                 parser.error(f"LLDB commands missing: {args.commands}")
         if args.operation == "suite":
+            if not args.manifest and not args.fixture:
+                parser.error("suite requires --manifest or --fixture")
+            if args.manifest and not args.manifest.is_file():
+                parser.error(f"Smoke manifest missing: {args.manifest}")
             for spec in args.fixture:
                 path_part = spec.split("=", 1)[-1]
                 if not Path(path_part).name.startswith(profile.fixture_prefix):
@@ -113,6 +128,29 @@ def main():
             parser.error("exec requires a command after --")
         if not args.no_build:
             build(profile)
+
+        if args.operation == "suite" and args.manifest:
+            manifest = json.loads(args.manifest.read_text())
+            if manifest["mode"] == "fresh-fixtures":
+                env_names = ("CYCLE_AGENT_SMOKE_FIXTURES" if profile.name == "cycle1"
+                             else "CYCLE_V2_AGENT_SMOKE_FIXTURES")
+                names = args.names or os.environ.get(env_names, "").split()
+                visual_env = ("CYCLE_AGENT_SMOKE_OS_SCREENSHOT" if profile.name == "cycle1"
+                              else "CYCLE_V2_AGENT_SMOKE_OS_SCREENSHOT")
+                visual = args.visual or os.environ.get(visual_env) == "1"
+                report = (args.report or artifacts / "report.json").resolve()
+                results = run_fresh_manifest(profile, manifest, names, report,
+                                             artifacts, visual)
+                result = result_base(owner, profile, None, run_id, artifacts)
+                result["report"] = str(report)
+                result["fixtures"] = results
+                result["ok"] = all(item["ok"] for item in results)
+                (artifacts / "run.json").write_text(json.dumps(result, indent=2) + "\n")
+                if not result["ok"]:
+                    raise RuntimeError(f"Smoke suite failed: {report}")
+                print(json.dumps(result, indent=2) if args.json else
+                      f"suite {profile.name}: {len(results)} fixtures, artifacts {artifacts}")
+                return 0
 
         last_record = None
         run_started = time.time()
@@ -125,7 +163,7 @@ def main():
             if args.operation == "run":
                 report = (args.report or artifacts / "report.json").resolve()
                 try:
-                    fixture_result = recorded_fixture(
+                    fixture_result, video_metadata = recorded_fixture(
                         record, fixture, report,
                         args.video.resolve() if args.video else None, owner, args.wait)
                 except RuntimeError:
@@ -138,21 +176,31 @@ def main():
                 }
                 result["report"] = str(report)
                 if args.video:
-                    result["video"] = str(args.video.resolve())
+                    result["video"] = video_metadata
                 if args.screenshot:
                     rect = report_rect(report, args.area, args.target) if args.area else None
                     result["capture"] = capture(record, owner, args.screenshot.resolve(), rect, args.wait)
             elif args.operation == "suite":
                 report = (args.report or artifacts / "report.json").resolve()
-                suite = Path(__file__).with_name("cycle_agent_smoke_session.py")
-                process = subprocess.run(
-                    [sys.executable, str(suite), record["socket"],
-                     "--report", str(report), "--keep-alive", *args.smoke_arg, *args.fixture],
-                    check=False)
+                if args.manifest:
+                    env_names = ("CYCLE_AGENT_SMOKE_FIXTURES" if profile.name == "cycle1"
+                                 else "CYCLE_V2_AGENT_SMOKE_FIXTURES")
+                    names = args.names or os.environ.get(env_names, "").split()
+                    visual_env = ("CYCLE_AGENT_SMOKE_OS_SCREENSHOT" if profile.name == "cycle1"
+                                  else "CYCLE_V2_AGENT_SMOKE_OS_SCREENSHOT")
+                    visual = args.visual or os.environ.get(visual_env) == "1"
+                    status = run_manifest(record, args.manifest.resolve(), names,
+                                          report, artifacts, owner, args.wait, visual)
+                else:
+                    suite = Path(__file__).with_name("cycle_agent_smoke_session.py")
+                    status = subprocess.run(
+                        [sys.executable, str(suite), record["socket"],
+                         "--report", str(report), "--keep-alive", *args.smoke_arg, *args.fixture],
+                        check=False).returncode
                 result["report"] = str(report)
-                result["ok"] = process.returncode == 0
-                if process.returncode:
-                    raise RuntimeError(f"Smoke suite failed with exit {process.returncode}: {report}")
+                result["ok"] = status == 0
+                if status:
+                    raise RuntimeError(f"Smoke suite failed with exit {status}: {report}")
             elif args.operation == "debug":
                 report = (args.report or artifacts / "report.json").resolve()
                 transcript = (args.lldb_log or artifacts / "lldb.log").resolve()
@@ -172,6 +220,7 @@ def main():
                 command_args = args.command[1:] if args.command[0] == "--" else args.command
                 if args.foreground:
                     with lease("foreground", owner, "exec", wait=args.wait):
+                        preflight(accessibility=True)
                         status = subprocess.run(command_args, env=environment, check=False).returncode
                 else:
                     status = subprocess.run(command_args, env=environment, check=False).returncode

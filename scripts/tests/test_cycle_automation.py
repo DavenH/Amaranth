@@ -17,6 +17,7 @@ sys.path.insert(0, str(SCRIPTS))
 from cycle_automation_support.identity import socket_fingerprint, socket_path, valid_instance, workspace
 from cycle_automation_support.profiles import PRODUCTS
 from cycle_automation_support.operations import collect_crash
+from cycle_automation_support.smokes import selected_fixtures
 from cycle_automation_support.registry import Conflict, acquire, lease, recover, registry
 
 
@@ -161,6 +162,15 @@ class CycleAutomationTest(unittest.TestCase):
                 found = collect_crash(record, root)
             self.assertEqual(found, root / "crash.ips")
             self.assertIn('"pid": 123', found.read_text())
+
+    def test_smoke_manifest_selects_named_fixture_and_visual_variant(self):
+        manifest = json.loads((SCRIPTS / "fixtures/cycle-v2-smoke-suite.json").read_text())
+        selected = selected_fixtures(manifest, ["readonly"], include_visual=False)
+        self.assertEqual([item["name"] for item in selected], ["readonly"])
+        visual = selected_fixtures(manifest, [], include_visual=True)
+        self.assertIn("mesh-controls-os-screenshot", [item["name"] for item in visual])
+        with self.assertRaisesRegex(ValueError, "Unknown smoke fixtures"):
+            selected_fixtures(manifest, ["not-a-fixture"], include_visual=False)
 
 
 if __name__ == "__main__":

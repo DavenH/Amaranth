@@ -85,6 +85,11 @@ def ensure(profile, owner, short_id, clean=False, wait=0, task=None, scoped=Fals
         with registry() as data:
             recover(data)
             existing = data["instances"].get(key)
+        if existing and (existing["workspace_id"] != owner["workspace_id"]
+                         or existing["workspace_path"] != owner["workspace_path"]):
+            raise RuntimeError(
+                f"Workspace identity collision at {key}: owned by "
+                f"{existing['workspace_id']} ({existing['workspace_path']})")
         if existing and existing["fingerprint"] == current_fingerprint and ping(existing) and not clean:
             return task(existing) if task else existing
         with lease("lifecycle", owner, "restart" if existing else "launch", key, wait):
@@ -155,6 +160,11 @@ def stop(profile, owner, short_id, wait=0):
         with lease("lifecycle", owner, "stop", key, wait):
             record = owned_record(profile, short_id)
             if record:
+                if (record["workspace_id"] != owner["workspace_id"]
+                        or record["workspace_path"] != owner["workspace_path"]):
+                    raise RuntimeError(
+                        f"Workspace identity collision at {key}: owned by "
+                        f"{record['workspace_id']} ({record['workspace_path']})")
                 stop_instance(record)
                 with registry() as data:
                     if data["instances"].get(key) == record:

@@ -79,7 +79,8 @@ def acquire(data, resource, owner, operation, instance=None):
     if existing:
         raise Conflict(
             f"Resource {resource} is held by workspace {existing['workspace_id']} "
-            f"({existing['workspace_path']}), PID {existing.get('app_pid')}, "
+            f"({existing['workspace_path']}), app PID {existing.get('app_pid')}, "
+            f"coordinator PID {existing['owner_pid']}, "
             f"run {existing['run_id']}, operation {existing['operation']} "
             f"since {existing['acquired']}. Run scripts/cycle_automation.py status.")
     data["leases"][resource] = {
