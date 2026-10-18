@@ -476,9 +476,9 @@ ordinary registry and policy coverage.
   paths. After: coordinator defaults use hashed workspace/product sockets and
   `.context/cycle-automation/<product>/<run-id>/`; fixture-authored absolute
   output paths remain explicit inputs.
-- Coordinator production sizes: CLI 271 lines; largest support module 256
+- Coordinator production sizes: CLI 272 lines; largest support module 265
   lines. The Swift launcher is 45 lines, screenshot helper 56, recorder 124.
-- Focused unit and alias tests: 13 passed. Both exact standalone targets built;
+- Focused unit and alias tests: 14 passed. Both exact standalone targets built;
   Cycle 1 and Cycle 2 readonly fixtures passed through aliases. Cycle 1 focused
   session smoke passed with an empty reset preset.
 - A detached second Git worktree with a copied Cycle 1 bundle produced PID
@@ -497,6 +497,8 @@ ordinary registry and policy coverage.
   `.context/crash-recovery/evidence.json` and the private lease event log.
 - Cycle 1 and Cycle 2 smoke wrappers are thin aliases. Fixture lists, optional
   visual assertions, and reset settings live in declarative manifests.
+- App-side screenshot fixtures conservatively hold the foreground lease; a
+  conflict test proves they fail before sending a socket command.
 - Broad Cycle 1 smoke: 25 ordinary fixtures plus the expected-failure fixture
   passed; 9 older fixtures failed because they request archived preset names
   such as `calming-keys` and `african-horn`. Broad Cycle 2 smoke: 10 passed,

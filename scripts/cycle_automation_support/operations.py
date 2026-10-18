@@ -110,14 +110,23 @@ def resolve_fixture_paths(value, fixture_dir):
     return value
 
 
-def run_fixture(record, fixture, report):
+def run_fixture(record, fixture, report, owner=None, wait=0, foreground_held=False):
     results = []
     commands = resolve_fixture_paths(fixture_commands(fixture), fixture.parent)
-    for index, item in enumerate(commands):
-        if not valid_instance(record):
-            raise RuntimeError(f"Owned PID {record['pid']} exited during fixture")
-        response = command(record["socket"], item, timeout=30, require_ok=False)
-        results.append({"commandIndex": index, **response["result"]})
+    def execute():
+        for index, item in enumerate(commands):
+            if not valid_instance(record):
+                raise RuntimeError(f"Owned PID {record['pid']} exited during fixture")
+            response = command(record["socket"], item, timeout=30, require_ok=False)
+            results.append({"commandIndex": index, **response["result"]})
+
+    contains_capture = any(item.get("command") == "screenshot" for item in commands
+                           if isinstance(item, dict))
+    if contains_capture and owner and not foreground_held:
+        with lease("foreground", owner, "app-screenshot", wait=wait):
+            execute()
+    else:
+        execute()
     data = {"ok": all(item.get("ok", False) for item in results), "results": results,
             "pid": record["pid"], "fixture": str(fixture)}
     report.parent.mkdir(parents=True, exist_ok=True)
@@ -175,7 +184,7 @@ def capture(record, owner, destination, rect=None, wait=0):
 
 def recorded_fixture(record, fixture, report, video, owner, wait):
     if video is None:
-        return run_fixture(record, fixture, report), None
+        return run_fixture(record, fixture, report, owner, wait), None
     with lease("foreground", owner, "video", wait=wait):
         preflight(screen=True)
         if not valid_instance(record):
@@ -191,7 +200,7 @@ def recorded_fixture(record, fixture, report, video, owner, wait):
             time.sleep(1)
             if recorder.poll() is not None:
                 raise RuntimeError(f"Video recorder exited early: {recorder.stderr.read()}")
-            outcome = run_fixture(record, fixture, report)
+            outcome = run_fixture(record, fixture, report, owner, wait, foreground_held=True)
         finally:
             if recorder.poll() is None:
                 recorder.send_signal(signal.SIGINT)
@@ -213,7 +222,7 @@ def recorded_fixture(record, fixture, report, video, owner, wait):
         return outcome, metadata
 
 
-def debug_fixture(record, fixture, report, commands_path, log_path, artifacts):
+def debug_fixture(record, fixture, report, commands_path, log_path, artifacts, owner, wait):
     driver = artifacts / "debug.lldb"
     lines = [f"process attach --pid {record['pid']}",
              "process handle SIGTRAP --stop true --notify true --pass true",
@@ -233,7 +242,7 @@ def debug_fixture(record, fixture, report, commands_path, log_path, artifacts):
             time.sleep(2)
             if debugger.poll() is not None:
                 raise RuntimeError(f"LLDB exited before fixture: {log_path}")
-            return run_fixture(record, fixture, report)
+            return run_fixture(record, fixture, report, owner, wait)
         finally:
             stop_instance(record)
             try:

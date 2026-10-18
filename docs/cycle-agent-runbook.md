@@ -190,8 +190,9 @@ separately and inspect their operation-count assertions.
 ## Screenshots
 
 For ordinary JUCE panels, use the app-side `screenshot` command with a
-registered area or target. For composited or OpenGL content, use coordinator
-capture. Its default ScreenCaptureKit path selects one window by the recorded
+registered area or target. The coordinator holds the foreground lease for
+fixtures containing app-side screenshots. For composited or OpenGL content,
+use coordinator capture. Its default ScreenCaptureKit path selects one window by the recorded
 PID and reports its window ID, bounds, and pixel dimensions. `--rect` captures
 a desktop region after focusing that same PID. Both methods hold the foreground
 lease conservatively.

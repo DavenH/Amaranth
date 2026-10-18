@@ -16,7 +16,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 from cycle_automation_support.identity import socket_fingerprint, socket_path, valid_instance, workspace
 from cycle_automation_support.profiles import PRODUCTS
-from cycle_automation_support.operations import collect_crash
+from cycle_automation_support.operations import collect_crash, run_fixture
 from cycle_automation_support.smokes import selected_fixtures
 from cycle_automation_support.registry import Conflict, acquire, lease, recover, registry
 
@@ -171,6 +171,23 @@ class CycleAutomationTest(unittest.TestCase):
         self.assertIn("mesh-controls-os-screenshot", [item["name"] for item in visual])
         with self.assertRaisesRegex(ValueError, "Unknown smoke fixtures"):
             selected_fixtures(manifest, ["not-a-fixture"], include_visual=False)
+
+    def test_app_screenshot_conflict_prevents_session_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fixture = root / "cycle-agent-screenshot.json"
+            fixture.write_text('{"commands":[{"command":"screenshot","area":"window"}]}')
+            held = {"workspace_id": "other", "workspace_path": "/other",
+                    "run_id": "other", "app_pid": 55}
+            caller = {"workspace_id": "this", "workspace_path": "/this",
+                      "run_id": "this", "app_pid": 66}
+            with patch("cycle_automation_support.registry.state_root", return_value=root), \
+                    patch("cycle_automation_support.operations.command") as send:
+                with lease("foreground", held, "native-input"):
+                    with self.assertRaises(Conflict):
+                        run_fixture({"pid": 66, "socket": "unused"}, fixture,
+                                    root / "report.json", caller)
+            send.assert_not_called()
 
 
 if __name__ == "__main__":

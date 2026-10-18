@@ -205,7 +205,8 @@ def main():
                 report = (args.report or artifacts / "report.json").resolve()
                 transcript = (args.lldb_log or artifacts / "lldb.log").resolve()
                 fixture_result = debug_fixture(
-                    record, fixture, report, args.commands, transcript, artifacts)
+                    record, fixture, report, args.commands, transcript, artifacts,
+                    owner, args.wait)
                 result["fixture_result"] = {"ok": fixture_result["ok"],
                                             "command_count": len(fixture_result["results"])}
                 result["report"] = str(report)

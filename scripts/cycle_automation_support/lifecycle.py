@@ -76,6 +76,14 @@ def stop_instance(record):
         raise RuntimeError(f"Owned PID {record['pid']} did not exit")
 
 
+def publish_lease_pid(key, owner, pid):
+    with registry() as data:
+        for resource in (f"instance:{key}", "lifecycle"):
+            active = data["leases"].get(resource)
+            if active and active["run_id"] == owner["run_id"]:
+                active["app_pid"] = pid
+
+
 def ensure(profile, owner, short_id, clean=False, wait=0, task=None, scoped=False):
     key = instance_key(short_id, profile.name)
     if scoped:
@@ -91,6 +99,7 @@ def ensure(profile, owner, short_id, clean=False, wait=0, task=None, scoped=Fals
                 f"Workspace identity collision at {key}: owned by "
                 f"{existing['workspace_id']} ({existing['workspace_path']})")
         if existing and existing["fingerprint"] == current_fingerprint and ping(existing) and not clean:
+            publish_lease_pid(key, owner, existing["pid"])
             return task(existing) if task else existing
         with lease("lifecycle", owner, "restart" if existing else "launch", key, wait):
             if existing and valid_instance(existing):
@@ -109,6 +118,7 @@ def ensure(profile, owner, short_id, clean=False, wait=0, task=None, scoped=Fals
             identity = process_identity(pid)
             if identity is None or identity["executable"] != str(profile.executable.resolve()):
                 raise RuntimeError(f"Launched PID {pid} has unexpected executable: {identity}; expected {profile.executable}")
+            publish_lease_pid(key, owner, pid)
             record = {
                 "schema": 1, "workspace_id": owner["workspace_id"],
                 "workspace_path": owner["workspace_path"], "product": profile.name,
@@ -160,6 +170,7 @@ def stop(profile, owner, short_id, wait=0):
         with lease("lifecycle", owner, "stop", key, wait):
             record = owned_record(profile, short_id)
             if record:
+                publish_lease_pid(key, owner, record["pid"])
                 if (record["workspace_id"] != owner["workspace_id"]
                         or record["workspace_path"] != owner["workspace_path"]):
                     raise RuntimeError(

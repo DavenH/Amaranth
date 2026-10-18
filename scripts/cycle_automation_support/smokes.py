@@ -5,10 +5,12 @@ import os
 import re
 import subprocess
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 
-from .operations import capture
+from .operations import capture, fixture_commands
 from .profiles import ROOT
+from .registry import lease
 
 
 def selected_fixtures(manifest, names, include_visual):
@@ -64,7 +66,14 @@ def run_session_suite(record, manifest, fixtures, report, artifacts, owner, wait
         if os.environ.get(env_name) == "1":
             command.append(flag)
     command.extend(f"{item['name']}={ROOT / item['path']}" for item in fixtures)
-    status = subprocess.run(command, check=False).returncode
+    contains_capture = any(
+        any(isinstance(step, dict) and step.get("command") == "screenshot"
+            for step in fixture_commands(ROOT / item["path"]))
+        for item in fixtures)
+    capture_lease = (lease("foreground", owner, "app-screenshot-suite", wait=wait)
+                     if contains_capture else nullcontext())
+    with capture_lease:
+        status = subprocess.run(command, check=False).returncode
     optional = manifest.get("optional_screenshot")
     if optional and any(item["name"] == optional["name"] for item in fixtures) and status == 0:
         rect = session_rect(report, optional["area"])
