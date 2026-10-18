@@ -234,10 +234,11 @@ shows the same stepped bands as the held frame.
 The follow-up `python3 scripts/test_cycle_v2_trimesh_preview_parity.py` opens
 `acid-stab-3` twice at the same untouched parameter state and compares OS
 captures of the compact and expanded magnitude surfaces. The lowest band
-occupies 30.5% and 29.6% of their visible spectral heights, with 3.50 mean
-RGB levels of difference in the sampled columns. The focused image test
-asserts the shared `LogRegions` boundaries, source harmonic values, palette,
-and transparent area below the first position. The node-move fixture still
+occupies comparable fractions of their visible spectral heights. After the
+linked frequency-zoom change, both views crop the unused display region below
+the first harmonic; the focused image test asserts the shared `LogRegions`
+boundaries, source harmonic values, palette, and first band at the bottom edge.
+The node-move fixture still
 reports zero tile misses and a 0.010 held/released mean RGB difference. Seven
 focused CTest cases pass, including the unchanged Signal Spy and FFT preview
 mapping boundaries.

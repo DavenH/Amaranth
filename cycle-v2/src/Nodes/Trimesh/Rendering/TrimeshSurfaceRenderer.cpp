@@ -49,11 +49,12 @@ Image createSteppedMagnitudeImage(
             const Buffer<float> ramp = LogRegions::getDefaultRegion(midiNote);
             bandCount = jmin(renderData.rows, ramp.size()) - 1;
             bandColours.resize((size_t) bandCount);
+            const float displayHeightScale = (float) height / (1.f - ramp.front());
             for (int band = 0; band < bandCount; ++band) {
                 const int top = jlimit(0, height,
-                        roundToInt((1.f - ramp[band + 1]) * (float) height));
+                        roundToInt((1.f - ramp[band + 1]) * displayHeightScale));
                 const int bottom = jlimit(0, height,
-                        roundToInt((1.f - ramp[band]) * (float) height));
+                        roundToInt((1.f - ramp[band]) * displayHeightScale));
                 for (int pixel = top; pixel < bottom; ++pixel) {
                     bandAtPixel[(size_t) pixel] = band;
                 }

@@ -33,6 +33,24 @@ void TrimeshPanel3D::panelResized() {
     doExtraResized();
 }
 
+void TrimeshPanel3D::zoomUpdated(int updateSource) {
+    Panel3D::zoomUpdated(updateSource);
+    if (zoomChangedCallback != nullptr) {
+        zoomChangedCallback(false);
+    }
+}
+
+void TrimeshPanel3D::doZoomExtra(bool commandDown) {
+    Panel3D::doZoomExtra(commandDown);
+    if (zoomChangedCallback != nullptr) {
+        zoomChangedCallback(true);
+    }
+}
+
+void TrimeshPanel3D::setZoomChangedCallback(std::function<void(bool)> callback) {
+    zoomChangedCallback = std::move(callback);
+}
+
 void TrimeshPanel3D::updateBackground(bool onlyVerticalBackground) {
     const bool spectral = renderProfile.getSliceStyle().isSpectral();
     Panel::updateBackground(onlyVerticalBackground || spectral);
