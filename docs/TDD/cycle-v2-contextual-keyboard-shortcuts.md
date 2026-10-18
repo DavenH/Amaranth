@@ -31,8 +31,16 @@ The shortcut contract is:
   existing delayed search-field focus.
 
 The focused morph control shows a small keyboard glyph as a shape cue in
-addition to the existing focus colour. The glyph is a shared property-control
-presentation primitive, not a new icon family.
+addition to the existing focus colour. Its rounded shell, two rows of round
+keys, and centered spacebar preserve the diagnostic proportions of the supplied
+keyboard reference at an 18 by 13 pixel production size. The glyph is a shared
+property-control presentation primitive, not a new icon family.
+
+Cycle 1's other keys were reviewed separately. `A` remains the useful follow-on
+for selection, with its exact select-all/clear-selection context to be designed
+alongside the Cycle 2 selection workflow. The `7`/`8`/`9` link aliases, `E`
+extrude, `W`, and `[`/`]` tour navigation are intentionally not carried forward:
+their related Cycle 2 workflows are absent or not mature enough yet.
 
 All shortcut dispatch is O(1). A morph endpoint key changes one parameter and
 does not scan unrelated graph nodes, copy a graph or mesh, serialize state, or
@@ -87,11 +95,11 @@ routing, while each editor supplies its own available-axis facts.
 ## Validation
 
 - Standalone Debug build passes with `--parallel 10`.
-- The `[keyboard]` Cycle V2 suite passes 454 assertions in 26 cases.
+- The `[keyboard]` Cycle V2 suite passes 455 assertions in 26 cases.
 - `cycle-v2-agent-contextual-keyboard-shortcuts.json` passes all 45 commands,
   including both editors, undoable poles, links, C/P tabs, and Space playback
   while the performance keyboard is occluded.
-- Production-size app captures show the 14 by 10 keyboard glyph within the
+- Production-size app captures show the 18 by 13 keyboard glyph within the
   focused Blue rail in both expanded editors.
 - The architecture audit, touched-file size review, scalar-math hot-loop check,
   and `git diff --check` pass. Existing scalar math reported by the check is in

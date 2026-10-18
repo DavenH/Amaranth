@@ -164,8 +164,8 @@ Rectangle<float> morphSliderIndicatorBounds(
 }
 
 Rectangle<float> keyboardFocusIndicatorBounds(Rectangle<float> bounds) {
-    return Rectangle<float>(14.f, 10.f).withPosition(
-            bounds.getRight() - 16.f,
+    return Rectangle<float>(18.f, 13.f).withPosition(
+            bounds.getRight() - 20.f,
             bounds.getY() + 1.f);
 }
 
@@ -174,20 +174,27 @@ void paintKeyboardFocusIndicator(
         Rectangle<float> controlBounds) {
     const Rectangle<float> icon = keyboardFocusIndicatorBounds(controlBounds);
     graphics.setColour(Colour(0xff111820).withAlpha(0.96f));
-    graphics.fillRoundedRectangle(icon, 2.f);
-    graphics.setColour(propertyControlFocusColour().withAlpha(0.92f));
-    graphics.drawRoundedRectangle(icon, 2.f, 1.f);
+    graphics.fillRoundedRectangle(icon, 3.f);
 
-    const float keyTop = icon.getY() + 3.f;
-    const float keyBottom = icon.getBottom() - 2.f;
-    for (int index = 1; index < 4; ++index) {
-        const float x = icon.getX() + icon.getWidth() * (float) index / 4.f;
-        graphics.drawVerticalLine(roundToInt(x), keyTop, keyBottom);
+    const Colour glyph = propertyControlFocusColour().withAlpha(0.96f);
+    graphics.setColour(glyph);
+    graphics.drawRoundedRectangle(icon.reduced(0.6f), 3.f, 1.2f);
+
+    constexpr float keyDiameter = 1.5f;
+    constexpr float horizontalInset = 3.1f;
+    const float keySpacing = (icon.getWidth() - 2.f * horizontalInset - keyDiameter) / 4.f;
+    for (int row = 0; row < 2; ++row) {
+        const float y = icon.getY() + 3.25f + (float) row * 3.f;
+        for (int column = 0; column < 5; ++column) {
+            const float x = icon.getX() + horizontalInset + (float) column * keySpacing;
+            graphics.fillEllipse(x, y, keyDiameter, keyDiameter);
+        }
     }
-    graphics.drawHorizontalLine(
-            roundToInt(icon.getY() + 6.f),
-            icon.getX() + 2.f,
-            icon.getRight() - 2.f);
+
+    graphics.fillRoundedRectangle(
+            icon.withSizeKeepingCentre(8.f, 1.5f)
+                    .withY(icon.getBottom() - 3.1f),
+            0.75f);
 }
 
 void paintPropertySlider(

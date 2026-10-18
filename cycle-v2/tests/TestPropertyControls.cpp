@@ -42,8 +42,9 @@ TEST_CASE("Keyboard focus indicator stays inside a morph control",
     const Rectangle<float> icon = keyboardFocusIndicatorBounds(control);
 
     REQUIRE(control.contains(icon));
-    REQUIRE(icon.getWidth() == Catch::Approx(14.f));
-    REQUIRE(icon.getHeight() == Catch::Approx(10.f));
+    REQUIRE(icon.getWidth() == Catch::Approx(18.f));
+    REQUIRE(icon.getHeight() == Catch::Approx(13.f));
+    REQUIRE(icon.getWidth() / icon.getHeight() == Catch::Approx(18.f / 13.f));
     REQUIRE(control.getRight() - icon.getRight() == Catch::Approx(2.f));
 }
 
