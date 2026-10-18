@@ -30,11 +30,14 @@
 #include "UI/GuideRelationshipPresentation.h"
 #include "UI/GuideCurveShelf.h"
 #include "UI/NodeCanvasScene.h"
+#include "UI/NodePortGeometry.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
 #include "UI/NodeCanvasCursorPolicy.h"
 #include "UI/NodeCanvasPresentation.h"
 #include "UI/NodeCableRenderer.h"
 #include "UI/NodeCanvasViewport.h"
+#include "UI/ModulationCableBundle.h"
+#include "UI/NodeInputQuickCreate.h"
 #include "UI/NodeIconRenderer.h"
 #include "UI/NodePalette.h"
 #include "UI/NodePaletteEntryIconRenderer.h"
@@ -52,6 +55,74 @@
 #include "Runtime/PreviewPitchResolver.h"
 
 using namespace CycleV2;
+
+TEST_CASE("Voice Context ports place Unison before Pitch and Scratch",
+        "[cycle-v2][canvas][ports][voice-context][regression]") {
+    const Node voice = GraphNodeFactory().createNode(
+            NodeKind::VoiceContext, "voice", { 100.f, 100.f });
+    const std::vector<String> expected { "modulation", "unison", "pitch", "scratch" };
+    REQUIRE(voice.inputs.size() == expected.size());
+    for (size_t index = 0; index < expected.size(); ++index) {
+        REQUIRE(voice.inputs[index].id == expected[index]);
+        REQUIRE(NodeCanvasScene::portWorldCentre(voice, voice.inputs[index]).y
+                == Catch::Approx(voice.bounds.getY()
+                        + NodePortGeometry::firstSidePortOffset
+                        + (float) index * NodePortGeometry::sidePortSpacing));
+    }
+}
+
+TEST_CASE("Voice Context quick-create badges hit the intended port at normal zoom",
+        "[cycle-v2][canvas][ports][voice-context][regression]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::VoiceContext, "voice", { 300.f, 200.f }));
+    NodeCanvasViewport viewport;
+    NodeCanvasScene sceneBuilder;
+    const Node& voice = *graph.findNode("voice");
+
+    for (const float zoom : { 0.18f, 0.43f, 1.f }) {
+        viewport.setTransform({}, zoom);
+        const auto& scene = sceneBuilder.build(graph, viewport);
+        for (const Port& port : voice.inputs) {
+            const Point<float> centre = viewport.toScreen(
+                    NodeCanvasScene::portWorldCentre(voice, port));
+            const Point<float> badgeCentre { centre.x - 13.f, centre.y };
+            const auto hit = NodeCanvasHitTester().hitTest(scene, badgeCentre);
+            REQUIRE(hit.has_value());
+            REQUIRE(hit->kind == NodeSceneTargetKind::InputPort);
+            REQUIRE(hit->portId == port.id);
+            REQUIRE(hit->bounds.getHeight()
+                    <= NodePortGeometry::sidePortSpacing * viewport.getZoom() + 0.01f);
+        }
+    }
+}
+
+TEST_CASE("Trimesh quick-create badges hit Scratch and Mod Triple sockets",
+        "[cycle-v2][canvas][ports][trimesh][regression]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh, "mesh", { 300.f, 200.f }));
+    const Node& mesh = *graph.findNode("mesh");
+    NodeCanvasViewport viewport;
+    NodeCanvasScene sceneBuilder;
+
+    for (const float zoom : { 0.43f, 1.f }) {
+        viewport.setTransform({}, zoom);
+        const auto& scene = sceneBuilder.build(graph, viewport);
+        for (const String& portId : { String("scratch"), ModulationCableBundle::portId() }) {
+            const PortAddress destination { mesh.id, portId, true };
+            const Point<float> socket = viewport.toScreen(
+                    NodeInputQuickCreate::socketWorldCentre(mesh, destination));
+            const Point<float> badge = NodeInputQuickCreate::badgeBounds(
+                    socket, zoom).getCentre();
+            const auto hit = NodeCanvasHitTester().hitTest(scene, badge);
+            REQUIRE(hit.has_value());
+            REQUIRE(hit->kind == NodeSceneTargetKind::InputPort);
+            REQUIRE(hit->portAddress().nodeId == mesh.id);
+            REQUIRE(hit->portAddress().portId == portId);
+        }
+    }
+}
 
 TEST_CASE("Node canvas Shift cursor preserves adjustment priority",
         "[cycle-v2][canvas][cursor]") {
@@ -1629,6 +1700,114 @@ TEST_CASE("Cable endpoints follow node movement before a drag transaction commit
                     *graph.findNode("output"), graph.findNode("output")->inputs.front())));
 }
 
+TEST_CASE("Fan-out cables stay above intermediate node previews",
+        "[cycle-v2][canvas][scene][cables]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", { 40.f, 20.f }));
+    for (int index = 0; index < 3; ++index) {
+        const String id = "mesh" + String(index);
+        graph.addNode(factory.createNode(
+                NodeKind::TrilinearMesh, id, { 430.f + 340.f * (float) index, 260.f }));
+    }
+    graph.addEdge({
+            "envelope", "env", "mesh0", "scratch",
+            PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
+
+    NodeCanvasViewport viewport;
+    viewport.setTransform({}, 1.f);
+    NodeCanvasScene sceneBuilder;
+    const Path firstDirect = sceneBuilder.build(graph, viewport).edges.front().cablePath;
+    for (int index = 1; index < 3; ++index) {
+        const String id = "mesh" + String(index);
+        graph.addEdge({
+                "envelope", "env", id, "scratch",
+                PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
+    }
+
+    const auto& scene = sceneBuilder.build(graph, viewport);
+    REQUIRE(scene.edges.size() == 3);
+    REQUIRE(scene.edges.front().cablePath == firstDirect);
+
+    const Rectangle<float> firstMesh = viewport.toScreen(graph.findNode("mesh0")->bounds);
+    const Rectangle<float> secondMesh = viewport.toScreen(graph.findNode("mesh1")->bounds);
+    const Path& farCable = scene.edges[2].cablePath;
+    REQUIRE(farCable.getBounds().getY() < firstMesh.getY());
+    for (int index = 1; index < 3; ++index) {
+        const Path& path = scene.edges[(size_t) index].cablePath;
+        const auto hit = NodeCanvasHitTester().hitTest(
+                scene,
+                path.getPointAlongPath(path.getLength() * 0.85f));
+        REQUIRE(hit.has_value());
+        REQUIRE(hit->kind == NodeSceneTargetKind::Edge);
+        REQUIRE(hit->edgeIndex == index);
+    }
+    for (int sample = 1; sample < 100; ++sample) {
+        const Point<float> point = farCable.getPointAlongPath(
+                farCable.getLength() * (float) sample / 100.f);
+        REQUIRE_FALSE(firstMesh.reduced(3.f).contains(point));
+        REQUIRE_FALSE(secondMesh.reduced(3.f).contains(point));
+    }
+}
+
+TEST_CASE("An isolated cable detours only while a node blocks its direct path",
+        "[cycle-v2][canvas][scene][cables]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "source", { 40.f, 20.f }));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "output", { 1000.f, 260.f }));
+    graph.addEdge({
+            "source", "env", "output", "scratch",
+            PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
+
+    NodeCanvasViewport viewport;
+    viewport.setTransform({}, 1.f);
+    NodeCanvasScene sceneBuilder;
+    const Path direct = sceneBuilder.build(graph, viewport).edges.front().cablePath;
+    REQUIRE(sceneBuilder.build(graph, viewport).edges.front().cablePath == direct);
+
+    Node blockingNode = factory.createNode(NodeKind::TrilinearMesh, "blocker", {});
+    blockingNode.bounds = blockingNode.bounds.withCentre(
+            direct.getPointAlongPath(direct.getLength() * 0.5f));
+    graph.addNode(blockingNode);
+    const auto& blocked = sceneBuilder.build(graph, viewport);
+    REQUIRE(blocked.edges.front().cablePath != direct);
+    const Rectangle<float> blocker = graph.findNode("blocker")->bounds.reduced(3.f);
+    for (int sample = 1; sample < 100; ++sample) {
+        const Path& route = blocked.edges.front().cablePath;
+        REQUIRE_FALSE(blocker.contains(route.getPointAlongPath(
+                route.getLength() * (float) sample / 100.f)));
+    }
+
+    REQUIRE(graph.setNodeBounds(
+            "blocker", graph.findNode("blocker")->bounds.withY(700.f)));
+    REQUIRE(sceneBuilder.build(graph, viewport).edges.front().cablePath == direct);
+}
+
+TEST_CASE("A clear long fan-out keeps its curve when another target is below it",
+        "[cycle-v2][canvas][scene][cables]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", { 40.f, 130.f }));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "upper", { 1200.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "lower", { 400.f, 500.f }));
+    graph.addEdge({
+            "envelope", "env", "upper", "scratch",
+            PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
+
+    NodeCanvasViewport viewport;
+    viewport.setTransform({}, 1.f);
+    NodeCanvasScene sceneBuilder;
+    const Path clearCurve = sceneBuilder.build(graph, viewport).edges.front().cablePath;
+    graph.addEdge({
+            "envelope", "env", "lower", "scratch",
+            PortDomain::ControlSignal, ConnectionKind::ProcessingAttachment });
+
+    const auto& scene = sceneBuilder.build(graph, viewport);
+    REQUIRE(scene.edges.size() == 2);
+    REQUIRE(scene.edges.front().cablePath == clearCurve);
+}
+
 TEST_CASE("Pan and Spy share evenly spaced cable presentation positions",
         "[cycle-v2][canvas][scene][pan][spy]") {
     GraphNodeFactory factory;
@@ -1772,12 +1951,12 @@ TEST_CASE("Canvas legend collapses non-signal domains into Control",
     REQUIRE(colourForDomain(PortDomain::SpectralPhaseSignal) != control);
 }
 
-TEST_CASE("Voice context compact presentation retains its summary",
+TEST_CASE("Voice context compact presentation aligns pictograms with ports",
         "[cycle-v2][canvas][compact-editor]") {
     Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
 
     REQUIRE(VoiceContextCompactEditor::summaryLabel(voice)
-            == "Octave 0  ·  1 second");
+            == "Octave offset 0 semitones  ·  1 second");
 
     voice.parameters = {
             { "octave", "Octave", "1" },
@@ -1787,25 +1966,60 @@ TEST_CASE("Voice context compact presentation retains its summary",
             { "oversampling", "Oversampling", "4x" }
     };
     REQUIRE(VoiceContextCompactEditor::summaryLabel(voice)
-            == "Octave 1  ·  1 second  ·  Glide");
+            == "Octave offset 12 semitones  ·  1 second  ·  Glide");
 
-    const Rectangle<float> scratch = VoiceContextCompactEditor::scratchIndicatorBounds(
-            voice.bounds,
-            1.f);
+    const Rectangle<float> scratch = VoiceContextCompactEditor::portIconBounds(
+            voice.bounds, 1.f, 3);
     const Rectangle<float> summary = VoiceContextCompactEditor::summaryBounds(
-            voice.bounds,
-            1.f);
-    const Rectangle<float> scratchLabel = VoiceContextCompactEditor::scratchLabelBounds(
             voice.bounds,
             1.f);
     REQUIRE(voice.bounds.contains(scratch));
     REQUIRE(voice.bounds.contains(summary));
-    REQUIRE(voice.bounds.contains(scratchLabel));
     REQUIRE_FALSE(summary.intersects(scratch));
-    REQUIRE_FALSE(summary.intersects(scratchLabel));
-    REQUIRE(scratch.getCentreY() == Catch::Approx(
-            NodeCanvasScene::portWorldCentre(voice, voice.inputs[3]).getY()));
-    REQUIRE(scratch.getX() - voice.bounds.getX() >= 7.f);
+    for (int index = 0; index < 4; ++index) {
+        const Rectangle<float> icon = VoiceContextCompactEditor::portIconBounds(
+                voice.bounds, 1.f, index);
+        REQUIRE(icon.getCentreY() == Catch::Approx(
+                NodeCanvasScene::portWorldCentre(voice, voice.inputs[(size_t) index]).getY()));
+        REQUIRE_FALSE(summary.intersects(icon));
+    }
+}
+
+TEST_CASE("Voice context shows its semitone offset on the compact canvas",
+        "[cycle-v2][canvas][compact-editor][regression]") {
+    ScopedJuceInitialiser_GUI gui;
+    const Node voice = GraphNodeFactory().createNode(
+            NodeKind::VoiceContext, "voice", {});
+    Image image(Image::ARGB,
+            (int) voice.bounds.getWidth(),
+            (int) voice.bounds.getHeight(), true);
+    Graphics graphics(image);
+    VoiceContextCompactEditor::paintNodeSummary(
+            graphics, voice.bounds, 1.f, voice);
+
+    const Rectangle<float> summary = VoiceContextCompactEditor::summaryBounds(
+            voice.bounds, 1.f);
+    const Rectangle<int> octaveArea(
+            (int) summary.getX() + 28, (int) summary.getY() + 43, 118, 33);
+    int visiblePixels = 0;
+    for (int y = octaveArea.getY(); y < octaveArea.getBottom(); ++y) {
+        for (int x = octaveArea.getX(); x < octaveArea.getRight(); ++x) {
+            visiblePixels += image.getPixelAt(x, y).getAlpha() != 0;
+        }
+    }
+    REQUIRE(visiblePixels > 20);
+
+    Node shiftedVoice = voice;
+    for (NodeParameter& parameter : shiftedVoice.parameters) {
+        if (parameter.id == "octave") {
+            parameter.value = "1";
+        }
+    }
+    Image shifted(Image::ARGB, image.getWidth(), image.getHeight(), true);
+    Graphics shiftedGraphics(shifted);
+    VoiceContextCompactEditor::paintNodeSummary(
+            shiftedGraphics, shiftedVoice.bounds, 1.f, shiftedVoice);
+    REQUIRE(imageChecksum(image) != imageChecksum(shifted));
 }
 
 TEST_CASE("Shared Unison preview does not depend on attachment edge order",

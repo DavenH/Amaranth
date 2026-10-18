@@ -1,0 +1,58 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-voice-context-compact.png"
+    },
+    { "command": "inspectPointerTargets" },
+    { "command": "resetCanvasPerformance" },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "input:voice.unison",
+      "expectedCursor": "pointingHand"
+    },
+    { "command": "assertState", "path": "canvasRepaintRequestCount", "equals": 1 },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "input:voice.unison",
+      "expectedCursor": "pointingHand"
+    },
+    { "command": "assertState", "path": "canvasRepaintRequestCount", "equals": 1 },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-voice-context-port-hover.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "input:voice.unison",
+      "targetX": 0.25,
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-voice-context-created.png"
+    },
+    { "command": "assertState", "path": "nodeCount", "equals": 23 },
+    { "command": "assertState", "path": "edgeCount", "equals": 21 },
+    { "command": "assertState", "path": "edges.20.destPortId", "equals": "unison" },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "nodeCount", "equals": 22 },
+    { "command": "assertState", "path": "edgeCount", "equals": 20 },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": true
+}

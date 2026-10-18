@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -21,7 +22,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 584.79999, "y": 556.0 },
+            "position": { "x": 584.79999, "y": 564.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 584.79999, "y": 1014.0 },
+            "position": { "x": 569.59998, "y": 736.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 4, "width": 7.84, "panSpread": 0.0, "phase": 0.84, "jitter": 0.968 },
             "model": {
                 "schema": "unisonVoices",
@@ -73,6 +74,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -213,6 +215,7 @@
                 "gain": 0.5,
                 "range": 0.575,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -311,6 +314,7 @@
                 "gain": 0.5,
                 "range": 0.675,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -396,6 +400,7 @@
                 "gain": 0.5,
                 "range": 0.25,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.5,
@@ -490,8 +495,8 @@
                             "vertices": [
                                 { "time": 0.0, "phase": 0.0, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 0.8701784, "id": 0 },
                                 { "time": 0.0, "phase": 0.0, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.8701784, "id": 1 },
-                                { "time": 0.0, "phase": 0.00028790813, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.8701784, "id": 2 },
-                                { "time": 0.0, "phase": 0.00028790813, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.8701784, "id": 3 },
+                                { "time": 0.0, "phase": 0.000287908, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.8701784, "id": 2 },
+                                { "time": 0.0, "phase": 0.000287908, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.8701784, "id": 3 },
                                 { "time": 1.0, "phase": 0.05, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 0.5, "id": 4 },
                                 { "time": 1.0, "phase": 0.05, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.5, "id": 5 },
                                 { "time": 1.0, "phase": 0.05, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.5, "id": 6 },
@@ -571,7 +576,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 545.59998, "y": 736.0 },
+            "position": { "x": 569.59998, "y": 942.0 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -929,7 +934,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
-        "tags": ["Bass", "Stab"],
+        "tags": [ "Bass", "Stab" ],
         "preview": {
             "mediaType": "image/jpeg",
             "width": 320,

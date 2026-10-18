@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -38,7 +39,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1344.49622, "y": 619.0 },
+            "position": { "x": 1368.13525, "y": 619.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 49.14284, "y": 857.82709 },
+            "position": { "x": 9.94283, "y": 857.82709 },
             "parameters": { "enabled": true, "mode": "group", "order": 2, "width": 1.68, "panSpread": 1.0, "phase": 0.94, "jitter": 0.72 },
             "model": {
                 "schema": "unisonVoices",
@@ -67,7 +68,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 971.98499, "y": 619.0 },
+            "position": { "x": 995.62402, "y": 619.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,

@@ -118,6 +118,10 @@ TEST_CASE("Scratch attachment help distinguishes defaults inheritance and exclus
     NodeCanvasQueryModel queries(graph, snapshot);
 
     REQUIRE(queries.hoverTextForPort({ "voice", "scratch", true }).contains("default"));
+    REQUIRE(queries.hoverTextForPort({ "voice", "unison", true })
+            .contains("Click + to add Unison"));
+    REQUIRE_FALSE(queries.hoverTextForPort({ "voice", "scratch", true })
+            .contains("Double-click"));
     REQUIRE(queries.hoverTextForPort({ "inherited", "scratch", true }).contains("Inherits"));
     REQUIRE(queries.hoverTextForPort({ "excluded", "scratch", true }).contains("voice time"));
     REQUIRE(queries.hoverTextForPort({ "voiceTime", "scratch", false }).contains("instead"));

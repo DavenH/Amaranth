@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 468.07239, "y": 387.0 },
+            "position": { "x": 428.87238, "y": 90.19041 },
             "parameters": { "enabled": true, "mode": "group", "order": 9, "width": 9.520000000000001, "panSpread": 1.0, "phase": 0.916, "jitter": 0.768 },
             "model": {
                 "schema": "unisonVoices",
@@ -268,7 +269,7 @@
                 "signalType": "spectralMagnitude",
                 "phaseMode": "absolute",
                 "polarity": "bipolar",
-                "yellow": 0.0,
+                "yellow": 0.174,
                 "red": 0.074766353,
                 "blue": 0.0,
                 "primaryAxis": "yellow",
@@ -296,9 +297,9 @@
                         { "time": 0.0, "phase": 0.51456577, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 0.5069444, "id": 9 },
                         { "time": 0.0, "phase": 0.5206559, "amp": 0.059925124, "key": 1.0, "mod": 0.0, "weight": 0.5069444, "id": 10 },
                         { "time": 0.0, "phase": 0.51456577, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 0.5069444, "id": 11 },
-                        { "time": 1.0, "phase": 0.31153417, "amp": 0.0074906796, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 12 },
+                        { "time": 1.0, "phase": 0.31153417, "amp": 0.00749068, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 12 },
                         { "time": 1.0, "phase": 0.30544406, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 13 },
-                        { "time": 1.0, "phase": 0.31153417, "amp": 0.0074906796, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 14 },
+                        { "time": 1.0, "phase": 0.31153417, "amp": 0.00749068, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 14 },
                         { "time": 1.0, "phase": 0.30544406, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 15 },
                         { "time": 0.0, "phase": 0.72137636, "amp": 0.19475655, "key": 0.0, "mod": 0.0, "weight": 0.29166666, "id": 16 },
                         { "time": 0.0, "phase": 0.70676005, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 0.29166666, "id": 17 },
@@ -585,7 +586,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2876.57373, "y": 312.0 },
+            "position": { "x": 2865.81689, "y": 421.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.074766353, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -697,7 +698,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 428.87241, "y": 105.99997 },
+            "position": { "x": 428.87241, "y": 286.38083 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.074766353, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1513,7 +1514,7 @@
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": -155.2132, "y": 1249.15259 },
+            "position": { "x": -133.69957, "y": 1249.15259 },
             "parameters": {}
         },
         {
@@ -1774,8 +1775,8 @@
             "label": "Spy 1",
             "tapPosition": 0.5,
             "railOrder": 0,
-            "canvasX": 3218.23828,
-            "canvasY": 987.65094
+            "canvasX": 3159.07593,
+            "canvasY": 987.65088
         },
         {
             "id": "probe2",
@@ -1786,8 +1787,8 @@
             "label": "Spy 2",
             "tapPosition": 0.5,
             "railOrder": 1,
-            "canvasX": 2811.74194,
-            "canvasY": -88.03036
+            "canvasX": 2720.30908,
+            "canvasY": 35.67298
         }
     ],
     "presetPresentation": {

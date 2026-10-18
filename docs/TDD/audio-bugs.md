@@ -924,6 +924,12 @@ passes 61 assertions.
 Current status: open; restore the reference fixture or update that test to use
 the intended maintained preset.
 
+The 2026-10-11 Voice Context regression run also found that `Guitar 3 G uses
+implicit Voice Context Envelope modulation` stops at
+`TestGraphAudioExecutor.cpp:1176` because
+`content/presets/guitar-3-g.cyclegraph` is absent. This is another missing
+audio-test fixture; current status: open.
+
 ## P2: Broad Cycle V2 test run reaches a failed oscillator region render
 
 During the 2026-09-17 master merge, the full `CycleV2_tests` binary emitted

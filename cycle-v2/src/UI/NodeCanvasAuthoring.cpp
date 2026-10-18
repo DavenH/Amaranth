@@ -6,8 +6,12 @@
 
 #include "UI/NodeCanvasAuthoring.h"
 
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/NodeParameterMap.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Envelope/EnvelopePurpose.h"
 #include "UI/ModulationCableBundle.h"
+#include "UI/NodeInputQuickCreate.h"
 #include "UI/NodePortLayout.h"
 #include "UI/NodeViewModule.h"
 
@@ -225,6 +229,85 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::addNode(NodeKind kind, Point<floa
 
     authoringSession.expandedNodeId = {};
     return graphEditResult(edit, "Node added: " + edit.nodeId, edit.nodeId, { true, true, false });
+}
+
+NodeCanvasAuthoringResult NodeCanvasAuthoring::createInputSource(
+        const PortAddress& destination) {
+    const Node* destinationNode = document.graph().findNode(destination.nodeId);
+    const GraphEdgeIndex edgeIndex(document.graph().getEdges());
+    if (!NodeInputQuickCreate::canCreate(destinationNode, destination, edgeIndex)) {
+        return handledResult(false,
+                "Port is occupied or has no quick-create source",
+                { true });
+    }
+    const auto source = NodeInputQuickCreate::sourceFor(*destinationNode, destination);
+    jassert(source.has_value());
+
+    const NodeInputQuickCreateLayout layout = NodeInputQuickCreate::layoutFor(
+            document.graph(), *destinationNode, destination, *source);
+    commands.beginCompoundEdit();
+    for (const auto& move : layout.moves) {
+        const auto moved = commands.moveNode(move.nodeId, move.position);
+        if (!moved.succeeded()) {
+            commands.cancelCompoundEdit();
+            return graphEditResult(moved, "Could not make room for source", {});
+        }
+    }
+    const auto added = commands.addNode(source->kind, layout.position);
+    if (!added.succeeded()) {
+        commands.cancelCompoundEdit();
+        return graphEditResult(added, "Could not create source", {});
+    }
+    if (source->envelopePurpose.isNotEmpty()) {
+        const auto purpose = commands.setNodeParameter(
+                added.nodeId, "purpose", "Purpose", source->envelopePurpose);
+        if (!purpose.succeeded()) {
+            commands.cancelCompoundEdit();
+            return graphEditResult(purpose, "Could not set envelope purpose", {});
+        }
+        const Node* envelope = commands.editingGraph().findNode(added.nodeId);
+        if (envelope == nullptr || envelope->model == nullptr) {
+            commands.cancelCompoundEdit();
+            return handledResult(false, "Envelope model is missing", { true });
+        }
+        EnvelopeNodeModel defaultModel(
+                envelopePurposeFromString(source->envelopePurpose));
+        const uint64_t revision = envelope->model->revision();
+        const auto model = CurveNodeModelState::copyOf(
+                defaultModel, 0.5f, 0.5f, revision + 1);
+        const auto replaced = commands.replaceNodeModel(
+                added.nodeId, revision, model);
+        if (!replaced.succeeded()) {
+            commands.cancelCompoundEdit();
+            return graphEditResult(replaced, "Could not set envelope shape", {});
+        }
+    }
+
+    const PortAddress output { added.nodeId, source->outputPortId, false };
+    const auto routes = ModulationCableBundle::routes(document.graph(), output, destination);
+    GraphEditResult connectedEdit;
+    if (routes.empty()) {
+        connectedEdit = commands.connect(output, destination);
+    } else {
+        for (const auto& route : routes) {
+            connectedEdit = commands.connect(route.source, route.destination);
+            if (!connectedEdit.succeeded()) {
+                break;
+            }
+        }
+    }
+    if (!connectedEdit.succeeded()) {
+        commands.cancelCompoundEdit();
+        return graphEditResult(connectedEdit, "Could not connect source", {});
+    }
+
+    commands.commitCompoundEdit();
+    authoringSession.expandedNodeId = {};
+    auto result = graphEditResult(
+            connectedEdit, "Created " + labelForNodeKind(source->kind),
+            added.nodeId, { true, true, false });
+    result.nodeId = added.nodeId;
+    return result;
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::insertPanIntoEdge(

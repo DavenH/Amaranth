@@ -1,0 +1,69 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    { "command": "resetCanvasPerformance" },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "input:timeLayer1.scratch",
+      "expectedCursor": "pointingHand"
+    },
+    { "command": "assertState", "path": "canvasRepaintRequestCount", "equals": 1 },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-trimesh-scratch-hover.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "input:timeLayer1.scratch",
+      "targetX": 0.25,
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    { "command": "assertState", "path": "nodeCount", "equals": 23 },
+    { "command": "assertState", "path": "edgeCount", "equals": 21 },
+    { "command": "assertState", "path": "edges.20.destPortId", "equals": "scratch" },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "nodeCount", "equals": 22 },
+    { "command": "assertState", "path": "edgeCount", "equals": 20 },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "input:timeLayer1.modulationBundle",
+      "expectedCursor": "pointingHand"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-trimesh-modulation-hover.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "input:timeLayer1.modulationBundle",
+      "targetX": 0.25,
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    { "command": "assertState", "path": "nodeCount", "equals": 23 },
+    { "command": "assertState", "path": "edgeCount", "equals": 23 },
+    { "command": "assertState", "path": "compileSucceeded", "equals": true },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "/private/tmp/cycle-v2-trimesh-modulation-created.png"
+    },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "assertState", "path": "nodeCount", "equals": 22 },
+    { "command": "assertState", "path": "edgeCount", "equals": 20 }
+  ],
+  "quit": true
+}

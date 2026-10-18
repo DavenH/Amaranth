@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -801,8 +802,8 @@
             "label": "Spy 5",
             "tapPosition": 0.5,
             "railOrder": 4,
-            "canvasX": 1402.05798,
-            "canvasY": 1057.14539
+            "canvasX": 1395.96289,
+            "canvasY": 977.90869
         }
     ],
     "presetPresentation": {
@@ -836,7 +837,7 @@
                 { "controller": 1, "value": 83, "timeSeconds": 1.82812 }
             ]
         },
-        "outputSpyX": 1973.38464,
-        "outputSpyY": 1311.41602
+        "outputSpyX": 1918.52844,
+        "outputSpyY": 1404.87463
     }
 }

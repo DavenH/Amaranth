@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 352.58667, "y": 369.51111 },
+            "position": { "x": 337.38666, "y": 359.51111 },
             "parameters": { "enabled": true, "mode": "group", "order": 4, "width": 24.915008719999999, "panSpread": 1.0, "phase": 0.792, "jitter": 0.624 },
             "model": {
                 "schema": "unisonVoices",

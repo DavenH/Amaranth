@@ -1,5 +1,10 @@
-#include "Graph/GraphSerializer.h"
+#include <array>
+#include <charconv>
+#include <cmath>
+#include <unordered_map>
+#include <unordered_set>
 
+#include "Graph/GraphSerializer.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphValidator.h"
 #include "Graph/GlobalAudioGraphRepresentationMigration.h"
@@ -10,18 +15,13 @@
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 
-#include <array>
-#include <cmath>
-#include <iomanip>
-#include <sstream>
-#include <unordered_map>
-#include <unordered_set>
-
 namespace CycleV2 {
 
 namespace {
 
 constexpr auto formatId = "cycle-v2-graph";
+constexpr int unisonWidthLayoutVersion = 1;
+constexpr float legacyUnisonWidth = 256.f;
 constexpr int maximumDecimalPlaces = 5;
 constexpr int parameterDecimalPlaces = 15;
 constexpr int maximumLineLength = 140;
@@ -437,9 +437,10 @@ String meshScalarToJSON(const var& value) {
     if (number == 0.f) {
         return "0.0";
     }
-    std::ostringstream stream;
-    stream << std::fixed << std::setprecision(9) << number;
-    String result(stream.str());
+    char buffer[64];
+    const auto conversion = std::to_chars(buffer, buffer + sizeof(buffer), number);
+    jassert(conversion.ec == std::errc());
+    String result = String::fromUTF8(buffer, (int) (conversion.ptr - buffer));
     if (!result.containsChar('.')
             && !result.containsChar('e')
             && !result.containsChar('E')) {
@@ -588,6 +589,7 @@ var GraphSerializer::writeJSON(
     auto root = std::make_unique<DynamicObject>();
     root->setProperty("format", formatId);
     root->setProperty("formatVersion", currentFormatVersion);
+    root->setProperty("unisonWidthLayoutVersion", unisonWidthLayoutVersion);
 
     Array<var> nodes;
     const auto& registry = NodeDefinitionRegistry::instance();
@@ -743,6 +745,8 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         result.issues.push_back({ GraphLoadCode::UnsupportedVersion, "Unsupported Cycle V2 graph format version" });
         return result;
     }
+    const int savedUnisonWidthLayoutVersion =
+            (int) root->getProperty("unisonWidthLayoutVersion");
 
     const auto presentation = PresetPresentationCodec::readJSON(
             root->getProperty("presetPresentation"));
@@ -821,7 +825,11 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             result.issues.push_back({ GraphLoadCode::InvalidSchema, "Node '" + nodeId + "' position is not finite" });
             continue;
         }
-        node.bounds.setPosition((float) x, (float) y);
+        const float legacyUnisonOffset = node.kind == NodeKind::Unison
+                && savedUnisonWidthLayoutVersion < unisonWidthLayoutVersion
+                ? node.bounds.getWidth() - legacyUnisonWidth
+                : 0.f;
+        node.bounds.setPosition((float) x - legacyUnisonOffset, (float) y);
 
         const var reverseInputPortOrder = encoded->getProperty("reverseInputPortOrder");
         if (!reverseInputPortOrder.isVoid() && !reverseInputPortOrder.isBool()) {

@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -21,7 +22,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 481.20001, "y": 212.44629 },
+            "position": { "x": 481.20001, "y": 223.57217 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 505.20001, "y": 655.01569 },
+            "position": { "x": 466.0, "y": 382.44629 },
             "parameters": { "enabled": true, "mode": "group", "order": 6, "width": 7.279999999999999, "panSpread": 1.0, "phase": 0.0, "jitter": 0.7 },
             "model": {
                 "schema": "unisonVoices",
@@ -111,10 +112,10 @@
                         { "time": 0.0, "phase": 0.75000024, "amp": 0.09912536, "key": 0.0, "mod": 1.0, "weight": 0.9814138, "id": 17 },
                         { "time": 0.0, "phase": 0.75000024, "amp": 0.09912536, "key": 1.0, "mod": 0.0, "weight": 0.9814138, "id": 18 },
                         { "time": 0.0, "phase": 0.75000024, "amp": 0.09912536, "key": 1.0, "mod": 1.0, "weight": 0.9814138, "id": 19 },
-                        { "time": 1.0, "phase": 0.74741465, "amp": 0.0029154494, "key": 0.0, "mod": 0.0, "weight": 0.39010933, "id": 20 },
-                        { "time": 1.0, "phase": 0.74741465, "amp": 0.0029154494, "key": 0.0, "mod": 1.0, "weight": 0.39010933, "id": 21 },
-                        { "time": 1.0, "phase": 0.74741465, "amp": 0.0029154494, "key": 1.0, "mod": 0.0, "weight": 0.39010933, "id": 22 },
-                        { "time": 1.0, "phase": 0.74741465, "amp": 0.0029154494, "key": 1.0, "mod": 1.0, "weight": 0.39010933, "id": 23 },
+                        { "time": 1.0, "phase": 0.74741465, "amp": 0.002915449, "key": 0.0, "mod": 0.0, "weight": 0.39010933, "id": 20 },
+                        { "time": 1.0, "phase": 0.74741465, "amp": 0.002915449, "key": 0.0, "mod": 1.0, "weight": 0.39010933, "id": 21 },
+                        { "time": 1.0, "phase": 0.74741465, "amp": 0.002915449, "key": 1.0, "mod": 0.0, "weight": 0.39010933, "id": 22 },
+                        { "time": 1.0, "phase": 0.74741465, "amp": 0.002915449, "key": 1.0, "mod": 1.0, "weight": 0.39010933, "id": 23 },
                         { "time": 0.0, "phase": 0.23507057, "amp": 0.89212817, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 24 },
                         { "time": 0.0, "phase": 0.23507057, "amp": 0.89212817, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 25 },
                         { "time": 0.0, "phase": 0.23507057, "amp": 0.89212817, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 26 },
@@ -313,22 +314,22 @@
                                 { "time": 1.0, "phase": 1.0206225, "amp": 0.044334974, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 29 },
                                 { "time": 1.0, "phase": 1.0206225, "amp": 0.044334974, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 30 },
                                 { "time": 1.0, "phase": 1.0206225, "amp": 0.044334974, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 31 },
-                                { "time": 0.0, "phase": 0.00041456323, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 32 },
-                                { "time": 0.0, "phase": 0.00041456323, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 33 },
-                                { "time": 0.0, "phase": 0.00023030216, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 34 },
-                                { "time": 0.0, "phase": 0.00023030216, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 35 },
-                                { "time": 1.0, "phase": 0.0013819337, "amp": 0.9507389, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 36 },
-                                { "time": 1.0, "phase": 0.0013819337, "amp": 0.9507389, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 37 },
-                                { "time": 1.0, "phase": 0.0013819337, "amp": 0.9507389, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 38 },
-                                { "time": 1.0, "phase": 0.0013819337, "amp": 0.9507389, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 39 },
-                                { "time": 0.0, "phase": 0.00030710176, "amp": 0.79310346, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 40 },
-                                { "time": 0.0, "phase": 0.00030710176, "amp": 0.79310346, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 41 },
-                                { "time": 0.0, "phase": 0.00009213053, "amp": 0.79310346, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 42 },
-                                { "time": 0.0, "phase": 0.00009213053, "amp": 0.79310346, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 43 },
-                                { "time": 1.0, "phase": 0.0011516417, "amp": 0.054187194, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 44 },
-                                { "time": 1.0, "phase": 0.0011516417, "amp": 0.054187194, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 45 },
-                                { "time": 1.0, "phase": 0.0011516417, "amp": 0.054187194, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 46 },
-                                { "time": 1.0, "phase": 0.0011516417, "amp": 0.054187194, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 47 }
+                                { "time": 0.0, "phase": 0.000414563, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 32 },
+                                { "time": 0.0, "phase": 0.000414563, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 33 },
+                                { "time": 0.0, "phase": 0.000230302, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 34 },
+                                { "time": 0.0, "phase": 0.000230302, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 35 },
+                                { "time": 1.0, "phase": 0.001381934, "amp": 0.9507389, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 36 },
+                                { "time": 1.0, "phase": 0.001381934, "amp": 0.9507389, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 37 },
+                                { "time": 1.0, "phase": 0.001381934, "amp": 0.9507389, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 38 },
+                                { "time": 1.0, "phase": 0.001381934, "amp": 0.9507389, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 39 },
+                                { "time": 0.0, "phase": 0.000307102, "amp": 0.79310346, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 40 },
+                                { "time": 0.0, "phase": 0.000307102, "amp": 0.79310346, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 41 },
+                                { "time": 0.0, "phase": 9.2131e-05, "amp": 0.79310346, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 42 },
+                                { "time": 0.0, "phase": 9.2131e-05, "amp": 0.79310346, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 43 },
+                                { "time": 1.0, "phase": 0.001151642, "amp": 0.054187194, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 44 },
+                                { "time": 1.0, "phase": 0.001151642, "amp": 0.054187194, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 45 },
+                                { "time": 1.0, "phase": 0.001151642, "amp": 0.054187194, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 46 },
+                                { "time": 1.0, "phase": 0.001151642, "amp": 0.054187194, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 47 }
                             ],
                             "cubes": [
                                 {
@@ -377,7 +378,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 466.0, "y": 376.44629 },
+            "position": { "x": 466.0, "y": 571.44629 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -580,7 +581,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 466.0, "y": 859.87402 },
+            "position": { "x": 466.0, "y": 849.01569 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -690,7 +691,7 @@
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 1028.59082, "y": 1255.46765 },
+            "position": { "x": 1058.25989, "y": 1255.46765 },
             "parameters": {}
         },
         {

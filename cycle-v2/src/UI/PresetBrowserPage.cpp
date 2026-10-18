@@ -259,6 +259,7 @@ void PresetBrowserPage::applyFavoritesFilter() {
     grid.setSize(width, grid.contentHeightForWidth(width));
     status.setText(String(visible.size()) + " OF " + String(library.size()) + " PRESETS",
             dontSendNotification);
+    status.setColour(Label::textColourId, CanvasChromePalette::mutedText);
     if (!library.empty() && !library.front().metadataReady) {
         status.setText(String(library.size()) + " PRESETS  ·  LOADING DETAILS",
                 dontSendNotification);
@@ -290,10 +291,9 @@ void PresetBrowserPage::openSelected() {
         onClose();
         return;
     }
-    AlertWindow::showMessageBoxAsync(
-            MessageBoxIconType::WarningIcon,
-            "Unable to open preset",
-            "The selected preset could not be loaded.");
+    status.setColour(Label::textColourId, CanvasChromePalette::destructive);
+    status.setText("COULD NOT LOAD " + record->file.getFileNameWithoutExtension().toUpperCase(),
+            dontSendNotification);
 }
 
 void PresetBrowserPage::editSelectedTags() {

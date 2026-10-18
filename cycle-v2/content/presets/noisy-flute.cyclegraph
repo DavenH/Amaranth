@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -21,7 +22,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": -47.96671, "y": 130.0 },
+            "position": { "x": -32.7667, "y": 127.72743 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,

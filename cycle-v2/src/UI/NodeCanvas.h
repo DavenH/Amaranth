@@ -193,6 +193,7 @@ private:
     };
 
     OpenGLContext openGLContext;
+    TooltipWindow tooltipHost { this, 500 };
     NodeCanvasRenderer renderer;
     mutable NodeCanvasViewport viewport;
     bool documentViewportFitted {};
@@ -228,6 +229,7 @@ private:
     Rectangle<int> lastPopupMenuTargetScreenArea;
     MouseCursor addToSelectionCursor;
     String resolvedHoverText;
+    String hoveredQuickCreatePortId;
     bool pointerInsideCanvas {};
     bool canvasOpenGlAttached {};
     uint64_t openGlContextCreateCount {};

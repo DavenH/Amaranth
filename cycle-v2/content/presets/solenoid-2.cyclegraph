@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -21,7 +22,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 556.0 },
+            "position": { "x": 115.20003, "y": 668.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 726.0 },
+            "position": { "x": 100.0, "y": 811.81927 },
             "parameters": { "enabled": true, "mode": "group", "order": 4, "width": 11.760000000000002, "panSpread": 1.0, "phase": 0.188, "jitter": 0.06 },
             "model": {
                 "schema": "unisonVoices",

@@ -1,5 +1,25 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Factory preset graph tests expect stale saved topology
+
+On 2026-10-17, `[cycle-v2][graph][presets]` reported five failures in nine
+cases: Baroque Flute, African Horn, Stengah, Astral, and Accoustic. The first
+three assertions expect saved nodes or edges absent from their current preset
+files; the latter two attempt to load non-V2 graph roots. The affected tests
+and preset files were unchanged by the `origin/master` merge into
+`cycle2/cable-management`. CTest reproduces the Stengah failure. Artifact:
+`/tmp/merge-preset-tests.log`. Status: open; reconcile these test contracts
+with the current factory preset set.
+
+## P2: Direct full Cycle V2 test binary reports failures from repository root
+
+On 2026-10-09, running `build/tests/cycle-v2/CycleV2_tests` directly from the
+repository root during cable-routing verification reported 26 failures in 222
+cases, including missing graph fixtures and a SIGSEGV at
+`TestNodeEditorHost.cpp:4540`. The focused cable scene and cache filters passed.
+Artifact: `/private/tmp/cycle-v2-cable-routing-suite.log`. Status: open;
+reproduce through CTest before treating these as product regressions.
+
 ## P2: Linux headless Cycle V2 automation logs JUCE font assertions
 
 On 2026-10-11, the focused Reverb kernel automation completed its semantic
@@ -585,3 +605,22 @@ group containing Reverb collapses in
 `/private/tmp/cycle-v2-global-group-collapsed.png`. Current status: open;
 trace the preview's drawing bounds and invalidation independently of group
 frame geometry.
+
+## P3: CoreMIDI assertion during automated preset open
+
+On 2026-10-11, the standalone Debug agent opened `astral-3.cyclegraph`
+successfully, but the filtered launch log recorded `CoreMIDI error: 580 -
+fffffed0` and three `JUCE Assertion failure in juce_CoreMidi_mac.mm:595`
+messages. The run completed all commands and reported a compiled graph with
+zero validation issues. Repro artifacts are
+`/private/tmp/cycle-v2-astral3-fixed-report.json` and
+`/private/tmp/cycle-v2-astral3-fixed-log.txt`. Current status: open; investigate
+MIDI device initialization separately from preset loading.
+
+## P3: Focused compact-node paint test needed JUCE GUI initialization (addressed)
+
+On 2026-10-12, running the isolated zero-octave paint test produced JUCE
+`Leaked objects detected` and `juce_Singleton.h:62` assertions at process exit
+after the assertion itself passed. The test now uses
+`ScopedJuceInitialiser_GUI`; rerunning the compact-editor test group passed
+without shutdown assertions. Current status: addressed.
