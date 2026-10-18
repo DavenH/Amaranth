@@ -1,14 +1,12 @@
 #include "EnvelopeInter3D.h"
 
-#include <Util/Util.h>
-
 #include "../Inter/EnvelopeInter2D.h"
 #include "../Curve/Rasterization/Rasterizer/E3Rasterizer.h"
 #include "../Util/CycleEnums.h"
 
 EnvelopeInter3D::EnvelopeInter3D(SingletonRepo* repo) :
-        Interactor3D(repo, Util::className(this), Dimensions(Vertex::Red, Vertex::Phase, Vertex::Blue)),
-        SingletonAccessor(repo, Util::className(this)) {
+        Interactor3D(repo, "EnvelopeInter3D", Dimensions(Vertex::Red, Vertex::Phase, Vertex::Blue)),
+        SingletonAccessor(repo, "EnvelopeInter3D") {
 }
 
 void EnvelopeInter3D::init() {

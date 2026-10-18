@@ -18,7 +18,8 @@ GLPanelRenderer::GLPanelRenderer(CommonGfx* gfx, GLSurfaceCache* surfaceCache) :
 GLPanelRenderer::~GLPanelRenderer() = default;
 
 void GLPanelRenderer::beginPanelRender(const PanelRenderContext& context) {
-    currentContext = &context;
+    currentContext = context;
+    hasCurrentContext = true;
 
     if (gfx != nullptr) {
         gfx->initRender();
@@ -41,7 +42,7 @@ void GLPanelRenderer::clearResources() {
 
 void GLPanelRenderer::endPanelRender() {
     glPopMatrix();
-    currentContext = nullptr;
+    hasCurrentContext = false;
 }
 
 void GLPanelRenderer::finishSurfaceGrid() {
@@ -89,8 +90,8 @@ void GLPanelRenderer::drawFinalSelection() {
 }
 
 void GLPanelRenderer::finishSurfaceBake() {
-    if (surfaceCache != nullptr && currentContext != nullptr) {
-        surfaceCache->captureFromFramebuffer(currentContext->bounds);
+    if (surfaceCache != nullptr && hasCurrentContext) {
+        surfaceCache->captureFromFramebuffer(currentContext.bounds);
     }
 }
 

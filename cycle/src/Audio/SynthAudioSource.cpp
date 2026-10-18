@@ -41,8 +41,8 @@ SynthAudioSource::SynthAudioSource(SingletonRepo* repo) :
     ,	modwRouteAction		(ModwRouteAction) {
     workBuffer.resize(1 << 17);
 
-    pendingActions.add(&globalRasterAction);
     pendingActions.add(&globalChangeAction);
+    pendingActions.add(&globalRasterAction);
     pendingActions.add(&qualityChangeAction);
     pendingActions.add(&initResamplerAction);
     pendingActions.add(&updateCycleCachesAction);

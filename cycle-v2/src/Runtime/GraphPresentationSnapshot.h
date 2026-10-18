@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <memory>
 
 #include "Graph/GraphCompiler.h"
@@ -13,7 +14,7 @@ class GraphPresentationFacts;
 struct GraphPresentationSnapshot {
     uint64_t graphRevision {};
     int previewMidiNote { 48 };
-    int previewModWheelValue {};
+    std::array<int, 128> previewControllerValues {};
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;
     GraphPreviewResult previewResult;

@@ -13,7 +13,8 @@ PresetMidiEditor::PresetMidiEditor(
         ChangeCallback callback,
         std::function<void()> togglePlayback,
         AuditionCallback auditionCallback,
-        PlaybackTimeCallback playbackTimeCallback) :
+        PlaybackTimeCallback playbackTimeCallback,
+        std::vector<int> mappedControllers) :
         sequence(std::move(phrase))
     ,   onChange(std::move(callback))
     ,   onTogglePlayback(std::move(togglePlayback))
@@ -37,6 +38,7 @@ PresetMidiEditor::PresetMidiEditor(
     durationSlider.setColour(Slider::textBoxTextColourId,
             CanvasChromePalette::text);
     durationSlider.setTextValueSuffix(" s");
+    configureControllers(std::move(mappedControllers));
     updateDurationRange();
     durationSlider.setValue(sequence.durationSeconds, dontSendNotification);
     durationSlider.onDragStart = [this] {
@@ -93,6 +95,20 @@ void PresetMidiEditor::resized() {
     clearButton.setBounds(getWidth() - 82, 8, 64, 24);
     durationLabel.setBounds(getWidth() - 293, 9, 52, 22);
     durationSlider.setBounds(getWidth() - 240, 8, 148, 24);
+}
+
+void PresetMidiEditor::configureControllers(std::vector<int> mappedControllers) {
+    controllers = std::move(mappedControllers);
+    for (const auto& point : sequence.controls) {
+        controllers.push_back(point.controller);
+    }
+    if (controllers.empty()) {
+        controllers.push_back(1);
+    }
+    std::sort(controllers.begin(), controllers.end());
+    controllers.erase(std::unique(controllers.begin(), controllers.end()),
+            controllers.end());
+    setSize(840, 640 + 104 * ((int) controllers.size() - 1));
 }
 
 void PresetMidiEditor::timerCallback() {
@@ -244,16 +260,16 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
         }
         return;
     }
-    if (controlGrid().contains(event.position)) {
+    const int controller = controllerAt(event.position);
+    if (controller >= 0) {
         velocitySelected = false;
-        const auto grid = controlGrid();
-        const int lane = controllerLane();
+        const auto grid = controlGrid(controller);
         for (size_t index = 0; index < sequence.controls.size(); ++index) {
             const auto& control = sequence.controls[index];
             const float x = xForTime(control.timeSeconds);
             const float y = grid.getBottom() - grid.getHeight()
                     * (float) control.value / 127.f;
-            if (control.controller == lane
+            if (control.controller == controller
                     && std::abs(x - event.position.x) <= 8.f
                     && std::abs(y - event.position.y) <= 8.f) {
                 selectedControl = (int) index;
@@ -271,7 +287,7 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
         if (event.mods.isRightButtonDown()) {
             return;
         }
-        editControl(event.position);
+        editControl(event.position, controller);
         return;
     }
     if (!noteGrid().contains(event.position)) {
@@ -334,9 +350,10 @@ void PresetMidiEditor::mouseDrag(const MouseEvent& event) {
     }
     if (activeControl >= 0) {
         auto& control = sequence.controls[(size_t) activeControl];
+        const auto grid = controlGrid(control.controller);
         control.value = jlimit(0, 127, roundToInt(127.f
-                * (controlGrid().getBottom() - event.position.y)
-                / controlGrid().getHeight()));
+                * (grid.getBottom() - event.position.y)
+                / grid.getHeight()));
         control.timeSeconds = timeAt(event.position.x);
         pendingChange = true;
         repaint();
@@ -377,20 +394,29 @@ void PresetMidiEditor::mouseUp(const MouseEvent&) {
     }
 }
 
-void PresetMidiEditor::editControl(Point<float> point) {
-    if (!controlGrid().contains(point)) {
+int PresetMidiEditor::controllerAt(Point<float> point) const {
+    for (const int controller : controllers) {
+        if (controlGrid(controller).contains(point)) {
+            return controller;
+        }
+    }
+    return -1;
+}
+
+void PresetMidiEditor::editControl(Point<float> point, int controller) {
+    const auto grid = controlGrid(controller);
+    if (!grid.contains(point)) {
         return;
     }
     const int value = jlimit(0, 127, roundToInt(127.f
-            * (controlGrid().getBottom() - point.y) / controlGrid().getHeight()));
+            * (grid.getBottom() - point.y) / grid.getHeight()));
     const double time = timeAt(point.x);
-    const int lane = controllerLane();
     auto existing = std::find_if(sequence.controls.begin(), sequence.controls.end(),
-            [lane, time](const PresetMidiControl& control) {
-                return control.controller == lane && control.timeSeconds == time;
+            [controller, time](const PresetMidiControl& control) {
+                return control.controller == controller && control.timeSeconds == time;
             });
     if (existing == sequence.controls.end()) {
-        sequence.controls.push_back({ lane, value, time });
+        sequence.controls.push_back({ controller, value, time });
         selectedControl = (int) sequence.controls.size() - 1;
     } else {
         existing->value = value;

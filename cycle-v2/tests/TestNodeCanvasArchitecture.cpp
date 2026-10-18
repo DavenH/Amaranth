@@ -1628,6 +1628,12 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
     REQUIRE(meshBounds.getWidth() == Catch::Approx(972.f));
     REQUIRE(meshBounds.getHeight() == Catch::Approx(764.f));
 
+    const auto ultrawideMeshBounds = registry.moduleFor(NodeKind::TrilinearMesh)
+            .expandedEditorBounds({ 0.f, 0.f, 2560.f, 1080.f }, 18.f);
+    REQUIRE(ultrawideMeshBounds.getWidth() / ultrawideMeshBounds.getHeight()
+            == Catch::Approx(1.65f));
+    REQUIRE(ultrawideMeshBounds.getCentreX() == Catch::Approx(1280.f));
+
     const auto modulationBounds = registry.moduleFor(NodeKind::ModulationSource)
             .expandedEditorBounds({ 0.f, 0.f, 1200.f, 800.f }, 18.f);
     REQUIRE(modulationBounds.getWidth() == Catch::Approx(260.f));

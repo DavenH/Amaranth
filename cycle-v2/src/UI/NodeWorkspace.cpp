@@ -37,6 +37,7 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     });
     keyboard.setPreviewNote(canvas.previewMidiNote());
     keyboard.setSequence(canvas.presetSequence());
+    keyboard.setMappedControllers(canvas.mappedMidiControllers());
     keyboard.setSequenceChangedCallback([this](PresetMidiSequence sequence) {
         saveEditedSequence(std::move(sequence), canvas.presetPatternId());
     });
@@ -47,14 +48,15 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     keyboard.setPreviewNoteSelectedCallback([this](int midiNote) {
         canvas.setPreviewMidiNote(midiNote);
     });
-    keyboard.setModWheelValueChangedCallback([this](int value) {
-        canvas.updatePreviewModWheelGesture(value);
+    keyboard.setControllerValueChangedCallback([this](int controller, int value) {
+        canvas.updatePreviewControllerGesture(controller, value);
     });
-    keyboard.setModWheelGestureStartedCallback([this] {
-        canvas.beginPreviewModWheelGesture();
+    keyboard.setControllerGestureStartedCallback([this](int controller) {
+        canvas.beginPreviewControllerGesture(controller);
     });
-    keyboard.setModWheelGestureEndedCallback([this] {
-        canvas.endPreviewModWheelGesture(keyboard.modWheelValue());
+    keyboard.setControllerGestureEndedCallback([this](int controller) {
+        canvas.endPreviewControllerGesture(
+                controller, keyboard.controllerValue(controller));
     });
     startTimerHz(30);
     timerCallback();
@@ -65,9 +67,9 @@ NodeWorkspace::~NodeWorkspace() {
     audioEngine.setMidiRecordingEnabled(false);
     canvas.setOverlayOcclusionChangedCallback({});
     canvas.setPreviewPlaybackToggleCallback({});
-    keyboard.setModWheelValueChangedCallback({});
-    keyboard.setModWheelGestureStartedCallback({});
-    keyboard.setModWheelGestureEndedCallback({});
+    keyboard.setControllerValueChangedCallback({});
+    keyboard.setControllerGestureStartedCallback({});
+    keyboard.setControllerGestureEndedCallback({});
     keyboard.releaseAllNotes();
 }
 
@@ -422,6 +424,16 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
             keyboard.modWheelBounds().translated(
                     keyboardBounds.getX(),
                     keyboardBounds.getY())));
+    for (const int controller : keyboard.mappedControllerNumbers()) {
+        if (controller == 1) {
+            continue;
+        }
+        targets->add(pointerTarget(
+                "PerformanceKeyboard.CC" + String(controller),
+                "performanceController",
+                keyboard.controllerBounds(controller).translated(
+                        keyboardBounds.getX(), keyboardBounds.getY())));
+    }
     targets->add(pointerTarget(
             "PerformanceKeyboard.OctaveDown",
             "performanceOctave",
@@ -517,6 +529,10 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("heldNote", keyboard.heldNote());
     object->setProperty("heldVelocity", keyboard.heldVelocity());
     object->setProperty("modWheelValue", keyboard.modWheelValue());
+    for (const int controller : keyboard.mappedControllerNumbers()) {
+        object->setProperty("cc" + String(controller) + "Value",
+                keyboard.controllerValue(controller));
+    }
     object->setProperty("previewNote", keyboard.previewNote());
     object->setProperty("previewPlaying", keyboard.isPlaying());
     object->setProperty("previewRecording", keyboard.isRecording());
@@ -777,6 +793,7 @@ void NodeWorkspace::layoutPerformanceKeyboard() {
     if (canvas.getWidth() <= 0 || canvas.getHeight() <= 0) {
         return;
     }
+    keyboard.setMappedControllers(canvas.mappedMidiControllers());
     const Rectangle<int> screenBounds = canvas.performanceKeyboardDockBounds();
     const Rectangle<float> expandedBounds = canvas.expandedEditorBoundsForOverlay();
     const bool occluded = !expandedBounds.isEmpty()

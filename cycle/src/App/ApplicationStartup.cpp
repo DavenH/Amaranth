@@ -13,19 +13,33 @@ public:
     void initialise(const String &commandLine) override {
         DBG("AppClass::initialise commandLine=\"" + commandLine + "\"");
         mainWindow = std::make_unique<MainAppWindow>(commandLine);
+#if JUCE_LINUX
+        mainWindow->setUsingNativeTitleBar(true);
+#endif
+        if (const auto* primaryDisplay = Desktop::getInstance().getDisplays().getPrimaryDisplay()) {
+            auto bounds = primaryDisplay->totalArea;
+            bounds.setSize(mainWindow->getWidth(), mainWindow->getHeight());
+            bounds.setCentre(primaryDisplay->totalArea.getCentre());
+            mainWindow->setBounds(bounds);
+        }
+
         mainWindow->setVisible(true);
         Component::SafePointer<MainAppWindow> safeWindow(mainWindow.get());
 
         MessageManager::callAsync([safeWindow, commandLine]() {
             if (safeWindow != nullptr) {
+                if (const auto* primaryDisplay = Desktop::getInstance().getDisplays().getPrimaryDisplay()) {
+                    auto bounds = primaryDisplay->totalArea;
+                    bounds.setSize(safeWindow->getWidth(), safeWindow->getHeight());
+                    bounds.setCentre(primaryDisplay->totalArea.getCentre());
+                    safeWindow->setBounds(bounds);
+                }
+
                 DBG("AppClass::initialise async startup preset open");
                 safeWindow->openFile(commandLine);
             }
         });
 
-      #if ! JUCE_DEBUG
-        mainWindow->maximiseButtonPressed();
-      #endif
     }
 
     void shutdown() override {

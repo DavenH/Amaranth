@@ -7,7 +7,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 1059.88794, "y": 489.00003 },
+            "position": { "x": 1068.09338, "y": 523.0 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.465517241,

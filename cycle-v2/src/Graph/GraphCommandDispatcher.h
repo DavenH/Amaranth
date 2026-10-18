@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -94,6 +95,10 @@ public:
             const std::vector<PreviewMorphTarget>& targets,
             float keyScale,
             float modWheel);
+    GraphEditResult setMappedPreviewMorph(
+            const std::vector<PreviewMorphTarget>& targets,
+            float keyScale,
+            const std::array<float, 128>& controllerValues);
     // During a gesture, expectedRevision is the captured durable model revision.
     GraphEditResult replaceNodeModel(
             const juce::String& nodeId,

@@ -11,8 +11,9 @@
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 
 #include <array>
-#include <charconv>
 #include <cmath>
+#include <iomanip>
+#include <sstream>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -438,18 +439,9 @@ String meshScalarToJSON(const var& value) {
     if (number == 0.f) {
         return "0.0";
     }
-    std::array<char, 32> characters {};
-    const auto conversion = std::to_chars(
-            characters.data(),
-            characters.data() + characters.size(),
-            number,
-            std::chars_format::fixed);
-    if (conversion.ec != std::errc()) {
-        return scalarToJSON(value);
-    }
-    String result = String::fromUTF8(
-            characters.data(),
-            (int) (conversion.ptr - characters.data()));
+    std::ostringstream stream;
+    stream << std::fixed << std::setprecision(9) << number;
+    String result(stream.str());
     if (!result.containsChar('.')
             && !result.containsChar('e')
             && !result.containsChar('E')) {

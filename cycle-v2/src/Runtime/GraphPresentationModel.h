@@ -34,8 +34,15 @@ public:
             const NodeGraph& graph,
             uint64_t documentRevision,
             int value);
+    bool refreshPreviewControllerValue(
+            const NodeGraph& graph,
+            uint64_t documentRevision,
+            int controller,
+            int value);
     void stagePreviewModWheelValue(int value);
+    void stagePreviewControllerValue(int controller, int value);
     GraphChangeSet modWheelPreviewChange(GraphChangeSet change) const;
+    GraphChangeSet controllerPreviewChange(GraphChangeSet change, int controller) const;
     void refreshAsync(
             NodeGraph graph,
             uint64_t documentRevision,
@@ -68,16 +75,25 @@ public:
     const RuntimeProcessTrace& runtimeTrace() const { return current.runtimeTrace; }
     const GraphPreviewResult& previewResult() const { return current.previewResult; }
     int previewMidiNote() const { return current.previewMidiNote; }
-    int previewModWheelValue() const { return current.previewModWheelValue; }
-    bool hasModWheelPreviewRoots() const { return !modWheelPreviewRootNodeIds.empty(); }
+    int previewModWheelValue() const { return previewControllerValue(1); }
+    int previewControllerValue(int controller) const {
+        return current.previewControllerValues[(size_t) jlimit(0, 127, controller)];
+    }
+    const std::array<int, 128>& previewControllerValues() const {
+        return current.previewControllerValues;
+    }
+    bool hasModWheelPreviewRoots() const { return hasControllerPreviewRoots(1); }
+    bool hasControllerPreviewRoots(int controller) const {
+        return !controllerPreviewRootNodeIds[(size_t) jlimit(0, 127, controller)].empty();
+    }
     const std::vector<PreviewMorphTarget>& keyScaleMorphTargets() const {
         return keyScaleTargets;
     }
     const std::vector<PreviewMorphTarget>& modWheelMorphTargets() const {
-        return modWheelTargets;
+        return controllerMorphTargets(1);
     }
-    const std::vector<PreviewMorphTarget>& allPerformanceMorphTargets() const {
-        return allMorphTargets;
+    const std::vector<PreviewMorphTarget>& controllerMorphTargets(int controller) const {
+        return controllerTargets[(size_t) jlimit(0, 127, controller)];
     }
     uint64_t revision() const { return presentationRevision; }
     uint64_t audioPlanRevision() const { return audioRevision; }
@@ -137,10 +153,9 @@ private:
     uint64_t audioRevision { 1 };
     size_t compilations {};
     size_t previewRenders {};
-    std::vector<String> modWheelPreviewRootNodeIds;
-    std::vector<PreviewMorphTarget> allMorphTargets;
+    std::array<std::vector<String>, 128> controllerPreviewRootNodeIds;
     std::vector<PreviewMorphTarget> keyScaleTargets;
-    std::vector<PreviewMorphTarget> modWheelTargets;
+    std::array<std::vector<PreviewMorphTarget>, 128> controllerTargets;
     GraphPresentationPerformanceMetrics performance;
 };
 

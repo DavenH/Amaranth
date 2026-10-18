@@ -18,6 +18,7 @@ struct NodeViewCapabilities {
     bool outputSideControl {};
     std::optional<juce::Point<float>> expandedEditorSize;
     std::optional<juce::Point<float>> expandedEditorScale;
+    std::optional<float> expandedEditorMaximumAspectRatio;
 };
 
 class NodeViewModule {

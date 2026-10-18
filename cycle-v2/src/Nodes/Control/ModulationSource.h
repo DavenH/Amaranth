@@ -3,6 +3,7 @@
 #include <Array/Buffer.h>
 
 #include <array>
+#include <optional>
 
 #include "Runtime/NodeAudioProcessor.h"
 #include "Runtime/NodePreviewProcessor.h"
@@ -43,6 +44,8 @@ class ModulationSource {
 public:
     static ModulationSourceMode modeFromId(const String& id);
     static String idForMode(ModulationSourceMode mode);
+    static std::optional<int> controllerFor(
+            const ModulationSourceConfiguration& configuration);
     static float normalizeKey(int note, int lowestNote, int highestNote) {
         if (highestNote <= lowestNote) {
             return 0.f;

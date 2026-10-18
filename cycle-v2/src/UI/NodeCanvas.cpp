@@ -9,8 +9,9 @@
 
 #include <App/AppConstants.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
-#include <UI/Panels/TimeSurfaceStyles.h>
 #include <UI/MiscGraphics.h>
+#include <UI/Panels/OpenGLDiagnostics.h>
+#include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "UI/NodeCanvas.h"
 #include "UI/CanvasChromePalette.h"
@@ -22,6 +23,7 @@
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
+#include "Graph/PresetMidiControllerMapping.h"
 #include "Nodes/Control/ModulationSource.h"
 #include "UI/NodeViewModule.h"
 #include "UI/PresetPreviewGenerator.h"
@@ -44,7 +46,9 @@ constexpr uint32_t StatusRepaint = 1u << 1;
 namespace {
 
 constexpr bool kUseGlCanvasUnderlay = true;
-constexpr const char* kPreviewModWheelStream = "preview:modWheel";
+String previewControllerStream(int controller) {
+    return "preview:cc" + String(controller);
+}
 
 bool hasExpandedEditor(NodeKind kind) {
     return NodeViewModuleRegistry::instance().moduleFor(kind).capabilities().expandedEditor;
@@ -145,8 +149,9 @@ const SignalProbe* cableExtraProbe(
             : nullptr;
 }
 
-Rectangle<int> statusRepaintBounds(Rectangle<float> canvasBounds) {
-    return CanvasUtilityDock::layout(canvasBounds).status.expanded(2.f).toNearestInt();
+Rectangle<int> statusRepaintBounds(Rectangle<float> canvasBounds, int extraControllers) {
+    return CanvasUtilityDock::layout(canvasBounds, extraControllers)
+            .status.expanded(2.f).toNearestInt();
 }
 
 GraphDocument createStartupDocument() {
@@ -364,7 +369,8 @@ void NodeCanvas::paint(Graphics& g) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Frame::JucePaint);
     const uint64_t framePreparationStartedAt = performanceMetrics.timestamp();
     const NodeCanvasPresentationFrame frame = presentationFrame();
-    const Rectangle<int> status = statusRepaintBounds(frame.canvasBounds);
+    const Rectangle<int> status = statusRepaintBounds(
+            frame.canvasBounds, frame.keyboardExtraControllerCount);
     if (!status.isEmpty() && status.contains(g.getClipBounds())) {
         canvasPresentation.paintStatus(g, frame);
         return;
@@ -1399,6 +1405,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 }
 
 void NodeCanvas::newOpenGLContextCreated() {
+    suppressOpenGLDebugNotifications();
     ++openGlContextCreateCount;
     renderer.initialize();
 }
@@ -1547,7 +1554,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             selectedNodeIds,
             hoveredEdgeIndex,
             areaSelectionBounds,
-            canvasUtilityBounds()
+            canvasUtilityBounds(),
+            extraMidiControllerCount()
     };
 }
 
@@ -2193,7 +2201,8 @@ void NodeCanvas::fitDocumentInViewport() {
     constexpr float visibleMargin = 40.f;
     constexpr float dockClearance = 12.f;
     const Rectangle<float> content = canvasUtilityBounds();
-    const auto utilities = CanvasUtilityDock::layout(content);
+    const auto utilities = CanvasUtilityDock::layout(
+            content, extraMidiControllerCount());
     Rectangle<float> available = content.reduced(visibleMargin);
     available.setTop(jmax(available.getY(), utilities.keyboard.getBottom() + dockClearance));
     viewport.setBounds(canvasContentBounds());
@@ -2454,7 +2463,6 @@ bool NodeCanvas::setPreviewMidiNote(int midiNote) {
     }
     if (!persistPreviewMorph(
                 selectedNote,
-                presentation.previewModWheelValue(),
                 PreviewMorphEditScope::KeyScale).succeeded()) {
         return false;
     }
@@ -2472,28 +2480,42 @@ bool NodeCanvas::setPreviewMidiNote(int midiNote) {
 }
 
 bool NodeCanvas::setPreviewModWheelValue(int value) {
+    return setPreviewControllerValue(1, value);
+}
+
+bool NodeCanvas::setPreviewControllerValue(int controller, int value) {
+    const int selectedController = jlimit(0, 127, controller);
     const int selectedValue = jlimit(0, 127, value);
-    if (selectedValue == presentation.previewModWheelValue()) {
+    if (selectedValue == presentation.previewControllerValue(selectedController)) {
         return true;
     }
-    if (!presentation.hasModWheelPreviewRoots()) {
-        presentation.stagePreviewModWheelValue(selectedValue);
+    if (!presentation.hasControllerPreviewRoots(selectedController)) {
+        presentation.stagePreviewControllerValue(selectedController, selectedValue);
         requestCanvasRepaint();
         return true;
     }
-    const GraphEditResult edit = persistPreviewMorph(
+    const GraphEditResult edit = editPreviewMorph(
             presentation.previewMidiNote(),
-            selectedValue,
-            PreviewMorphEditScope::ModWheel);
+            PreviewMorphEditScope::Controller,
+            selectedController,
+            selectedValue);
     if (!edit.succeeded()) {
         return false;
     }
+    presentation.stagePreviewControllerValue(selectedController, selectedValue);
     if (edit.changed) {
-        presentation.stagePreviewModWheelValue(selectedValue);
+        const GraphChangeSet change = presentation.controllerPreviewChange(
+                document.lastChange(), selectedController);
+        editorCoordinator.clearPreviewCache();
+        if (graphDocumentStateChangedCallback) {
+            graphDocumentStateChangedCallback();
+        }
+        refreshCompiledStateAsync(PresentationRefreshScope::Downstream, &change);
     } else {
-        if (!presentation.refreshPreviewModWheelValue(
+        if (!presentation.refreshPreviewControllerValue(
                     commands.editingGraph(),
                     document.revision(),
+                    selectedController,
                     selectedValue)) {
             return false;
         }
@@ -2504,50 +2526,63 @@ bool NodeCanvas::setPreviewModWheelValue(int value) {
 }
 
 void NodeCanvas::beginPreviewModWheelGesture() {
+    beginPreviewControllerGesture(1);
+}
+
+void NodeCanvas::beginPreviewControllerGesture(int controller) {
+    const int selectedController = jlimit(0, 127, controller);
     presentation.editSession().beginGraphGesture(
-            kPreviewModWheelStream,
+            previewControllerStream(selectedController),
             commands,
             document,
             probeCanvasState.refreshMode,
-            static_cast<uint64_t>(presentation.previewModWheelValue()));
+            static_cast<uint64_t>(presentation.previewControllerValue(
+                    selectedController)));
 }
 
 bool NodeCanvas::updatePreviewModWheelGesture(int value) {
+    return updatePreviewControllerGesture(1, value);
+}
+
+bool NodeCanvas::updatePreviewControllerGesture(int controller, int value) {
+    const int selectedController = jlimit(0, 127, controller);
     const int selectedValue = jlimit(0, 127, value);
+    const String stream = previewControllerStream(selectedController);
     auto& session = presentation.editSession();
-    if (!session.graphGestureIsActive(kPreviewModWheelStream)) {
-        return setPreviewModWheelValue(selectedValue);
+    if (!session.graphGestureIsActive(stream)) {
+        return setPreviewControllerValue(selectedController, selectedValue);
     }
-    if (!presentation.hasModWheelPreviewRoots()) {
-        presentation.stagePreviewModWheelValue(selectedValue);
+    if (!presentation.hasControllerPreviewRoots(selectedController)) {
+        presentation.stagePreviewControllerValue(selectedController, selectedValue);
         requestCanvasRepaint();
         return true;
     }
     if (!session.recordGraphMovement(
-                kPreviewModWheelStream, static_cast<uint64_t>(selectedValue)).has_value()) {
+                stream, static_cast<uint64_t>(selectedValue)).has_value()) {
         return true;
     }
 
-    if (!session.graphGestureIsLive(kPreviewModWheelStream)) {
+    if (!session.graphGestureIsLive(stream)) {
         return true;
     }
 
     const auto edit = editPreviewMorph(
             presentation.previewMidiNote(),
-            selectedValue,
-            PreviewMorphEditScope::ModWheel);
+            PreviewMorphEditScope::Controller,
+            selectedController,
+            selectedValue);
     if (!edit.succeeded()) {
-        session.cancelGraphGesture(kPreviewModWheelStream, commands);
+        session.cancelGraphGesture(stream, commands);
         return false;
     }
-    presentation.stagePreviewModWheelValue(selectedValue);
+    presentation.stagePreviewControllerValue(selectedController, selectedValue);
     editorCoordinator.clearPreviewCache();
     rebindNodeEditorTransient();
     requestCanvasRepaint();
 
-    auto snapshot = session.snapshotGraphGesture(kPreviewModWheelStream, commands);
-    const GraphChangeSet change = presentation.modWheelPreviewChange(
-            commands.transientChanges());
+    auto snapshot = session.snapshotGraphGesture(stream, commands);
+    const GraphChangeSet change = presentation.controllerPreviewChange(
+            commands.transientChanges(), selectedController);
     presentation.refreshAsync(
             std::move(snapshot),
             document.revision(),
@@ -2555,29 +2590,36 @@ bool NodeCanvas::updatePreviewModWheelGesture(int value) {
             PresentationRefreshScope::PreviewOnly,
             [safeThis = SafePointer<NodeCanvas>(this)] {
                 if (safeThis != nullptr) {
-                    safeThis->finishPreviewModWheelRefresh();
+                    safeThis->finishPreviewControllerRefresh();
                 }
             });
     return true;
 }
 
 void NodeCanvas::endPreviewModWheelGesture(int finalValue) {
+    endPreviewControllerGesture(1, finalValue);
+}
+
+void NodeCanvas::endPreviewControllerGesture(int controller, int finalValue) {
+    const int selectedController = jlimit(0, 127, controller);
+    const String stream = previewControllerStream(selectedController);
     auto& session = presentation.editSession();
-    if (!session.graphGestureIsActive(kPreviewModWheelStream)) {
+    if (!session.graphGestureIsActive(stream)) {
         return;
     }
 
     const auto finished = session.finishGraphGesture(
-            kPreviewModWheelStream, commands, document);
-    if (!presentation.hasModWheelPreviewRoots()) {
-        presentation.stagePreviewModWheelValue(jlimit(0, 127, finalValue));
+            stream, commands, document);
+    if (!presentation.hasControllerPreviewRoots(selectedController)) {
+        presentation.stagePreviewControllerValue(
+                selectedController, jlimit(0, 127, finalValue));
         requestCanvasRepaint();
         return;
     }
     if (finished.live) {
         if (finished.durableChanged) {
-            const GraphChangeSet change = presentation.modWheelPreviewChange(
-                    document.lastChange());
+            const GraphChangeSet change = presentation.controllerPreviewChange(
+                    document.lastChange(), selectedController);
             editorCoordinator.clearPreviewCache();
             if (graphDocumentStateChangedCallback) {
                 graphDocumentStateChangedCallback();
@@ -2589,18 +2631,20 @@ void NodeCanvas::endPreviewModWheelGesture(int finalValue) {
         }
     } else if (finished.changed) {
         const uint64_t baseRevision = document.revision();
-        setPreviewModWheelValue(finalValue);
+        setPreviewControllerValue(selectedController, finalValue);
         if (document.revision() == baseRevision) {
-            session.commit(kPreviewModWheelStream);
+            session.commit(stream);
         }
     }
 }
 
 GraphEditResult NodeCanvas::persistPreviewMorph(
         int midiNote,
-        int modWheelValue,
-        PreviewMorphEditScope scope) {
-    const GraphEditResult edit = editPreviewMorph(midiNote, modWheelValue, scope);
+        PreviewMorphEditScope scope,
+        int controller,
+        int controllerValue) {
+    const GraphEditResult edit = editPreviewMorph(
+            midiNote, scope, controller, controllerValue);
     if (!edit.succeeded() || !edit.changed) {
         return edit;
     }
@@ -2614,31 +2658,38 @@ GraphEditResult NodeCanvas::persistPreviewMorph(
 
 GraphEditResult NodeCanvas::editPreviewMorph(
         int midiNote,
-        int modWheelValue,
-        PreviewMorphEditScope scope) {
+        PreviewMorphEditScope scope,
+        int controller,
+        int controllerValue) {
     const float red = ModulationSource::normalizeKey(
             midiNote,
             Constants::LowestMidiNote,
             Constants::HighestMidiNote);
-    const float blue = (float) modWheelValue / 127.f;
+    auto values = presentation.previewControllerValues();
+    if (scope == PreviewMorphEditScope::Controller) {
+        values[(size_t) jlimit(0, 127, controller)] = jlimit(0, 127, controllerValue);
+    }
+    std::array<float, 128> normalizedValues {};
+    for (size_t index = 0; index < values.size(); ++index) {
+        normalizedValues[index] = (float) values[index] / 127.f;
+    }
     const auto& targets = scope == PreviewMorphEditScope::KeyScale
             ? presentation.keyScaleMorphTargets()
-            : scope == PreviewMorphEditScope::ModWheel
-                    ? presentation.modWheelMorphTargets()
-                    : presentation.allPerformanceMorphTargets();
+            : presentation.controllerMorphTargets(controller);
     return commands.setMappedPreviewMorph(
             targets,
             red,
-            blue);
+            normalizedValues);
 }
 
-void NodeCanvas::finishPreviewModWheelRefresh() {
+void NodeCanvas::finishPreviewControllerRefresh() {
     refreshProbeDetail();
     requestCanvasRepaint();
 }
 
 Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
-    return CanvasUtilityDock::layout(canvasUtilityBounds()).keyboard.toNearestInt();
+    return CanvasUtilityDock::layout(canvasUtilityBounds(),
+            extraMidiControllerCount()).keyboard.toNearestInt();
 }
 
 Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
@@ -2690,6 +2741,22 @@ void NodeCanvas::setBipolarSpectralSurfaceStyle(
         synchronizeSurfaceStyles();
         notifyGraphDocumentStateChanged();
     }
+}
+
+std::vector<int> NodeCanvas::mappedMidiControllers() const {
+    if (!mappedControllerCacheValid
+            || mappedControllerRevision != document.revision()) {
+        mappedControllerCache = mappedPresetMidiControllers(document.graph());
+        mappedControllerRevision = document.revision();
+        mappedControllerCacheValid = true;
+    }
+    return mappedControllerCache;
+}
+
+int NodeCanvas::extraMidiControllerCount() const {
+    const auto controllers = mappedMidiControllers();
+    return (int) std::count_if(controllers.begin(), controllers.end(),
+            [](int controller) { return controller != 1; });
 }
 
 bool NodeCanvas::setPresetSequence(PresetMidiSequence sequence) {
@@ -2761,6 +2828,7 @@ bool NodeCanvas::loadGraphFromFile(const File& file) {
     performanceMetrics.beginPresetLoad(file.getFileName());
     const bool loaded = applyAuthoringResult(authoring.loadGraph(file));
     if (loaded) {
+        mappedControllerCacheValid = false;
         closeGuideEditor();
         resetDocumentPresentation();
         clearDockEphemeralState();
@@ -3327,7 +3395,8 @@ void NodeCanvas::flushRenderInvalidations(uint32_t categories) {
         return;
     }
     if ((categories & NodeCanvasInvalidation::StatusRepaint) != 0) {
-        Component::repaint(statusRepaintBounds(canvasUtilityBounds()));
+        Component::repaint(statusRepaintBounds(canvasUtilityBounds(),
+                extraMidiControllerCount()));
     }
 }
 

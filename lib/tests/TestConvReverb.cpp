@@ -260,6 +260,29 @@ TEST_CASE("Cycle reverb kernel generation is deterministic and stereo", "[ConvRe
     REQUIRE_FALSE(firstRight.isProbablyEmpty());
 }
 
+TEST_CASE("Cycle reverb kernel does not repeat adjacent noise blocks",
+        "[ConvReverb][ReverbKernel]") {
+    constexpr int blockSize = 256;
+    constexpr int kernelSize = 4096;
+    ScopedAlloc<float> memory(kernelSize * 2);
+    Buffer<float> left = memory.place(kernelSize);
+    Buffer<float> right = memory.place(kernelSize);
+
+    CycleDsp::ReverbKernelConfiguration configuration;
+    configuration.roomSize = 0.f;
+    configuration.damping = 0.f;
+    configuration.highPass = 0.05f;
+    CycleDsp::buildReverbKernel(configuration, left, right);
+
+    Buffer<float> firstBlock = left.section(blockSize * 4, blockSize);
+    Buffer<float> secondBlock = left.section(blockSize * 5, blockSize);
+    const float normalizedCorrelation = firstBlock.dot(secondBlock)
+            / (firstBlock.normL2() * secondBlock.normL2());
+
+    INFO("adjacent block correlation: " << normalizedCorrelation);
+    REQUIRE(std::abs(normalizedCorrelation) < 0.5f);
+}
+
 TEST_CASE("Cycle reverb high pass attenuates low bins independently of damping",
         "[ConvReverb][ReverbKernel]") {
     constexpr int kernelSize = 4096;

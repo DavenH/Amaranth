@@ -16,6 +16,7 @@ void paintNotes(
 void paintControls(
         juce::Graphics& graphics,
         const PresetMidiSequence& sequence,
-        juce::Rectangle<float> bounds);
+        juce::Rectangle<float> bounds,
+        int controller);
 
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 #include "Graph/GraphEditTypes.h"
@@ -20,7 +21,7 @@ public:
             uint64_t documentRevision,
             const GraphChangeSet& change,
             int previewMidiNote,
-            int previewModWheelValue);
+            const std::array<int, 128>& previewControllerValues);
     static CausalUpdateRequest build(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,

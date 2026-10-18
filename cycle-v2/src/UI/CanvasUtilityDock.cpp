@@ -5,7 +5,8 @@
 
 namespace CycleV2 {
 
-CanvasUtilityDockLayout CanvasUtilityDock::layout(juce::Rectangle<float> contentBounds) {
+CanvasUtilityDockLayout CanvasUtilityDock::layout(
+        juce::Rectangle<float> contentBounds, int extraControllerCount) {
     CanvasUtilityDockLayout result;
     if (contentBounds.isEmpty()) {
         return result;
@@ -14,7 +15,9 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(juce::Rectangle<float> content
     const float availableWidth = juce::jmax(0.f, contentBounds.getWidth() - margin * 2.f);
     const float utilityWidth = juce::jmin(preferredMinimapWidth, availableWidth);
     const float right = contentBounds.getRight() - margin;
-    const float keyboardWidth = juce::jmin(preferredKeyboardWidth, availableWidth);
+    const float keyboardWidth = juce::jmin(
+            preferredKeyboardWidth + 38.f * juce::jmax(0, extraControllerCount),
+            availableWidth);
     const float centredKeyboardX = contentBounds.getCentreX() - keyboardWidth * 0.5f;
     result.keyboard = {
             centredKeyboardX,

@@ -28,7 +28,7 @@ public:
             const String& probeId,
             size_t rasterRowCount,
             int midiNote,
-            int modWheelValue,
+            const std::array<int, 128>& controllerValues,
             GraphPresentationPerformanceMetrics& performance) const;
 
     void resetExecutionState() { audioExecutor.resetExecutionState(); }
