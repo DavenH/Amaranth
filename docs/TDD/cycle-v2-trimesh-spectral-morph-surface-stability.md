@@ -1,7 +1,10 @@
 # Cycle V2 Trimesh spectral morph surface stability
 
-Status: implemented (2026-10-18). The first repair passed a fixture that did
-not exercise the reported gesture; the corrected fixture uses `acid-stab-3`.
+Status: in progress (2026-10-18). A new user recording still shows alternating
+stepped and smooth rows at an unchanged Red slider position, including on
+release. The follow-up now selects one expanded renderer for spectral magnitude
+and compares held and released captures. Native drag acceptance is still
+pending because `cliclick` lacks Accessibility permission in this environment.
 
 ## Contract
 
@@ -43,6 +46,14 @@ selects this behavior for spectral magnitude; no mesh sampling or material
 policy is copied into the editor. The old vertically interpolated magnitude
 fallback is the deletion target. Other domains retain their existing row
 interpolation.
+
+The later recording at `2026-10-18 4.34.58 PM` shows that matching the two
+renderers in one settled frame did not keep them visually identical through a
+native drag. `TrimeshPanel3D` now declines the scalar surface renderer for
+spectral magnitude, so `Panel3D` uses its stepped column path on every redraw.
+Time, phase, and other domain materials still use the scalar renderer. This
+removes the magnitude renderer choice at the panel boundary rather than trying
+to tune two independent interpolation policies to look alike.
 
 The local editor used six decimal places for a dragged morph value while the
 graph command used three. At mouse-up, binding the committed node changed a
@@ -94,6 +105,12 @@ value representation is owned by the small Trimesh model helper.
 - [x] A forced fallback capture shows discrete rows like the scalar path,
       instead of the old blurred rows.
 - [x] Architecture audit, size review, style check, and focused build/test pass.
+- [x] The expanded magnitude panel selects only the stepped column renderer;
+      the focused test protects this boundary, and held versus released OS
+      captures have the same sampled spectral column.
+- [ ] Confirm the native macOS Red slider drag no longer changes row style at
+      an unchanged position. The environment's `cliclick` reports missing
+      Accessibility permission, so the in-app fixture cannot establish this.
 
 Previous evidence used `organ.cyclegraph` with Red as the primary axis. It
 does not establish that `acid-stab-3` is fixed. A direct comparison in
@@ -111,3 +128,10 @@ reported existing `Panel3D` warnings and no new warnings on changed lines.
 
 The [captured expanded editor](figures/cycle-v2-trimesh-spectral-morph-stable-editor.png)
 shows the preserved spectral surface after the morph drag.
+
+The follow-up `python3 scripts/test_cycle_v2_trimesh_morph_surface.py` run
+compared the held and released `acid-stab-3` frames at the same Red value: the
+sampled spectral column had a mean grayscale difference below 0.1, 16 discrete
+transitions, and no surface rebuild on mouse-up. The three focused CTest cases
+passed, including the renderer-selection test. These synthetic pointer and OS
+capture checks do not replace native pointer delivery.

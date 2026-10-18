@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the acid-stab-3 morph gesture in both expanded surface render paths."""
+"""Check held and released acid-stab-3 spectral magnitude surfaces."""
 
 import json
 import os
@@ -13,19 +13,16 @@ FIXTURE = REPO / "scripts/fixtures/cycle-v2-agent-trimesh-spectral-morph-surface
 RUNNER = REPO / "scripts/run_cycle_v2_agent.sh"
 
 
-def run_fixture(name, disable_shader):
+def run_fixture(name, fixture):
     video = ARTIFACTS / f"{name}.mp4"
     report = ARTIFACTS / f"{name}.json"
     log = ARTIFACTS / f"{name}.log"
     env = os.environ.copy()
     env["CYCLE_OS_VIDEO_PATH"] = str(video)
     env["CYCLE_OS_VIDEO_FPS"] = "30"
-    if disable_shader:
-        env["CYCLE_DISABLE_SCALAR_SURFACE_SHADER"] = "1"
-    else:
-        env.pop("CYCLE_DISABLE_SCALAR_SURFACE_SHADER", None)
+    env.pop("CYCLE_DISABLE_SCALAR_SURFACE_SHADER", None)
     subprocess.run(
-        [str(RUNNER), str(FIXTURE), str(report), str(log)],
+        [str(RUNNER), str(fixture), str(report), str(log)],
         cwd=REPO,
         env=env,
         check=True,
@@ -36,27 +33,10 @@ def run_fixture(name, disable_shader):
     if not all(command["ok"] for command in result["results"]):
         raise AssertionError(f"{name} fixture failed: {report}")
 
-    # The two snapshots bracket pointer-up at the unchanged drag position.
-    fixture_commands = json.loads(FIXTURE.read_text())["commands"]
-    snapshots = [result["results"][index]["data"]
-                 for index, command in enumerate(fixture_commands)
-                 if command["command"] == "snapshotState"]
-    if len(snapshots) != 2:
-        raise AssertionError(f"Expected two gesture snapshots in {report}")
-    rebuilds = [state["expandedNodeControls"]["trimesh"]["surfaceRebuildCount"]
-                for state in snapshots + [result["snapshot"]]]
-    initial = result["results"][1]["data"]["trimesh"]
-    if rebuilds[0] <= initial["surfaceRebuildCount"]:
-        raise AssertionError("Red drag did not rebuild the secondary-axis surface")
-    dragged_rows = snapshots[0]["expandedNodeControls"]["trimesh"]["surfaceRowCount"]
-    if dragged_rows == initial["surfaceRowCount"]:
-        raise AssertionError("Red drag did not change the displayed pitch rows")
-    if len(set(rebuilds)) != 1:
-        raise AssertionError(f"Mouse-up rebuilt an unchanged surface: {rebuilds}")
     return video, result
 
 
-def row_transitions(video, result):
+def surface_column(video, result):
     dimensions = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "v:0",
          "-show_entries", "stream=width,height", "-of", "csv=p=0", str(video)],
@@ -85,22 +65,58 @@ def row_transitions(video, result):
     column = frame[::2]
     if len(column) != sample_height:
         raise AssertionError(f"Could not decode the spectral panel in {video}")
-    return sum(first != second for first, second in zip(column, column[1:]))
+    return column
+
+
+def held_fixture():
+    fixture = json.loads(FIXTURE.read_text())
+    commands = fixture["commands"]
+    held_index = next(index for index, command in enumerate(commands)
+                      if command["command"] == "snapshotState")
+    fixture["commands"] = commands[:held_index + 1] + [
+        {"command": "inspectOpenGLDiagnostics"},
+        {"command": "waitForIdle", "idleDelayMs": 450},
+    ]
+    fixture["commands"][0]["path"] = str((REPO / "cycle-v2/content/presets/acid-stab-3.cyclegraph").resolve())
+    path = ARTIFACTS / "held-fixture.json"
+    path.write_text(json.dumps(fixture, indent=2))
+    return path
 
 
 def main():
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
-    normal_video, normal_result = run_fixture("scalar", False)
-    fallback_video, fallback_result = run_fixture("fallback", True)
-    normal_transitions = row_transitions(normal_video, normal_result)
-    fallback_transitions = row_transitions(fallback_video, fallback_result)
-    if fallback_transitions > normal_transitions + 8:
+    held_video, held_result = run_fixture("held", held_fixture())
+    released_video, released_result = run_fixture("released", FIXTURE)
+    fixture_commands = json.loads(FIXTURE.read_text())["commands"]
+    snapshots = [released_result["results"][index]["data"]
+                 for index, command in enumerate(fixture_commands)
+                 if command["command"] == "snapshotState"]
+    if len(snapshots) != 2:
+        raise AssertionError("Expected snapshots before and after pointer-up")
+    rebuilds = [state["expandedNodeControls"]["trimesh"]["surfaceRebuildCount"]
+                for state in snapshots + [released_result["snapshot"]]]
+    initial = released_result["results"][1]["data"]["trimesh"]
+    if rebuilds[0] <= initial["surfaceRebuildCount"]:
+        raise AssertionError("Red drag did not rebuild the secondary-axis surface")
+    dragged_rows = snapshots[0]["expandedNodeControls"]["trimesh"]["surfaceRowCount"]
+    if dragged_rows == initial["surfaceRowCount"]:
+        raise AssertionError("Red drag did not change the displayed pitch rows")
+    if len(set(rebuilds)) != 1:
+        raise AssertionError(f"Mouse-up rebuilt an unchanged surface: {rebuilds}")
+
+    held_column = surface_column(held_video, held_result)
+    released_column = surface_column(released_video, released_result)
+    if len(held_column) != len(released_column):
+        raise AssertionError("Held and released captures have different panel heights")
+    mean_difference = sum(abs(a - b) for a, b in zip(held_column, released_column)) / len(held_column)
+    transitions = sum(a != b for a, b in zip(released_column, released_column[1:]))
+    if mean_difference > 1 or transitions < 8 or transitions > 3 * dragged_rows:
         raise AssertionError(
-            "Fallback interpolated spectral rows: "
-            f"scalar={normal_transitions}, fallback={fallback_transitions}"
+            f"Spectral surface changed on release or lost its stepped rows: "
+            f"mean difference={mean_difference:.1f}, transitions={transitions}"
         )
-    print(f"Spectral rows stable: scalar={normal_transitions}, "
-          f"fallback={fallback_transitions}; no surface rebuild on mouse-up")
+    print(f"Spectral rows stable through release: mean difference={mean_difference:.1f}, "
+          f"transitions={transitions}; no surface rebuild on mouse-up")
     print(f"Captures: {ARTIFACTS}")
 
 

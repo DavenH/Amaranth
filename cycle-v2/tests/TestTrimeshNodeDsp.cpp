@@ -2477,6 +2477,22 @@ TEST_CASE("Trimesh Panel3D reads node-backed columns through lib data retriever"
     REQUIRE(&panel.getGridLock() == &source.getGridLock());
 }
 
+TEST_CASE("Expanded spectral magnitude uses only stepped Panel3D rows",
+        "[cycle-v2][nodes][trimesh][surface]") {
+    ScopedJuceInitialiser_GUI juce;
+    TrimeshPanelBridge bridge;
+    TrimeshPanel3D& panel = bridge.getPanel3D();
+    ScalarSurfaceMaterial material;
+
+    bridge.setDisplayDomain(PortDomain::SpectralMagnitudeSignal);
+    REQUIRE(panel.shouldStepSurfaceRows());
+    REQUIRE_FALSE(panel.getScalarSurfaceMaterial(material));
+
+    bridge.setDisplayDomain(PortDomain::SpectralPhaseSignal);
+    REQUIRE_FALSE(panel.shouldStepSurfaceRows());
+    REQUIRE(panel.getScalarSurfaceMaterial(material));
+}
+
 TEST_CASE("Trimesh panel bridge binds Panel3D interactor and rasterizer", "[cycle-v2][nodes][trimesh]") {
     ScopedJuceInitialiser_GUI juce;
     Node node {

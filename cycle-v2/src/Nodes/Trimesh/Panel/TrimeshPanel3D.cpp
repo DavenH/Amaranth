@@ -117,6 +117,10 @@ void TrimeshPanel3D::setDisplayDomain(PortDomain domain) {
 }
 
 bool TrimeshPanel3D::getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const {
+    if (renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal) {
+        return false;
+    }
+
     material = renderProfile.getSurfaceStyle().surfaceMaterial();
     return true;
 }
