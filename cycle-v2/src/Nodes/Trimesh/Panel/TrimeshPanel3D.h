@@ -18,6 +18,9 @@ public:
     bool shouldDrawGrid() override { return true; }
     bool willAdjustSurfaceColumns() override { return pitchSpansColumns; }
     bool getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const override;
+    bool shouldStepSurfaceRows() const override {
+        return renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal;
+    }
     Buffer<Float32> getLineGuideTable(int channel) override;
     int interceptLinePrimaryDimension() override { return primaryViewAxis; }
     void drawBackground(bool fillBackground = true) override;

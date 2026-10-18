@@ -478,8 +478,13 @@ void Panel3D::doColumnDraw(Buffer<Int8u> pxBuf, Buffer<float> grd32f, int i) {
     }
 
     if (i > 0 && useVertices) {
-        doColourLookup8u(pxBuf, colours);
-        setVertices(i, vertices);
+        if (shouldStepSurfaceRows()) {
+            doSteppedColourLookup8u(pxBuf, colours);
+            setSteppedVertices(i, vertices);
+        } else {
+            doColourLookup8u(pxBuf, colours);
+            setVertices(i, vertices);
+        }
         dumpSurfaceColumnPngOnce(i);
     }
 
@@ -487,7 +492,9 @@ void Panel3D::doColumnDraw(Buffer<Int8u> pxBuf, Buffer<float> grd32f, int i) {
     jassert(panelRenderer != nullptr);
 
     if (i > 0 || ! useVertices) {
-        panelRenderer->drawSurfaceColumn(colours, vertices, draw.stride, draw.sizeY);
+        const int quadCount = useVertices && shouldStepSurfaceRows()
+                ? 2 * draw.sizeY - 1 : draw.sizeY;
+        panelRenderer->drawSurfaceColumn(colours, vertices, draw.stride, quadCount);
     }
 
   #ifdef JUCE_DEBUG
@@ -584,6 +591,27 @@ void Panel3D::setVertices(int column, Buffer<float> vertices) const {
     }
 }
 
+void Panel3D::setSteppedVertices(int column, Buffer<float>& vertices) const {
+    jassert(8 * draw.sizeY <= vertices.size());
+
+    Float32* vertexPtr = vertices;
+    const Float32 x0 = scaledX[column - 1];
+    const Float32 x1 = scaledX[column];
+    const Float32* y = scaledY.get();
+    for (int row = 0; row < draw.sizeY; ++row) {
+        const Float32 start = row == 0 ? y[0] + 15.f : y[row - 1];
+        const Float32 end = y[row];
+        *vertexPtr++ = x0;
+        *vertexPtr++ = start;
+        *vertexPtr++ = x1;
+        *vertexPtr++ = start;
+        *vertexPtr++ = x0;
+        *vertexPtr++ = end;
+        *vertexPtr++ = x1;
+        *vertexPtr++ = end;
+    }
+}
+
 void Panel3D::doColourLookup8u(Buffer<Int8u> grd, Buffer<Int8u> colors) {
     Int8u* grd8u = grd;
     Int8u* colorPtr = colors;
@@ -607,6 +635,23 @@ void Panel3D::doColourLookup8u(Buffer<Int8u> grd, Buffer<Int8u> colors) {
     }
 }
 
+void Panel3D::doSteppedColourLookup8u(
+        const Buffer<Int8u>& grd,
+        Buffer<Int8u>& colors) {
+    Int8u* colorPtr = colors;
+    const int bytes = draw.stride;
+    jassert(4 * bytes * draw.sizeY <= colors.size());
+
+    for (int row = 0; row < draw.sizeY; ++row) {
+        for (int edge = 0; edge < 2; ++edge) {
+            VecOps::copy(grd.get() + clrIndicesA[row], colorPtr, bytes);
+            colorPtr += bytes;
+            VecOps::copy(grd.get() + clrIndicesB[row], colorPtr, bytes);
+            colorPtr += bytes;
+        }
+    }
+}
+
 void Panel3D::doColourLookup32f(Buffer<float> grd, Buffer<float> colors) {
     Float32* grd32f = grd;
     Float32* colorPtr = colors;
@@ -622,8 +667,11 @@ void Panel3D::doColourLookup32f(Buffer<float> grd, Buffer<float> colors) {
 
 void Panel3D::resizeArrays() {
     if (useVertices) {
-        colours.resize(vertsPerQuad * (draw.colSourceSizeY + 1) * draw.stride);
-        vertices.resize(vertsPerQuad * coordsPerVert * (draw.colSourceSizeY + 1));
+        const int vertexCount = shouldStepSurfaceRows()
+                ? 4 * draw.colSourceSizeY
+                : vertsPerQuad * (draw.colSourceSizeY + 1);
+        colours.resize(vertexCount * draw.stride);
+        vertices.resize(vertexCount * coordsPerVert);
     } else {
         fColours    .resize(draw.sizeY * draw.stride);
         fDestColours.resize(draw.texHeight * draw.stride);

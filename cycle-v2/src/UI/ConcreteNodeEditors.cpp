@@ -255,6 +255,7 @@ public:
         meshState->setProperty("panelSampleCount", panelStats.sampleCount);
         meshState->setProperty("surfaceColumnCount", panelStats.surfaceColumnCount);
         meshState->setProperty("surfaceRowCount", panelStats.surfaceRowCount);
+        meshState->setProperty("surfaceRebuildCount", (int64) panelStats.surfaceRebuildCount);
         meshState->setProperty("panelInterceptCount", panelStats.interceptCount);
         meshState->setProperty(
                 "panelHoveredInterceptIndex",

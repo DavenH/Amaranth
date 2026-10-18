@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "Graph/NodeParameterMap.h"
+#include "Nodes/Trimesh/Model/TrimeshMorphValue.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/Editors/PropertyControls.h"
@@ -352,7 +353,7 @@ void TrimeshExpandedEditorComponent::setLocalMorphValue(const String& id, float 
 
     for (auto& parameter : node.parameters) {
         if (parameter.id == parameterId) {
-            parameter.value = String(jlimit(0.f, 1.f, value), 6);
+            parameter.value = formatTrimeshMorphValue(value);
             activeMorphParameterId = parameterId;
             widget.syncExpandedFromNode(node);
             repaint();
