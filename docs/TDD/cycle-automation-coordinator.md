@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed.
+In Progress. The coordinator, PID launcher, registry, leases, persistent
+sessions, scoped runs, capture, video, LLDB, native-input routing, and product
+aliases are implemented. Remaining integration evidence is listed below.
 
 ## Problem
 
@@ -463,3 +465,44 @@ ordinary registry and policy coverage.
 - Existing Cycle 1 and Cycle 2 focused fixtures pass through the coordinator.
 - The runbook and semantic code map describe the coordinator as the canonical
   automation entry point.
+
+## Implementation Evidence (2026-10-18)
+
+- Before: the Cycle 1 run, session, capture, and LLDB scripts used process-name
+  focus/quit or `open -n`; the window recorder selected the largest bundle-id
+  window. After: `rg` finds none of these decision sites under `scripts/`.
+- Before: runner defaults used fixed `/tmp/cycle-agent.sock`, report, and log
+  paths. After: coordinator defaults use hashed workspace/product sockets and
+  `.context/cycle-automation/<product>/<run-id>/`; fixture-authored absolute
+  output paths remain explicit inputs.
+- Coordinator production sizes: CLI 222 lines; largest support module 198
+  lines. The Swift launcher is 45 lines, screenshot helper 56, recorder 122.
+- Focused unit and alias tests: 12 passed. Both exact standalone targets built;
+  Cycle 1 and Cycle 2 readonly fixtures passed through aliases. Cycle 1 focused
+  session smoke passed with an empty reset preset.
+- A detached second Git worktree with a copied Cycle 1 bundle produced PID
+  53045, socket `469d273d9e5a/cycle1.sock`, and window 127598. The main
+  worktree produced PID 53236, socket `b04bd5a7357a/cycle1.sock`, and window
+  127608. Both semantic socket runs and PID-window captures succeeded. Evidence
+  is saved in `.context/automation-two-worktree-evidence.json` with two PNGs.
+- Foreground lease conflict failed before capture with the owning workspace,
+  PID, run, operation, and status command. Lease acquisition/release events
+  are recorded in the user-private shared `events.jsonl`.
+- Rebuilding Cycle 1 restarted only its workspace instance; another registered
+  instance retained its PID. A `--clean` fixture launched and stopped a scoped
+  instance while leaving the persistent record intact.
+
+Remaining before `Implemented`:
+
+- Native `cliclick` integration was attempted but the calling process lacked
+  macOS Accessibility permission; rerun its focused authoring sequence once
+  that permission is available.
+- Exercise abrupt-exit recovery against two live worktrees and verify exact-PID
+  crash report association. Exercise concurrent lifecycle launches and bounded
+  wait in the macOS integration harness.
+- Review the specialized Cycle 1/Cycle 2 smoke-suite drivers against the
+  thin-alias end state; they now delegate lifecycle but retain suite selection
+  and artifact policy.
+- The full Cycle 1 smoke suite cannot use its default `ooh-aah` reset preset in
+  this build because that factory preset is absent. Run it with an available
+  reset preset or no preset after confirming fixture preconditions.

@@ -1,11 +1,8 @@
 #!/bin/zsh
 set -euo pipefail
-
 SCRIPT_DIR="${0:A:h}"
-REPO_ROOT="${SCRIPT_DIR:h}"
-
-export CYCLE_APP_PATH="${CYCLE_APP_PATH:-$REPO_ROOT/build/standalone-debug/cycle-v2/CycleV2.app}"
-export CYCLE_PROCESS_NAME="${CYCLE_PROCESS_NAME:-CycleV2}"
-export CYCLE_APP_BUNDLE_ID="${CYCLE_APP_BUNDLE_ID:-com.amaranthaudio.cycle-v2}"
-
-exec "$SCRIPT_DIR/capture_cycle_ui.sh" "$@"
+args=(capture --product cycle-v2)
+[[ $# -lt 1 ]] || args+=(--output "$1")
+[[ $# -lt 2 ]] || args+=(--app-log "$2")
+[[ -z "${CYCLE_CAPTURE_RECT:-}" ]] || args+=(--rect "$CYCLE_CAPTURE_RECT")
+exec python3 "$SCRIPT_DIR/cycle_automation.py" "${args[@]}"

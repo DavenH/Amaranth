@@ -59,6 +59,7 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "assertNodeParameter", Command::AssertNodeParameter },
             { "listAssertionPaths", Command::ListAssertionPaths },
             { "waitForIdle", Command::WaitForIdle },
+            { "ping", Command::Ping },
             { "quit", Command::Quit }
     };
     for (const auto& command : commands) {

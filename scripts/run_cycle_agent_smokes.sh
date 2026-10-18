@@ -1,19 +1,17 @@
 #!/bin/zsh
 set -euo pipefail
 
-ARTIFACT_DIR="${CYCLE_AGENT_ARTIFACT_DIR:-/private/tmp/cycle-agent-smokes}"
-SOCKET_PATH="${CYCLE_AGENT_SESSION:-$ARTIFACT_DIR/cycle-agent.sock}"
-SESSION_LOG="$ARTIFACT_DIR/cycle-agent-session.log"
+SCRIPT_DIR="${0:A:h}"
+ARTIFACT_DIR="${CYCLE_AGENT_ARTIFACT_DIR:-${SCRIPT_DIR:h}/.context/cycle-automation/cycle1/smokes}"
 REPORT_PATH="$ARTIFACT_DIR/cycle-agent-smokes-report.json"
 RUN_OS_SCREENSHOT="${CYCLE_AGENT_SMOKE_OS_SCREENSHOT:-0}"
-RESET_PRESET="${CYCLE_AGENT_SMOKE_RESET_PRESET:-ooh-aah}"
+RESET_PRESET="${CYCLE_AGENT_SMOKE_RESET_PRESET-ooh-aah}"
 RESUME="${CYCLE_AGENT_SMOKE_RESUME:-0}"
 SKIP_MAIN_TAB_RESET="${CYCLE_AGENT_SMOKE_SKIP_MAIN_TAB_RESET:-0}"
 BOUNDARY_LOG="${CYCLE_AGENT_SMOKE_BOUNDARY_LOG:-0}"
 OPENGL_DIAGNOSTICS_EACH_FIXTURE="${CYCLE_AGENT_SMOKE_OPENGL_DIAGNOSTICS_EACH_FIXTURE:-0}"
 
 mkdir -p "$ARTIFACT_DIR"
-rm -f "$SESSION_LOG"
 
 if [[ "$RESUME" != "1" ]]; then
     rm -f "$REPORT_PATH"
@@ -81,67 +79,32 @@ if (( ${#fixtures[@]} == 0 )); then
     exit 2
 fi
 
-resume_args=()
+suite_args=(suite --product cycle1 --report "$REPORT_PATH")
+for fixture in "${fixtures[@]}"; do
+    suite_args+=(--fixture "$fixture")
+done
+suite_args+=(--smoke-arg=--reset-preset --smoke-arg="$RESET_PRESET")
+suite_args+=(--smoke-arg=--expected-failure --smoke-arg=assert-failure)
+[[ "$RESUME" != 1 ]] || suite_args+=(--smoke-arg=--resume)
+[[ "$SKIP_MAIN_TAB_RESET" != 1 ]] || suite_args+=(--smoke-arg=--skip-main-tab-reset)
+[[ "$BOUNDARY_LOG" != 1 ]] || suite_args+=(--smoke-arg=--boundary-log)
+[[ "$OPENGL_DIAGNOSTICS_EACH_FIXTURE" != 1 ]] || suite_args+=(--smoke-arg=--opengl-diagnostics-each-fixture)
 
-if [[ "$RESUME" == "1" ]]; then
-    resume_args+=(--resume)
-fi
+scripts/cycle_automation.py "${suite_args[@]}"
 
-tab_reset_args=()
-
-if [[ "$SKIP_MAIN_TAB_RESET" == "1" ]]; then
-    tab_reset_args+=(--skip-main-tab-reset)
-fi
-
-boundary_log_args=()
-
-if [[ "$BOUNDARY_LOG" == "1" ]]; then
-    boundary_log_args+=(--boundary-log)
-fi
-
-opengl_diagnostic_args=()
-
-if [[ "$OPENGL_DIAGNOSTICS_EACH_FIXTURE" == "1" ]]; then
-    opengl_diagnostic_args+=(--opengl-diagnostics-each-fixture)
-fi
-
-scripts/run_cycle_agent_session.sh "$SOCKET_PATH" "$SESSION_LOG" >/dev/null
-
-set +e
-scripts/cycle_agent_smoke_session.py \
-    "$SOCKET_PATH" \
-    --report "$REPORT_PATH" \
-    --reset-preset "$RESET_PRESET" \
-    --expected-failure assert-failure \
-    "${resume_args[@]}" \
-    "${tab_reset_args[@]}" \
-    "${boundary_log_args[@]}" \
-    "${opengl_diagnostic_args[@]}" \
-    "${fixtures[@]}"
-smoke_status=$?
-set -e
-
-if [[ "$RUN_OS_SCREENSHOT" == "1" && "$smoke_status" == "0" ]]; then
-    screenshot_path="$ARTIFACT_DIR/waveform3d-os.png"
+if [[ "$RUN_OS_SCREENSHOT" == 1 ]]; then
     rect="$(jq -er '
-        [
-            .fixtures[]
-            | select(.name == "waveform3d-os-screenshot")
-            | .results[]
-            | .response.result
-            | select(.type == "inspectTargets" and .ok == true)
-            | .data.targets[]
-            | select(.area == "AreaWfrmWaveform3D" and .resolved == true)
-            | .screenBounds
-        ][0]
+        [ .fixtures[] | select(.name == "waveform3d-os-screenshot")
+          | .results[] | .response.result
+          | select(.type == "inspectTargets" and .ok == true)
+          | .data.targets[]
+          | select(.area == "AreaWfrmWaveform3D" and .resolved == true)
+          | .screenBounds ][0]
         | "\(.x),\(.y),\(.width),\(.height)"
     ' "$REPORT_PATH")"
-
-    screencapture -x -R "$rect" "$screenshot_path"
+    scripts/cycle_automation.py capture --product cycle1 --no-build \
+        --rect "$rect" --output "$ARTIFACT_DIR/waveform3d-os.png"
 fi
 
 echo "$ARTIFACT_DIR"
 echo "$REPORT_PATH"
-echo "$SESSION_LOG"
-
-exit "$smoke_status"

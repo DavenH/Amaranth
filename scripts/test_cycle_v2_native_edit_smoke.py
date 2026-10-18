@@ -7,43 +7,28 @@ import socket
 import struct
 import subprocess
 import sys
-import tempfile
 import time
+
+from cycle_automation_support.identity import workspace, valid_instance
+from cycle_automation_support.lifecycle import owned_record
+from cycle_automation_support.profiles import PRODUCTS
+from cycle_automation_support.registry import instance_key, lease
 
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-APP = os.path.join(REPO, "build/standalone-debug/cycle-v2/CycleV2.app")
-APP_EXECUTABLE = os.path.join(APP, "Contents/MacOS/CycleV2")
 CLICK = "/opt/homebrew/bin/cliclick"
 SETTLE_SECONDS = 0.08
 
 
 class NativeEditSmoke:
     def __init__(self):
-        temporary = tempfile.gettempdir()
-        self.socket_path = os.path.join(temporary, "cycle-v2-native-edit-smoke.sock")
-        self.log_path = os.path.join(temporary, "cycle-v2-native-edit-smoke.log")
+        self.socket_path = None
         self.request_id = 0
         self.app_pid = None
-        self.render_capture_dir = tempfile.mkdtemp(prefix="cycle-v2-hover-render-")
-
-    @staticmethod
-    def app_pids():
-        result = subprocess.run(
-            ["ps", "-axo", "pid=,command="],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        matching = set()
-        for line in result.stdout.splitlines():
-            fields = line.strip().split(None, 1)
-            if len(fields) != 2:
-                continue
-            pid, command = fields
-            if command == APP_EXECUTABLE or command.startswith(APP_EXECUTABLE + " "):
-                matching.add(int(pid))
-        return matching
+        self.record = None
+        self.render_capture_dir = os.path.join(
+            REPO, ".context", "cycle-automation", "cycle-v2", f"native-{os.getpid()}")
+        os.makedirs(self.render_capture_dir, exist_ok=True)
 
     def start(self):
         pointer_probe = subprocess.run(
@@ -58,36 +43,21 @@ class NativeEditSmoke:
                 "CycleV2 native edit smoke requires Accessibility permission for cliclick"
             )
 
-        existing_pids = self.app_pids()
-        environment = os.environ.copy()
-        environment["CYCLE_APP_PATH"] = APP
-        environment["CYCLE_PROCESS_NAME"] = "CycleV2"
-        subprocess.run(
-            [os.path.join(REPO, "scripts/run_cycle_agent_session.sh"), self.socket_path, self.log_path],
-            cwd=REPO,
-            env=environment,
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
-        launched_pids = self.app_pids() - existing_pids
-        if len(launched_pids) != 1:
-            raise AssertionError(
-                f"Expected one newly launched CycleV2 process, found {sorted(launched_pids)}"
-            )
-        self.app_pid = launched_pids.pop()
-        self.focus_app()
+        result = subprocess.run(
+            [sys.executable, os.path.join(REPO, "scripts/cycle_automation.py"),
+             "start", "--product", "cycle-v2", "--json"],
+            cwd=REPO, check=True, capture_output=True, text=True)
+        started = json.loads(result.stdout)
+        self.socket_path = started["socket"]
+        self.app_pid = started["pid"]
+        self.record = owned_record(PRODUCTS["cycle-v2"], workspace()[2])
+        assert self.record and valid_instance(self.record)
 
     def stop(self):
-        try:
-            self.command({"command": "quit"})
-        except (ConnectionError, FileNotFoundError):
-            pass
-        deadline = time.monotonic() + 2.0
-        while time.monotonic() < deadline:
-            if self.app_pid not in self.app_pids():
-                return
-            time.sleep(0.02)
-        raise AssertionError("CycleV2 did not exit after native edit smoke")
+        subprocess.run(
+            [sys.executable, os.path.join(REPO, "scripts/cycle_automation.py"),
+             "stop", "--product", "cycle-v2", "--owned"],
+            cwd=REPO, check=True)
 
     def command(self, command):
         self.request_id += 1
@@ -104,7 +74,7 @@ class NativeEditSmoke:
         return decoded["result"].get("data", {})
 
     def focus_app(self):
-        if self.app_pid is None:
+        if self.record is None or not valid_instance(self.record):
             raise AssertionError("CycleV2 process identity is unavailable")
         script = (
             'tell application "System Events"\n'
@@ -742,7 +712,7 @@ class NativeEditSmoke:
         )
         assert self.has_edge(redone_connection, created_envelope, "env", "waveMesh", "scratch")
 
-        saved_path = os.path.join(tempfile.gettempdir(), "cycle-v2-native-authoring.cyclegraph")
+        saved_path = os.path.join(self.render_capture_dir, "cycle-v2-native-authoring.cyclegraph")
         self.command({"command": "saveGraph", "path": saved_path})
         self.command({"command": "openGraph", "path": saved_path})
         reloaded = self.graph_state()
@@ -2028,7 +1998,7 @@ class NativeEditSmoke:
         assert len(topology["cubes"]) > 0
         assert all(len(cube["vertexIds"]) == 8 for cube in topology["cubes"])
 
-        saved_path = os.path.join(tempfile.gettempdir(), "cycle-v2-native-trimesh.cyclegraph")
+        saved_path = os.path.join(self.render_capture_dir, "cycle-v2-native-trimesh.cyclegraph")
         self.command({"command": "saveGraph", "path": saved_path})
         self.command({"command": "openGraph", "path": saved_path})
         reloaded_state = self.open_editor("waveMesh", trimesh=True)
@@ -2319,33 +2289,42 @@ class NativeEditSmoke:
     def run(self, sequences):
         self.start()
         try:
-            self.command({
-                "command": "openGraph",
-                "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph"),
-            })
-            time.sleep(SETTLE_SECONDS)
-            available = {
-                "authoring": self.graph_authoring_sequence,
-                "waveshaper": self.effect2d_sequence,
-                "envelope": self.envelope_sequence,
-                "envelope-release": self.envelope_release_sequence,
-                "guide-previews": self.guide_preview_sequence,
-                "intercept-visuals": self.intercept_visual_sequence,
-                "trimesh": self.trimesh_sequence,
-                "trimesh-curve-drag": lambda: self.trimesh_sequence(False, True),
-                "trimesh-hover-render": self.trimesh_hover_render_sequence,
-                "trimesh-point-drag": self.trimesh_point_drag_sequence,
-                "trimesh-versioning": lambda: self.trimesh_sequence(True),
-                "spectral-trimesh": self.spectral_trimesh_sequence,
-                "causal-trimesh": self.causal_trimesh_sequence,
-                "trimesh-morph-drag": self.trimesh_morph_drag_sequence,
-                "reverb-preview": self.reverb_preview_sequence,
-                "hover-cursor": self.hover_cursor_sequence,
-            }
-            for sequence in sequences:
-                available[sequence]()
+            identity, path, short_id = workspace()
+            owner = {"workspace_id": identity, "workspace_path": path,
+                     "run_id": f"native-{os.getpid()}", "app_pid": self.app_pid}
+            with lease(f"instance:{instance_key(short_id, 'cycle-v2')}", owner, "native-input"):
+                with lease("foreground", owner, "native-input"):
+                    self.focus_app()
+                    self.run_sequences(sequences)
         finally:
             self.stop()
+
+    def run_sequences(self, sequences):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph"),
+        })
+        time.sleep(SETTLE_SECONDS)
+        available = {
+            "authoring": self.graph_authoring_sequence,
+            "waveshaper": self.effect2d_sequence,
+            "envelope": self.envelope_sequence,
+            "envelope-release": self.envelope_release_sequence,
+            "guide-previews": self.guide_preview_sequence,
+            "intercept-visuals": self.intercept_visual_sequence,
+            "trimesh": self.trimesh_sequence,
+            "trimesh-curve-drag": lambda: self.trimesh_sequence(False, True),
+            "trimesh-hover-render": self.trimesh_hover_render_sequence,
+            "trimesh-point-drag": self.trimesh_point_drag_sequence,
+            "trimesh-versioning": lambda: self.trimesh_sequence(True),
+            "spectral-trimesh": self.spectral_trimesh_sequence,
+            "causal-trimesh": self.causal_trimesh_sequence,
+            "trimesh-morph-drag": self.trimesh_morph_drag_sequence,
+            "reverb-preview": self.reverb_preview_sequence,
+            "hover-cursor": self.hover_cursor_sequence,
+        }
+        for sequence in sequences:
+            available[sequence]()
 
 
 if __name__ == "__main__":

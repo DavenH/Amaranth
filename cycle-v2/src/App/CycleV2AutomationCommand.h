@@ -54,6 +54,7 @@ enum class CycleV2AutomationCommand {
     AssertNodeParameter,
     ListAssertionPaths,
     WaitForIdle,
+    Ping,
     Quit
 };
 

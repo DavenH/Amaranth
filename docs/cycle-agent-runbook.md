@@ -22,61 +22,38 @@ Prefer a focused fixture over the full smoke suite while debugging. Run the
 full suite only when changing shared automation behavior or before handing off
 a broad automation change.
 
-## One-Shot Fixture Runs
+## Coordinated Fixture Runs
 
-Build the exact standalone target first. The runners never build, and stale
-app bundles have repeatedly produced misleading failures and screenshots.
-For Cycle 1:
-
-```sh
-cmake --build --preset standalone-debug --parallel 10
-```
-
-For Cycle 2:
+Use the coordinator with an explicit product. `run` builds the exact standalone
+target incrementally, launches through NSWorkspace, validates the returned PID,
+and reuses that workspace's healthy session. `--no-build` opts out of freshness
+building. Default reports and screenshots live under
+`.context/cycle-automation/<product>/<run-id>/`.
 
 ```sh
-cmake --build --preset standalone-debug --target CycleV2 --parallel 10
+scripts/cycle_automation.py run --product cycle1 \
+    --fixture scripts/fixtures/cycle-agent-modmatrix-dialog.json
+
+scripts/cycle_automation.py run --product cycle-v2 \
+    --fixture scripts/fixtures/cycle-v2-agent-readonly.json --json
+
+scripts/cycle_automation.py capture --product cycle-v2
+scripts/cycle_automation.py status
+scripts/cycle_automation.py stop --product cycle-v2 --owned
 ```
 
-Use the product-specific wrapper. `run_cycle_agent.sh` and
-`capture_cycle_ui.sh` default to Cycle 1; the Cycle 2 wrappers supply the app
-path, process name, and bundle identifier together:
-
-```sh
-scripts/run_cycle_agent.sh \
-    scripts/fixtures/cycle-agent-modmatrix-dialog.json \
-    /private/tmp/cycle-agent-modmatrix-dialog-report.json \
-    /private/tmp/cycle-agent-modmatrix-dialog-logs.txt
-
-scripts/run_cycle_v2_agent.sh \
-    scripts/fixtures/cycle-v2-agent-readonly.json \
-    /private/tmp/cycle-v2-readonly-report.json \
-    /private/tmp/cycle-v2-readonly-logs.txt
-
-scripts/capture_cycle_v2_ui.sh \
-    /private/tmp/cycle-v2-ui.png \
-    /private/tmp/cycle-v2-ui-logs.txt
-```
-
-Each wrapper prints the exact app path it will launch. Confirm that line before
-trusting a runtime result, especially when several worktrees contain apps with
-the same display name. A `cycle-v2-*` fixture passed to the Cycle 1 runner now
-fails before launch.
-
-Run GUI automation fixtures sequentially. The wrapper launches Cycle through
-LaunchServices and writes one report/log pair per app instance; concurrent runs
-can race over the app process and leave one wrapper waiting for a missing
-report. Semantic file/socket automation does not take foreground focus by
-default. Set `CYCLE_FOCUS_ON_LAUNCH=1` only when an interactive investigation
-needs the app raised; OS screenshot capture and native-input smoke tests focus
-the app explicitly when required.
+`run_cycle_agent.sh` and `run_cycle_v2_agent.sh` remain product aliases. A
+conflicting lifecycle or foreground operation fails with the owning workspace,
+PID, and run ID; pass a bounded `--wait` when waiting is intentional. Semantic
+fixtures on separate registered instances can run concurrently. Foreground
+capture takes the machine-wide foreground lease.
 
 Inspect artifacts in this order:
 
 1. Report JSON: command success/failure, snapshot, exported command data.
 2. Filtered log: startup, preset open, warnings, assertions, crash handling.
 3. Raw log: only when the filtered log omits needed detail.
-4. `.ips` crash report beside the log: only when the wrapper reports one.
+4. LLDB transcript for breakpoint runs, or a crash report when available.
 
 ## Native macOS Edit Smoke
 
@@ -97,15 +74,9 @@ delete, and re-add, followed by Trimesh add, collision rejection, move,
 vertex-parameter editing, morph editing, delete, and re-add. Each edit settles
 for at most 80 ms; do not replace these gestures with in-app pointer commands.
 
-The wrapper writes:
-
-- `<report>.json`,
-- `<log>.txt`,
-- `<log>.txt.raw`,
-- `<log>.txt.ips` when a fresh Cycle crash report is found.
-
-The runner exits nonzero when a report is missing or when any command returns
-`"ok": false`, unless `CYCLE_AGENT_ALLOW_FAILURES=1` is set.
+The coordinator writes `report.json`, `app.log`, `app.log.raw`, and `run.json`
+under the run directory. It exits nonzero for failed commands unless
+`--allow-failures` is set.
 
 ## Fixture Authoring Pattern
 
@@ -201,150 +172,54 @@ Common command families:
 
 ## Cycle V2 Performance Regression Loop
 
-Use this loop after changing graph preparation, grid capture, node previews,
-canvas invalidation, or expanded editor gestures. The contracts and baseline
-interpretation are in `docs/TDD/cycle-v2-preset-load-latency.md` and
-`docs/TDD/cycle-v2-graph-grid-performance.md`.
-
-First, build and run the focused semantic checks. Run these individually;
-the broad realtime test filter has separately recorded baseline failures in
-`docs/TDD/audio-bugs.md`.
+Build and run the focused fixture against the exact standalone target. The
+coordinator builds by default and records the executable fingerprint and PID.
+Use `--clean` when the fixture must start with a fresh process; this creates a
+run-scoped instance and leaves the workspace's persistent session intact.
 
 ```sh
-cmake --build --preset tests --target CycleV2_tests --parallel 10
-build/tests/cycle-v2/CycleV2_tests '[preset-load]'
-build/tests/cycle-v2/CycleV2_tests 'Selected Spy capture matches full diagnostics without downstream work'
-build/tests/cycle-v2/CycleV2_tests 'A Spy after reverb includes the selected wet effect'
-build/tests/cycle-v2/CycleV2_tests 'Diagnostic trimesh grids match prewarmed grids without preparation bakes'
-build/tests/cycle-v2/CycleV2_tests 'Realtime graph renderer applies Output gain separately from safety headroom'
+scripts/cycle_automation.py run --product cycle-v2 --clean \
+    --fixture scripts/fixtures/cycle-v2-agent-preset-load-latency.json
 ```
 
-The Spy tests assert the selected upstream graph produces the same grid as
-full diagnostics, skips a downstream Reverb, and includes Reverb when the Spy
-is placed after it. The Trimesh test asserts identical diagnostic values with
-zero preparation bakes. The realtime test asserts that prepared audio graphs
-omit unused traversal warmup while remaining audible. These tests protect
-semantics and operation scope; they do not measure end-to-end UI latency.
-
-Then run the same warm-app preset fixture in Debug and Release, sequentially.
-It opens Baroque Flute and Organ 4 twice each, starting each timing window
-before `openGraph` and skipping `openGraph`'s expensive state snapshot. Use
-the exact app path so another Cycle instance cannot receive the fixture.
-
-```sh
-cmake --build --preset standalone-debug --target CycleV2 --parallel 10
-CYCLE_APP_PATH="$PWD/build/standalone-debug/cycle-v2/CycleV2.app" \
-CYCLE_WAIT_SECONDS=120 scripts/run_cycle_v2_agent.sh \
-    scripts/fixtures/cycle-v2-agent-preset-load-latency.json \
-    /private/tmp/cycle-v2-load-debug-report.json \
-    /private/tmp/cycle-v2-load-debug-log.txt
-
-cmake --build --preset standalone-release --target CycleV2 --parallel 10
-CYCLE_APP_PATH="$PWD/build/standalone-release/cycle-v2/CycleV2.app" \
-CYCLE_WAIT_SECONDS=120 scripts/run_cycle_v2_agent.sh \
-    scripts/fixtures/cycle-v2-agent-preset-load-latency.json \
-    /private/tmp/cycle-v2-load-release-report.json \
-    /private/tmp/cycle-v2-load-release-log.txt
-
-python3 scripts/summarize_cycle_v2_preset_load.py \
-    /private/tmp/cycle-v2-load-debug-report.json \
-    /private/tmp/cycle-v2-load-release-report.json
-```
-
-Check every agent command succeeded and inspect the filtered logs for an
-assertion or crash. Compare each preset and stage with an earlier run of the
-same build, preset contents, window size, cache state, and power source. Do
-not use a fixed millisecond gate across Debug and Release or different
-machines. For a larger change, repeat a representative multi-preset sweep in
-forward and reverse order, as documented in the preset-load TDD. A stage
-increase tells you which owner to inspect: realtime audio preparation,
-preview execution, cold node tiles, or Spy rail painting. The first-paint
-endpoint is the end of the first full JUCE canvas paint, measured from
-`NodeCanvas::loadGraphFromFile` entry. It excludes sidebar dispatch before
-that entry and OS composition afterward. `waitForIdle` and posted message
-turns are queue markers, not visibility endpoints.
-
-For expanded Trimesh morph gestures, run the focused live and on-release
-fixtures against the corresponding standalone build. Their performance
-assertions require zero canvas repaint and compact preview requests during
-movement; the editor's local surface still updates at high density. The
-broader refresh occurs when the gesture commits.
-
-```sh
-CYCLE_APP_PATH="$PWD/build/standalone-debug/cycle-v2/CycleV2.app" \
-CYCLE_WAIT_SECONDS=120 scripts/run_cycle_v2_agent.sh \
-    scripts/fixtures/cycle-v2-agent-trimesh-editor-canvas-isolation-live.json \
-    /private/tmp/cycle-v2-morph-live-report.json \
-    /private/tmp/cycle-v2-morph-live-log.txt
-
-CYCLE_APP_PATH="$PWD/build/standalone-release/cycle-v2/CycleV2.app" \
-CYCLE_WAIT_SECONDS=120 scripts/run_cycle_v2_agent.sh \
-    scripts/fixtures/cycle-v2-agent-trimesh-editor-canvas-isolation-release.json \
-    /private/tmp/cycle-v2-morph-release-report.json \
-    /private/tmp/cycle-v2-morph-release-log.txt
-```
-
-When the goal is e2e test coverage, prefer commands that drive the actual UI
-or interactor path. Direct state mutation is acceptable for fixture setup or
-future programmatic preset generation, but it can skip important code.
+Compare reports from the same build, preset contents, window size, cache state,
+and power source. `waitForIdle` marks queue progress rather than visibility.
+For expanded Trimesh morph gestures, run the live and on-release fixtures
+separately and inspect their operation-count assertions.
 
 ## Screenshots
 
-For ordinary JUCE panels, use app-side `screenshot` with a registered area or
-target. This auto-crops to the resolved component bounds.
-
-For node-canvas visual validation, prefer the runner-side OS crop path over
-app-side component rendering. The canvas may contain cached images or
-composited layers that do not match the app-side snapshot, so compare against
-the OS screenshot when validating node previews, spy previews, cable routing,
-or expanded node overlays.
-
-For OpenGL-backed panels, app-side component snapshots may be blank. Use the
-runner-side OS crop path:
+For ordinary JUCE panels, use the app-side `screenshot` command with a
+registered area or target. For composited or OpenGL content, use coordinator
+capture. Its default ScreenCaptureKit path selects one window by the recorded
+PID and reports its window ID, bounds, and pixel dimensions. `--rect` captures
+a desktop region after focusing that same PID. Both methods hold the foreground
+lease conservatively.
 
 ```sh
-CYCLE_PREFLIGHT_SCREEN_CAPTURE=1 \
-CYCLE_OS_SCREENSHOT_AREA=AreaWfrmWaveform3D \
-CYCLE_OS_SCREENSHOT_PATH=/private/tmp/cycle-agent-waveform3d-os.png \
-    scripts/run_cycle_agent.sh \
-    scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json \
-    /private/tmp/cycle-agent-waveform3d-os-report.json \
-    /private/tmp/cycle-agent-waveform3d-os-logs.txt
+scripts/cycle_automation.py capture --product cycle-v2
+scripts/cycle_automation.py run --product cycle1 \
+    --fixture scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json \
+    --area AreaWfrmWaveform3D --screenshot .context/waveform3d.png
 ```
 
-The fixture must inspect the target first so the report contains
-`screenBounds`; the wrapper passes those bounds to `screencapture -R`.
-
-On macOS, the wrapper preflights Accessibility permission by default and
-preflights Screen Recording when OS screenshots are requested. If permission is
-missing, it opens the relevant System Settings pane and exits with instructions.
-These are macOS privacy checks, not agent/shell execution approvals.
-`CYCLE_PREFLIGHT_PERMISSIONS=0` skips only the privacy probes; it does not grant
-or request command execution. An AppleScript or LaunchServices connection error
-is not by itself proof that privacy permission is missing, so inspect the exact
-error before directing someone to System Settings.
+The fixture must inspect the area before a report-based crop. Accessibility
+and Screen Recording permissions belong to macOS privacy controls; an
+AppleScript or LaunchServices error alone does not identify a missing privacy
+permission.
 
 ## UI Video
 
-Set `CYCLE_OS_VIDEO_PATH` to record the Cycle window for the duration of a
-fixture. The recorder captures that window directly, including OpenGL panels,
-even when another application is in front. The runner writes an MP4 alongside
-its report and logs, then stops the recording when the report is ready.
+Pass `--video <path>` to `run`, or set `CYCLE_OS_VIDEO_PATH` with a product
+wrapper. The recorder selects the window by the registered PID. Recording
+holds the foreground lease for the fixture duration and stops when the fixture
+finishes. The default frame rate is 30 fps.
 
 ```sh
-CYCLE_OS_VIDEO_PATH=/private/tmp/trimesh-gesture.mp4 \
-    scripts/run_cycle_v2_agent.sh \
-    scripts/fixtures/cycle-v2-agent-trimesh-guided-vertex-insertion.json \
-    /private/tmp/trimesh-gesture-report.json \
-    /private/tmp/trimesh-gesture-log.txt
+scripts/cycle_automation.py run --product cycle-v2 \
+    --fixture scripts/fixtures/cycle-v2-agent-trimesh-guided-vertex-insertion.json \
+    --video .context/trimesh-gesture.mp4
 ```
-
-The default capture rate is 30 fps. Set `CYCLE_OS_VIDEO_FPS=60` for short
-flicker investigations. Video capture requires macOS, `swiftc`, and Screen
-Recording permission for the calling terminal. The recorder's diagnostic log
-is written at `<log.txt>.video`. The Cycle V2 runner delays fixture execution
-by three seconds when recording so the window stream can start; override with
-`CYCLE_AGENT_START_DELAY_MS` when needed.
 
 ## Audio Capture
 
@@ -400,132 +275,54 @@ steady-state power. The default matrix covers both 44.1 and 48 kHz.
 
 ## Crash And Assertion Triage
 
-If Cycle crashes before writing a report, `scripts/run_cycle_agent.sh` can:
+Use a minimal fixture and inspect its report, `run.json`, and scoped app logs.
+A process that exits before session readiness is reported by its exact PID.
+The coordinator leaves artifacts in place on failure and never dismisses or
+quits another workspace's application by process name.
 
-- temporarily suppress CrashReporter UI by setting `com.apple.CrashReporter`
-  `DialogType=none` for the duration of the run, then restoring the original
-  value,
-- detect and dismiss the macOS "Cycle quit unexpectedly" dialog,
-- copy the newest matching DiagnosticReports `.ips` file next to the logs,
-- append the crash report header to the raw log.
-
-For crash bugs, first make a minimal fixture that reaches the failing UI action.
-Then rerun the same fixture after the fix. The Modulation Matrix regression
-fixture is a good model:
-
-```sh
-scripts/run_cycle_agent.sh \
-    scripts/fixtures/cycle-agent-modmatrix-dialog.json \
-    /private/tmp/cycle-agent-modmatrix-dialog-report.json \
-    /private/tmp/cycle-agent-modmatrix-dialog-logs.txt
-```
-
-If the `.ips` or filtered log identifies a useful breakpoint, rerun the same
-fixture under LLDB instead of changing the normal unattended flow:
+For breakpoint work, the LLDB alias attaches to a run-scoped PID and records
+its transcript in the run directory:
 
 ```sh
 scripts/run_cycle_agent_lldb.sh \
     scripts/fixtures/cycle-agent-modmatrix-dialog.json \
-    /private/tmp/cycle-agent-modmatrix-breakpoints.lldb \
-    /private/tmp/cycle-agent-modmatrix-lldb-report.json \
-    /private/tmp/cycle-agent-modmatrix-lldb-app.log \
-    /private/tmp/cycle-agent-modmatrix-lldb.log
+    /private/tmp/cycle-agent-modmatrix-breakpoints.lldb
 ```
 
-Example breakpoint file:
-
-```lldb
-breakpoint set --name ModMatrixPanel::resized
-breakpoint set --name Dialogs::showModMatrix
-```
-
-The LLDB runner starts `lldb` in `process attach --waitfor` mode, launches
-Cycle through `open ... --args`, sources the breakpoint file after attach, then
-continues. If the process stops at an assertion, signal, or breakpoint, inspect
-live state with commands such as:
-
-```lldb
-bt
-frame variable
-expr inputs.size()
-expr outputs.size()
-```
-
-Keep `continue` out of the breakpoint file unless you deliberately want custom
-control; the wrapper continues automatically by default. Set
-`CYCLE_LLDB_AUTO_CONTINUE=0` to attach and source breakpoints without starting
-the automation run. Set `CYCLE_SUPPRESS_CRASH_DIALOG=0` if you explicitly want
-macOS to show its crash dialog during a runner or LLDB session.
+The breakpoint file may contain normal LLDB commands such as
+`breakpoint set --name Dialogs::showModMatrix`. The coordinator attaches to
+the exact PID, continues, runs the fixture, and stops its scoped instance.
 
 ## Long-Running Sessions
 
-Use a one-shot fixture for most bug work. Use session mode when an agent needs
-interactive exploration without relaunching Cycle for every command.
-
-Start Cycle with a Unix-domain socket:
-
-```sh
-scripts/run_cycle_agent_session.sh \
-    /private/tmp/cycle-agent.sock \
-    /private/tmp/cycle-agent-session.log
-```
-
-Send one command per client connection:
+`start` creates or reuses a healthy workspace session. `status` shows its
+validated PID and socket. Send a command through the printed socket, then use
+`stop --owned` when done:
 
 ```sh
-scripts/cycle_agent_session.py \
-    /private/tmp/cycle-agent.sock \
-    -c '{"command":"snapshotState"}'
+scripts/cycle_automation.py start --product cycle1 --json
+scripts/cycle_agent_session.py <printed-socket> -c '{"command":"snapshotState"}'
+scripts/cycle_automation.py stop --product cycle1 --owned
 ```
 
-The app still launches as a GUI bundle first. The socket is only the command
-transport after normal startup and initial preset loading.
-
-For Cycle V2 fixtures that need real repaint/frame timing between commands,
-run `cycle_agent_smoke_session.py` with `--skip-ui-reset`, an empty
-`--reset-preset`, and a small `--per-command-delay`. This avoids the legacy
-Cycle panel-reset commands and gives JUCE's message loop time to dispatch each
-coalesced repaint before the next request.
+For coordinated exploratory scripts that drive native input, use `exec` with
+`--foreground`; it provides `CYCLE_AGENT_SESSION` and `CYCLE_APP_PID` to the
+child while holding the instance and foreground leases.
 
 ## Smoke Suite
 
-Run all repository fixtures when changing automation infrastructure:
+Run focused fixtures while debugging. The Cycle 1 suite wrapper delegates its
+session lifecycle to the coordinator:
 
 ```sh
-scripts/run_cycle_agent_smokes.sh
+CYCLE_AGENT_SMOKE_FIXTURES=readonly CYCLE_AGENT_SMOKE_RESET_PRESET= \
+    scripts/run_cycle_agent_smokes.sh
 ```
 
-The smoke runner launches one Cycle `--agent-session`, sends each fixture's
-commands through that socket, writes one aggregate report, and keeps one app log
-for the whole run. If a command fails, the runner records the failure, skips the
-rest of that fixture, resets before the next fixture, and continues. The reset
-step dismisses transient UI such as the Mod Matrix desktop panel before opening
-the next preset.
-
-Artifacts default to `/private/tmp/cycle-agent-smokes`. Override with:
-
-```sh
-CYCLE_AGENT_ARTIFACT_DIR=/private/tmp/my-cycle-smokes scripts/run_cycle_agent_smokes.sh
-```
-
-Run a focused subset by fixture name:
-
-```sh
-CYCLE_AGENT_SMOKE_FIXTURES="readonly pullout-hover" scripts/run_cycle_agent_smokes.sh
-```
-
-Resume from an existing aggregate report, skipping fixture names already
-recorded:
-
-```sh
-CYCLE_AGENT_SMOKE_RESUME=1 scripts/run_cycle_agent_smokes.sh
-```
-
-OpenGL OS screenshot smoke is opt-in:
-
-```sh
-CYCLE_AGENT_SMOKE_OS_SCREENSHOT=1 scripts/run_cycle_agent_smokes.sh
-```
+The aggregate report defaults to `.context/cycle-automation/cycle1/smokes`.
+The standard reset preset is `ooh-aah`; override it if that factory preset is
+unavailable in the current build. The Cycle 2 smoke wrapper invokes focused
+product aliases one fixture at a time.
 
 ## Practical Rules
 
