@@ -24,6 +24,38 @@
     * On Apple, `.mm` files are given **Objective-C++** compile flags (don’t remove).
 * JUCE module availability and app settings are expressed via a set of `JUCE_*` **compile definitions** already present in `CMakeLists.txt`. Don’t rename or “simplify” these unless you know the JUCE build graph.
 
+## Capabilities already available
+
+Before adding a generic utility, search both JUCE and the semantic routes in
+`docs/code-map.md`. The configured modules already provide:
+
+| Area | JUCE facilities already included | Project preference |
+| --- | --- | --- |
+| Core/data | strings, files, streams, JSON/`var`, properties, time, UUIDs | Reuse JUCE types at OS/UI boundaries; preserve established model types. |
+| Events/threads | message dispatch, timers, async updates, locks, threads, thread pools | Keep realtime work lock/allocation-free and use existing project schedulers. |
+| Graphics | colours, images, paths, fonts, transforms, gradients, image codecs | Reuse JUCE drawing primitives and existing Amaranth renderers. |
+| GUI/input | components, controls, menus, dialogs, keyboard/mouse, viewports | Check shared widgets and product interaction owners before wrapping controls. |
+| Audio I/O | device management, callbacks, MIDI, buffers, format readers/writers | Reuse app audio-engine boundaries; do not open devices from domain nodes. |
+| Plugins | processors, parameters/state, host integration, plugin client shells | Preserve Cycle's existing processor and generated-client wiring. |
+| DSP | FFT, filters, convolution, oversampling, interpolation, decibel helpers | Prefer Amaranth `Buffer`/`VecOps` and mature DSP wrappers in hot paths. |
+| OpenGL | contexts, textures, framebuffers, and shader integration | Reuse the established panel/canvas GL hosts and lifecycle. |
+| Optional modules | OSC in Cycle, cryptography in AmaranthLib, animation in Cycle | Use only where the target already links the module. |
+
+JUCE supplies framework mechanics, not Amaranth product semantics. Existing
+Amaranth mesh, rasterization, envelope, interaction, graph, preview, and audio
+implementations remain authoritative. A JUCE primitive may replace generic
+plumbing; it should not be used to create a second product behavior path.
+
+### Reuse check before writing framework-like code
+
+1. Search the current target for the needed concept and existing wrapper.
+2. Check `JuceHeader.h` for module availability in that target.
+3. Search the corresponding JUCE module API before creating a container,
+   thread helper, timer, file/JSON helper, menu, dialog, image codec, audio
+   format adapter, MIDI helper, FFT, filter, convolution, or OpenGL wrapper.
+4. If project code adds product policy around JUCE, extend that owner instead
+   of bypassing it with a direct parallel use.
+
 ## Rules for the agent (very important)
 
 **Do:**
