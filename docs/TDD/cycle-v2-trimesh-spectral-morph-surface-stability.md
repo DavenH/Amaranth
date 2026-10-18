@@ -56,13 +56,15 @@ Time, phase, and other domain materials still use the scalar renderer. This
 removes the magnitude renderer choice at the panel boundary rather than trying
 to tune two independent interpolation policies to look alike.
 
-The stepped path inherited the legacy bottom fill of 15 pixels. `LogRegions`
-positions are sample centers, and the next row uses the much larger distance
-between centers. The lowest authored harmonic therefore appears artificially
-thin. `Panel3D` should place each discrete row between the midpoints to its
-neighbors, using the display-domain lower edge for the first row and the last
-sample position for the upper edge. This changes only GL column geometry; it
-keeps mesh samples, harmonic positions, row colours, and gesture cost intact.
+The stepped path inherited the legacy bottom fill of 15 pixels. A midpoint
+cell made the lowest harmonic visible, but the user's visual comparison showed
+that it remained shorter than the second band. `TrimeshPanel2D` is authoritative
+for harmonic bin placement: bin `i` extends from log position `i` to position
+`i + 1`, and its bar uses a small gap inside that interval. `Panel3D` should
+use those same intervals without gaps for a connected surface. The final log
+position closes the last interval; it does not create an extra band. This
+changes only GL column geometry and colour lookup count. It keeps mesh samples,
+harmonic positions, row colours, and gesture cost intact.
 
 The node canvas painted cached node tiles at rest but directly repainted every
 node during a move. That exposed a differently sampled compact heatmap and did
@@ -111,7 +113,7 @@ eligibility decision was added in graph or runtime code. The old compact
 `bridge.syncFromNode(..., 96)` path is the deletion target; compact painting
 must no longer replace the expanded panel's grid.
 
-Current size review: `Panel3D.cpp` grew from 1,069 to 1,120 lines and owns
+Current size review: `Panel3D.cpp` grew from 1,069 to 1,118 lines and owns
 expanded panel surface rendering, overlay drawing, and GL presentation. Its
 stable collaborators remain `PanelRenderer`, `ColorGradient`, and the panel
 data retriever. The new row policy is selected by `TrimeshPanel3D`; `Panel3D`
@@ -149,9 +151,9 @@ presentation file. The existing extraction direction in
       row style at an unchanged position. The local `cliclick` process still
       lacks Accessibility permission, so the agent fixture provides separate
       synthetic gesture evidence.
-- [x] The lowest authored harmonic has a visible cell comparable to its next
-      neighbor at the same pitch, and the rows remain discrete through drag and
-      release.
+- [x] The lowest authored harmonic occupies its full first log interval and is
+      visibly taller than the second band, matching 2D bin-width ordering.
+      The rows remain discrete through drag and release.
 - [x] A compact spectral Trimesh preview retains the same row appearance while
       its node is moved and after release at the same pointer position.
 
@@ -179,10 +181,16 @@ transitions, and no surface rebuild on mouse-up. The three focused CTest cases
 passed, including the renderer-selection test. These synthetic pointer and OS
 capture checks do not replace native pointer delivery.
 
-After centering each discrete row on its harmonic position, the visual
-regression measures 66 orange pixels for the lowest row in the 469-pixel panel;
-the previous 15-pixel fill rendered only 14 visible pixels. The captured image
-shows that the first and second bands now occupy comparable vertical space.
+The midpoint-cell visual regression measured 66 orange pixels for the lowest
+row in the 469-pixel panel; the same colour classifier measured 72 pixels for
+the second band. That contradicted the monotonic bin spacing visible in 2D.
+With the 2D interval mapping, the focused OS capture measured 88 and 63 pixels
+for the first and second bands. The visual fixture now asserts that the first
+band is at least 1.2 times the second, and held and released frames match with
+no surface rebuild on mouse-up. Three focused CTest cases passed, and the
+architecture audit and `git diff --check` passed. The measured height ratio
+of 1.40 closely follows the 2D log spacing shown in the updated figure. The
+updated assertion rejects the saved midpoint-cell baseline at 66 versus 72.
 
 `python3 scripts/test_cycle_v2_trimesh_preview_node_move.py` drives two node
 positions in `acid-stab-3`, checks tile-cache hit/miss telemetry, compares OS

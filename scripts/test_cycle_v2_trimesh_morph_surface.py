@@ -73,7 +73,7 @@ def surface_column(video, result):
     return column
 
 
-def lowest_harmonic_height(video, result):
+def first_two_harmonic_heights(video, result):
     width, height, editor, panel = panel_video_geometry(video, result)
     x = round(editor["x"] + panel["x"] + 0.067 * panel["width"])
     y = round(height - result["snapshot"]["height"] + editor["y"] + panel["y"])
@@ -91,14 +91,32 @@ def lowest_harmonic_height(video, result):
         raise AssertionError(f"Could not decode the lowest harmonic in {video}")
 
     orange_rows = 0
-    for row in range(round(0.65 * panel_height), panel_height):
+    first_orange_row = None
+    row_colours = []
+    for row in range(panel_height):
         pixels = frame[row * 12:(row + 1) * 12]
-        red = sum(pixels[0::3]) / 4
-        green = sum(pixels[1::3]) / 4
-        blue = sum(pixels[2::3]) / 4
+        row_colours.append(tuple(sum(pixels[channel::3]) / 4
+                                 for channel in range(3)))
+
+    for row in range(round(0.65 * panel_height), panel_height):
+        red, green, blue = row_colours[row]
         if red > green + 10 and red > blue + 15:
             orange_rows += 1
-    return orange_rows, panel_height
+            if first_orange_row is None:
+                first_orange_row = row
+
+    if first_orange_row is None:
+        raise AssertionError("Could not find the first harmonic in the panel capture")
+
+    # This fixture's second band is dark blue. Count it just above the orange
+    # first band so the earlier, lighter blue bands do not enter the comparison.
+    second_rows = 0
+    for row in range(max(0, first_orange_row - round(0.25 * panel_height)),
+                     first_orange_row):
+        red, green, blue = row_colours[row]
+        if red < 55 and green < 86 and blue < 120 and blue > red + 35:
+            second_rows += 1
+    return orange_rows, second_rows, panel_height
 
 
 def held_fixture():
@@ -148,11 +166,20 @@ def main():
             f"Spectral surface changed on release or lost its stepped rows: "
             f"mean difference={mean_difference:.1f}, transitions={transitions}"
         )
-    lowest_rows, panel_height = lowest_harmonic_height(released_video, released_result)
-    if lowest_rows < 0.08 * panel_height:
-        raise AssertionError(f"Lowest harmonic is too thin: {lowest_rows}/{panel_height} pixels")
+    first_rows, second_rows, panel_height = first_two_harmonic_heights(
+        released_video, released_result)
+    if first_rows < 0.08 * panel_height or second_rows < 0.08 * panel_height:
+        raise AssertionError(
+            f"Could not resolve both low harmonic bands: {first_rows}, {second_rows}"
+        )
+    if first_rows < 1.2 * second_rows:
+        raise AssertionError(
+            f"First log-spaced harmonic band should exceed the second: "
+            f"{first_rows} vs {second_rows} pixels"
+        )
     print(f"Spectral rows stable through release: mean difference={mean_difference:.1f}, "
-          f"transitions={transitions}, lowest harmonic={lowest_rows}/{panel_height} pixels; "
+          f"transitions={transitions}, first/second harmonic={first_rows}/{second_rows} "
+          f"of {panel_height} pixels; "
           "no surface rebuild on mouse-up")
     print(f"Captures: {ARTIFACTS}")
 

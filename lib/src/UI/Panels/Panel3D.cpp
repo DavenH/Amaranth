@@ -493,7 +493,7 @@ void Panel3D::doColumnDraw(Buffer<Int8u> pxBuf, Buffer<float> grd32f, int i) {
 
     if (i > 0 || ! useVertices) {
         const int quadCount = useVertices && shouldStepSurfaceRows()
-                ? 2 * draw.sizeY - 1 : draw.sizeY;
+                ? 2 * (draw.sizeY - 1) - 1 : draw.sizeY;
         panelRenderer->drawSurfaceColumn(colours, vertices, draw.stride, quadCount);
     }
 
@@ -592,18 +592,16 @@ void Panel3D::setVertices(int column, Buffer<float> vertices) const {
 }
 
 void Panel3D::setSteppedVertices(int column, Buffer<float>& vertices) const {
-    jassert(8 * draw.sizeY <= vertices.size());
+    jassert(8 * (draw.sizeY - 1) <= vertices.size());
 
     Float32* vertexPtr = vertices;
     const Float32 x0 = scaledX[column - 1];
     const Float32 x1 = scaledX[column];
     const Float32* y = scaledY.get();
-    const Float32 lowerEdge = sy(0.f);
-    for (int row = 0; row < draw.sizeY; ++row) {
-        const Float32 start = row == 0
-                ? lowerEdge : 0.5f * (y[row - 1] + y[row]);
-        const Float32 end = row + 1 == draw.sizeY
-                ? y[row] : 0.5f * (y[row] + y[row + 1]);
+    // The final log position closes the last bin, as in the 2D partial view.
+    for (int row = 0; row + 1 < draw.sizeY; ++row) {
+        const Float32 start = y[row];
+        const Float32 end = y[row + 1];
         *vertexPtr++ = x0;
         *vertexPtr++ = start;
         *vertexPtr++ = x1;
@@ -643,9 +641,9 @@ void Panel3D::doSteppedColourLookup8u(
         Buffer<Int8u>& colors) {
     Int8u* colorPtr = colors;
     const int bytes = draw.stride;
-    jassert(4 * bytes * draw.sizeY <= colors.size());
+    jassert(4 * bytes * (draw.sizeY - 1) <= colors.size());
 
-    for (int row = 0; row < draw.sizeY; ++row) {
+    for (int row = 0; row + 1 < draw.sizeY; ++row) {
         for (int edge = 0; edge < 2; ++edge) {
             VecOps::copy(grd.get() + clrIndicesA[row], colorPtr, bytes);
             colorPtr += bytes;
