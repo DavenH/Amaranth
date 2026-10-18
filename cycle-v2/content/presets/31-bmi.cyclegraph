@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 291.91498, "y": 541.68561 },
+            "position": { "x": 252.71497, "y": 541.68561 },
             "parameters": {
                 "enabled": true,
                 "mode": "group",
@@ -334,7 +335,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 252.71497, "y": 815.68561 },
+            "position": { "x": 252.715, "y": 742.50519 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -455,7 +456,7 @@
             "kind": "delay",
             "definitionVersion": 1,
             "position": { "x": 833.89099, "y": 1432.28259 },
-            "parameters": { "enabled": true, "time": 0.5, "feedback": 0.336, "wet": 0.332, "spin": 0.5, "spinIters": 0.5 }
+            "parameters": { "enabled": true, "time": 0.5, "feedback": 0.51905, "wet": 0.332, "spin": 0.5, "spinIters": 0.18182 }
         },
         {
             "id": "output",

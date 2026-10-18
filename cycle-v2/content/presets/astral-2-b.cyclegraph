@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -45,7 +46,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 124.00001, "y": 1014.0 },
+            "position": { "x": 100.0, "y": 1014.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 4, "width": 8.4, "panSpread": 1.0, "phase": 0.964, "jitter": 0.5 },
             "model": {
                 "schema": "unisonVoices",
@@ -60,7 +61,7 @@
             "id": "magnitudeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1626.6084, "y": 488.0 },
+            "position": { "x": 1626.6084, "y": 487.99997 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -484,7 +485,7 @@
             "id": "magnitudeLayer2",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1626.6084, "y": 860.0 },
+            "position": { "x": 1626.6084, "y": 828.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -605,14 +606,14 @@
             "id": "magnitudeLayer2Process",
             "kind": "spectralLayer",
             "definitionVersion": 1,
-            "position": { "x": 2220.19995, "y": 481.0 },
+            "position": { "x": 2220.19995, "y": 480.99997 },
             "parameters": { "pan": 0.775 }
         },
         {
             "id": "magnitudeLayer3",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1626.6084, "y": 146.66818 },
+            "position": { "x": 1626.6084, "y": 160.99348 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -741,7 +742,7 @@
             "id": "phaseLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1626.6084, "y": 1191.21924 },
+            "position": { "x": 1626.6084, "y": 1159.21924 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -834,7 +835,7 @@
             "id": "volumeEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 2747.04199, "y": 507.60468 },
+            "position": { "x": 2687.35303, "y": 522.0 },
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1612,7 +1613,7 @@
             "id": "scratchEnvelope2",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1173.073, "y": 894.0 },
+            "position": { "x": 1186.73157, "y": 862.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1698,7 +1699,7 @@
             "id": "scratchEnvelope3",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1173.073, "y": 180.66818 },
+            "position": { "x": 1186.73157, "y": 194.99348 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1901,7 +1902,7 @@
             "id": "volumeMultiply",
             "kind": "multiply",
             "definitionVersion": 1,
-            "position": { "x": 3009.19995, "y": 886.0 },
+            "position": { "x": 2954.28613, "y": 886.0 },
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -1925,7 +1926,7 @@
             "id": "voiceOutput",
             "kind": "voiceOutput",
             "definitionVersion": 1,
-            "position": { "x": 3207.19995, "y": 886.0 },
+            "position": { "x": 3152.28613, "y": 886.0 },
             "parameters": {}
         },
         {
@@ -2476,8 +2477,8 @@
             "label": "Spy 1",
             "tapPosition": 0.5,
             "railOrder": 0,
-            "canvasX": 3073.3457,
-            "canvasY": 1256.16138
+            "canvasX": 2925.31738,
+            "canvasY": 1182.14722
         },
         {
             "id": "probe2",

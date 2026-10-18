@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -38,7 +39,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 769.99561, "y": 1053.83875 },
+            "position": { "x": 754.79559, "y": 739.46631 },
             "parameters": { "enabled": true, "mode": "group", "order": 3, "width": 15.68, "panSpread": 0.0, "phase": 0.204, "jitter": 0.856 },
             "model": {
                 "schema": "unisonVoices",
@@ -368,7 +369,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 769.99561, "y": 757.83887 },
+            "position": { "x": 754.79559, "y": 920.90735 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -788,6 +789,7 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 2215.99756, "y": 831.25415 },
+            "reverseInputPortOrder": true,
             "parameters": {}
         },
         {

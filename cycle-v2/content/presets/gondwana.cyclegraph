@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -980,7 +981,7 @@
             "kind": "output",
             "definitionVersion": 1,
             "position": { "x": 1882.19995, "y": 1424.0 },
-            "parameters": { "gain": 0.496183206 }
+            "parameters": { "gain": 0.596183 }
         },
         {
             "id": "globalInput",
