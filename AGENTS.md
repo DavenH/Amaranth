@@ -144,8 +144,8 @@ If confusing code patterns, reuse possibilities, or better abstractions are dete
 
 ## Commit & Pull Request Guidelines
 - Commits: short, imperative subject (“Fix buffer wraparound”), optional body for context.
-- PRs: include description, linked issues, platform (Linux/macOS), and screenshots for UI changes.
-- CI/local proof: show build preset used and `ctest` output when adding tests.
+- PR descriptions: keep them short and focused on the user-visible change, its reason, and any material review concern. Link issues and include a relevant screenshot for UI changes when useful.
+- Leave routine validation inventories, build commands, test counts, lint/audit results, and pixel measurements out of the PR description unless a specific result affects the review decision. Provide detailed CI/local proof separately when requested.
 
 ## Runtime & Configuration Tips
 - `.env` is mandatory at configure time; CMake reads it to locate SDKs.
