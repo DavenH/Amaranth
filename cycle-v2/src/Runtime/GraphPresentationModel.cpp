@@ -549,11 +549,24 @@ bool GraphPresentationModel::prepareProbeCaptureForNode(
         const String& nodeId) {
     auto& plan = current.compileResult.plan;
     const auto found = plan.dependencyIndex.stepIndexById.find(nodeId);
+    const Node* node = graph.findNode(nodeId);
     if (!current.compileResult.succeeded() || found == plan.dependencyIndex.stepIndexById.end()
-            || !isPositiveAndBelow(found->second, (int) plan.steps.size())) {
+            || !isPositiveAndBelow(found->second, (int) plan.steps.size())
+            || node == nullptr) {
         return false;
     }
-    refreshConfigurationForStep(graph, plan.steps[(size_t) found->second]);
+    auto& step = plan.steps[(size_t) found->second];
+    if (step.kind != NodeKind::TrilinearMesh || node->model != step.model) {
+        return false;
+    }
+    auto configuration = configurationFactory.refreshTrimeshParameters(
+            node->parameters, step.configuration.value.get());
+    if (configuration == nullptr) {
+        return false;
+    }
+    step.parameters = node->parameters;
+    step.configuration.value = std::move(configuration);
+    ++step.configuration.revision;
     return true;
 }
 

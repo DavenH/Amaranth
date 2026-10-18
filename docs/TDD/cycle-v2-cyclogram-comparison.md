@@ -92,6 +92,14 @@ host translates columns into `Panel3D::DataRetriever` and uses the mature
 `TrimeshPanel3D` renderer. A growing generic bridge or a second preview
 pipeline would be a design failure.
 
+For a parameter-only Trimesh gesture, the presentation model confirms that
+the committed model pointer matches the compiled step. The DSP configuration
+factory then copies only the small parameter/configuration record, sharing its
+already prepared mesh and guide provider. It does not scan guide assignments
+or prepare a mesh. If the model pointer differs, comparison capture waits for
+the existing downstream refresh and reuses that prepared plan. This adds no
+second mesh preparation to a vertex commit.
+
 The Cycle 1 pitch fallback remains at tracker insecurity above 50. The
 reference dock flags insecurity above 30 for manual correction without
 changing that fallback.
@@ -126,3 +134,12 @@ visits. The 1000x700, 1280x760, and full-size agent runs keep the Trimesh
 editor responsive, capture only after release, and show rendered sample and
 Spy cards. The context creation assertion guards against blank dock surfaces.
 The Cycle 1 UI capture and filtered logs show no incidental assertion.
+The release-preparation test scales from zero to 128 unrelated nodes and
+mesh cubes while asserting zero graph copies, mesh copies, serializations,
+and linear graph/assignment scans. The mesh-copy counter is recorded at the
+authoritative guide-preparation deep-copy site, so the old release path fails
+that assertion.
+The focused 1000x700 gesture fixture passes after the parameter-only change;
+a vertex edit fixture confirms the model-changing path captures after the
+downstream refresh. The full-size screenshot and architecture audit were
+rechecked after both paths passed.

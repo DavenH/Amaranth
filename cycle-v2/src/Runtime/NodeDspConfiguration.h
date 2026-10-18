@@ -90,6 +90,10 @@ private:
 
 class NodeDspConfigurationFactory {
 public:
+    static std::shared_ptr<const INodeDspConfiguration> refreshTrimeshParameters(
+            const std::vector<NodeParameter>& parameters,
+            const INodeDspConfiguration* previous);
+
     String keyFor(
             AudioModuleRole role,
             const std::vector<NodeParameter>& parameters,
