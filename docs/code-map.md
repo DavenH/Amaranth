@@ -117,6 +117,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `docs/ADR/` — Accepted architectural decisions; use to understand stable direction and ownership.
 - `docs/TDD/README.md` — TDD evidence, acceptance, review, and status rules.
 - `docs/TDD/` — Feature designs and active work; verify status before treating a document as current.
+- `docs/TDD/cycle-automation-coordinator.md` — Exact-instance ownership and cross-workspace GUI automation design.
 - `docs/TDD/refactors.md` — Shared refactor backlog; check before adding another architectural wish.
 - `docs/TDD/ui-bugs.md` — UI/runtime incident ledger for incidental failures and focused repro evidence.
 - `docs/TDD/audio-bugs.md` — Realtime audio incident ledger and unresolved pipeline failures.
