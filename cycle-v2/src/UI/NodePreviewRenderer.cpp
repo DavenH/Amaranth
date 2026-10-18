@@ -378,47 +378,73 @@ void drawSpectralLayerPreview(
     const float size = jmin(area.getWidth(), area.getHeight());
     const Rectangle<float> bounds(size, size);
     const Rectangle<float> icon = bounds.withCentre(area.getCentre()).reduced(size * 0.08f);
-    const float stroke = jmax(1.35f, size * 0.075f);
-    const float padWidth = icon.getWidth() * 0.22f;
-    const float padHeight = icon.getHeight() * 0.40f;
-    const float padY = icon.getY() + icon.getHeight() * 0.48f;
-    const Rectangle<float> leftPad(
-            icon.getX(), padY, padWidth, padHeight);
-    const Rectangle<float> rightPad(
-            icon.getRight() - padWidth, padY, padWidth, padHeight);
+    const float stroke = jmax(1.2f, size * 0.047f);
+    const float padWidth = icon.getWidth() * 0.18f;
+    const float padHeight = icon.getHeight() * 0.34f;
+    const Rectangle<float> padBounds(padWidth, padHeight);
+    const Rectangle<float> leftPad = padBounds.withCentre({
+            icon.getX() + icon.getWidth() * 0.22f,
+            icon.getY() + icon.getHeight() * 0.80f });
+    const Rectangle<float> rightPad = padBounds.withCentre({
+            icon.getX() + icon.getWidth() * 0.78f,
+            icon.getY() + icon.getHeight() * 0.80f });
     const float leftAffinity = 1.f - pan;
     const float rightAffinity = pan;
     const Colour colour = colourForDomain(domain);
 
-    const float shoulderY = icon.getY() + icon.getHeight() * 0.36f;
+    constexpr float startAngle = MathConstants<float>::pi * 13.f / 9.f;
+    constexpr float endAngle = MathConstants<float>::pi * 23.f / 9.f;
+    const float radius = icon.getWidth() * 0.42f;
+    const float innerRadius = icon.getWidth() * 0.34f;
+    const float centreY = icon.getY() + icon.getHeight() * 0.50f;
+    const float arcEndY = centreY + radius * 0.17364818f;
     Path headband;
-    headband.startNewSubPath(leftPad.getCentreX(), leftPad.getCentreY());
-    headband.lineTo(leftPad.getCentreX(), shoulderY);
-    headband.cubicTo(
-            leftPad.getCentreX(), icon.getY() + icon.getHeight() * 0.06f,
-            rightPad.getCentreX(), icon.getY() + icon.getHeight() * 0.06f,
-            rightPad.getCentreX(), shoulderY);
-    headband.lineTo(rightPad.getCentreX(), rightPad.getCentreY());
+    headband.startNewSubPath(
+            leftPad.getCentreX(), leftPad.getY() + padHeight * 0.12f);
+    headband.lineTo(icon.getCentreX() - radius * 0.98480775f, arcEndY);
+    headband.addCentredArc(
+            icon.getCentreX(), centreY, radius, radius, 0.f,
+            startAngle, endAngle);
+    headband.lineTo(
+            rightPad.getCentreX(), rightPad.getY() + padHeight * 0.12f);
+    Path innerBand;
+    innerBand.addCentredArc(
+            icon.getCentreX(), centreY, innerRadius, innerRadius, 0.f,
+            startAngle, endAngle, true);
     graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.94f));
     graphics.strokePath(
             headband,
-            PathStrokeType(stroke + 2.f, PathStrokeType::curved, PathStrokeType::rounded));
-    graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.92f));
+            PathStrokeType(stroke + 1.4f, PathStrokeType::curved, PathStrokeType::rounded));
+    graphics.strokePath(
+            innerBand,
+            PathStrokeType(stroke + 1.1f, PathStrokeType::curved, PathStrokeType::rounded));
+    graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.96f));
     graphics.strokePath(
             headband,
-            PathStrokeType(stroke, PathStrokeType::curved, PathStrokeType::rounded));
+            PathStrokeType(stroke * 0.72f, PathStrokeType::curved, PathStrokeType::rounded));
+    graphics.strokePath(
+            innerBand,
+            PathStrokeType(stroke * 0.58f, PathStrokeType::curved, PathStrokeType::rounded));
 
-    const auto paintPad = [&](Rectangle<float> pad, float affinity) {
+    const auto paintPad = [&](Rectangle<float> pad, float angle, float affinity) {
         const float corner = padWidth * 0.44f;
+        const auto rotation = AffineTransform::rotation(
+                angle, pad.getCentreX(), pad.getCentreY());
+        Path outline;
+        outline.addRoundedRectangle(pad, corner);
+        outline.applyTransform(rotation);
+        Path inset;
+        inset.addRoundedRectangle(pad.reduced(stroke * 0.88f), corner * 0.62f);
+        inset.applyTransform(rotation);
         graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.96f));
-        graphics.fillRoundedRectangle(pad, corner);
-        graphics.setColour(colour.withAlpha(0.38f + affinity * 0.62f));
-        graphics.drawRoundedRectangle(pad, corner, stroke + affinity * stroke * 0.45f);
+        graphics.fillPath(outline);
         graphics.setColour(colour.withAlpha(0.10f + affinity * 0.66f));
-        graphics.fillRoundedRectangle(pad.reduced(stroke * 1.05f), corner * 0.62f);
+        graphics.fillPath(inset);
+        graphics.setColour(colour.withAlpha(0.38f + affinity * 0.62f));
+        graphics.strokePath(outline, PathStrokeType(stroke + affinity * stroke * 0.25f));
     };
-    paintPad(leftPad, leftAffinity);
-    paintPad(rightPad, rightAffinity);
+    paintPad(leftPad, -MathConstants<float>::pi / 7.f, leftAffinity);
+    paintPad(rightPad, MathConstants<float>::pi / 7.f, rightAffinity);
 }
 
 }
