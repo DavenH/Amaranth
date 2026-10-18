@@ -41,6 +41,9 @@ The editor retains the last selected morph tuple when a child control loses
 transient JUCE focus, so pointer release and ordinary focus transfer do not
 remove the cue or leave Left/Right and L without a target. Selecting a different
 morph rail, Axis control, or Link control replaces that editor-local target.
+The shared focus frame keeps the Trimesh label comfortably inside its left edge,
+uses 2 px vertical row insets, leaves 5 px beyond the Link control, and separates
+the keyboard glyph by 4 px. The reserved slot retains 3 px after the glyph.
 
 Cycle 1's other keys were reviewed separately. `A` remains the useful follow-on
 for selection, with its exact select-all/clear-selection context to be designed

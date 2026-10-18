@@ -169,13 +169,13 @@ Rectangle<float> morphKeyboardFocusOutlineBounds(
     return Rectangle<float>::leftTopRightBottom(
             rowBounds.getX() + 1.f,
             rowBounds.getY() + 2.f,
-            trailingControlBounds.getRight() + 3.f,
+            trailingControlBounds.getRight() + 5.f,
             rowBounds.getBottom() - 2.f);
 }
 
 Rectangle<float> keyboardFocusIndicatorBounds(Rectangle<float> focusOutlineBounds) {
     return Rectangle<float>(18.f, 13.f).withCentre({
-            focusOutlineBounds.getRight() + 12.f,
+            focusOutlineBounds.getRight() + 13.f,
             focusOutlineBounds.getCentreY()
     });
 }

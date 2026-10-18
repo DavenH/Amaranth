@@ -46,8 +46,10 @@ TEST_CASE("Keyboard focus presentation scopes a morph tuple before its icon",
 
     REQUIRE(row.contains(outline));
     REQUIRE(outline.getX() == Catch::Approx(row.getX() + 1.f));
-    REQUIRE(outline.getRight() == Catch::Approx(link.getRight() + 3.f));
-    REQUIRE(icon.getX() - outline.getRight() == Catch::Approx(3.f));
+    REQUIRE(outline.getRight() == Catch::Approx(link.getRight() + 5.f));
+    REQUIRE(outline.getY() - row.getY() == Catch::Approx(2.f));
+    REQUIRE(row.getBottom() - outline.getBottom() == Catch::Approx(2.f));
+    REQUIRE(icon.getX() - outline.getRight() == Catch::Approx(4.f));
     REQUIRE(icon.getCentreY() == Catch::Approx(outline.getCentreY()));
     REQUIRE(icon.getWidth() == Catch::Approx(18.f));
     REQUIRE(icon.getHeight() == Catch::Approx(13.f));
