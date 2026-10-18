@@ -27,6 +27,8 @@ APP_BUNDLE_ID="${CYCLE_APP_BUNDLE_ID:-$(plutil -extract CFBundleIdentifier raw -
 APP_EXECUTABLE_NAME="${CYCLE_APP_EXECUTABLE_NAME:-$(plutil -extract CFBundleExecutable raw -o - "$APP_PATH/Contents/Info.plist")}"
 APP_EXECUTABLE_PATH="$APP_PATH/Contents/MacOS/$APP_EXECUTABLE_NAME"
 
+echo "Cycle UI capture target: $APP_PATH" >&2
+
 if [[ "$DIRECT_LAUNCH" == "1" && ! -x "$APP_EXECUTABLE_PATH" ]]; then
     echo "Cycle executable not found: $APP_EXECUTABLE_PATH" >&2
     exit 1
