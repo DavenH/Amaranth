@@ -38,6 +38,7 @@ struct TrimeshPanelRenderStats {
     int sampleCount {};
     int surfaceColumnCount {};
     int surfaceRowCount {};
+    uint64_t surfaceRebuildCount {};
     int interceptCount {};
     int guideRailSegmentCount {};
     int componentGuideSegmentCount {};
@@ -180,7 +181,6 @@ private:
 
     struct CachedHeatmap {
         juce::Image image;
-        size_t valueCount {};
         int rows {};
         int columns {};
         uint64_t revision {};
@@ -191,6 +191,15 @@ private:
         bool pitchSpansColumns {};
         float surfaceAspectRatio {};
     };
+
+    bool needsCompactHeatmapRefresh(
+            const TrimeshRenderData& panelData,
+            const TrimeshRenderProfile& profile,
+            float surfaceAspectRatio) const;
+    void refreshCompactHeatmap(
+            const TrimeshRenderData& panelData,
+            const TrimeshRenderProfile& profile,
+            float surfaceAspectRatio);
 
     static juce::Rectangle<float> meshPreviewContentArea(juce::Rectangle<float> area);
     static juce::Rectangle<float> expandedSidePanelContentBounds(juce::Rectangle<float> content);

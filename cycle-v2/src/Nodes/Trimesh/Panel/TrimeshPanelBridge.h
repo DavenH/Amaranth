@@ -55,6 +55,7 @@ public:
     void setRenderProfile(TrimeshRenderProfile profile);
     void setPreviewMidiNote(int midiNote);
     void setPreviewKeyScaleAxis(int axis);
+    int getPreviewKeyScaleAxis() const { return previewKeyScaleAxis; }
     bool isMeshEditGestureActive() const { return meshEditGestureActive; }
     void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
     void renderPanel2D(juce::Rectangle<float> bounds, float scaleFactor);
