@@ -10,7 +10,7 @@ using namespace juce;
 
 namespace {
 
-constexpr int kContentWidth = 164;
+constexpr int kContentWidth = 152;
 constexpr int kContentHeight = 114;
 constexpr int kBubbleMargin = 8;
 constexpr int kBubbleArrowLength = 7;
@@ -20,10 +20,27 @@ constexpr float kKeycapHeight = 14.f;
 constexpr float kKeycapGap = 3.f;
 constexpr float kChordGap = 4.f;
 constexpr float kChordSeparatorWidth = 7.f;
+constexpr float kDescriptionFontSize = 10.5f;
 constexpr float kKeyColumnWidth = 70.f;
 
 float keycapWidth(const String& label) {
     return label.length() > 1 ? 28.f : 16.f;
+}
+
+float shortcutGroupWidth(const StringArray& keys, bool chord) {
+    float width = 0.f;
+
+    for (int index = 0; index < keys.size(); ++index) {
+        if (index > 0) {
+            width += chord
+                    ? kChordGap * 2.f + kChordSeparatorWidth
+                    : kKeycapGap;
+        }
+
+        width += keycapWidth(keys[index]);
+    }
+
+    return width;
 }
 
 void paintKeycap(
@@ -47,7 +64,9 @@ void paintShortcutRow(
         const String& description,
         bool chord = false) {
     Rectangle<float> keyColumn = row.removeFromLeft(kKeyColumnWidth);
-    float keyX = keyColumn.getX();
+    float keyX = keyColumn.getRight()
+            - kDescriptionFontSize
+            - shortcutGroupWidth(keys, chord);
 
     for (int index = 0; index < keys.size(); ++index) {
         if (index > 0) {
@@ -82,7 +101,7 @@ void paintShortcutRow(
     }
 
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.88f));
-    graphics.setFont(FontOptions(10.5f));
+    graphics.setFont(FontOptions(kDescriptionFontSize));
     graphics.drawText(description, row, Justification::centredLeft, false);
 }
 
