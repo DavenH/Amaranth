@@ -4179,6 +4179,7 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
             *shortcutHint, { 12.f, 12.f }, {}, { 12.f, 12.f }, false));
     REQUIRE(shortcutBubble->isVisible());
     REQUIRE(shortcutBubble->getWidth() == 180);
+    REQUIRE(shortcutBubble->getHeight() == 130);
     REQUIRE(editor->getLocalBounds().contains(shortcutBubble->getBounds()));
     REQUIRE(shortcutBubble->getBounds().getCentreX()
             == shortcutHint->getBounds().getCentreX());

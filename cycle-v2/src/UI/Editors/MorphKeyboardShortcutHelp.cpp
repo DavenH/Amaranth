@@ -11,14 +11,16 @@ using namespace juce;
 namespace {
 
 constexpr int kContentWidth = 164;
-constexpr int kContentHeight = 104;
+constexpr int kContentHeight = 114;
 constexpr int kBubbleMargin = 8;
 constexpr int kBubbleArrowLength = 7;
 constexpr int kHoverPollHz = 60;
 constexpr float kCardCornerRadius = 6.f;
 constexpr float kKeycapHeight = 14.f;
 constexpr float kKeycapGap = 3.f;
-constexpr float kKeyColumnWidth = 66.f;
+constexpr float kChordGap = 4.f;
+constexpr float kChordSeparatorWidth = 7.f;
+constexpr float kKeyColumnWidth = 70.f;
 
 float keycapWidth(const String& label) {
     return label.length() > 1 ? 32.f : 16.f;
@@ -48,15 +50,26 @@ void paintShortcutRow(
     float keyX = keyColumn.getX();
 
     for (int index = 0; index < keys.size(); ++index) {
-        if (chord && index > 0) {
-            graphics.setColour(CanvasChromePalette::mutedText.withAlpha(0.82f));
-            graphics.setFont(FontOptions(9.f));
-            graphics.drawText(
-                    "+",
-                    Rectangle<float> { keyX, row.getY(), 7.f, row.getHeight() },
-                    Justification::centred,
-                    false);
-            keyX += 7.f;
+        if (index > 0) {
+            if (chord) {
+                keyX += kChordGap;
+                graphics.setColour(
+                        CanvasChromePalette::mutedText.withAlpha(0.82f));
+                graphics.setFont(FontOptions(9.f));
+                graphics.drawText(
+                        "+",
+                        Rectangle<float> {
+                                keyX,
+                                row.getY(),
+                                kChordSeparatorWidth,
+                                row.getHeight()
+                        },
+                        Justification::centred,
+                        false);
+                keyX += kChordSeparatorWidth + kChordGap;
+            } else {
+                keyX += kKeycapGap;
+            }
         }
 
         const float width = keycapWidth(keys[index]);
@@ -65,7 +78,7 @@ void paintShortcutRow(
                 { keyX, row.getCentreY() - kKeycapHeight * 0.5f,
                         width, kKeycapHeight },
                 keys[index]);
-        keyX += width + kKeycapGap;
+        keyX += width;
     }
 
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.88f));
