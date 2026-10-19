@@ -241,6 +241,9 @@ executable's fingerprint with the registered instance. If it changed, request
 a clean quit through that instance's socket, wait for the exact PID, and launch
 the new bundle. Never continue against an instance with a different
 fingerprint while claiming to test the new build.
+Hold a workspace/product build lease through the build, fingerprint check,
+and instance selection. Fresh-fixture suites build inside each child run so a
+concurrent caller cannot rebuild between the suite build and fixture launch.
 
 ### Launch
 
@@ -281,8 +284,8 @@ identifier.
   bounds and immediately before dispatch.
 - ScreenCaptureKit helpers accept PID, and optionally a discovered window id;
   they do not select the largest window for a bundle id.
-- Full-screen or region `screencapture` is allowed only while holding the
-  foreground lease.
+- Requested regions are cropped from the PID-selected ScreenCaptureKit window;
+  desktop `screencapture` cannot establish which process supplied the pixels.
 - App-side `screenshot` remains preferred for ordinary JUCE components.
 - Every screenshot/video result records PID, window id where applicable,
   bounds, pixel dimensions, and capture method.
@@ -526,3 +529,16 @@ ordinary registry and policy coverage.
 - The coordinator's 14 focused Python tests, semantic code map check, and
   Cycle V2 architecture audit passed. Broad-suite fixture failures listed
   above remain tracked separately in `docs/TDD/ui-bugs.md`.
+
+## Ownership Follow-up (2026-10-19)
+
+- A workspace/product build lease now spans the build, executable fingerprint,
+  and instance selection. Fresh suite child runs acquire that lease individually.
+- The PID-window screenshot helper crops requested regions from its selected
+  window. A live Cycle V2 capture returned one PID and window ID for both the
+  full image and a 400×300 region; the region had the requested pixel size.
+  Untitled utility windows are excluded before enforcing a unique main window.
+- Launch cleanup removes a socket only when its inode matches the recorded
+  socket; a replaced or unknown socket remains a collision.
+- Seventeen focused Python tests pass, including build-lease, socket-replacement,
+  and PID-region-capture checks.

@@ -85,7 +85,24 @@ def publish_lease_pid(key, owner, pid):
                 active["app_pid"] = pid
 
 
-def ensure(profile, owner, short_id, clean=False, wait=0, task=None, scoped=False):
+def prepare_socket(socket, existing):
+    if not socket.exists():
+        return
+    if existing is not None and existing.get("socket") == str(socket):
+        remove_owned_socket(existing)
+    if socket.exists():
+        raise RuntimeError(f"Socket collision at {socket}; inspect coordinator status")
+
+
+def ensure(profile, owner, short_id, clean=False, wait=0, task=None, scoped=False,
+           build_app=True):
+    with lease(f"build:{instance_key(short_id, profile.name)}", owner, "build", wait=wait):
+        if build_app:
+            build(profile)
+        return ensure_built(profile, owner, short_id, clean, wait, task, scoped)
+
+
+def ensure_built(profile, owner, short_id, clean=False, wait=0, task=None, scoped=False):
     key = instance_key(short_id, profile.name)
     if scoped:
         key += f"/{owner['run_id']}"
@@ -109,10 +126,7 @@ def ensure(profile, owner, short_id, clean=False, wait=0, task=None, scoped=Fals
                 if data["instances"].get(key) == existing:
                     data["instances"].pop(key, None)
             socket = socket_path(short_id, profile.name + (f"-{owner['run_id']}" if scoped else ""))
-            if socket.exists():
-                if existing is None or valid_instance(existing):
-                    raise RuntimeError(f"Socket collision at {socket}; inspect coordinator status")
-                socket.unlink()
+            prepare_socket(socket, existing)
             result = subprocess.run([str(launch_helper()), str(profile.app), str(socket)],
                                     check=True, capture_output=True, text=True)
             pid = int(result.stdout.strip())

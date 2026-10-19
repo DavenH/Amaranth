@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 
 from cycle_automation_support.identity import valid_instance, workspace
-from cycle_automation_support.lifecycle import build, ensure, stop
+from cycle_automation_support.lifecycle import ensure, stop
 from cycle_automation_support.profiles import PRODUCTS, ROOT
 from cycle_automation_support.registry import lease, recover, registry
 from cycle_automation_support.smokes import run_fresh_manifest, run_manifest
@@ -126,9 +126,6 @@ def main():
                     parser.error(f"{profile.name} requires {profile.fixture_prefix} fixtures: {spec}")
         if args.operation == "exec" and not args.command:
             parser.error("exec requires a command after --")
-        if not args.no_build:
-            build(profile)
-
         if args.operation == "suite" and args.manifest:
             manifest = json.loads(args.manifest.read_text())
             if manifest["mode"] == "fresh-fixtures":
@@ -140,7 +137,7 @@ def main():
                 visual = args.visual or os.environ.get(visual_env) == "1"
                 report = (args.report or artifacts / "report.json").resolve()
                 results = run_fresh_manifest(profile, manifest, names, report,
-                                             artifacts, visual)
+                                             artifacts, visual, args.no_build)
                 result = result_base(owner, profile, None, run_id, artifacts)
                 result["report"] = str(report)
                 result["fixtures"] = results
@@ -242,7 +239,8 @@ def main():
 
         scoped = args.operation == "debug" or (args.operation == "run" and (args.clean or args.startup))
         try:
-            result = ensure(profile, owner, short_id, args.clean, args.wait, task, scoped)
+            result = ensure(profile, owner, short_id, args.clean, args.wait, task,
+                            scoped, not args.no_build)
         except Exception as error:
             failure = result_base(owner, profile, None, run_id, artifacts)
             failure["error"] = str(error)

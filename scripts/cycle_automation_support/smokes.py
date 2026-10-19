@@ -94,7 +94,8 @@ def run_manifest(record, manifest_path, names, report, artifacts, owner, wait,
                              owner, wait)
 
 
-def run_fresh_manifest(profile, manifest, names, report, artifacts, include_visual):
+def run_fresh_manifest(profile, manifest, names, report, artifacts, include_visual,
+                       no_build=False):
     fixtures = selected_fixtures(manifest, names, include_visual)
     if not fixtures:
         raise ValueError("No smoke fixtures selected")
@@ -106,9 +107,11 @@ def run_fresh_manifest(profile, manifest, names, report, artifacts, include_visu
         fixture = ROOT / (visual or item)["path"]
         fixture_report = artifacts / f"{name}-report.json"
         command = [sys.executable, str(ROOT / "scripts/cycle_automation.py"),
-                   "run", "--product", profile.name, "--no-build", "--clean",
+                   "run", "--product", profile.name, "--clean",
                    "--fixture", str(fixture), "--report", str(fixture_report),
                    "--app-log", str(artifacts / f"{name}-log.txt"), "--json"]
+        if no_build:
+            command.append("--no-build")
         image = None
         if visual:
             image = artifacts / visual["output"]

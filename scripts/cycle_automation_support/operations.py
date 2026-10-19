@@ -136,41 +136,23 @@ def run_fixture(record, fixture, report, owner=None, wait=0, foreground_held=Fal
     return data
 
 
-def focus(record):
-    if not valid_instance(record):
-        raise RuntimeError(f"Owned PID {record['pid']} is no longer valid")
-    script = (f'tell application "System Events" to set frontmost of '
-              f'(first process whose unix id is {record["pid"]}) to true')
-    subprocess.run(["osascript", "-e", script], check=True)
-
-
 def capture(record, owner, destination, rect=None, wait=0):
     with lease("foreground", owner, "capture", wait=wait):
-        preflight(accessibility=bool(rect), screen=True)
+        preflight(screen=True)
         destination.parent.mkdir(parents=True, exist_ok=True)
+        if not valid_instance(record):
+            raise RuntimeError(f"Owned PID {record['pid']} changed before capture")
+        command = [str(compiled_helper("capture_cycle_screenshot.swift")),
+                   str(record["pid"]), str(destination)]
         if rect:
-            focus(record)
-            if not valid_instance(record):
-                raise RuntimeError(f"Owned PID {record['pid']} changed before capture")
-            subprocess.run(["screencapture", "-x", "-R", rect, str(destination)], check=True)
-            values = [int(value) for value in rect.split(",")]
-            if len(values) != 4:
-                raise ValueError(f"Invalid capture rectangle: {rect}")
-            metadata = {"method": "foreground-region", "window_id": None,
-                        "bounds": dict(zip(("x", "y", "width", "height"), values))}
-        else:
-            if not valid_instance(record):
-                raise RuntimeError(f"Owned PID {record['pid']} changed before capture")
-            result = subprocess.run(
-                [str(compiled_helper("capture_cycle_screenshot.swift")),
-                 str(record["pid"]), str(destination)],
-                check=True, capture_output=True, text=True)
-            fields = dict(field.split("=", 1) for field in result.stdout.strip().split())
-            metadata = {
-                "method": "pid-window", "window_id": int(fields["window"]),
-                "bounds": {key: int(fields[key]) for key in ("x", "y", "width", "height")},
-                "pixels": {key: int(fields[key]) for key in ("width", "height")},
-            }
+            command.append(rect)
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
+        fields = dict(field.split("=", 1) for field in result.stdout.strip().split())
+        metadata = {
+            "method": "pid-window-region" if rect else "pid-window",
+            "window_id": int(fields["window"]),
+            "bounds": {key: int(fields[key]) for key in ("x", "y", "width", "height")},
+        }
         if not destination.is_file() or destination.stat().st_size == 0:
             raise RuntimeError(f"Screenshot missing: {destination}")
         with destination.open("rb") as image:

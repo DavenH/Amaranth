@@ -128,7 +128,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `scripts/fixtures/cycle1-smoke-suite.json` — Cycle 1 smoke fixture catalog and optional visual check.
 - `scripts/fixtures/cycle-v2-smoke-suite.json` — Cycle 2 smoke fixture catalog and optional visual checks.
 - `scripts/launch_cycle_app.swift` — NSWorkspace launcher that returns the new application's PID.
-- `scripts/capture_cycle_screenshot.swift`, `scripts/capture_cycle_window.swift` — PID-window ScreenCaptureKit screenshot and video helpers.
+- `scripts/capture_cycle_screenshot.swift`, `scripts/capture_cycle_window.swift` — PID-window screenshot, region crop, and video helpers.
 - `scripts/run_cycle_agent.sh`, `scripts/run_cycle_v2_agent.sh` — Product aliases for fixture runs.
 - `scripts/capture_cycle_ui.sh`, `scripts/capture_cycle_v2_ui.sh` — Product aliases for screenshots.
 - `scripts/cycle_v2_architecture_audit.py` — Report CycleV2 file-size review triggers for touched production code.

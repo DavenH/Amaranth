@@ -15,8 +15,9 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
 from cycle_automation_support.identity import socket_fingerprint, socket_path, valid_instance, workspace
+from cycle_automation_support.lifecycle import ensure, prepare_socket
 from cycle_automation_support.profiles import PRODUCTS
-from cycle_automation_support.operations import collect_crash, run_fixture
+from cycle_automation_support.operations import capture, collect_crash, run_fixture
 from cycle_automation_support.smokes import selected_fixtures
 from cycle_automation_support.registry import Conflict, acquire, lease, recover, registry
 
@@ -144,6 +145,67 @@ class CycleAutomationTest(unittest.TestCase):
             self.assertEqual(data["instances"], {})
             self.assertFalse(socket.exists())
             kill.assert_not_called()
+
+    def test_launch_preserves_replaced_socket_and_removes_owned_socket(self):
+        with tempfile.TemporaryDirectory() as directory:
+            socket = Path(directory) / "cycle.sock"
+            socket.touch()
+            existing = {"socket": str(socket), "socket_identity": socket_fingerprint(socket)}
+            prepare_socket(socket, existing)
+            self.assertFalse(socket.exists())
+
+            socket.touch()
+            replacement = {"socket": str(socket), "socket_identity": [0, 0]}
+            with self.assertRaisesRegex(RuntimeError, "Socket collision"):
+                prepare_socket(socket, replacement)
+            self.assertTrue(socket.exists())
+
+    def test_build_and_instance_selection_hold_one_build_lease(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            owner = {"workspace_id": "work", "workspace_path": "/work",
+                     "run_id": "run", "app_pid": None}
+            profile = PRODUCTS["cycle-v2"]
+            resource = "build:work/cycle-v2"
+            observed = []
+
+            def check_lease(*args):
+                with registry() as data:
+                    observed.append(resource in data["leases"])
+                return "selected"
+
+            with patch("cycle_automation_support.registry.state_root", return_value=root), \
+                    patch("cycle_automation_support.lifecycle.build", side_effect=check_lease), \
+                    patch("cycle_automation_support.lifecycle.ensure_built", side_effect=check_lease):
+                self.assertEqual(ensure(profile, owner, "work"), "selected")
+                with lease(resource, {**owner, "run_id": "other"}, "build"):
+                    with self.assertRaises(Conflict):
+                        ensure(profile, owner, "work")
+            self.assertEqual(observed, [True, True])
+
+    def test_region_capture_uses_recorded_pid_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            destination = root / "region.png"
+            owner = {"workspace_id": "work", "workspace_path": "/work",
+                     "run_id": "run", "app_pid": 123}
+
+            def write_image(command, **kwargs):
+                destination.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\0" * 8
+                                        + (20).to_bytes(4, "big") + (10).to_bytes(4, "big"))
+                return subprocess.CompletedProcess(command, 0,
+                        "pid=123 window=42 x=10 y=20 width=20 height=10")
+
+            with patch("cycle_automation_support.registry.state_root", return_value=root), \
+                    patch("cycle_automation_support.operations.preflight"), \
+                    patch("cycle_automation_support.operations.valid_instance", return_value=True), \
+                    patch("cycle_automation_support.operations.compiled_helper", return_value="/helper"), \
+                    patch("cycle_automation_support.operations.subprocess.run", side_effect=write_image) as run:
+                result = capture({"pid": 123}, owner, destination, "10,20,20,10")
+            self.assertEqual(run.call_args.args[0],
+                             ["/helper", "123", str(destination), "10,20,20,10"])
+            self.assertEqual(result["method"], "pid-window-region")
+            self.assertEqual(result["window_id"], 42)
 
     def test_crash_report_must_match_pid_and_start(self):
         with tempfile.TemporaryDirectory() as directory:
