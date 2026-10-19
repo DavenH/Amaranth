@@ -10,38 +10,13 @@ using namespace juce;
 
 namespace {
 
-constexpr int kContentWidth = 214;
-constexpr int kContentHeight = 104;
+constexpr int kCardWidth = 180;
+constexpr int kCardHeight = 104;
+constexpr int kArrowLength = 7;
 constexpr float kCardCornerRadius = 6.f;
 constexpr float kKeycapHeight = 14.f;
 constexpr float kKeycapGap = 3.f;
 constexpr float kKeyColumnWidth = 90.f;
-constexpr int kBubbleMargin = 8;
-constexpr int kBubbleArrowLength = 7;
-constexpr int kHoverPollHz = 30;
-
-class ShortcutBubbleLookAndFeel final : public LookAndFeel_V4 {
-public:
-    void drawBubble(
-            Graphics& graphics,
-            BubbleComponent& component,
-            const Point<float>& tip,
-            const Rectangle<float>& body) override {
-        Path outline;
-        const Rectangle<float> card = body.reduced(0.6f);
-        outline.addBubble(
-                card,
-                card.getUnion({ tip.x, tip.y, 1.f, 1.f }),
-                tip,
-                kCardCornerRadius,
-                8.f);
-
-        graphics.setColour(component.findColour(BubbleComponent::backgroundColourId));
-        graphics.fillPath(outline);
-        graphics.setColour(component.findColour(BubbleComponent::outlineColourId));
-        graphics.strokePath(outline, PathStrokeType(0.8f));
-    }
-};
 
 float keycapWidth(const String& label) {
     if (label == "Shift") {
@@ -98,42 +73,87 @@ void paintShortcutRow(
     graphics.drawText(description, row, Justification::centredLeft, false);
 }
 
-}
-
-class MorphKeyboardShortcutHelp::Bubble final : public BubbleComponent {
+class ShortcutTooltipLookAndFeel final : public LookAndFeel_V4 {
 public:
-    explicit Bubble(bool includesYellowAxisToUse) :
+    explicit ShortcutTooltipLookAndFeel(bool includesYellowAxisToUse) :
             includesYellowAxis(includesYellowAxisToUse) {
-        setTitle("Morph keyboard shortcuts");
-        setDescription(morphKeyboardShortcutHelpText(includesYellowAxis));
-        setAccessible(false);
-        setInterceptsMouseClicks(false, false);
-        setAllowedPlacement(BubbleComponent::above | BubbleComponent::below);
-        setLookAndFeel(&lookAndFeel);
-        setColour(
-                BubbleComponent::backgroundColourId,
-                CanvasChromePalette::dockSurface.withAlpha(0.99f));
-        setColour(
-                BubbleComponent::outlineColourId,
-                CanvasChromePalette::strongBorder.withAlpha(0.62f));
     }
 
-    ~Bubble() override {
-        setLookAndFeel(nullptr);
+    void setAnchorBounds(Rectangle<int> bounds) {
+        anchorBounds = bounds;
     }
 
-    void getContentSize(int& width, int& height) override {
-        width = kContentWidth;
-        height = kContentHeight;
+    Rectangle<int> getTooltipBounds(
+            const String&,
+            Point<int>,
+            Rectangle<int> parentArea) override {
+        const int fullHeight = kCardHeight + kArrowLength;
+        const int maximumX = jmax(
+                parentArea.getX(),
+                parentArea.getRight() - kCardWidth);
+        const int x = jlimit(
+                parentArea.getX(),
+                maximumX,
+                anchorBounds.getCentreX() - kCardWidth / 2);
+        appearsBelow = anchorBounds.getBottom() + fullHeight
+                        <= parentArea.getBottom()
+                || anchorBounds.getY() - fullHeight < parentArea.getY();
+        const int preferredY = appearsBelow
+                ? anchorBounds.getBottom()
+                : anchorBounds.getY() - fullHeight;
+        const int y = jlimit(
+                parentArea.getY(),
+                jmax(parentArea.getY(), parentArea.getBottom() - fullHeight),
+                preferredY);
+        arrowTipX = (float) jlimit(
+                12,
+                kCardWidth - 12,
+                anchorBounds.getCentreX() - x);
+        return { x, y, kCardWidth, fullHeight };
     }
 
-    void paintContent(Graphics& graphics, int width, int height) override {
-        Rectangle<float> content {
-                10.f,
-                6.f,
-                (float) width - 20.f,
-                (float) height - 12.f
+    void drawTooltip(
+            Graphics& graphics,
+            const String&,
+            int width,
+            int height) override {
+        const Rectangle<float> body = appearsBelow
+                ? Rectangle<float> {
+                        0.f,
+                        (float) kArrowLength,
+                        (float) width,
+                        (float) height - kArrowLength
+                }
+                : Rectangle<float> {
+                        0.f,
+                        0.f,
+                        (float) width,
+                        (float) height - kArrowLength
+                };
+        const Point<float> tip {
+                arrowTipX,
+                appearsBelow ? 0.f : (float) height
         };
+        Path outline;
+        const Rectangle<float> card = body.reduced(0.6f);
+        outline.addBubble(
+                card,
+                card.getUnion({ tip.x, tip.y, 1.f, 1.f }),
+                tip,
+                kCardCornerRadius,
+                8.f);
+
+        graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.99f));
+        graphics.fillPath(outline);
+        graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.62f));
+        graphics.strokePath(outline, PathStrokeType(0.8f));
+
+        paintContent(graphics, body);
+    }
+
+private:
+    void paintContent(Graphics& graphics, Rectangle<float> body) const {
+        Rectangle<float> content = body.reduced(10.f, 6.f);
         Rectangle<float> heading = content.removeFromTop(17.f);
         graphics.setColour(CanvasChromePalette::text.withAlpha(0.96f));
         graphics.setFont(FontOptions(11.f).withStyle("Bold"));
@@ -177,110 +197,91 @@ public:
                 "Toggle link");
     }
 
-private:
     bool includesYellowAxis {};
-    ShortcutBubbleLookAndFeel lookAndFeel;
+    bool appearsBelow { true };
+    float arrowTipX { kCardWidth * 0.5f };
+    Rectangle<int> anchorBounds;
+};
+
+}
+
+class MorphKeyboardShortcutHelp::Tooltip final : public TooltipWindow {
+public:
+    Tooltip(
+            Component& host,
+            Component& targetToUse,
+            bool includesYellowAxis) :
+            TooltipWindow(&host, 0)
+        ,   target(targetToUse)
+        ,   shortcuts(morphKeyboardShortcutHelpText(includesYellowAxis))
+        ,   lookAndFeel(includesYellowAxis) {
+        setName("MorphKeyboardShortcutTooltip");
+        setTitle("Morph keyboard shortcuts");
+        setDescription(shortcuts);
+        setAccessible(false);
+        setOpaque(false);
+        setLookAndFeel(&lookAndFeel);
+    }
+
+    ~Tooltip() override {
+        setLookAndFeel(nullptr);
+    }
+
+    String getTipFor(Component& component) override {
+        return &component == &target && target.isShowing()
+                ? shortcuts
+                : String();
+    }
+
+    void setAnchorBounds(Rectangle<int> bounds) {
+        lookAndFeel.setAnchorBounds(bounds);
+    }
+
+private:
+    Component& target;
+    String shortcuts;
+    ShortcutTooltipLookAndFeel lookAndFeel;
 };
 
 class MorphKeyboardShortcutHelp::Target final : public Component {
 public:
-    Target(MorphKeyboardShortcutHelp& targetOwner, const String& componentId) :
-            owner(targetOwner) {
+    explicit Target(const String& componentId) {
         setComponentID(componentId);
         setName("MorphKeyboardShortcutTarget");
         setTitle("Morph keyboard shortcuts");
         setWantsKeyboardFocus(false);
     }
-
-    void mouseEnter(const MouseEvent&) override {
-        owner.showBubble();
-    }
-
-    void mouseMove(const MouseEvent&) override {
-        owner.showBubble();
-    }
-
-    void mouseExit(const MouseEvent&) override {
-        owner.deferBubbleHide();
-    }
-
-private:
-    MorphKeyboardShortcutHelp& owner;
 };
 
 MorphKeyboardShortcutHelp::MorphKeyboardShortcutHelp(
-        Component& hostToUse,
+        Component& host,
         const String& componentId,
         bool includesYellowAxis) :
-        host    (hostToUse)
-    ,   bubble  (std::make_unique<Bubble>(includesYellowAxis))
-    ,   target  (std::make_unique<Target>(*this, componentId)) {
-    bubble->setComponentID(componentId + ".bubble");
-    bubble->setName("MorphKeyboardShortcutBubble");
-    host.addChildComponent(bubble.get());
+        target  (std::make_unique<Target>(componentId))
+    ,   tooltip (std::make_unique<Tooltip>(
+                host,
+                *target,
+                includesYellowAxis)) {
+    tooltip->setComponentID(componentId + ".bubble");
     host.addChildComponent(target.get());
 }
 
-MorphKeyboardShortcutHelp::~MorphKeyboardShortcutHelp() {
-    stopTimer();
-}
+MorphKeyboardShortcutHelp::~MorphKeyboardShortcutHelp() = default;
 
 void MorphKeyboardShortcutHelp::setAnchorBounds(
         Rectangle<float> focusOutlineBounds) {
-    iconBounds = keyboardFocusIndicatorBounds(focusOutlineBounds);
+    const Rectangle<float> iconBounds =
+            keyboardFocusIndicatorBounds(focusOutlineBounds);
     target->setBounds(
             keyboardFocusIndicatorHitBounds(focusOutlineBounds).toNearestInt());
+    tooltip->setAnchorBounds(iconBounds.toNearestInt());
     target->setVisible(true);
     target->toFront(false);
-    if (bubble->isVisible()) {
-        layoutBubble();
-    }
 }
 
 void MorphKeyboardShortcutHelp::hide() {
     target->setVisible(false);
-    hideBubble();
-}
-
-void MorphKeyboardShortcutHelp::showBubble() {
-    if (!target->isVisible()) {
-        return;
-    }
-    stopTimer();
-    layoutBubble();
-    bubble->setVisible(true);
-    bubble->toFront(false);
-    target->toFront(false);
-}
-
-void MorphKeyboardShortcutHelp::deferBubbleHide() {
-    if (bubble->isVisible()) {
-        startTimerHz(kHoverPollHz);
-    }
-}
-
-void MorphKeyboardShortcutHelp::hideBubble() {
-    stopTimer();
-    bubble->setVisible(false);
-}
-
-void MorphKeyboardShortcutHelp::layoutBubble() {
-    bubble->setPosition(
-            iconBounds.toNearestInt(),
-            kBubbleMargin,
-            kBubbleArrowLength);
-}
-
-void MorphKeyboardShortcutHelp::timerCallback() {
-    const Point<float> pointer = Desktop::getInstance()
-            .getMainMouseSource().getScreenPosition();
-    const bool overTarget = target->isVisible()
-            && target->getScreenBounds().toFloat().contains(pointer);
-    const bool overBubble = bubble->isVisible()
-            && bubble->getScreenBounds().toFloat().contains(pointer);
-    if (!overTarget && !overBubble) {
-        hideBubble();
-    }
+    tooltip->hideTip();
 }
 
 }

@@ -4160,27 +4160,37 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
     REQUIRE(editor->focusedMorphAxis() == "red");
     Component* shortcutHint = editor->findChildWithID(
             "envelopeEditor.morph.shortcuts");
-    Component* shortcutBubble = editor->findChildWithID(
+    Component* shortcutTooltip = editor->findChildWithID(
             "envelopeEditor.morph.shortcuts.bubble");
     REQUIRE(shortcutHint != nullptr);
-    REQUIRE(shortcutBubble != nullptr);
+    REQUIRE(shortcutTooltip != nullptr);
     REQUIRE(shortcutHint->isVisible());
     REQUIRE(shortcutHint->getWidth() == 24);
     REQUIRE(shortcutHint->getHeight() == 24);
-    shortcutHint->mouseEnter(curvePanelMouseEvent(
-            *shortcutHint, { 12.f, 12.f }, {}, { 12.f, 12.f }, false));
-    REQUIRE(shortcutBubble->isVisible());
-    REQUIRE(editor->getLocalBounds().contains(shortcutBubble->getBounds()));
-    REQUIRE(shortcutBubble->getBounds().getCentreX()
+    REQUIRE_FALSE(shortcutTooltip->isVisible());
+    shortcutHint->mouseDown(curvePanelMouseEvent(
+            *shortcutHint,
+            { 12.f, 12.f },
+            ModifierKeys::leftButtonModifier,
+            { 12.f, 12.f },
+            false));
+    REQUIRE_FALSE(shortcutTooltip->isVisible());
+    auto* nativeTooltip = dynamic_cast<TooltipWindow*>(shortcutTooltip);
+    REQUIRE(nativeTooltip != nullptr);
+    const String tooltipText = nativeTooltip->getTipFor(*shortcutHint);
+    REQUIRE(tooltipText.startsWith("R / B"));
+    REQUIRE(tooltipText.contains("Shift + Arrow"));
+    nativeTooltip->displayTip(
+            shortcutHint->localPointToGlobal(Point<int> { 12, 12 }),
+            tooltipText);
+    REQUIRE(shortcutTooltip->isVisible());
+    REQUIRE(shortcutTooltip->getWidth() == 180);
+    REQUIRE(editor->getLocalBounds().contains(shortcutTooltip->getBounds()));
+    REQUIRE(shortcutTooltip->getBounds().getCentreX()
             == shortcutHint->getBounds().getCentreX());
-    REQUIRE(shortcutBubble->getDescription().startsWith("R / B"));
-    REQUIRE(shortcutBubble->getDescription().contains("Shift + Arrow"));
-    shortcutHint->mouseExit(curvePanelMouseEvent(
-            *shortcutHint, { 25.f, 12.f }, {}, { 12.f, 12.f }, false));
-    REQUIRE(shortcutBubble->isVisible());
-    shortcutHint->mouseEnter(curvePanelMouseEvent(
-            *shortcutHint, { 12.f, 12.f }, {}, { 12.f, 12.f }, false));
-    REQUIRE(shortcutBubble->isVisible());
+    REQUIRE(shortcutTooltip->getDescription() == tooltipText);
+    nativeTooltip->hideTip();
+    REQUIRE_FALSE(shortcutTooltip->isVisible());
 
     Component focusSink;
     focusSink.setWantsKeyboardFocus(true);
