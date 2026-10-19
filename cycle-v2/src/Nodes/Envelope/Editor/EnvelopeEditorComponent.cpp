@@ -88,8 +88,7 @@ struct EnvelopeEditorComponent::Impl {
                          "Toggles this Envelope layer",
                          "Enable or disable this Envelope layer")
         ,   redMorph    (owner, "Red")
-        ,   blueMorph   (owner, "Blue")
-        ,   tooltipHost (&owner, 500) {
+        ,   blueMorph   (owner, "Blue") {
         stylePropertyLabel(timeLabel, "Time");
         stylePropertyLabel(purposeLabel, "Purpose");
         purposeLabel.setJustificationType(Justification::centredRight);
@@ -114,7 +113,6 @@ struct EnvelopeEditorComponent::Impl {
     EffectEnableButton enabled;
     LabeledParameterSlider redMorph;
     LabeledParameterSlider blueMorph;
-    TooltipWindow tooltipHost;
     Label timeLabel;
     Label purposeLabel;
     EnvelopePurposeSelector mode;

@@ -1,5 +1,23 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved: Morph shortcut help required clicks before hover
+
+On 2026-10-19, the morph shortcut card failed on a fresh native hover and began
+working only after mouse clicks. The helper used a zero-delay JUCE
+`TooltipWindow`, but that class still polls every 123 ms, suppresses display at
+the last mouse-down position, and retains post-dismissal state. Cycle V2 also
+had multiple tooltip windows listening over the same editor area, while its
+synthetic pointer fixture bypassed the real `MouseInputSource` entirely.
+
+The shortcut card now uses native component enter/exit events with a passive
+JUCE `BubbleComponent` plus a target-local 60 Hz reconciliation timer for the
+OpenGL-attached peer's missed entry event. The redundant Envelope-local tooltip
+window was removed, and `NodeCanvas` remains the single owner of conventional
+delayed tooltips. The broader findings and validation rules are recorded in
+`docs/TDD/cycle-v2-hover-interaction-audit.md`. Status: resolved; native
+pre-click hover and pointer-leave dismissal were verified from a fresh process.
+Artifact: `.context/native-morph-hover-final-crop.png`.
+
 ## P2: Full CTest run has broad pre-existing Cycle V2 failures
 
 On 2026-10-18, `ctest --test-dir build/tests -V` passed 1,267 of 1,353 tests

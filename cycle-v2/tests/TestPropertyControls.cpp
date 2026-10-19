@@ -61,8 +61,19 @@ TEST_CASE("Keyboard focus presentation scopes a morph tuple before its icon",
     REQUIRE(hitTarget.getHeight() == Catch::Approx(24.f));
     REQUIRE(morphKeyboardShortcutHelpText(true).startsWith("Y / R / B"));
     REQUIRE(morphKeyboardShortcutHelpText(false).startsWith("R / B"));
-    REQUIRE(morphKeyboardShortcutHelpText(false).contains("Shift + Arrow"));
+    REQUIRE(morphKeyboardShortcutHelpText(false).contains(
+            "Shift + Left / Right"));
     REQUIRE(morphKeyboardShortcutHelpText(false).contains("Toggle link"));
+
+    const ModifierKeys shift(ModifierKeys::shiftModifier);
+    REQUIRE(morphStepForKeyboardShortcut(
+            KeyPress(KeyPress::leftKey, shift, 0)).value() == Catch::Approx(-0.2f));
+    REQUIRE(morphStepForKeyboardShortcut(
+            KeyPress(KeyPress::rightKey, shift, 0)).value() == Catch::Approx(0.2f));
+    REQUIRE_FALSE(morphStepForKeyboardShortcut(
+            KeyPress(KeyPress::upKey, shift, 0)).has_value());
+    REQUIRE_FALSE(morphStepForKeyboardShortcut(
+            KeyPress(KeyPress::downKey, shift, 0)).has_value());
 }
 
 TEST_CASE("Envelope morph focus contains the tuple and reserves a trailing icon slot",

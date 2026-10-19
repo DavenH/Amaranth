@@ -13,7 +13,7 @@ inline juce::String morphKeyboardShortcutHelpText(bool includesYellowAxis) {
     return focusKeys + ": Focus group\n"
             "Up / Down: Move focus\n"
             "Left / Right: Send morph to pole\n"
-            "Shift + Arrow: Move morph 20%\n"
+            "Shift + Left / Right: Move morph 20%\n"
             "L: Toggle link";
 }
 
@@ -68,12 +68,10 @@ inline std::optional<float> morphStepForKeyboardShortcut(
         return std::nullopt;
     }
 
-    if (key.getKeyCode() == juce::KeyPress::leftKey
-            || key.getKeyCode() == juce::KeyPress::downKey) {
+    if (key.getKeyCode() == juce::KeyPress::leftKey) {
         return -0.2f;
     }
-    if (key.getKeyCode() == juce::KeyPress::rightKey
-            || key.getKeyCode() == juce::KeyPress::upKey) {
+    if (key.getKeyCode() == juce::KeyPress::rightKey) {
         return 0.2f;
     }
     return std::nullopt;

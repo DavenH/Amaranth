@@ -4160,37 +4160,34 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
     REQUIRE(editor->focusedMorphAxis() == "red");
     Component* shortcutHint = editor->findChildWithID(
             "envelopeEditor.morph.shortcuts");
-    Component* shortcutTooltip = editor->findChildWithID(
+    Component* shortcutBubble = editor->findChildWithID(
             "envelopeEditor.morph.shortcuts.bubble");
     REQUIRE(shortcutHint != nullptr);
-    REQUIRE(shortcutTooltip != nullptr);
+    REQUIRE(shortcutBubble != nullptr);
     REQUIRE(shortcutHint->isVisible());
     REQUIRE(shortcutHint->getWidth() == 24);
     REQUIRE(shortcutHint->getHeight() == 24);
-    REQUIRE_FALSE(shortcutTooltip->isVisible());
+    REQUIRE_FALSE(shortcutBubble->isVisible());
     shortcutHint->mouseDown(curvePanelMouseEvent(
             *shortcutHint,
             { 12.f, 12.f },
             ModifierKeys::leftButtonModifier,
             { 12.f, 12.f },
             false));
-    REQUIRE_FALSE(shortcutTooltip->isVisible());
-    auto* nativeTooltip = dynamic_cast<TooltipWindow*>(shortcutTooltip);
-    REQUIRE(nativeTooltip != nullptr);
-    const String tooltipText = nativeTooltip->getTipFor(*shortcutHint);
-    REQUIRE(tooltipText.startsWith("R / B"));
-    REQUIRE(tooltipText.contains("Shift + Arrow"));
-    nativeTooltip->displayTip(
-            shortcutHint->localPointToGlobal(Point<int> { 12, 12 }),
-            tooltipText);
-    REQUIRE(shortcutTooltip->isVisible());
-    REQUIRE(shortcutTooltip->getWidth() == 180);
-    REQUIRE(editor->getLocalBounds().contains(shortcutTooltip->getBounds()));
-    REQUIRE(shortcutTooltip->getBounds().getCentreX()
+    REQUIRE_FALSE(shortcutBubble->isVisible());
+    shortcutHint->mouseEnter(curvePanelMouseEvent(
+            *shortcutHint, { 12.f, 12.f }, {}, { 12.f, 12.f }, false));
+    REQUIRE(shortcutBubble->isVisible());
+    REQUIRE(shortcutBubble->getWidth() == 196);
+    REQUIRE(editor->getLocalBounds().contains(shortcutBubble->getBounds()));
+    REQUIRE(shortcutBubble->getBounds().getCentreX()
             == shortcutHint->getBounds().getCentreX());
-    REQUIRE(shortcutTooltip->getDescription() == tooltipText);
-    nativeTooltip->hideTip();
-    REQUIRE_FALSE(shortcutTooltip->isVisible());
+    REQUIRE(shortcutBubble->getDescription().startsWith("R / B"));
+    REQUIRE(shortcutBubble->getDescription().contains(
+            "Shift + Left / Right"));
+    shortcutHint->mouseExit(curvePanelMouseEvent(
+            *shortcutHint, { 25.f, 12.f }, {}, { 12.f, 12.f }, false));
+    REQUIRE_FALSE(shortcutBubble->isVisible());
 
     Component focusSink;
     focusSink.setWantsKeyboardFocus(true);
@@ -4235,8 +4232,12 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
     REQUIRE(editor->focusedMorphAxis() == "blue");
     REQUIRE(editor->keyPressed(KeyPress(KeyPress::upKey)));
     REQUIRE(editor->focusedMorphAxis() == "red");
-    REQUIRE(editor->keyPressed(KeyPress(
+    REQUIRE_FALSE(editor->keyPressed(KeyPress(
             KeyPress::upKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(editor->keyPressed(KeyPress(
+            KeyPress::rightKey,
             ModifierKeys::shiftModifier,
             0)));
     REQUIRE(NodeParameterMap(*document.graph().findNode("env"))

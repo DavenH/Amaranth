@@ -6,7 +6,7 @@
 
 namespace CycleV2 {
 
-class MorphKeyboardShortcutHelp {
+class MorphKeyboardShortcutHelp : private juce::Timer {
 public:
     MorphKeyboardShortcutHelp(
             juce::Component& host,
@@ -18,11 +18,17 @@ public:
     void hide();
 
 private:
-    class Tooltip;
+    class Bubble;
     class Target;
 
+    void showBubble();
+    void hideBubble();
+    void layoutBubble();
+    void timerCallback() override;
+
+    juce::Rectangle<float> iconBounds;
+    std::unique_ptr<Bubble> bubble;
     std::unique_ptr<Target> target;
-    std::unique_ptr<Tooltip> tooltip;
 };
 
 }
