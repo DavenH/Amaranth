@@ -2,10 +2,9 @@
 
 ## Status
 
-In Progress. The coordinator, PID launcher, registry, leases, persistent
+Implemented. The coordinator, PID launcher, registry, leases, persistent
 sessions, scoped runs, capture, video, LLDB, native-input routing, and product
-aliases are implemented. Native Accessibility acceptance remains before the
-TDD can be marked Implemented.
+aliases passed focused macOS integration acceptance.
 
 ## Problem
 
@@ -506,12 +505,24 @@ ordinary registry and policy coverage.
   assertions against the current app. Relative graph fixture paths now resolve
   from their fixture directory; `audio-capture` passed after that correction.
 
-Remaining before `Implemented`:
+## Final Acceptance (2026-10-19)
 
-- Native `cliclick` integration was attempted but the calling process lacked
-  macOS Accessibility permission; rerun its focused authoring sequence once
-  that permission is available.
-- Run an optional foreground visual smoke after Accessibility permission is
-  available for the calling process.
-- The smoke manifest uses the current `OohAah` factory preset; the older
-  `ooh-aah` name resolves only to an archived preset and failed reset.
+- With Accessibility access granted, the focused Cycle V2 native `authoring`
+  sequence passed through the coordinator's exact PID, instance lease, and
+  foreground lease. It covered native node drag, palette creation, connection,
+  undo/redo, save/reopen, deletion, and cable insertion.
+- The Cycle V2 `opengl-diagnostics` foreground visual smoke passed with OS
+  screenshot capture enabled.
+- `--json` startup now keeps CMake build output on stderr, leaving stdout as
+  one parseable result. The native smoke exposed this output contract failure.
+- The native authoring fixture now selects the Nodes sidebar explicitly and
+  inserts the global Delay on the global signal path, where graph validation
+  permits it. Its previous per-voice insertion was a known fixture error. It
+  also closes any expanded editor left by saved UI state before native input.
+- A repeat attempt overlapped a Spokane-worktree direct Cycle V2 runner that
+  does not use this coordinator. That other app took the foreground during a
+  drag; its editor appears in `.context/native-authoring-captures/authoring-drag-stalled.png`.
+  Machine-wide exclusion applies to callers that acquire the coordinator lease.
+- The coordinator's 14 focused Python tests, semantic code map check, and
+  Cycle V2 architecture audit passed. Broad-suite fixture failures listed
+  above remain tracked separately in `docs/TDD/ui-bugs.md`.

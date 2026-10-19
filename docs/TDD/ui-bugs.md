@@ -420,9 +420,9 @@ Context:
 - This is independent of explicit Trimesh signal types and single Voice Context
   inference; the focused Trimesh semantic fixture passes.
 
-Current status: open; change the generic cable-insertion smoke to use a node
-whose execution scope is legal in the selected cable, or assert insertion
-separately from compilation validity.
+Current status: resolved 2026-10-19. The native authoring smoke inserts Delay
+between Global Input and Waveshaper, a legal global signal path. The focused
+`authoring` sequence passes with graph compilation enabled.
 
 ## P3: Archived preset tests still target moved fixtures
 

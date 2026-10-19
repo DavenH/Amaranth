@@ -1,6 +1,7 @@
 import os
 import plistlib
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -21,7 +22,7 @@ def build(profile):
     if profile.target:
         args.extend(["--target", profile.target])
     args.extend(["--parallel", "10"])
-    subprocess.run(args, check=True)
+    subprocess.run(args, check=True, stdout=sys.stderr)
 
 
 def app_metadata(profile):

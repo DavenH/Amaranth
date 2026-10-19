@@ -493,18 +493,14 @@ class NativeEditSmoke:
 
     def create_from_palette(self, section_index, entry_index):
         canvas = self.target("canvas")
-        group = (
-            round(canvas["x"] + 54),
-            round(canvas["y"] + 74 + 7 + section_index * 78 + 30),
-        )
-        entry = (
-            round(canvas["x"] + 100 + 72),
-            round(canvas["y"] + 74 + 7 + section_index * 78 + entry_index * 52 + 22),
-        )
-        self.primary_click(group)
+        self.primary_click((round(canvas["x"] + 246), round(canvas["y"] + 22)))
+        palette_entries = {(4, 2): (218, 566), (5, 4): (145, 812)}
+        x, y = palette_entries[(section_index, entry_index)]
+        entry = (round(canvas["x"] + x), round(canvas["y"] + y))
         self.primary_click(entry)
         state = self.graph_state()
-        assert state["selectedNodeId"], (section_index, entry_index, state)
+        assert state["selectedNodeId"], (section_index, entry_index,
+                                         state["documentFile"], state["editStatusMessage"])
         return state["selectedNodeId"]
 
     @staticmethod
@@ -667,7 +663,7 @@ class NativeEditSmoke:
         )
         cable_before = self.target(f"edge:{fft_edge_index}")
         fft_node = self.target("node:fft")
-        fft_source = self.point(fft_node, 0.5, 0.5)
+        fft_source = self.point(fft_node, 0.5, 0.15)
         fft_destination = (fft_source[0] + 120, fft_source[1] + 80)
         self.drag_and_hold(fft_source, fft_destination)
         cable_during_drag = self.target(f"edge:{fft_edge_index}")
@@ -677,7 +673,7 @@ class NativeEditSmoke:
         self.key_chord("z")
 
         created_envelope = self.create_from_palette(4, 2)
-        assert created_envelope not in {node["id"] for node in initial["nodes"]}
+        assert created_envelope not in {node["id"] for node in initial["nodes"]}, created_envelope
         self.command({
             "command": "setNodeParameter",
             "nodeId": created_envelope,
@@ -694,7 +690,8 @@ class NativeEditSmoke:
             self.point(envelope_output, 0.5, 0.5),
             self.point(scratch_input, 0.5, 0.5),
         )
-        connected = self.graph_state()
+        connected = self.graph_state_until(
+            lambda state: self.has_edge(state, created_envelope, "env", "waveMesh", "scratch"))
         assert connected["compileSucceeded"]
         assert self.has_edge(connected, created_envelope, "env", "waveMesh", "scratch")
         assert not self.has_edge(connected, "scratchEnv", "env", "waveMesh", "scratch")
@@ -749,8 +746,8 @@ class NativeEditSmoke:
         created_delay = self.create_from_palette(5, 4)
         assert created_delay not in {node["id"] for node in insertion_initial["nodes"]}
         delay_node = self.target(f"node:{created_delay}")
-        wave_output = self.target("output:waveMesh.out")
-        fft_input = self.target("input:fft.time")
+        wave_output = self.target("output:globalInput.time")
+        fft_input = self.target("input:waveshaper.time")
         cable_midpoint = (
             round((self.point(wave_output, 0.5, 0.5)[0] + self.point(fft_input, 0.5, 0.5)[0]) * 0.5),
             round((self.point(wave_output, 0.5, 0.5)[1] + self.point(fft_input, 0.5, 0.5)[1]) * 0.5),
@@ -760,31 +757,31 @@ class NativeEditSmoke:
         assert inserted["compileSucceeded"]
         assert inserted["nodeCount"] == insertion_initial["nodeCount"] + 1
         assert inserted["edgeCount"] == insertion_initial["edgeCount"] + 1
-        assert not self.has_edge(inserted, "waveMesh", "out", "fft", "time")
-        assert self.has_edge(inserted, "waveMesh", "out", created_delay, "time")
-        assert self.has_edge(inserted, created_delay, "time", "fft", "time")
-        wave_bounds = self.node_bounds(inserted, "waveMesh")
+        assert not self.has_edge(inserted, "globalInput", "time", "waveshaper", "time")
+        assert self.has_edge(inserted, "globalInput", "time", created_delay, "time")
+        assert self.has_edge(inserted, created_delay, "time", "waveshaper", "time")
+        wave_bounds = self.node_bounds(inserted, "globalInput")
         delay_bounds = self.node_bounds(inserted, created_delay)
-        fft_bounds = self.node_bounds(inserted, "fft")
+        fft_bounds = self.node_bounds(inserted, "waveshaper")
         assert self.horizontal_gap(wave_bounds, delay_bounds) >= 55.9
         assert self.horizontal_gap(delay_bounds, fft_bounds) >= 55.9
 
         self.key_chord("z")
         insertion_undone = self.graph_state_until(
-            lambda state: self.has_edge(state, "waveMesh", "out", "fft", "time")
+            lambda state: self.has_edge(state, "globalInput", "time", "waveshaper", "time")
         )
-        assert self.has_edge(insertion_undone, "waveMesh", "out", "fft", "time")
-        assert not self.has_edge(insertion_undone, "waveMesh", "out", created_delay, "time")
+        assert self.has_edge(insertion_undone, "globalInput", "time", "waveshaper", "time")
+        assert not self.has_edge(insertion_undone, "globalInput", "time", created_delay, "time")
 
         self.key_chord("z", shift=True)
         insertion_redone = self.graph_state_until(
-            lambda state: self.has_edge(state, "waveMesh", "out", created_delay, "time")
+            lambda state: self.has_edge(state, "globalInput", "time", created_delay, "time")
         )
-        assert self.has_edge(insertion_redone, "waveMesh", "out", created_delay, "time")
-        assert self.has_edge(insertion_redone, created_delay, "time", "fft", "time")
-        redone_wave_bounds = self.node_bounds(insertion_redone, "waveMesh")
+        assert self.has_edge(insertion_redone, "globalInput", "time", created_delay, "time")
+        assert self.has_edge(insertion_redone, created_delay, "time", "waveshaper", "time")
+        redone_wave_bounds = self.node_bounds(insertion_redone, "globalInput")
         redone_delay_bounds = self.node_bounds(insertion_redone, created_delay)
-        redone_fft_bounds = self.node_bounds(insertion_redone, "fft")
+        redone_fft_bounds = self.node_bounds(insertion_redone, "waveshaper")
         assert self.horizontal_gap(redone_wave_bounds, redone_delay_bounds) >= 55.9
         assert self.horizontal_gap(redone_delay_bounds, redone_fft_bounds) >= 55.9
 
@@ -2304,6 +2301,10 @@ class NativeEditSmoke:
             "command": "openGraph",
             "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph"),
         })
+        expanded = self.graph_state()["expandedNodeId"]
+        if expanded:
+            self.primary_click(self.point(self.target(f"expanded:{expanded}.close"), 0.5, 0.5))
+            assert not self.graph_state()["expandedNodeId"]
         time.sleep(SETTLE_SECONDS)
         available = {
             "authoring": self.graph_authoring_sequence,
