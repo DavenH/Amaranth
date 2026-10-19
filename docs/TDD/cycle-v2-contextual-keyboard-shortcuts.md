@@ -26,9 +26,9 @@ The shortcut contract is:
   zero/one; L toggles its session-only link. There is no editable Time morph in
   the Envelope model, so Y has no Envelope target.
 - Up/Down moves the active tuple through the editor's visible morph rows and
-  clamps at the first/last row. Shift+Left/Down changes the active value by
-  -20 percentage points; Shift+Right/Up changes it by +20, clamped to the
-  parameter range.
+  clamps at the first/last row. Shift+Left changes the active value by -20
+  percentage points and Shift+Right changes it by +20, clamped to the parameter
+  range. Shift+Up/Down is intentionally unassigned.
 - Space always bubbles to `NodeCanvas` preview playback, including while an
   expanded morph control owns keyboard focus.
 - On the bare canvas, C selects Curves and P selects Presets. Presets retains its
@@ -173,8 +173,10 @@ introduced.
   and `git diff --check` pass. Existing scalar math reported by the check is in
   untouched formatting/automation code, not a modified hot loop.
 - A native macOS-key sequence is registered in
-  `test_cycle_v2_native_edit_smoke.py`, including Up/Down and shifted arrows.
+  `test_cycle_v2_native_edit_smoke.py`, including Up/Down and Shift+Left/Right.
   Its local rerun remains externally blocked because `osascript` lacks macOS
   Accessibility permission to send System Events keystrokes; Screen Recording
   permission alone does not authorize keyboard injection. Deterministic
   component-path and fixture coverage pass.
+
+![Contextual morph shortcut help](figures/cycle-v2-contextual-keyboard-shortcuts.png)
