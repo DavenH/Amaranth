@@ -80,6 +80,12 @@ not to empty containers.
   gaps or separators mark a genuine change of section.
 - Avoid stranded space: unexplained central voids, one-label rows, sparse
   columns, and symmetric padding that separates related information.
+- Judge icon and keycap padding from the visible glyph bounds, not the text or
+  component bounds. Peer glyphs should have comparable apparent outer insets;
+  for a multi-glyph keycap, preserve those peer outer insets and put the
+  remaining space between the glyphs. Do not accept unexplained optical
+  imbalance merely because the container or text layout is mathematically
+  centered.
 - Share a row when controls are short, closely related, and still readable.
   Do not compress unrelated controls merely to increase density.
 - Align repeated labels, values, tracks, baselines, and section edges. Optical
@@ -248,6 +254,8 @@ The result is complete only when:
 - compact controls remain easy to acquire and precise to manipulate;
 - indicators reveal values more precisely than their visual mass obscures them;
 - repeated elements share alignment, rhythm, and state language;
+- peer icons and keycaps have balanced visible outer insets and deliberate
+  internal spacing at production size;
 - important states and complete gestures work through the real event path;
 - production-size screenshots show the intended improvement without creating a
   new density, hierarchy, or accessibility problem elsewhere.

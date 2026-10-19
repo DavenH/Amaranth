@@ -23,7 +23,7 @@ constexpr float kChordSeparatorWidth = 7.f;
 constexpr float kKeyColumnWidth = 70.f;
 
 float keycapWidth(const String& label) {
-    return label.length() > 1 ? 32.f : 16.f;
+    return label.length() > 1 ? 28.f : 16.f;
 }
 
 void paintKeycap(
