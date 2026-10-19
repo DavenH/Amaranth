@@ -202,7 +202,7 @@ available when the rail overflows. A 6 px strip retains the resize grip above
 the cards. At 1000x700, the surface view height increased from 199 to 227 px;
 the focused gesture fixture still reports one comparison capture on release.
 The production-size dock screenshot is
-`.context/comparison-dock-layout.png`.
+`docs/TDD/figures/cycle-v2-cyclogram-comparison/comparison-dock.png`.
 
 Opening a Trimesh editor must leave the comparison rail empty when the current
 session has no explicitly opened samples and the preset has no Spy pins.
