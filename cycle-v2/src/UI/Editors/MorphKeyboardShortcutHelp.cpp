@@ -10,7 +10,7 @@ using namespace juce;
 
 namespace {
 
-constexpr int kContentWidth = 180;
+constexpr int kContentWidth = 164;
 constexpr int kContentHeight = 104;
 constexpr int kBubbleMargin = 8;
 constexpr int kBubbleArrowLength = 7;
@@ -18,10 +18,10 @@ constexpr int kHoverPollHz = 60;
 constexpr float kCardCornerRadius = 6.f;
 constexpr float kKeycapHeight = 14.f;
 constexpr float kKeycapGap = 3.f;
-constexpr float kKeyColumnWidth = 90.f;
+constexpr float kKeyColumnWidth = 66.f;
 
 float keycapWidth(const String& label) {
-    return label.length() > 1 ? 40.f : 16.f;
+    return label.length() > 1 ? 32.f : 16.f;
 }
 
 void paintKeycap(
@@ -30,7 +30,8 @@ void paintKeycap(
         const String& label) {
     graphics.setColour(CanvasChromePalette::restingControlSurface);
     graphics.fillRoundedRectangle(bounds, 3.f);
-    graphics.setColour(CanvasChromePalette::focus.withAlpha(0.48f));
+    graphics.setColour(CanvasChromePalette::control(
+            CanvasChromeControlState::Resting).border);
     graphics.drawRoundedRectangle(bounds, 3.f, 0.8f);
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.96f));
     graphics.setFont(FontOptions(9.5f).withStyle("Bold"));
@@ -52,10 +53,10 @@ void paintShortcutRow(
             graphics.setFont(FontOptions(9.f));
             graphics.drawText(
                     "+",
-                    Rectangle<float> { keyX, row.getY(), 9.f, row.getHeight() },
+                    Rectangle<float> { keyX, row.getY(), 7.f, row.getHeight() },
                     Justification::centred,
                     false);
-            keyX += 9.f;
+            keyX += 7.f;
         }
 
         const float width = keycapWidth(keys[index]);
@@ -166,7 +167,7 @@ public:
         paintShortcutRow(
                 graphics,
                 content.removeFromTop(rowHeight),
-                { String::fromUTF8("⇧"), String::fromUTF8("← →") },
+                { String::fromUTF8("⇧"), String::fromUTF8("←→") },
                 "Move by 20%",
                 true);
         paintShortcutRow(
