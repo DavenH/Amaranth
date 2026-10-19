@@ -15,6 +15,8 @@ juce::Rectangle<float> morphKeyboardFocusOutlineBounds(
         juce::Rectangle<float> trailingControlBounds);
 juce::Rectangle<float> keyboardFocusIndicatorBounds(
         juce::Rectangle<float> focusOutlineBounds);
+juce::Rectangle<float> keyboardFocusIndicatorHitBounds(
+        juce::Rectangle<float> focusOutlineBounds);
 juce::Colour propertyControlFocusColour();
 void paintKeyboardFocusIndicator(
         juce::Graphics& graphics,

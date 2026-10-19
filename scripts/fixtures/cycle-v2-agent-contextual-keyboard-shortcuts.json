@@ -91,6 +91,12 @@
       "equals": "1.000"
     },
     {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "move",
+      "targetId": "trimesh.morph.shortcuts"
+    },
+    {
       "command": "screenshot",
       "area": "canvas",
       "path": "/Users/daven/conductor/workspaces/Amaranth/spokane/.context/cycle-v2-contextual-shortcuts-trimesh.png"
@@ -158,6 +164,12 @@
     { "command": "assertState", "path": "performance.previewPlaying", "equals": true },
     { "command": "key", "area": "canvas", "key": "space" },
     { "command": "assertState", "path": "performance.previewPlaying", "equals": false },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "move",
+      "targetId": "envelopeEditor.morph.shortcuts"
+    },
     {
       "command": "screenshot",
       "area": "canvas",

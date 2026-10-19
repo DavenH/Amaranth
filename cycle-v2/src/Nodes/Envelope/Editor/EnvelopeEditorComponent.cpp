@@ -13,6 +13,7 @@
 #include "UI/EnvelopeToolbarMetrics.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/EffectEnableButton.h"
+#include "UI/Editors/MorphKeyboardShortcutHelp.h"
 #include "UI/Editors/MorphKeyboardShortcuts.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UiIconData.h"
@@ -104,6 +105,10 @@ struct EnvelopeEditorComponent::Impl {
         owner.addAndMakeVisible(sustain);
         owner.addAndMakeVisible(fitVertical);
         owner.addAndMakeVisible(fullVertical);
+        keyboardShortcutHelp = std::make_unique<MorphKeyboardShortcutHelp>(
+                owner,
+                "envelopeEditor.morph.shortcuts",
+                false);
     }
 
     EffectEnableButton enabled;
@@ -134,6 +139,7 @@ struct EnvelopeEditorComponent::Impl {
             "Reset the vertical zoom to the full range",
             UiIconData::envelopeZoomFull
     };
+    std::unique_ptr<MorphKeyboardShortcutHelp> keyboardShortcutHelp;
     EnvelopeMorphControls presentation;
 
     EnvelopePurpose appliedPurpose { EnvelopePurpose::Control };
@@ -263,6 +269,7 @@ void EnvelopeEditorComponent::rememberMorphFocus(const String& axis) {
         return;
     }
     impl->keyboardMorphAxis = axis;
+    updateKeyboardShortcutHint();
     repaint();
 }
 
@@ -295,6 +302,20 @@ PrecisionSlider* EnvelopeEditorComponent::focusedMorphSlider() const {
         return &impl->blueMorph.slider;
     }
     return nullptr;
+}
+
+void EnvelopeEditorComponent::updateKeyboardShortcutHint() {
+    const String axis = focusedMorphAxis();
+    if (axis.isEmpty()) {
+        impl->keyboardShortcutHelp->hide();
+        return;
+    }
+
+    const int axisIndex = axis == "red" ? 1 : 2;
+    const Rectangle<float> focus = impl->presentation.keyboardFocusBounds(
+            editorControlBounds(),
+            axisIndex);
+    impl->keyboardShortcutHelp->setAnchorBounds(focus);
 }
 
 Rectangle<float> EnvelopeEditorComponent::editorControlBounds() const {
@@ -393,6 +414,7 @@ void EnvelopeEditorComponent::layoutEditor() {
     impl->fitVertical.setBounds(
             rangeGroup.removeFromLeft(rangeWidth).reduced(pairedActionInset, 0));
     impl->fullVertical.setBounds(rangeGroup.reduced(pairedActionInset, 0));
+    updateKeyboardShortcutHint();
 }
 
 void EnvelopeEditorComponent::syncEditorFromNode() {
@@ -410,6 +432,7 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
         impl->redLinked = true;
         impl->blueLinked = true;
     }
+    updateKeyboardShortcutHint();
     const bool logarithmic = parameters.boolValue("logarithmic", false);
     impl->axisScale.setLogarithmic(logarithmic, dontSendNotification);
     impl->axisScale.setEnabled(envelopePurposeAllowsLogarithmic(purpose));

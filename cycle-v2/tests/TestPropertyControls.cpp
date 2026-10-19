@@ -2,6 +2,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
+#include "UI/Editors/MorphKeyboardShortcuts.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertyControls.h"
 #include "UI/Editors/PropertySegmentedSelector.h"
@@ -43,6 +44,7 @@ TEST_CASE("Keyboard focus presentation scopes a morph tuple before its icon",
     const Rectangle<float> link { 190.f, 38.f, 20.f, 20.f };
     const Rectangle<float> outline = morphKeyboardFocusOutlineBounds(row, link);
     const Rectangle<float> icon = keyboardFocusIndicatorBounds(outline);
+    const Rectangle<float> hitTarget = keyboardFocusIndicatorHitBounds(outline);
 
     REQUIRE(row.contains(outline));
     REQUIRE(outline.getX() == Catch::Approx(row.getX() + 1.f));
@@ -54,6 +56,13 @@ TEST_CASE("Keyboard focus presentation scopes a morph tuple before its icon",
     REQUIRE(icon.getWidth() == Catch::Approx(18.f));
     REQUIRE(icon.getHeight() == Catch::Approx(13.f));
     REQUIRE(icon.getWidth() / icon.getHeight() == Catch::Approx(18.f / 13.f));
+    REQUIRE(hitTarget.contains(icon));
+    REQUIRE(hitTarget.getWidth() == Catch::Approx(24.f));
+    REQUIRE(hitTarget.getHeight() == Catch::Approx(24.f));
+    REQUIRE(morphKeyboardShortcutHelpText(true).startsWith("Y / R / B"));
+    REQUIRE(morphKeyboardShortcutHelpText(false).startsWith("R / B"));
+    REQUIRE(morphKeyboardShortcutHelpText(false).contains("Shift + Arrow"));
+    REQUIRE(morphKeyboardShortcutHelpText(false).contains("Toggle link"));
 }
 
 TEST_CASE("Envelope morph focus contains the tuple and reserves a trailing icon slot",

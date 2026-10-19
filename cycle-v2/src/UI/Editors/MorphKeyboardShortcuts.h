@@ -6,6 +6,17 @@
 
 namespace CycleV2 {
 
+inline juce::String morphKeyboardShortcutHelpText(bool includesYellowAxis) {
+    const juce::String focusKeys = includesYellowAxis
+            ? "Y / R / B"
+            : "R / B";
+    return focusKeys + ": Focus group\n"
+            "Up / Down: Move focus\n"
+            "Left / Right: Send morph to pole\n"
+            "Shift + Arrow: Move morph 20%\n"
+            "L: Toggle link";
+}
+
 inline juce::String morphAxisForKeyboardShortcut(const juce::KeyPress& key) {
     if (key.getModifiers().isAnyModifierKeyDown()) {
         return {};

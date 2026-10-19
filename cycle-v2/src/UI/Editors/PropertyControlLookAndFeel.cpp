@@ -180,6 +180,11 @@ Rectangle<float> keyboardFocusIndicatorBounds(Rectangle<float> focusOutlineBound
     });
 }
 
+Rectangle<float> keyboardFocusIndicatorHitBounds(Rectangle<float> focusOutlineBounds) {
+    return keyboardFocusIndicatorBounds(focusOutlineBounds)
+            .withSizeKeepingCentre(24.f, 24.f);
+}
+
 void paintKeyboardFocusIndicator(
         Graphics& graphics,
         Rectangle<float> focusOutlineBounds) {

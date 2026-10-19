@@ -4158,6 +4158,26 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
 
     REQUIRE(editor->keyPressed(KeyPress('r')));
     REQUIRE(editor->focusedMorphAxis() == "red");
+    Component* shortcutHint = editor->findChildWithID(
+            "envelopeEditor.morph.shortcuts");
+    Component* shortcutBubble = editor->findChildWithID(
+            "envelopeEditor.morph.shortcuts.bubble");
+    REQUIRE(shortcutHint != nullptr);
+    REQUIRE(shortcutBubble != nullptr);
+    REQUIRE(shortcutHint->isVisible());
+    REQUIRE(shortcutHint->getWidth() == 24);
+    REQUIRE(shortcutHint->getHeight() == 24);
+    shortcutHint->mouseEnter(curvePanelMouseEvent(
+            *shortcutHint, { 12.f, 12.f }, {}, { 12.f, 12.f }, false));
+    REQUIRE(shortcutBubble->isVisible());
+    REQUIRE(editor->getLocalBounds().contains(shortcutBubble->getBounds()));
+    REQUIRE(shortcutBubble->getBounds().getCentreX()
+            == shortcutHint->getBounds().getCentreX());
+    REQUIRE(shortcutBubble->getDescription().startsWith("R / B"));
+    REQUIRE(shortcutBubble->getDescription().contains("Shift + Arrow"));
+    shortcutHint->mouseExit(curvePanelMouseEvent(
+            *shortcutHint, { 25.f, 12.f }, {}, { 12.f, 12.f }, false));
+    REQUIRE_FALSE(shortcutBubble->isVisible());
 
     Component focusSink;
     focusSink.setWantsKeyboardFocus(true);

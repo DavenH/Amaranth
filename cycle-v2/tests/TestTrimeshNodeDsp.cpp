@@ -3253,7 +3253,29 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
     REQUIRE(controls.getVertexGuideGainKnobCount() == 6);
     REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 6);
-    REQUIRE(controls.getNumChildComponents() == 28);
+    REQUIRE(controls.getNumChildComponents() == 30);
+    Component* shortcutHint = controls.findChildWithID("trimesh.morph.shortcuts");
+    Component* shortcutBubble = controls.findChildWithID(
+            "trimesh.morph.shortcuts.bubble");
+    REQUIRE(shortcutHint != nullptr);
+    REQUIRE(shortcutBubble != nullptr);
+    REQUIRE_FALSE(shortcutHint->isVisible());
+    REQUIRE_FALSE(shortcutBubble->isVisible());
+    REQUIRE(controls.keyPressed(KeyPress('r')));
+    REQUIRE(shortcutHint->isVisible());
+    REQUIRE(shortcutHint->getWidth() == 24);
+    REQUIRE(shortcutHint->getHeight() == 24);
+    shortcutHint->mouseMove(panelMouseEvent(
+            *shortcutHint, { 12.f, 12.f }, {}, { 12.f, 12.f }, false));
+    REQUIRE(shortcutBubble->isVisible());
+    REQUIRE(controls.getLocalBounds().contains(shortcutBubble->getBounds()));
+    REQUIRE(shortcutBubble->getBounds().getCentreX()
+            == shortcutHint->getBounds().getCentreX());
+    REQUIRE(shortcutBubble->getDescription().startsWith("Y / R / B"));
+    REQUIRE(shortcutBubble->getDescription().contains("Toggle link"));
+    shortcutHint->mouseExit(panelMouseEvent(
+            *shortcutHint, { 25.f, 12.f }, {}, { 12.f, 12.f }, false));
+    REQUIRE_FALSE(shortcutBubble->isVisible());
     Component* link = controls.findChildWithID("trimesh.link.red");
     REQUIRE(link != nullptr);
     REQUIRE_FALSE(link->keyPressed(KeyPress(' ')));

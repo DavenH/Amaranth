@@ -10,6 +10,8 @@
 
 namespace CycleV2 {
 
+class MorphKeyboardShortcutHelp;
+
 class TrimeshControlsDelegate {
 public:
     virtual ~TrimeshControlsDelegate() = default;
@@ -91,6 +93,7 @@ private:
     bool setFocusedMorphTo(float value);
     bool adjustFocusedMorphBy(float amount);
     bool toggleFocusedMorphLink();
+    void updateKeyboardShortcutHint();
     bool isControlEnabled(const TrimeshExpandedHitRegion& region) const;
     void updateControlEnabledStates();
 
@@ -104,6 +107,7 @@ private:
     float guideGainDragStartValue {};
     juce::Rectangle<float> contentBounds;
     juce::Rectangle<int> lastHitRegionContentBounds;
+    std::unique_ptr<MorphKeyboardShortcutHelp> keyboardShortcutHelp;
     std::vector<TrimeshExpandedHitRegion> controlHitRegions;
     std::vector<std::unique_ptr<ControlTarget>> controlRegions;
 

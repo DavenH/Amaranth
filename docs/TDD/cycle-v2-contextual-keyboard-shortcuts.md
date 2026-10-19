@@ -54,6 +54,13 @@ the keyboard glyph by 4 px. The reserved slot retains 3 px after the glyph.
 Trimesh and Envelope share a 36 px morph row on a 44 px vertical rhythm, giving
 their 34 px focus frames equal control padding and 10 px between adjacent
 frames.
+The painted keyboard glyph has a shared 24 by 24 hover target around its 18 by
+13 px visual footprint. Entering that target immediately opens an editor-owned
+callout whose arrow points at the glyph; leaving the target immediately closes
+it. The callout shows focus keys, row navigation, pole selection, 20% Shift
+movement, and Link. The Envelope help omits Yellow because that editor exposes
+only Red and Blue. JUCE's non-modal `BubbleComponent` remains authoritative for
+arrow construction, placement, clipping, and editor-edge avoidance.
 
 Cycle 1's other keys were reviewed separately. `A` remains the useful follow-on
 for selection, with its exact select-all/clear-selection context to be designed
@@ -129,6 +136,14 @@ no Envelope policy. `EnvelopeEditorComponent.cpp` grows from 881 to 892 lines an
 `TrimeshControlsComponent.cpp` from 532 to 542 lines. The former remains above
 the responsibility-review threshold for its pre-existing control-composition
 role, but this change adds no new collaborator or cross-subsystem policy.
+
+The hover-help follow-up extracts the 24 px hit target and immediate non-modal
+bubble lifecycle into the 151-line `MorphKeyboardShortcutHelp.cpp` presentation
+owner. `EnvelopeEditorComponent.cpp` grows from 902 to 925 lines and
+`TrimeshControlsComponent.cpp` from 577 to 602 lines only to own that helper and
+supply the active row geometry. JUCE `BubbleComponent` remains authoritative
+for arrow construction and placement. Neither editor decides bubble styling or
+duplicates hover state, and the helper owns no node, command, or graph policy.
 
 The arrow-navigation correction keeps axis ordering in each editor and key
 decoding in the shared shortcut header. `PrecisionSlider` now offers generic

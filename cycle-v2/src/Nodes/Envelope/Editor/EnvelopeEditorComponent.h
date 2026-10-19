@@ -43,6 +43,7 @@ private:
     bool selectMorphAxis(const juce::String& axis);
     bool selectAdjacentMorphAxis(int direction);
     PrecisionSlider* focusedMorphSlider() const;
+    void updateKeyboardShortcutHint();
 
     std::unique_ptr<Impl> impl;
 };
