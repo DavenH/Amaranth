@@ -180,7 +180,7 @@ public:
         paintShortcutRow(
                 graphics,
                 content.removeFromTop(rowHeight),
-                { String::fromUTF8("⇧"), String::fromUTF8("←→") },
+                { String::fromUTF8("⇧"), String::fromUTF8("← →") },
                 "Move by 20%",
                 true);
         paintShortcutRow(
