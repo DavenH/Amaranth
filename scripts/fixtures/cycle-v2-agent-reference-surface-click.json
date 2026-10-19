@@ -1,0 +1,33 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    { "command": "resizeWindow", "width": 1000, "height": 700 },
+    { "command": "selectReference", "referenceId": "factory:dist3" },
+    { "command": "selectReference", "referenceId": "factory:sine500" },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "timeLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 350
+    },
+    { "command": "assertState", "path": "comparison.cardCount", "equals": 2 },
+    { "command": "assertState", "path": "comparison.selectedReferenceId", "equals": "factory:sine500" },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "comparisonDock",
+      "targetX": 0.51,
+      "targetY": 0.55,
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    { "command": "assertState", "path": "comparison.selectedReferenceId", "equals": "factory:dist3" },
+    { "command": "assertState", "path": "comparison.cardCount", "equals": 2 }
+  ],
+  "quit": true
+}

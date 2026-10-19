@@ -5,8 +5,14 @@ namespace CycleV2 {
 std::vector<uint8_t> probeExecutionSteps(
         const GraphExecutionPlan& plan,
         int sourceStepIndex) {
+    return probeExecutionSteps(plan, std::vector<int> { sourceStepIndex });
+}
+
+std::vector<uint8_t> probeExecutionSteps(
+        const GraphExecutionPlan& plan,
+        const std::vector<int>& sourceStepIndices) {
     std::vector<uint8_t> active(plan.steps.size());
-    std::vector<int> pending { sourceStepIndex };
+    std::vector<int> pending = sourceStepIndices;
     while (!pending.empty()) {
         const int stepIndex = pending.back();
         pending.pop_back();

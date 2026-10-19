@@ -1,5 +1,6 @@
 #include <Curve/Mesh/Mesh.h>
 
+#include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 
 namespace CycleV2 {
@@ -21,6 +22,8 @@ PreparedTrimeshGuides TrimeshGuidePreparation::prepare(
         const Mesh& sourceMesh) {
     PreparedTrimeshGuides result;
     result.mesh = copyMesh();
+    InteractionComplexityDiagnostics::recordMeshCopy(
+            sourceMesh.getVerts().size(), sourceMesh.getCubes().size());
     result.mesh->deepCopy(&sourceMesh);
     auto assignments = GuideCurveMeshPreparation::apply(
             *result.mesh,

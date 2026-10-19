@@ -43,6 +43,12 @@ namespace CycleV2 {
 
 enum class TransformMode;
 
+struct ComparisonSpyOption {
+    String id;
+    String label;
+    bool spectral {};
+};
+
 class NodeCanvas :
         public Component
     ,   private OpenGLRenderer
@@ -138,6 +144,25 @@ public:
     uint64_t audioPlanRevision() const { return presentation.audioPlanRevision(); }
     float graphOutputGain() const;
     int previewMidiNote() const { return presentation.previewMidiNote(); }
+    bool hasTrimeshEditorOpen() const;
+    std::vector<ComparisonSpyOption> comparisonSpyOptions() const;
+    std::vector<ComparisonSpyOption> unprobedTrimeshOutputs() const;
+    const std::vector<String>& comparisonSpyPins() const {
+        return document.presentation().comparisonSpyPins;
+    }
+    bool pinComparisonSpy(const String& probeId);
+    bool unpinComparisonSpy(const String& probeId);
+    String createAndPinTrimeshOutputSpy(const String& nodeId);
+    std::vector<std::optional<GraphPreviewResult::SignalProbePreview>>
+            captureComparisonSpies(int midiNote);
+    void setComparisonRefreshCallback(std::function<void()> callback) {
+        comparisonRefreshCallback = std::move(callback);
+    }
+    void setComparisonRenderCallbacks(
+            std::function<void(float)> renderCallback,
+            std::function<void()> closingCallback);
+    void clearComparisonRenderCallbacks();
+    void requestComparisonRendering();
     const std::optional<PresetMidiSequence>& presetSequence() const {
         return document.presentation().sequence;
     }
@@ -256,6 +281,11 @@ private:
     uint32 compiledStateRefreshDueMs {};
     std::function<void()> overlayOcclusionChanged;
     std::function<void()> previewPlaybackToggle;
+    std::function<void()> comparisonRefreshCallback;
+    std::function<void(float)> comparisonRenderCallback;
+    std::function<void()> comparisonGlClosingCallback;
+    juce::CriticalSection comparisonRenderLock;
+    bool comparisonRefreshPending {};
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
     void openGLContextClosing() override;

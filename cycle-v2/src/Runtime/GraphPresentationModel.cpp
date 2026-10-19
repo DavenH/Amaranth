@@ -529,6 +529,47 @@ GraphPresentationModel::captureProbePreview(
             performance);
 }
 
+std::vector<std::optional<GraphPreviewResult::SignalProbePreview>>
+GraphPresentationModel::captureProbePreviews(
+        const NodeGraph& graph,
+        const std::vector<String>& probeIds,
+        size_t rasterRowCount,
+        int midiNote) {
+    if (!current.compileResult.succeeded() || rasterRowCount == 0) {
+        return std::vector<std::optional<GraphPreviewResult::SignalProbePreview>>(
+                probeIds.size());
+    }
+    return previewRenderer.captureProbePreviews(
+            graph, current.compileResult.plan, probeIds, rasterRowCount,
+            midiNote, current.previewControllerValues, performance);
+}
+
+bool GraphPresentationModel::prepareProbeCaptureForNode(
+        const NodeGraph& graph,
+        const String& nodeId) {
+    auto& plan = current.compileResult.plan;
+    const auto found = plan.dependencyIndex.stepIndexById.find(nodeId);
+    const Node* node = graph.findNode(nodeId);
+    if (!current.compileResult.succeeded() || found == plan.dependencyIndex.stepIndexById.end()
+            || !isPositiveAndBelow(found->second, (int) plan.steps.size())
+            || node == nullptr) {
+        return false;
+    }
+    auto& step = plan.steps[(size_t) found->second];
+    if (step.kind != NodeKind::TrilinearMesh || node->model != step.model) {
+        return false;
+    }
+    auto configuration = configurationFactory.refreshTrimeshParameters(
+            node->parameters, step.configuration.value.get());
+    if (configuration == nullptr) {
+        return false;
+    }
+    step.parameters = node->parameters;
+    step.configuration.value = std::move(configuration);
+    ++step.configuration.revision;
+    return true;
+}
+
 bool GraphPresentationModel::requiresCompilation(const GraphChangeSet& change) const {
     return change.topologyChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::GraphSemantics);
@@ -564,45 +605,51 @@ void GraphPresentationModel::refreshConfigurations(
         const std::vector<String>& nodeIds) {
     plan.outputGain = GraphCompiler::outputGainFor(graph);
     compiler.refreshVoiceContexts(graph, plan);
-    AudioExecutionSpec spec;
     for (auto& step : plan.steps) {
         const bool directlyChanged = nodeIds.empty()
                 || std::find(nodeIds.begin(), nodeIds.end(), step.nodeId) != nodeIds.end();
         if (!directlyChanged) {
             continue;
         }
-        const Node* node = graph.findNode(step.nodeId);
-        if (node == nullptr) {
-            continue;
-        }
-        step.parameters = node->parameters;
-        const String key = configurationFactory.keyFor(
-                step.audioRole,
-                step.parameters,
-                node->model,
-                spec,
-                &graph,
-                step.nodeId,
-                effectiveScratchSourceNodeId(step));
-        if (step.configuration.key == key) {
-            continue;
-        }
-        auto value = configurationFactory.create(
-                step.audioRole,
-                step.parameters,
-                node->model,
-                spec,
-                &graph,
-                step.nodeId,
-                effectiveScratchSourceNodeId(step),
-                step.configuration.value.get());
-        if (value != nullptr) {
-            step.configuration = {
-                    step.configuration.revision + 1,
-                    key,
-                    std::move(value)
-            };
-        }
+        refreshConfigurationForStep(graph, step);
+    }
+}
+
+void GraphPresentationModel::refreshConfigurationForStep(
+        const NodeGraph& graph,
+        GraphExecutionStep& step) {
+    const Node* node = graph.findNode(step.nodeId);
+    if (node == nullptr) {
+        return;
+    }
+    step.parameters = node->parameters;
+    const AudioExecutionSpec spec;
+    const String key = configurationFactory.keyFor(
+            step.audioRole,
+            step.parameters,
+            node->model,
+            spec,
+            &graph,
+            step.nodeId,
+            effectiveScratchSourceNodeId(step));
+    if (step.configuration.key == key) {
+        return;
+    }
+    auto value = configurationFactory.create(
+            step.audioRole,
+            step.parameters,
+            node->model,
+            spec,
+            &graph,
+            step.nodeId,
+            effectiveScratchSourceNodeId(step),
+            step.configuration.value.get());
+    if (value != nullptr) {
+        step.configuration = {
+                step.configuration.revision + 1,
+                key,
+                std::move(value)
+        };
     }
 }
 

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 
 #include "Graph/PresetPresentation.h"
@@ -197,6 +198,20 @@ PresetPresentationDecodeResult readPresentation(
         }
     }
 
+    const juce::var pinsValue = object->getProperty("comparisonSpyPins");
+    if (const auto* pins = pinsValue.getArray()) {
+        for (const auto& item : *pins) {
+            const juce::String id = item.toString();
+            if (item.isString() && item.toString().isNotEmpty()
+                    && std::find(result.presentation.comparisonSpyPins.begin(),
+                            result.presentation.comparisonSpyPins.end(), id)
+                            == result.presentation.comparisonSpyPins.end()
+                    && result.presentation.comparisonSpyPins.size() < 32) {
+                result.presentation.comparisonSpyPins.push_back(id);
+            }
+        }
+    }
+
     readTags(object->getProperty("tags"), result);
 
     const juce::var previewValue = object->getProperty("preview");
@@ -234,7 +249,8 @@ bool PresetPresentation::empty() const {
             && !sequence.has_value()
             && !outputSpyPosition.has_value()
             && outputSpyVisible
-            && outputSpyFrequencyView;
+            && outputSpyFrequencyView
+            && comparisonSpyPins.empty();
 }
 
 juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentation) {
@@ -295,6 +311,13 @@ juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentat
     }
     if (!presentation.outputSpyFrequencyView) {
         result->setProperty("outputSpyFrequencyView", false);
+    }
+    if (!presentation.comparisonSpyPins.empty()) {
+        juce::Array<juce::var> pins;
+        for (const auto& id : presentation.comparisonSpyPins) {
+            pins.add(id);
+        }
+        result->setProperty("comparisonSpyPins", std::move(pins));
     }
     return juce::var(result.release());
 }

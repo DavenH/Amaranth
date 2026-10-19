@@ -2,6 +2,8 @@
 #include <Curve/Mesh/VertCube.h>
 #include <Obj/MorphPosition.h>
 
+#include <algorithm>
+
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 
@@ -101,6 +103,35 @@ bool EnvelopeMeshState::apply(const juce::String& serialized, EnvelopeMesh& mesh
     }
 
     return mesh.readJSON(snapshot);
+}
+
+bool EnvelopeMeshState::replacePointPath(
+        EnvelopeMesh& mesh,
+        const std::vector<Vertex2>& points) {
+    if (points.size() < 2) {
+        return false;
+    }
+    mesh.destroy();
+    for (const auto& point : points) {
+        addCube(mesh, point.x, point.y, 0.5f);
+    }
+    return true;
+}
+
+std::vector<Vertex2> EnvelopeMeshState::pointPath(const EnvelopeMesh& mesh) {
+    std::vector<Vertex2> points;
+    points.reserve(mesh.getCubes().size());
+    for (const VertCube* cube : mesh.getCubes()) {
+        if (cube != nullptr) {
+            const Vertex* vertex = cube->getVertex(0);
+            points.emplace_back(vertex->values[Vertex::Phase],
+                    vertex->values[Vertex::Amp]);
+        }
+    }
+    std::stable_sort(points.begin(), points.end(), [](const auto& left, const auto& right) {
+        return left.x < right.x;
+    });
+    return points;
 }
 
 }

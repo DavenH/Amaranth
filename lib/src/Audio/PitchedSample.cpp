@@ -1,12 +1,14 @@
+#include <memory>
+
 #include "PitchedSample.h"
 
-#include <memory>
 #include "../Algo/AutoModeller.h"
 #include "../App/AppConstants.h"
 #include "../App/Doc/PresetJson.h"
 #include "../App/MeshLibrary.h"
 #include "../Curve/Rasterization/Rasterizer/EnvRasterizer.h"
 #include "../Curve/Rasterization/Rasterizer/FXRasterizer.h"
+#include "../Curve/Curve.h"
 #include "../Curve/Mesh/Mesh.h"
 #include "../Util/Arithmetic.h"
 #include "../Util/NumberUtils.h"
@@ -176,6 +178,19 @@ void PitchedSample::createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti)
         return;
     }
 
+    mesh->destroy();
+    for (const auto& point : simplifiedPitchPath(isMulti)) {
+        auto* vertex = new Vertex(point.x, point.y);
+        vertex->values[Vertex::Curve] = 0.1f;
+        mesh->addVertex(vertex);
+    }
+}
+
+std::vector<Vertex2> PitchedSample::simplifiedPitchPath(bool isMulti) const {
+    if (periods.size() < 3 || size() < 2048) {
+        return {};
+    }
+
     const int maxLines  = 300;
     float isamples      = 1.f / (float) size();
     float averageFreq   = NumberUtils::noteToFrequency(fundNote);
@@ -183,10 +198,8 @@ void PitchedSample::createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti)
     int decimFactor     = jmax(1, (int) periods.size() / maxLines);
 
     vector<Vertex2> path;
-    ScopedAlloc<float> levels(periods.size() / decimFactor);
-
     for (int i = 0; i < periods.size() - (decimFactor - 1); i += decimFactor) {
-        PitchFrame& frame = periods[i];
+        const PitchFrame& frame = periods[i];
         float period     = frame.period > 10 ? frame.period : lastPeriod;
         lastPeriod       = period;
 
@@ -198,16 +211,8 @@ void PitchedSample::createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti)
         path.emplace_back(frame.sampleOffset * isamples, yValue);
     }
 
-    mesh->destroy();
-
     float thresh = isMulti ? 0.002 : 0.0005;
-    vector<Vertex2> path2 = AutoModeller::reducePath(path, thresh);
-    for (auto& i : path2) {
-        auto* vertex = new Vertex(i.x, i.y);
-        vertex->values[Vertex::Curve] = 0.1f;
-
-        mesh->addVertex(vertex);
-    }
+    return AutoModeller::reducePath(path, thresh);
 }
 
 namespace {
@@ -252,9 +257,9 @@ namespace {
     template<class RasterizerType>
     void createPeriodsFromEnv(
             PitchedSample& sample,
-            MeshLibrary& meshLibrary,
+            Mesh* mesh,
             RasterizerType* rasterizer) {
-        jassert(sample.fundNote > 0);
+        jassert(sample.fundNote >= 0);
 
         if (sample.fundNote < 0 || rasterizer == nullptr) {
             return;
@@ -265,8 +270,6 @@ namespace {
         float defaultFreq = NumberUtils::noteToFrequency(sample.fundNote, 0);
         int oldCount = (int) sample.periods.size();
         float oldAverage = sample.getAveragePeriod();
-        Mesh* mesh = sample.getMesh(meshLibrary);
-
         if (mesh == nullptr) {
             logPeriodRebuild(sample, "missing-mesh", false, oldCount, oldAverage);
             return;
@@ -310,14 +313,32 @@ void PitchedSample::createPeriodsFromEnv(
         MeshLibrary& meshLibrary,
         EnvRasterizer* rasterizer) {
     progressMark
-    ::createPeriodsFromEnv(*this, meshLibrary, rasterizer);
+    ::createPeriodsFromEnv(*this, getMesh(meshLibrary), rasterizer);
 }
 
 void PitchedSample::createPeriodsFromEnv(
         MeshLibrary& meshLibrary,
         FXRasterizer* rasterizer) {
     progressMark
-    ::createPeriodsFromEnv(*this, meshLibrary, rasterizer);
+    ::createPeriodsFromEnv(*this, getMesh(meshLibrary), rasterizer);
+}
+
+void PitchedSample::createPeriodsFromPitchPath(const std::vector<Vertex2>& path) {
+    if (path.size() < 2 || fundNote < 0) {
+        return;
+    }
+
+    if (Curve::table == nullptr) {
+        Curve::calcTable();
+    }
+    Mesh mesh("Reference pitch envelope");
+    for (const auto& point : path) {
+        auto* vertex = new Vertex(point.x, point.y);
+        vertex->values[Vertex::Curve] = 0.1f;
+        mesh.addVertex(vertex);
+    }
+    FXRasterizer rasterizer(nullptr, "Reference pitch rasterizer");
+    ::createPeriodsFromEnv(*this, &mesh, &rasterizer);
 }
 
 void PitchedSample::shiftOctave(bool up) {
@@ -362,7 +383,7 @@ MorphPosition PitchedSample::getBox() {
     return m;
 }
 
-float PitchedSample::getAveragePeriod() {
+float PitchedSample::getAveragePeriod() const {
     float average = 0;
 
     for (auto& period : periods) {
@@ -408,6 +429,12 @@ int PitchedSample::load(const String& filename) {
       #endif
     } else if (ext.equalsIgnoreCase(".ogg")) {
         reader.reset(OggVorbisAudioFormat().createReaderFor(stream.release(), true));
+    } else if (ext.equalsIgnoreCase(".flac")) {
+      #if JUCE_USE_FLAC
+        reader.reset(FlacAudioFormat().createReaderFor(stream.release(), true));
+      #else
+        return -2;
+      #endif
     }
 
     if (reader == nullptr) {

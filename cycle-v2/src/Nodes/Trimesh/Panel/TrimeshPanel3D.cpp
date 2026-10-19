@@ -13,10 +13,9 @@
 
 namespace CycleV2 {
 
-TrimeshPanel3D::TrimeshPanel3D(SingletonRepo* repo, TrimeshPanelDataSource& source) :
+TrimeshPanel3D::TrimeshPanel3D(SingletonRepo* repo, Panel3D::DataRetriever& source) :
         SingletonAccessor  (repo, "CycleV2TrimeshPanel3D")
-    ,   Panel3D            (repo, "CycleV2TrimeshPanel3D", &source, 0, false, true)
-    ,   dataSource         (source) {
+    ,   Panel3D            (repo, "CycleV2TrimeshPanel3D", &source, 0, false, true) {
     applyGradientForProfile();
     volumeScale = 1.f;
     volumeTrans = 0.f;

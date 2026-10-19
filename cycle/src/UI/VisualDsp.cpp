@@ -7,6 +7,7 @@
 #include <Audio/CycleDsp/SpectralLayerCore.h>
 #include <Audio/Multisample.h>
 #include <Audio/PitchedSample.h>
+#include <Audio/WavePeriodFolding.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/PathRepo.h>
 #include <Definitions.h>
@@ -863,54 +864,6 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
 
     getNumHarmonicsAndNextPower(numHarmonics, nextPow2, midiNote);
 
-    int quarter = nextPow2 / 4;
-    ScopedAlloc<Float32> fadeInMem(nextPow2);
-    Buffer<float> fadeInUp    = fadeInMem.place(quarter);
-    Buffer<float> fadeInDown  = fadeInMem.place(quarter);
-    Buffer<float> fadeOutUp   = fadeInMem.place(quarter);
-    Buffer<float> fadeOutDown = fadeInMem.place(quarter);
-
-    ScopedAlloc<float> waveMemory(nextPow2 * 5 + 2 * quarter + wavLength);
-    Buffer<float> waveRamp       = waveMemory.place(nextPow2);
-    Buffer<float> paddedCyc      = waveMemory.place(nextPow2);
-    Buffer<float> resampledNext  = waveMemory.place(nextPow2 + quarter);
-    Buffer<float> resampledPrev  = waveMemory.place(nextPow2 + quarter);
-    Buffer<float> wavCombined    = waveMemory.place(wavLength);
-    Buffer<float> veryFirstCycle = waveMemory.place(nextPow2);
-
-    double modPan = getObj(MorphPanel).getPanSlider()->getValue();
-    float pans[2];
-
-    if(wav->audio.numChannels == 1) {
-        pans[0] = 1;
-    } else {
-        pans[0]	= (1 - modPan);
-        pans[1]	= modPan;
-    }
-
-    VecOps::mul(wav->audio.left, pans[0], wavCombined);
-
-    if(wav->audio.numChannels > 1) {
-        wavCombined.addProduct(wav->audio.right, pans[1]);
-    }
-
-    wavCombined.mul(0.5f);
-
-    auto wrapResampledCycle = [quarter, nextPow2, fadeInUp, fadeInDown](Buffer<float> cycle) {
-        Buffer<float> cycleHead = cycle.withSize(quarter);
-        Buffer<float> cycleTail = (cycle + nextPow2).withSize(quarter);
-
-        cycleHead.mul(fadeInUp);
-        cycleHead.addProduct(cycleTail, fadeInDown);
-    };
-
-    fadeOutUp.ramp().sqr();
-    VecOps::subCRev(fadeOutUp, 1.f, fadeOutDown);
-    VecOps::flip(fadeOutDown, fadeInUp);
-    VecOps::subCRev(fadeInUp, 1.f, fadeInDown);
-
-    jassert(getSetting(ViewStage) >= ViewStages::PostEnvelopes);
-
     ScopedLock envLock(envColumnLock);
     ScopedLock fftLock(fftColumnLock);
 
@@ -923,167 +876,18 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
     fftParams.setExtraParams(-1, numHarmonics, midiNote, false);
     resizeArrays(fftParams);
 
-    waveTimeArray .zero();
-    waveFFTArray  .zero();
+    waveTimeArray.zero();
+    waveFFTArray.zero();
     wavePhaseArray.zero();
 
     if (wav->periods.size() < 3) {
         return;
     }
 
-    int longestSample  = getObj(Multisample).getGreatestLengthSeconds() * wav->samplerate;
-    float xInc         = 1 / float(numColumns - 1);
-    float invWavLength = 1 / (float) longestSample;
-    float prevPosX     = 0.f;
-    float position     = 0.f;
-
-    int nextCycle  = 1;
-    int nextOffset = 0;
-    int prevOffset = 0;
-    int prevLength = 0;
-    int nextLength = 0;
-    int oldCycle   = 0;
-
-    int offsetSamples	= wav->phaseOffset * wav->getAveragePeriod();
-
-    vector<PitchFrame>& periods = wav->periods;
-    String periodMappingLog;
-
-    if (shouldLogWavePeriodMapping()) {
-        periodMappingLog = "VisualDsp wave-period-map"
-            + String(" columns=") + String(numColumns)
-            + " periods=" + String((int) periods.size())
-            + " wavLength=" + String(wavLength)
-            + " longestSample=" + String(longestSample)
-            + " fundNote=" + String(midiNote)
-            + " avgPeriod=" + String(wav->getAveragePeriod(), 3)
-            + " samples=";
-    }
-
-    for (int i = 0; i < numColumns; ++i) {
-        position = i * xInc;
-
-        while(nextCycle < (int) periods.size() - 1 && (periods[nextCycle].sampleOffset - offsetSamples) * invWavLength < position) {
-            ++nextCycle;
-        }
-
-        PitchFrame& nextFrame = periods[nextCycle];
-
-        if (nextCycle < periods.size() && nextFrame.period < 10) {
-            waveTimeCols[i] .zero();
-            waveFFTCols[i]  .zero();
-            wavePhaseCols[i].zero();
-
-            continue;
-        }
-
-        if (oldCycle != nextCycle) {
-            int prevCycle = jmax(0, nextCycle - 1);
-            PitchFrame& prevFrame = periods[prevCycle];
-
-            prevLength 	= roundToInt(prevFrame.period * 5.f / 4.f);
-            nextLength 	= roundToInt(nextFrame.period * 5.f / 4.f);
-            prevOffset 	= jmax(0, prevFrame.sampleOffset - offsetSamples);
-            nextOffset 	= jmax(0, nextFrame.sampleOffset - offsetSamples);
-
-            prevPosX	= jmin(1.f, prevOffset * invWavLength);
-
-            if(oldCycle == 0) {
-                if (nextOffset + nextLength < wavLength) {
-                    Buffer wavPrev(wavCombined + prevOffset, prevLength);
-                    Buffer wavNext(wavCombined + nextOffset, nextLength);
-
-                    Resampling::linResample(wavPrev, resampledPrev);
-                    Resampling::linResample(wavNext, resampledNext);
-
-                    // copy first cycle to preserve attack
-                    resampledPrev.copyTo(veryFirstCycle);
-
-                    // wrap quarter at end to front of this cycle to eliminate click
-                    if (wrapCycles) {
-                        wrapResampledCycle(resampledPrev);
-                    }
-                } else {
-                    resampledPrev.zero(nextPow2);
-                    resampledNext.zero(nextPow2);
-                }
-            } else {
-                resampledNext.copyTo(resampledPrev.withSize(nextPow2));
-            }
-
-            Buffer<float> wavSection = wavCombined.sectionAtMost(nextOffset, nextLength);
-
-            if (!wavSection.empty()) {
-                Buffer<float> source = wavSection;
-
-                if (wavSection.size() < nextLength) {
-                    paddedCyc.zero();
-                    wavSection.copyTo(paddedCyc);
-                    source = paddedCyc;
-                }
-
-                // resample to 512 + qtr size
-                Resampling::linResample(source, resampledNext);
-
-                // wrap quarter at end to front of this cycle to eliminate click
-                if(wrapCycles) {
-                    wrapResampledCycle(resampledNext);
-                }
-            }
-        }
-
-        oldCycle = nextCycle;
-
-        float diffX 	= position - prevPosX;
-        float diffCol 	= jmin(1.f, nextOffset * invWavLength) - prevPosX;
-        float portion 	= jmin(1.f, diffX / diffCol);
-
-        if (shouldLogWavePeriodMapping() &&
-            (i == 0 || i == numColumns / 8 || i == numColumns / 4 || i == numColumns / 2 ||
-             i == (3 * numColumns) / 4 || i == (7 * numColumns) / 8 || i == numColumns - 1)) {
-            periodMappingLog += String::formatted(
-                "[col=%d x=%.4f cycle=%d prev=%d next=%d period=%.3f portion=%.3f] ",
-                i,
-                position,
-                nextCycle,
-                prevOffset,
-                nextOffset,
-                nextFrame.period,
-                portion);
-        }
-
-//		Float32* timePtr = waveTimeCols[i];
-        Buffer<float> col = waveTimeCols[i];
-
-        if(nextOffset + nextLength >= wavLength) {
-            col.zero();
-            //			resampledPrev.copyTo(col);
-        } else {
-            // attack-preserved first cycle
-            if (i == 0) {
-                veryFirstCycle.copyTo(col);
-            } else {
-                if (interpCycles) {
-                    if (portion == 0.f) {
-                        resampledPrev.copyTo(col);
-                    } else {
-                        VecOps::mul(resampledPrev.withSize(nextPow2), 1 - portion, col);
-                        col.addProduct(resampledNext, portion);
-                    }
-                } else {
-                    if(portion < 0.9) {
-                        resampledPrev.copyTo(col);
-                    } else {
-                        resampledNext.copyTo(col);
-                    }
-                }
-            }
-        }
-    }
-
-    if (shouldLogWavePeriodMapping()) {
-        DBG(periodMappingLog);
-    }
+    const int longestSample = getObj(Multisample).getGreatestLengthSeconds() * wav->samplerate;
+    const double pan = getObj(MorphPanel).getPanSlider()->getValue();
+    WavePeriodFolding::render(*wav, waveTimeCols, longestSample,
+            wrapCycles, interpCycles, pan, shouldLogWavePeriodMapping());
 
     int sizeIndex = sizeToIndex[nextPow2];
     Transform& fft = ffts[sizeIndex];

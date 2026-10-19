@@ -6,6 +6,7 @@
 #include "../Array/StereoBuffer.h"
 #include "../Obj/MorphPosition.h"
 #include "../App/Doc/Savable.h"
+#include "../Curve/Mesh/Vertex2.h"
 #include "../Util/CommonEnums.h"
 
 using std::vector;
@@ -58,12 +59,14 @@ public:
 
     void addFrame(const PitchFrame& frame) { periods.push_back(frame); }
 
-    float getAveragePeriod();
+    float getAveragePeriod() const;
     void createDefaultPeriods();
     [[nodiscard]] MorphPosition getAveragePosition() const;
     MorphPosition getBox();
 
     void createEnvFromPeriods(MeshLibrary& meshLibrary, bool isMulti);
+    std::vector<Vertex2> simplifiedPitchPath(bool isMulti = false) const;
+    void createPeriodsFromPitchPath(const std::vector<Vertex2>& path);
     void createPeriodsFromEnv(
             MeshLibrary& meshLibrary,
             EnvRasterizer* rasterizer);

@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "Graph/GraphCommandDispatcher.h"
+#include "Graph/DefaultOutputProbeResolver.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Nodes/Guide/GuideGraphEditor.h"
@@ -173,6 +174,33 @@ bool GraphCommandDispatcher::setDefaultOutputSpyFrequencyView(bool frequencyView
         return false;
     }
     document.presetPresentation.outputSpyFrequencyView = frequencyView;
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::pinComparisonSpy(const juce::String& probeId) {
+    auto& pins = document.presetPresentation.comparisonSpyPins;
+    if (hasTransientEdit() || probeId.isEmpty() || pins.size() >= 32
+            || (probeId != DefaultOutputProbeResolver::probeId
+                    && editingGraph().findSignalProbe(probeId) == nullptr)
+            || std::find(pins.begin(), pins.end(), probeId) != pins.end()) {
+        return false;
+    }
+    pins.push_back(probeId);
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::unpinComparisonSpy(const juce::String& probeId) {
+    auto& pins = document.presetPresentation.comparisonSpyPins;
+    if (hasTransientEdit()) {
+        return false;
+    }
+    const auto found = std::find(pins.begin(), pins.end(), probeId);
+    if (found == pins.end()) {
+        return false;
+    }
+    pins.erase(found);
     ++document.presentationRevision;
     return true;
 }

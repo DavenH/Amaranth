@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 
 #include <Curve/Mesh/Vertex.h>
@@ -13,7 +12,7 @@ namespace CycleV2 {
 
 class TrimeshPanel3D : public Panel3D {
 public:
-    TrimeshPanel3D(SingletonRepo* repo, TrimeshPanelDataSource& dataSource);
+    TrimeshPanel3D(SingletonRepo* repo, Panel3D::DataRetriever& dataSource);
 
     void drawViewableVerts() override {}
     bool shouldDrawGrid() override { return true; }
@@ -50,7 +49,6 @@ private:
             Buffer<float> y,
             const std::vector<Buffer<float>>& pitchRamps);
 
-    TrimeshPanelDataSource& dataSource;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     std::vector<std::vector<float>> lineGuideTables;
     std::function<void(bool)> zoomChangedCallback;
