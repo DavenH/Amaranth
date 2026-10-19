@@ -58,6 +58,7 @@ public:
             CommandSaveGraphAs,
             CommandSpyRefreshOnRelease,
             CommandSpyRefreshLive,
+            CommandToggleComparisonShelf,
             TimeSurfaceFirst = 0x3100,
             SpectralSurfaceFirst = 0x3200,
             SpectralSurfaceDefault = 0x32ff
@@ -184,6 +185,8 @@ public:
                 menu.addSeparator();
                 menu.addSubMenu("Spy Refresh", spyRefreshMenu);
             } else if (menuIndex == 1) {
+                menu.addCommandItem(&commandManager, CommandToggleComparisonShelf);
+                menu.addSeparator();
                 auto timeSurfaceMenu = TimeSurfaceStyles::menu(workspace->timeSurfaceStyle(), TimeSurfaceFirst);
                 menu.addSubMenu("Time Surface Colour", timeSurfaceMenu);
                 auto spectralSurfaceMenu = TimeSurfaceStyles::menu(
@@ -226,7 +229,8 @@ public:
                     CommandSaveGraph,
                     CommandSaveGraphAs,
                     CommandSpyRefreshOnRelease,
-                    CommandSpyRefreshLive
+                    CommandSpyRefreshLive,
+                    CommandToggleComparisonShelf
             });
         }
 
@@ -240,6 +244,16 @@ public:
                 case CommandImportWaveReference:
                     result.setInfo("Import Wave Reference...",
                             "Add audio to the shared comparison library", "File", 0);
+                    break;
+
+                case CommandToggleComparisonShelf:
+                    result.setInfo("Show Comparison Shelf",
+                            "Show wave references and pinned Spies beside Trimesh",
+                            "View", 0);
+                    result.setActive(workspace != nullptr
+                            && workspace->canShowComparisonShelf());
+                    result.setTicked(workspace != nullptr
+                            && workspace->isComparisonShelfVisible());
                     break;
 
                 case CommandSaveGraph:
@@ -288,6 +302,10 @@ public:
 
                 case CommandImportWaveReference:
                     workspace->importWaveReference();
+                    return true;
+
+                case CommandToggleComparisonShelf:
+                    workspace->toggleComparisonShelf();
                     return true;
 
                 case CommandSaveGraph:

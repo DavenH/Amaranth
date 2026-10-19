@@ -98,6 +98,10 @@ curve editor inside every comparison card would be a second interaction system.
    Expand a resource for detail instead of permanently showing every edit
    control in each card. Keep a dock resizable, but size its cards and vacant
    area intentionally at common window widths.
+   Opening a Trimesh editor alone must leave the comparison shelf closed.
+   A View menu choice or an explicit reference import/selection opens it for
+   that session; the shelf must not take canvas space or capture Spies before
+   the user asks for comparison.
 4. Scrollbars appear when content actually overflows and use Cycle's existing
    neutral style. They must not cover the data. A scrollable comparison rail
    should not draw both axes of scrollbars on each card by default.

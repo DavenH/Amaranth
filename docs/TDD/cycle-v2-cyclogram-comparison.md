@@ -20,6 +20,16 @@ audio under user application data. Presets store only ordered Spy pin IDs.
 Imports and analysis run outside realtime processing. Reference audition is
 mixed from a predecoded, prepared buffer in the standalone audio callback.
 
+The comparison shelf is a session-level, elective View. Opening a Trimesh
+editor alone leaves it closed and does not capture pinned Spies. The View menu
+toggles it while a Trimesh editor is open. An explicit reference import or
+selection also requests it; a request made before opening Trimesh takes effect
+when the editor opens. Closing the editor hides the shelf without clearing the
+session choice. Preset loading changes neither the shelf choice nor the
+reference catalog. `NodeWorkspace` owns this visibility policy; the dock only
+reports a successful import and renders its sources. No graph command or
+comparison capture is needed to open an editor with the shelf closed.
+
 ## Authoritative implementations and translation boundaries
 
 - `PitchedSample::load` owns decode and peak normalization; add FLAC to this
@@ -92,6 +102,14 @@ host translates columns into `Panel3D::DataRetriever` and uses the mature
 `TrimeshPanel3D` renderer. A growing generic bridge or a second preview
 pipeline would be a design failure.
 
+For the elective shelf correction, the affected large files retain their
+existing responsibilities: `NodeWorkspace.cpp` owns workspace layout and
+visibility, while `CycleV2Automation.cpp` translates agent menu commands.
+The dock reports import success without deciding workspace visibility, and
+the menu and automation call the same workspace toggle. Pin eligibility and
+capture scheduling remain in the dispatcher and canvas respectively. This
+adds no duplicate visibility policy in the dock or graph layer.
+
 For a parameter-only Trimesh gesture, the presentation model confirms that
 the committed model pointer matches the compiled step. The DSP configuration
 factory then copies only the small parameter/configuration record, sharing its
@@ -134,6 +152,15 @@ visits. The 1000x700, 1280x760, and full-size agent runs keep the Trimesh
 editor responsive, capture only after release, and show rendered sample and
 Spy cards. The context creation assertion guards against blank dock surfaces.
 The Cycle 1 UI capture and filtered logs show no incidental assertion.
+
+The elective-shelf correction passes the focused empty-comparison fixture:
+opening Trimesh leaves the shelf hidden with zero captures, the View command
+shows it, and a second command hides it without discarding the selected
+reference. The reference-surface click fixture still passes. Frontmost OS
+captures in `.context/shelf-hidden-os.png` and `.context/shelf-os.png` show
+the editor at full height before the choice and rendered sample/Spy cards
+after it. The background cyclogram fixture passes capture-count and card
+assertions; its first-GL-context assertion is tracked in `ui-bugs.md`.
 The release-preparation test scales from zero to 128 unrelated nodes and
 mesh cubes while asserting zero graph copies, mesh copies, serializations,
 and linear graph/assignment scans. The mesh-copy counter is recorded at the

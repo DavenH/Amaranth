@@ -34,6 +34,9 @@ public:
     void setHeightChangeCallback(std::function<void(int)> callback) {
         heightChangeCallback = std::move(callback);
     }
+    void setReferenceImportedCallback(std::function<void()> callback) {
+        referenceImportedCallback = std::move(callback);
+    }
     void paint(juce::Graphics& graphics) override;
     void resized() override;
     void mouseDown(const juce::MouseEvent& event) override;
@@ -88,6 +91,7 @@ private:
     std::unique_ptr<ReferencePitchEditor> pitchEditor;
     juce::Viewport viewport;
     std::function<void(int)> heightChangeCallback;
+    std::function<void()> referenceImportedCallback;
     int resizeStartHeight {};
     bool resizing {};
     uint64_t captureCount {};

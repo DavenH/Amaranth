@@ -175,7 +175,11 @@ void ComparisonDock::importReference() {
                             "Reference import failed", error);
                     return;
                 }
-                safeThis->refreshCaptures();
+                if (safeThis->referenceImportedCallback) {
+                    safeThis->referenceImportedCallback();
+                } else {
+                    safeThis->refreshCaptures();
+                }
             });
 }
 

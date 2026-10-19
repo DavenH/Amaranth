@@ -540,6 +540,8 @@ var CycleV2Automation::listMenuItems() const {
     items.add(menuItemToVar("file.openGraph", "File", "Open Preset...", true));
     items.add(menuItemToVar("file.importWaveReference", "File",
             "Import Wave Reference...", true));
+    items.add(menuItemToVar("view.comparisonShelf", "View",
+            "Show Comparison Shelf", workspace.canShowComparisonShelf()));
     for (const auto& entry : TimeSurfaceStyles::entries) {
         items.add(menuItemToVar("view.surface." + String(entry.id),
                 "View > Time Surface Colour", entry.label, true));
@@ -578,6 +580,13 @@ var CycleV2Automation::invokeMenuItem(const var& commandValue) {
     }
     if (id == "file.importWaveReference") {
         workspace.importWaveReference();
+        return okResult("invokeMenuItem", snapshotState());
+    }
+    if (id == "view.comparisonShelf") {
+        if (!workspace.canShowComparisonShelf()) {
+            return failedResult("invokeMenuItem", "Open a Trimesh editor first");
+        }
+        workspace.toggleComparisonShelf();
         return okResult("invokeMenuItem", snapshotState());
     }
     if (id == "view.spectralSurface.default") {

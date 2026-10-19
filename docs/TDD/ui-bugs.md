@@ -624,3 +624,14 @@ On 2026-10-12, running the isolated zero-octave paint test produced JUCE
 after the assertion itself passed. The test now uses
 `ScopedJuceInitialiser_GUI`; rerunning the compact-editor test group passed
 without shutdown assertions. Current status: addressed.
+
+## P3: Background Cycle V2 comparison GL assertion can precede first render
+
+On 2026-10-19, `cycle-v2-agent-cyclogram-comparison.json` passed its shelf,
+card, and capture-count assertions but reported
+`comparison.cards.0.surfaceView.contextCreateCount == 0` while the agent app
+was in the background. The focused launch gave the same result. A separate
+frontmost OS capture then rendered both sample and Spy surfaces correctly
+(`.context/shelf-os.png`). The app-side screenshot was black in the background
+run. Current status: open as an automation timing/focus issue; no surface
+rendering change was made for the elective shelf correction.

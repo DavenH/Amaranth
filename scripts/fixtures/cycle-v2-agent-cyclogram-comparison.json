@@ -19,7 +19,7 @@
     },
     { "command": "assertState", "path": "comparison.visible", "equals": true },
     { "command": "assertState", "path": "comparison.cardCount", "op": "greaterThan", "value": 1 },
-    { "command": "assertState", "path": "comparison.captureCount", "equals": 2 },
+    { "command": "assertState", "path": "comparison.captureCount", "equals": 1 },
     {
       "command": "pointer",
       "event": "down",
@@ -37,7 +37,7 @@
       "downTargetX": 0.2,
       "downTargetY": 0.5
     },
-    { "command": "assertState", "path": "comparison.captureCount", "equals": 2 },
+    { "command": "assertState", "path": "comparison.captureCount", "equals": 1 },
     {
       "command": "pointer",
       "event": "up",
@@ -50,7 +50,7 @@
       "waitForIdle": true,
       "idleDelayMs": 350
     },
-    { "command": "assertState", "path": "comparison.captureCount", "equals": 3 },
+    { "command": "assertState", "path": "comparison.captureCount", "equals": 2 },
     { "command": "assertState", "path": "comparison.cards.0.hasSurface", "equals": true },
     { "command": "assertState", "path": "comparison.cards.1.hasSurface", "equals": true },
     {

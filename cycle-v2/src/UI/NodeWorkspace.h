@@ -70,6 +70,9 @@ public:
         return comparisonDock.openPitchEditorForAutomation(referenceId);
     }
     void importWaveReference() { comparisonDock.importReference(); }
+    bool canShowComparisonShelf() const { return canvas.hasTrimeshEditorOpen(); }
+    bool isComparisonShelfVisible() const { return comparisonDockVisible; }
+    void toggleComparisonShelf();
     bool addNodeForAutomation(const String& kind, Point<float> position, String& nodeId);
     bool moveNodeForAutomation(const String& nodeId, Point<float> position);
     bool connectPortsForAutomation(
@@ -142,6 +145,7 @@ private:
             bool forcePublication);
     void layoutPerformanceKeyboard();
     void updateComparisonVisibility();
+    void revealComparisonShelf();
     void updateOutputMeter(const StandaloneAudioEngine::Status& status);
     var outputMeterStateForAutomation() const;
 
@@ -151,6 +155,7 @@ private:
     ComparisonDock comparisonDock;
     int comparisonDockHeight { 284 };
     bool comparisonDockVisible {};
+    bool comparisonShelfRequested {};
     MidiKeyboardState keyboardState;
     PerformanceKeyboardPanel keyboard;
     std::unique_ptr<PatternLibrary> patternLibrary;

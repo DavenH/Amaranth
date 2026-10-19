@@ -60,8 +60,13 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
         comparisonDockHeight = height;
         resized();
     });
+    comparisonDock.setReferenceImportedCallback([this] {
+        revealComparisonShelf();
+    });
     canvas.setComparisonRefreshCallback([this] {
-        comparisonDock.refreshCaptures();
+        if (comparisonDockVisible) {
+            comparisonDock.refreshCaptures();
+        }
     });
     canvas.setComparisonRenderCallbacks(
             [this](float scaleFactor) { comparisonDock.renderOpenGL(scaleFactor); },
@@ -106,6 +111,7 @@ NodeWorkspace::~NodeWorkspace() {
     audioEngine.setMidiRecordingEnabled(false);
     canvas.setOverlayOcclusionChangedCallback({});
     canvas.setComparisonRefreshCallback({});
+    comparisonDock.setReferenceImportedCallback({});
     canvas.clearComparisonRenderCallbacks();
     canvas.setPreviewPlaybackToggleCallback({});
     keyboard.setControllerValueChangedCallback({});
@@ -311,7 +317,9 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
     publishAudioPlan(status, true);
     layoutPerformanceKeyboard();
     updateComparisonVisibility();
-    comparisonDock.refreshCaptures();
+    if (comparisonDockVisible) {
+        comparisonDock.refreshCaptures();
+    }
     canvas.presetLoadWorkspaceStageCompleted(
             CanvasPerformanceMetrics::PresetLoadWorkspaceStage::Layout);
     return true;
@@ -351,7 +359,12 @@ bool NodeWorkspace::openNodeEditorForAutomation(const String& nodeId) {
 }
 
 bool NodeWorkspace::pinComparisonSpyForAutomation(const String& probeId) {
-    return canvas.pinComparisonSpy(probeId);
+    if (!canvas.pinComparisonSpy(probeId)) {
+        return false;
+    }
+    comparisonShelfRequested = true;
+    updateComparisonVisibility();
+    return true;
 }
 
 bool NodeWorkspace::selectReferenceForAutomation(const String& referenceId) {
@@ -359,8 +372,25 @@ bool NodeWorkspace::selectReferenceForAutomation(const String& referenceId) {
     if (!referenceLibrary.select(referenceId, error)) {
         return false;
     }
-    comparisonDock.refreshCaptures();
+    revealComparisonShelf();
     return true;
+}
+
+void NodeWorkspace::toggleComparisonShelf() {
+    if (!canShowComparisonShelf()) {
+        return;
+    }
+    comparisonShelfRequested = !comparisonShelfRequested;
+    updateComparisonVisibility();
+}
+
+void NodeWorkspace::revealComparisonShelf() {
+    const bool wasVisible = comparisonDockVisible;
+    comparisonShelfRequested = true;
+    updateComparisonVisibility();
+    if (wasVisible) {
+        comparisonDock.refreshCaptures();
+    }
 }
 
 bool NodeWorkspace::addNodeForAutomation(const String& kind, Point<float> position, String& nodeId) {
@@ -780,7 +810,7 @@ void NodeWorkspace::resized() {
 }
 
 void NodeWorkspace::updateComparisonVisibility() {
-    const bool shouldShow = canvas.hasTrimeshEditorOpen();
+    const bool shouldShow = comparisonShelfRequested && canvas.hasTrimeshEditorOpen();
     if (comparisonDockVisible == shouldShow) {
         return;
     }
