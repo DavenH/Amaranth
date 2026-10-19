@@ -124,6 +124,5 @@ checks; inspect the filtered log before its `.raw` companion. See
   coherent slice. Continue through the active TDD unless blocked by a genuine
   design ambiguity, external dependency, or explicit user direction.
 
-Use a short imperative commit subject. Pull requests include a description,
-linked issues when applicable, the tested platform, UI screenshots for visual
-changes, and the build preset plus CTest evidence for new tests.
+Use a short imperative commit subject. Follow the concise pull request guidance
+in `AGENTS.md`; provide build preset and CTest evidence separately when needed.

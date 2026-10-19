@@ -1,15 +1,21 @@
 #pragma once
 
+#include <JuceHeader.h>
+
 #include "Nodes/Trimesh/Rendering/TrimeshGridRenderService.h"
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
-
-#include <JuceHeader.h>
 
 namespace CycleV2 {
 
 class TrimeshSurfaceRenderer {
 public:
     static juce::Colour colourForProfile(float value, const TrimeshRenderProfile& profile);
+    static juce::Image createTrimeshImage(
+            const TrimeshRenderData& renderData,
+            const TrimeshRenderProfile& profile,
+            float surfaceAspectRatio,
+            int displayHeight,
+            bool opaque = false);
     static juce::Image createHeatmapImage(
             const TrimeshRenderData& renderData,
             const TrimeshRenderProfile& profile,

@@ -12,6 +12,8 @@
 #include <UI/Panels/ScopedGLScissor.h>
 #include <UI/Panels/ZoomPanel.h>
 
+#include <cmath>
+
 #include "UI/NativeCursorRefresh.h"
 
 namespace CycleV2 {
@@ -26,6 +28,10 @@ AmaranthLookAndFeel& trimeshScrollbarLookAndFeel() {
 void styleZoomScrollbars(ZoomPanel& zoomPanel) {
     zoomPanel.getComponent(true)->setLookAndFeel(&trimeshScrollbarLookAndFeel());
     zoomPanel.getComponent(false)->setLookAndFeel(&trimeshScrollbarLookAndFeel());
+}
+
+bool sameZoomValue(float first, float second) {
+    return std::abs(first - second) <= 1.0e-6f;
 }
 
 }
@@ -69,10 +75,131 @@ TrimeshPanelHosts::TrimeshPanelHosts(
     ,   interactor2D    (interactor2DToHost)
     ,   interactor3D    (interactor3DToHost)
     ,   invalidation    (*this) {
+    panel2D.setZoomChangedCallback([this](bool sourceNeedsRefresh) {
+        frequencyZoomChanged(true, sourceNeedsRefresh);
+    });
+    panel3D.setZoomChangedCallback([this](bool sourceNeedsRefresh) {
+        frequencyZoomChanged(false, sourceNeedsRefresh);
+    });
 }
 
 TrimeshPanelHosts::~TrimeshPanelHosts() {
+    panel2D.setZoomChangedCallback(nullptr);
+    panel3D.setZoomChangedCallback(nullptr);
     releaseSharedGlResources();
+}
+
+void TrimeshPanelHosts::configureFrequencyViewport(
+        Range<float> limits,
+        float defaultStart,
+        bool enteringMagnitude) {
+    const bool limitsChanged = limits != frequencyLimits;
+    frequencyLimits = limits;
+    if (limitsChanged || (enteringMagnitude && !frequencyZoomCustomized)) {
+        frequencyStart = defaultStart;
+        frequencyWidth = 1.f - defaultStart;
+        frequencyZoomCustomized = false;
+    }
+
+    const ScopedValueSetter<bool> syncing(synchronizingFrequencyZoom, true);
+    if (panel3DHostInitialised) {
+        panel3D.configureViewport(limits);
+        const bool viewChanged = applyFrequencyViewportTo3D();
+        if (limitsChanged || viewChanged) {
+            panel3D.zoomUpdated(interactor3D.getUpdateSource());
+        }
+    }
+    if (panel2DHostInitialised) {
+        panel2D.configureViewport(limits);
+        const bool viewChanged = applyFrequencyViewportTo2D();
+        if (limitsChanged || viewChanged) {
+            panel2D.zoomUpdated(interactor2D.getUpdateSource());
+        }
+    }
+}
+
+void TrimeshPanelHosts::frequencyZoomChanged(
+        bool from2D,
+        bool sourceNeedsRefresh) {
+    if (synchronizingFrequencyZoom) {
+        return;
+    }
+
+    Panel& sourcePanel = from2D
+            ? static_cast<Panel&>(panel2D)
+            : static_cast<Panel&>(panel3D);
+    const int sourceId = from2D
+            ? interactor2D.getUpdateSource()
+            : interactor3D.getUpdateSource();
+    const ZoomRect& source = from2D
+            ? panel2D.getZoomPanel()->rect
+            : panel3D.getZoomPanel()->rect;
+    const float nextStart = from2D ? source.x : 1.f - source.y - source.h;
+    const float nextWidth = from2D ? source.w : source.h;
+    if (sameZoomValue(nextStart, frequencyStart)
+            && sameZoomValue(nextWidth, frequencyWidth)) {
+        if (sourceNeedsRefresh) {
+            const ScopedValueSetter<bool> syncing(synchronizingFrequencyZoom, true);
+            sourcePanel.zoomUpdated(sourceId);
+        }
+        return;
+    }
+
+    frequencyStart = nextStart;
+    frequencyWidth = nextWidth;
+    frequencyZoomCustomized = true;
+
+    const ScopedValueSetter<bool> syncing(synchronizingFrequencyZoom, true);
+    const bool targetChanged = from2D
+            ? applyFrequencyViewportTo3D()
+            : applyFrequencyViewportTo2D();
+    if (targetChanged) {
+        Panel& targetPanel = from2D
+                ? static_cast<Panel&>(panel3D)
+                : static_cast<Panel&>(panel2D);
+        const int targetId = from2D
+                ? interactor3D.getUpdateSource()
+                : interactor2D.getUpdateSource();
+        targetPanel.zoomUpdated(targetId);
+    }
+    if (sourceNeedsRefresh) {
+        sourcePanel.zoomUpdated(sourceId);
+    }
+}
+
+bool TrimeshPanelHosts::applyFrequencyViewportTo2D() {
+    if (!panel2DHostInitialised) {
+        return false;
+    }
+
+    ZoomPanel* zoom = panel2D.getZoomPanel();
+    ZoomRect& rect = zoom->rect;
+    if (sameZoomValue(rect.x, frequencyStart)
+            && sameZoomValue(rect.w, frequencyWidth)) {
+        return false;
+    }
+    rect.x = frequencyStart;
+    rect.w = frequencyWidth;
+    zoom->panelZoomChanged(false);
+    return true;
+}
+
+bool TrimeshPanelHosts::applyFrequencyViewportTo3D() {
+    if (!panel3DHostInitialised) {
+        return false;
+    }
+
+    ZoomPanel* zoom = panel3D.getZoomPanel();
+    ZoomRect& rect = zoom->rect;
+    const float verticalStart = 1.f - frequencyStart - frequencyWidth;
+    if (sameZoomValue(rect.y, verticalStart)
+            && sameZoomValue(rect.h, frequencyWidth)) {
+        return false;
+    }
+    rect.y = verticalStart;
+    rect.h = frequencyWidth;
+    zoom->panelZoomChanged(false);
+    return true;
 }
 
 Component* TrimeshPanelHosts::getPanel3DHostComponent() {
@@ -149,10 +276,14 @@ void TrimeshPanelHosts::initialisePanel3DHost() {
     panel3D.setSharedCanvasMode(true);
     panel3D.setInteractorMouseListenerEnabled(false);
     panel3D.initWithExternalComponent(panel3DHost.get());
-    panel3D.configureViewport(interactor3D.vertexLimits[Vertex::Phase]);
+    {
+        const ScopedValueSetter<bool> syncing(synchronizingFrequencyZoom, true);
+        panel3D.configureViewport(frequencyLimits);
+        panel3DHostInitialised = true;
+        applyFrequencyViewportTo3D();
+    }
     styleZoomScrollbars(*panel3D.getZoomPanel());
     interactor3D.updateIntercepts();
-    panel3DHostInitialised = true;
 }
 
 void TrimeshPanelHosts::initialisePanel2DHost() {
@@ -163,9 +294,13 @@ void TrimeshPanelHosts::initialisePanel2DHost() {
     panel2DHost = std::make_unique<PanelHostComponent>(panel2D);
     panel2D.setInteractorMouseListenerEnabled(false);
     panel2D.initWithExternalComponent(panel2DHost.get());
-    panel2D.configureViewport(interactor2D.vertexLimits[Vertex::Phase]);
+    {
+        const ScopedValueSetter<bool> syncing(synchronizingFrequencyZoom, true);
+        panel2D.configureViewport(frequencyLimits);
+        panel2DHostInitialised = true;
+        applyFrequencyViewportTo2D();
+    }
     styleZoomScrollbars(*panel2D.getZoomPanel());
-    panel2DHostInitialised = true;
 }
 
 void TrimeshPanelHosts::initialiseSharedGlResources() {

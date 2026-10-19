@@ -85,6 +85,7 @@ public:
     virtual bool shouldDrawGrid()                   { return true; }
     virtual bool willAdjustSurfaceColumns()         { return false; }
     virtual bool getScalarSurfaceMaterial(ScalarSurfaceMaterial&) const { return false; }
+    virtual bool shouldStepSurfaceRows() const         { return false; }
     virtual int interceptLinePrimaryDimension();
 
     void postVertsDraw() override;
@@ -106,6 +107,7 @@ protected:
     void adjustLogColumnAndScale(int key, bool firstColumn);
     void doColourLookup32f      (Buffer<float> grd, Buffer<float> colors);
     void doColourLookup8u       (Buffer<Int8u> grd, Buffer<Int8u> colors);
+    void doSteppedColourLookup8u(const Buffer<Int8u>& grd, Buffer<Int8u>& colors);
     void doColumnDraw           (Buffer<Int8u> grd8u, Buffer<float> grd32f, int i);
     void downsampleColumn       (const Buffer<float>& column);
     void dumpGridPngOnce        (const vector<Column>& grid);
@@ -113,6 +115,7 @@ protected:
     void logGridNaNsOnce        (const vector<Column>& grid);
     void resampleColours        (Buffer<float> srcColors, Buffer<float> dstColors);
     void setVertices            (int column, Buffer<float> verts) const;
+    void setSteppedVertices     (int column, Buffer<float>& vertices) const;
     void resizeArrays           ();
     void setColumnColourIndices ();
     bool drawScalarSurface(const vector<Column>& grid);
