@@ -96,7 +96,7 @@ TEST_CASE("Imported references reload with pitch edits independently of presets"
     root.deleteRecursively();
 }
 
-TEST_CASE("Open references persist in order while selection changes",
+TEST_CASE("Open references remain session-owned while library records reload",
         "[cycle-v2][reference][library]") {
     const File root = File::getSpecialLocation(File::tempDirectory)
             .getChildFile("cycle-v2-reference-open-" + Uuid().toString());
@@ -112,14 +112,19 @@ TEST_CASE("Open references persist in order while selection changes",
         secondId = library.selectedId();
         REQUIRE(library.openReferenceIds() == std::vector<String> { firstId, secondId });
         REQUIRE(library.select(firstId, error));
+        REQUIRE(library.selectedId() == firstId);
     }
+    root.getChildFile("library.json").replaceWithText(
+            "{\"selected\":\"" + firstId + "\",\"open\":[\""
+                    + firstId + "\",\"" + secondId + "\"]}");
     {
         ReferenceLibrary library({}, root);
-        REQUIRE(library.openReferenceIds() == std::vector<String> { firstId, secondId });
-        REQUIRE(library.selectedId() == firstId);
-        REQUIRE(library.analysisFor(secondId) != nullptr);
-        REQUIRE(library.close(firstId));
-        REQUIRE(library.selectedId() == secondId);
+        REQUIRE(library.records().size() == 2);
+        REQUIRE(library.openReferenceIds().empty());
+        REQUIRE(library.selectedId().isEmpty());
+        REQUIRE(library.analysisFor(secondId) == nullptr);
+        REQUIRE(library.select(secondId, error));
+        REQUIRE(library.openReferenceIds() == std::vector<String> { secondId });
     }
     root.deleteRecursively();
 }

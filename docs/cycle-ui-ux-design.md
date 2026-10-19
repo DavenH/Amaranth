@@ -119,8 +119,10 @@ against these observable checks:
 - Importing a reference and finding it later are discoverable through an
   established application entry point. The source of factory references is
   apparent. Factory references stay in the source menu until the user opens
-  them; opening a Trimesh editor does not select one. The UI does not require
-  guessing what a generic `Reference` button does.
+  them; opening a Trimesh editor does not load one, including a reference left
+  open in an earlier app launch. Active comparisons survive preset switches
+  only in the current session. The UI does not require guessing what a generic
+  `Reference` button does.
 - Adding a Spy opens a menu of available sources; an already pinned source is
   recognizable. Commands for one card live on that card or its menu.
 - The source menu shares the card row at its fixed left edge. The resize grip
@@ -129,7 +131,8 @@ against these observable checks:
   a detached note slider.
 - A card at rest presents its name and surface without a miniature pitch
   editor, persistent instructional footer, or unnecessary scrollbars. Expanded
-  sample editing follows the existing envelope editor.
+  sample editing follows the existing envelope editor. A click on a comparison
+  surface selects its reference without invoking Trimesh mesh editing.
 - Sample and Spy surfaces are similarly readable at the same display scale.
   Their level relationship is honest; display gain and colour transfer are
   inspectable and testable. A reference surface is not near-black while a Spy

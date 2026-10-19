@@ -68,6 +68,29 @@ private:
     uint64_t revision {};
 };
 
+class ComparisonInputHost final : public PanelInputHostComponent {
+public:
+    ComparisonInputHost(Panel& panel, ComparisonSurfaceView& viewToUse) :
+            PanelInputHostComponent(panel)
+        ,   view(viewToUse) {}
+
+private:
+    bool acceptsPointerDown(const juce::MouseEvent&) const override { return false; }
+    bool acceptsDoubleClick(const juce::MouseEvent&) const override { return false; }
+
+    void mouseEnter(const juce::MouseEvent&) override {}
+    void mouseMove(const juce::MouseEvent&) override {}
+    void mouseExit(const juce::MouseEvent&) override {}
+
+    void mouseUp(const juce::MouseEvent& event) override {
+        if (!event.mods.isPopupMenu() && view.onClicked) {
+            view.onClicked();
+        }
+    }
+
+    ComparisonSurfaceView& view;
+};
+
 }
 
 class ComparisonSurfaceView::Impl final : private ZoomPanel::ZoomListener {
@@ -81,7 +104,7 @@ public:
         interactor.setRasterizer(&rasterizer);
         panel.setInteractor(&interactor);
         panel.setInteractorMouseListenerEnabled(false);
-        inputHost = std::make_unique<PanelInputHostComponent>(panel);
+        inputHost = std::make_unique<ComparisonInputHost>(panel, owner);
         panel.initWithExternalComponent(inputHost.get());
         panel.configureViewport({ 0.f, 1.f });
         panel.getZoomPanel()->addListener(this);

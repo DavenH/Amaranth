@@ -488,6 +488,15 @@ void ComparisonDock::updateCards() {
             }
             canvas.requestComparisonRendering();
         };
+        if (card.sample) {
+            view->onClicked = [this, id = card.id] {
+                if (id != library.selectedId()) {
+                    selectReference(id);
+                }
+            };
+        } else {
+            view->onClicked = nullptr;
+        }
         const auto bounds = cardBounds((int) index, viewport.getHeight());
         auto surface = bounds.withTrimmedTop(kCardTitleHeight + 3.f)
                 .reduced(6.f, 5.f);

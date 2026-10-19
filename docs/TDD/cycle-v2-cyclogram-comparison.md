@@ -177,13 +177,35 @@ the focused gesture fixture still reports one comparison capture on release.
 The production-size dock screenshot is
 `.context/comparison-dock-layout.png`.
 
-Opening a Trimesh editor must leave the comparison rail empty when the shared
-reference library has no open samples and the preset has no Spy pins. Factory
-references remain available in the source menu; opening one is an explicit
-selection. `ReferenceLibrary` continues to restore references already opened
-by the user across presets and launches. The dock no longer selects the first
-factory record during capture refresh. The empty-rail automation fixture
-asserts both the initial empty state and the explicit selection transition.
+Opening a Trimesh editor must leave the comparison rail empty when the current
+session has no explicitly opened samples and the preset has no Spy pins.
+Factory and imported references remain available in the source menu. Open
+sample cards survive preset switches in the current session, but the library
+does not reopen them on the next launch. Its catalog, imported audio, and
+pitch edits still persist. The dock does not select the first factory record
+during capture refresh.
+
+The comparison 3D panel uses the mature Trimesh renderer and `ZoomPanel`, but
+its input host is read-only. `PanelInputHostComponent` currently forwards a
+surface click to `TrimeshInteractor3D::mouseDown`; that reaches
+`Interactor::findClosestVertex` with no mesh and crashes at `Mesh::getNumVerts`.
+The read-only host rejects editor pointer gestures and forwards a simple
+sample selection to the dock. Camera wheel behavior remains with the existing
+host and `ZoomPanel`; no duplicate camera or mesh interaction is introduced.
+The old `library.json` open/selected restore path is deleted. Its persistence
+test now asserts session-only activation while the reference catalog reloads.
+A focused fixture verifies explicit selection and a surface click without mesh
+editing or a crash. A second run seeds an old saved-open list and asserts an
+empty dock before explicit selection. A native macOS click selects the other
+reference while the app remains alive; the screenshot is
+`.context/reference-native-click.png`.
+
+The focused `ctest` run passes both reference-library cases. The saved-open
+UI run reports zero cards before explicit selection, and the surface-click
+fixture reports the comparison panel host as its pointer target and changes
+the selected reference. `ReferenceLibrary` owns active reference lifetime,
+`ComparisonInputHost` rejects mesh-edit events, and `ComparisonDock` translates
+a click into selection.
 
 The focused reference test covers pitch path commit, undo/redo, cyclogram
 change, and reload using a real Cycle WAV whose simplified path contains equal

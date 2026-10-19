@@ -57,7 +57,6 @@ private:
     static juce::var writeRecord(const ReferenceRecord& record);
     juce::File metadataFile(const ReferenceRecord& record) const;
     void saveRecord(const ReferenceRecord& record) const;
-    void saveSelection() const;
     bool applyPitchEdit(PitchEdit edit, bool recordUndo);
     PitchEdit currentPitchEdit() const;
 

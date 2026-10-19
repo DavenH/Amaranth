@@ -8,10 +8,6 @@ namespace {
 
 constexpr int kMaximumHistory = 64;
 
-juce::File selectionFile(const juce::File& directory) {
-    return directory.getChildFile("library.json");
-}
-
 }
 
 ReferenceLibrary::ReferenceLibrary(
@@ -91,21 +87,9 @@ void ReferenceLibrary::saveRecord(const ReferenceRecord& record) const {
     metadataFile(record).replaceWithText(juce::JSON::toString(writeRecord(record)));
 }
 
-void ReferenceLibrary::saveSelection() const {
-    userDirectory.createDirectory();
-    auto data = std::make_unique<juce::DynamicObject>();
-    data->setProperty("selected", currentId);
-    juce::Array<juce::var> open;
-    for (const auto& reference : openReferences) {
-        open.add(reference.id);
-    }
-    data->setProperty("open", std::move(open));
-    selectionFile(userDirectory).replaceWithText(
-            juce::JSON::toString(juce::var(data.release())));
-}
-
 void ReferenceLibrary::reload() {
     entries.clear();
+    currentId.clear();
     openReferences.clear();
     undoStack.clear();
     redoStack.clear();
@@ -142,28 +126,12 @@ void ReferenceLibrary::reload() {
         }
     }
 
-    const juce::var state = juce::JSON::parse(selectionFile(userDirectory).loadFileAsString());
-    const juce::String selected = state.getProperty("selected", {}).toString();
     std::sort(entries.begin(), entries.end(), [](const auto& left, const auto& right) {
         if (left.factory != right.factory) {
             return left.factory;
         }
         return left.name.compareIgnoreCase(right.name) < 0;
     });
-    const juce::var openState = state.getProperty("open", {});
-    if (const auto* open = openState.getArray()) {
-        for (const auto& item : *open) {
-            juce::String error;
-            select(item.toString(), error);
-        }
-    } else if (selected.isNotEmpty()) {
-        juce::String error;
-        select(selected, error);
-    }
-    if (analysisFor(selected) != nullptr) {
-        currentId = selected;
-    }
-    saveSelection();
 }
 
 const ReferenceRecord* ReferenceLibrary::selectedRecord() const {
@@ -205,7 +173,6 @@ bool ReferenceLibrary::select(const juce::String& id, juce::String& error) {
             currentId = id;
             undoStack.clear();
             redoStack.clear();
-            saveSelection();
         }
         return true;
     }
@@ -227,7 +194,6 @@ bool ReferenceLibrary::select(const juce::String& id, juce::String& error) {
     openReferences.push_back({ id, std::move(analysis) });
     undoStack.clear();
     redoStack.clear();
-    saveSelection();
     return true;
 }
 
@@ -243,7 +209,6 @@ bool ReferenceLibrary::close(const juce::String& id) {
         undoStack.clear();
         redoStack.clear();
     }
-    saveSelection();
     return true;
 }
 
@@ -278,7 +243,6 @@ bool ReferenceLibrary::importFile(const juce::File& source, juce::String& error)
     openReferences.push_back({ id, std::move(analysis) });
     undoStack.clear();
     redoStack.clear();
-    saveSelection();
     return true;
 }
 
