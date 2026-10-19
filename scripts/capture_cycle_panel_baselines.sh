@@ -3,15 +3,18 @@ set -euo pipefail
 setopt typeset_silent
 
 REPO_ROOT="${CYCLE_REPO_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+if [[ "${1:-}" != "--inner" ]]; then
+    exec "$REPO_ROOT/scripts/cycle_automation.py" exec --product cycle1 \
+        --foreground -- "$0" --inner "$@"
+fi
+shift
 OUT_DIR="${1:-$REPO_ROOT/docs/media/images/cycle-panel-baselines}"
-ARTIFACT_DIR="${CYCLE_PANEL_BASELINE_ARTIFACT_DIR:-/private/tmp/cycle-panel-baselines}"
+ARTIFACT_DIR="${CYCLE_PANEL_BASELINE_ARTIFACT_DIR:-$CYCLE_AUTOMATION_ARTIFACTS}"
 PRESET_NAME="${CYCLE_PANEL_BASELINE_PRESET:-bongo}"
 EXPECTED_DOCUMENT="${CYCLE_PANEL_BASELINE_EXPECTED_DOCUMENT:-Bongo}"
 BUILD_FIRST="${CYCLE_PANEL_BASELINE_BUILD_FIRST:-0}"
 PARK_MOUSE_POINT="${CYCLE_PANEL_BASELINE_PARK_MOUSE_POINT:-20,20}"
-PROCESS_NAME="${CYCLE_PROCESS_NAME:-Cycle}"
-SOCKET_PATH="$ARTIFACT_DIR/cycle-agent-panel-baselines.sock"
-SESSION_LOG="$ARTIFACT_DIR/cycle-agent-panel-baselines-session.log"
+SOCKET_PATH="$CYCLE_AGENT_SESSION"
 
 MAIN_AREAS=(
     AreaWshpEditor
@@ -41,16 +44,15 @@ mkdir -p "$OUT_DIR"
 mkdir -p "$ARTIFACT_DIR"
 
 if [[ "$BUILD_FIRST" == "1" ]]; then
-    cmake --build --preset standalone-debug --target Cycle
+    cmake --build --preset standalone-debug --target Cycle --parallel 10
 fi
 
 quit_cycle() {
-    osascript -e "tell application \"$PROCESS_NAME\" to quit" >/dev/null 2>&1 || true
+    return 0
 }
 
 focus_cycle() {
-    osascript -e "tell application \"$PROCESS_NAME\" to activate" >/dev/null 2>&1 || true
-    osascript -e "tell application \"System Events\" to set frontmost of process \"$PROCESS_NAME\" to true" >/dev/null 2>&1 || true
+    osascript -e "tell application \"System Events\" to set frontmost of (first process whose unix id is $CYCLE_APP_PID) to true"
 }
 
 park_mouse() {
@@ -175,7 +177,6 @@ capture_spectrum_panels() {
 trap quit_cycle EXIT
 
 quit_cycle
-scripts/run_cycle_agent_session.sh "$SOCKET_PATH" "$SESSION_LOG" >/dev/null
 
 LOAD_COMMAND="$ARTIFACT_DIR/load-preset.json"
 write_command "$LOAD_COMMAND" --arg preset "$PRESET_NAME" \

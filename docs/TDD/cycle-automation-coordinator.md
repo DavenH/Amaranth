@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed.
+Implemented. The coordinator, PID launcher, registry, leases, persistent
+sessions, scoped runs, capture, video, LLDB, native-input routing, and product
+aliases passed focused macOS integration acceptance.
 
 ## Problem
 
@@ -239,6 +241,9 @@ executable's fingerprint with the registered instance. If it changed, request
 a clean quit through that instance's socket, wait for the exact PID, and launch
 the new bundle. Never continue against an instance with a different
 fingerprint while claiming to test the new build.
+Hold a workspace/product build lease through the build, fingerprint check,
+and instance selection. Fresh-fixture suites build inside each child run so a
+concurrent caller cannot rebuild between the suite build and fixture launch.
 
 ### Launch
 
@@ -279,8 +284,8 @@ identifier.
   bounds and immediately before dispatch.
 - ScreenCaptureKit helpers accept PID, and optionally a discovered window id;
   they do not select the largest window for a bundle id.
-- Full-screen or region `screencapture` is allowed only while holding the
-  foreground lease.
+- Requested regions are cropped from the PID-selected ScreenCaptureKit window;
+  desktop `screencapture` cannot establish which process supplied the pixels.
 - App-side `screenshot` remains preferred for ordinary JUCE components.
 - Every screenshot/video result records PID, window id where applicable,
   bounds, pixel dimensions, and capture method.
@@ -463,3 +468,77 @@ ordinary registry and policy coverage.
 - Existing Cycle 1 and Cycle 2 focused fixtures pass through the coordinator.
 - The runbook and semantic code map describe the coordinator as the canonical
   automation entry point.
+
+## Implementation Evidence (2026-10-18)
+
+- Before: the Cycle 1 run, session, capture, and LLDB scripts used process-name
+  focus/quit or `open -n`; the window recorder selected the largest bundle-id
+  window. After: `rg` finds none of these decision sites under `scripts/`.
+- Before: runner defaults used fixed `/tmp/cycle-agent.sock`, report, and log
+  paths. After: coordinator defaults use hashed workspace/product sockets and
+  `.context/cycle-automation/<product>/<run-id>/`; fixture-authored absolute
+  output paths remain explicit inputs.
+- Coordinator production sizes: CLI 272 lines; largest support module 265
+  lines. The Swift launcher is 45 lines, screenshot helper 56, recorder 124.
+- Focused unit and alias tests: 14 passed. Both exact standalone targets built;
+  Cycle 1 and Cycle 2 readonly fixtures passed through aliases. Cycle 1 focused
+  session smoke passed with an empty reset preset.
+- A detached second Git worktree with a copied Cycle 1 bundle produced PID
+  53045, socket `469d273d9e5a/cycle1.sock`, and window 127598. The main
+  worktree produced PID 53236, socket `b04bd5a7357a/cycle1.sock`, and window
+  127608. Both semantic socket runs and PID-window captures succeeded. Evidence
+  is saved in `.context/automation-two-worktree-evidence.json` with two PNGs.
+- Foreground lease conflict failed before capture with the owning workspace,
+  PID, run, operation, and status command. Lease acquisition/release events
+  are recorded in the user-private shared `events.jsonl`.
+- Rebuilding Cycle 1 restarted only its workspace instance; another registered
+  instance retained its PID. A `--clean` fixture launched and stopped a scoped
+  instance while leaving the persistent record intact.
+- Abrupt-exit recovery, exact-PID crash report association, and bounded
+  lifecycle waiting passed against live macOS processes. Evidence is in
+  `.context/crash-recovery/evidence.json` and the private lease event log.
+- Cycle 1 and Cycle 2 smoke wrappers are thin aliases. Fixture lists, optional
+  visual assertions, and reset settings live in declarative manifests.
+- App-side screenshot fixtures conservatively hold the foreground lease; a
+  conflict test proves they fail before sending a socket command.
+- Broad Cycle 1 smoke: 25 ordinary fixtures plus the expected-failure fixture
+  passed; 9 older fixtures failed because they request archived preset names
+  such as `calming-keys` and `african-horn`. Broad Cycle 2 smoke: 10 passed,
+  while `graph-editing`, `pointer`, and `ported-presets` failed existing graph/UI
+  assertions against the current app. Relative graph fixture paths now resolve
+  from their fixture directory; `audio-capture` passed after that correction.
+
+## Final Acceptance (2026-10-19)
+
+- With Accessibility access granted, the focused Cycle V2 native `authoring`
+  sequence passed through the coordinator's exact PID, instance lease, and
+  foreground lease. It covered native node drag, palette creation, connection,
+  undo/redo, save/reopen, deletion, and cable insertion.
+- The Cycle V2 `opengl-diagnostics` foreground visual smoke passed with OS
+  screenshot capture enabled.
+- `--json` startup now keeps CMake build output on stderr, leaving stdout as
+  one parseable result. The native smoke exposed this output contract failure.
+- The native authoring fixture now selects the Nodes sidebar explicitly and
+  inserts the global Delay on the global signal path, where graph validation
+  permits it. Its previous per-voice insertion was a known fixture error. It
+  also closes any expanded editor left by saved UI state before native input.
+- A repeat attempt overlapped a Spokane-worktree direct Cycle V2 runner that
+  does not use this coordinator. That other app took the foreground during a
+  drag; its editor appears in `.context/native-authoring-captures/authoring-drag-stalled.png`.
+  Machine-wide exclusion applies to callers that acquire the coordinator lease.
+- The coordinator's 14 focused Python tests, semantic code map check, and
+  Cycle V2 architecture audit passed. Broad-suite fixture failures listed
+  above remain tracked separately in `docs/TDD/ui-bugs.md`.
+
+## Ownership Follow-up (2026-10-19)
+
+- A workspace/product build lease now spans the build, executable fingerprint,
+  and instance selection. Fresh suite child runs acquire that lease individually.
+- The PID-window screenshot helper crops requested regions from its selected
+  window. A live Cycle V2 capture returned one PID and window ID for both the
+  full image and a 400×300 region; the region had the requested pixel size.
+  Untitled utility windows are excluded before enforcing a unique main window.
+- Launch cleanup removes a socket only when its inode matches the recorded
+  socket; a replaced or unknown socket remains a collision.
+- Seventeen focused Python tests pass, including build-lease, socket-replacement,
+  and PID-region-capture checks.

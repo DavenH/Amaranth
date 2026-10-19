@@ -1,0 +1,155 @@
+{
+  "mode": "session",
+  "fixtures": [
+    {
+      "name": "readonly",
+      "path": "scripts/fixtures/cycle-agent-readonly.json"
+    },
+    {
+      "name": "hover-surfaces",
+      "path": "scripts/fixtures/cycle-agent-hover-surfaces.json"
+    },
+    {
+      "name": "assertion-paths",
+      "path": "scripts/fixtures/cycle-agent-assertion-paths.json"
+    },
+    {
+      "name": "mesh-targets",
+      "path": "scripts/fixtures/cycle-agent-mesh-targets.json"
+    },
+    {
+      "name": "calmingkeys-mesh",
+      "path": "scripts/fixtures/cycle-agent-calmingkeys-mesh.json"
+    },
+    {
+      "name": "mesh-mutations",
+      "path": "scripts/fixtures/cycle-agent-mesh-mutations.json"
+    },
+    {
+      "name": "mesh-selection-gesture",
+      "path": "scripts/fixtures/cycle-agent-mesh-selection-gesture.json"
+    },
+    {
+      "name": "screenshot",
+      "path": "scripts/fixtures/cycle-agent-screenshot.json"
+    },
+    {
+      "name": "opengl-diagnostics",
+      "path": "scripts/fixtures/cycle-agent-opengl-diagnostics.json"
+    },
+    {
+      "name": "menu-commands",
+      "path": "scripts/fixtures/cycle-agent-menu-commands.json"
+    },
+    {
+      "name": "main-tabs",
+      "path": "scripts/fixtures/cycle-agent-main-tabs.json"
+    },
+    {
+      "name": "layer-buttons",
+      "path": "scripts/fixtures/cycle-agent-layer-buttons.json"
+    },
+    {
+      "name": "effect-targets",
+      "path": "scripts/fixtures/cycle-agent-effect-targets.json"
+    },
+    {
+      "name": "set-morph-slider",
+      "path": "scripts/fixtures/cycle-agent-set-morph-slider.json"
+    },
+    {
+      "name": "broader-controls",
+      "path": "scripts/fixtures/cycle-agent-broader-controls.json"
+    },
+    {
+      "name": "factory-preset",
+      "path": "scripts/fixtures/cycle-agent-factory-preset.json"
+    },
+    {
+      "name": "general-controls",
+      "path": "scripts/fixtures/cycle-agent-general-controls.json"
+    },
+    {
+      "name": "waveform3d-state",
+      "path": "scripts/fixtures/cycle-agent-waveform3d-state.json"
+    },
+    {
+      "name": "modmatrix-dialog",
+      "path": "scripts/fixtures/cycle-agent-modmatrix-dialog.json"
+    },
+    {
+      "name": "modmatrix-menu",
+      "path": "scripts/fixtures/cycle-agent-modmatrix-menu.json"
+    },
+    {
+      "name": "envelope-config-menu",
+      "path": "scripts/fixtures/cycle-agent-envelope-config-menu.json"
+    },
+    {
+      "name": "selector-menu",
+      "path": "scripts/fixtures/cycle-agent-selector-menu.json"
+    },
+    {
+      "name": "hover-selector-menu",
+      "path": "scripts/fixtures/cycle-agent-hover-selector-menu.json"
+    },
+    {
+      "name": "midi-keyboard-pointer",
+      "path": "scripts/fixtures/cycle-agent-midi-keyboard-pointer.json"
+    },
+    {
+      "name": "playback-pointer",
+      "path": "scripts/fixtures/cycle-agent-playback-pointer.json"
+    },
+    {
+      "name": "main-draggers",
+      "path": "scripts/fixtures/cycle-agent-main-draggers.json"
+    },
+    {
+      "name": "pullout-hover",
+      "path": "scripts/fixtures/cycle-agent-pullout-hover.json"
+    },
+    {
+      "name": "midi-note",
+      "path": "scripts/fixtures/cycle-agent-midi-note.json"
+    },
+    {
+      "name": "audio-capture",
+      "path": "scripts/fixtures/cycle-agent-audio-capture.json"
+    },
+    {
+      "name": "volume-envelope",
+      "path": "scripts/fixtures/cycle-agent-volume-envelope.json"
+    },
+    {
+      "name": "inactive-volume",
+      "path": "scripts/fixtures/cycle-agent-inactive-volume.json"
+    },
+    {
+      "name": "pitch-envelope",
+      "path": "scripts/fixtures/cycle-agent-pitch-envelope.json"
+    },
+    {
+      "name": "voice-mode-switch",
+      "path": "scripts/fixtures/cycle-agent-voice-mode-switch.json"
+    },
+    {
+      "name": "load-reference-sax-growl",
+      "path": "scripts/fixtures/cycle-agent-load-reference-sax-growl.json"
+    },
+    {
+      "name": "assert-failure",
+      "path": "scripts/fixtures/cycle-agent-assert-failure.json"
+    }
+  ],
+  "reset_preset": "OohAah",
+  "expected_failures": [
+    "assert-failure"
+  ],
+  "optional_screenshot": {
+    "name": "waveform3d-os-screenshot",
+    "path": "scripts/fixtures/cycle-agent-waveform3d-os-screenshot.json",
+    "area": "AreaWfrmWaveform3D",
+    "output": "waveform3d-os.png"
+  }
+}

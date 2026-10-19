@@ -1,119 +1,42 @@
 #!/usr/bin/env python3
+"""Compatibility aliases must select a product without lifecycle policy."""
 
 import os
 import subprocess
 import tempfile
-import textwrap
 import unittest
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-RUNNER = REPO_ROOT / "scripts" / "run_cycle_agent.sh"
+SCRIPTS = Path(__file__).resolve().parents[1]
 
 
-class CycleAgentLaunchTest(unittest.TestCase):
-    def run_launcher(
-        self,
-        focus_on_launch,
-        fixture_name="fixture.json",
-        bundle_id="com.amaranthaudio.test-cycle",
-    ):
+class CycleAgentAliasTest(unittest.TestCase):
+    def test_fixture_aliases_pass_explicit_product(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            app = root / "Cycle.app"
-            (app / "Contents").mkdir(parents=True)
-            (app / "Contents" / "Info.plist").write_text("", encoding="utf-8")
-            fixture = root / fixture_name
-            fixture.write_text("[]\n", encoding="utf-8")
-            report = root / "report.json"
-            log = root / "commands.log"
-            fake_bin = root / "bin"
-            fake_bin.mkdir()
-
-            self.write_executable(fake_bin / "plutil", """
-                #!/bin/zsh
-                if [[ "$*" == *CFBundleIdentifier* ]]; then
-                    print -r -- "$TEST_BUNDLE_ID"
-                else
-                    print -r -- "Cycle"
-                fi
-            """)
-            self.write_executable(fake_bin / "osascript", """
-                #!/bin/zsh
-                print -r -- "$*" >> "$COMMAND_LOG"
-                if [[ "$*" == *"exists process"* || "$*" == *"frontmost of process"* ]]; then
-                    print -r -- "true"
-                fi
-            """)
-            self.write_executable(fake_bin / "open", """
-                #!/bin/zsh
-                print -r -- "$*" >> "$COMMAND_LOG"
-                while (( $# > 0 )); do
-                    if [[ "$1" == "--agent-report" ]]; then
-                        shift
-                        print -r -- '{"results":[]}' > "$1"
-                        exit 0
-                    fi
-                    shift
-                done
-                exit 1
-            """)
-
+            fake_python = root / "python3"
+            fake_python.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$ARGS_FILE"\n')
+            fake_python.chmod(0o755)
+            arguments = root / "args.txt"
             environment = os.environ.copy()
-            environment.update({
-                "PATH": f"{fake_bin}:{environment['PATH']}",
-                "COMMAND_LOG": str(log),
-                "TEST_BUNDLE_ID": bundle_id,
-                "CYCLE_APP_PATH": str(app),
-                "CYCLE_PROCESS_NAME": "TestCycle",
-                "CYCLE_FOCUS_ON_LAUNCH": "1" if focus_on_launch else "0",
-                "CYCLE_REUSE_EXISTING": "1",
-                "CYCLE_PREFLIGHT_PERMISSIONS": "0",
-                "CYCLE_CAPTURE_CRASH_REPORTS": "0",
-                "CYCLE_DISMISS_CRASH_DIALOG": "0",
-                "CYCLE_SUPPRESS_CRASH_DIALOG": "0",
-                "CYCLE_FILTER_LOGS": "0",
-                "CYCLE_WAIT_SECONDS": "1",
-            })
+            environment.update({"PATH": f"{root}:{environment['PATH']}",
+                                "ARGS_FILE": str(arguments)})
+            for script, expected in (("run_cycle_agent.sh", "cycle1"),
+                                     ("run_cycle_v2_agent.sh", "cycle-v2")):
+                subprocess.run(["/bin/zsh", str(SCRIPTS / script), "fixture.json"],
+                               env=environment, check=True)
+                passed = arguments.read_text().splitlines()
+                self.assertEqual(passed[1:4], ["run", "--product", expected])
+                self.assertEqual(passed[4:], ["--fixture", "fixture.json"])
 
-            result = subprocess.run(
-                ["/bin/zsh", str(RUNNER), str(fixture), str(report), str(root / "run.log")],
-                check=False,
-                capture_output=True,
-                text=True,
-                env=environment,
-            )
-            commands = log.read_text(encoding="utf-8") if log.exists() else ""
-            return result, commands
-
-    def write_executable(self, path, source):
-        path.write_text(textwrap.dedent(source).lstrip(), encoding="utf-8")
-        path.chmod(0o755)
-
-    def test_semantic_launch_does_not_take_focus_by_default(self):
-        result, commands = self.run_launcher(focus_on_launch=False)
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertNotIn("to activate", commands)
-        self.assertNotIn("set frontmost", commands)
-
-    def test_launch_focus_remains_available_as_an_explicit_opt_in(self):
-        result, commands = self.run_launcher(focus_on_launch=True)
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("to activate", commands)
-
-    def test_cycle_v2_fixture_rejects_partial_target_metadata(self):
-        result, commands = self.run_launcher(
-            focus_on_launch=False,
-            fixture_name="cycle-v2-agent-test.json",
-            bundle_id="com.amaranthaudio.cycle-v2",
-        )
-
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("Use scripts/run_cycle_v2_agent.sh", result.stderr)
-        self.assertEqual(commands, "")
+            for script, expected in (("run_cycle_agent_smokes.sh", "cycle1"),
+                                     ("run_cycle_v2_agent_smokes.sh", "cycle-v2")):
+                subprocess.run(["/bin/zsh", str(SCRIPTS / script), "readonly"],
+                               env=environment, check=True)
+                passed = arguments.read_text().splitlines()
+                self.assertEqual(passed[1:4], ["suite", "--product", expected])
+                self.assertEqual(passed[-1], "readonly")
 
 
 if __name__ == "__main__":

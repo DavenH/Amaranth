@@ -55,7 +55,8 @@ public:
     }
 
     bool moreThanOneInstanceAllowed() override {
-        return false;
+        const auto arguments = getCommandLineParameters();
+        return arguments.contains("--agent-session") || arguments.contains("--agent-script");
     }
 
     void anotherInstanceStarted(const String &commandLine) override {

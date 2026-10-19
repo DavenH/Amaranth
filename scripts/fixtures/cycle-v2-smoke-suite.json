@@ -1,0 +1,91 @@
+{
+  "mode": "fresh-fixtures",
+  "dynamic_fixture_prefix": "cycle-v2-agent-",
+  "fixtures": [
+    {
+      "name": "readonly",
+      "path": "scripts/fixtures/cycle-v2-agent-readonly.json"
+    },
+    {
+      "name": "graph-roundtrip",
+      "path": "scripts/fixtures/cycle-v2-agent-graph-roundtrip.json"
+    },
+    {
+      "name": "graph-editing",
+      "path": "scripts/fixtures/cycle-v2-agent-graph-editing.json"
+    },
+    {
+      "name": "screenshot",
+      "path": "scripts/fixtures/cycle-v2-agent-screenshot.json"
+    },
+    {
+      "name": "mesh-controls",
+      "path": "scripts/fixtures/cycle-v2-agent-mesh-controls.json"
+    },
+    {
+      "name": "trimesh-controls",
+      "path": "scripts/fixtures/cycle-v2-agent-trimesh-controls.json"
+    },
+    {
+      "name": "pointer",
+      "path": "scripts/fixtures/cycle-v2-agent-pointer.json"
+    },
+    {
+      "name": "pointer-target-replay",
+      "path": "scripts/fixtures/cycle-v2-agent-pointer-target-replay.json"
+    },
+    {
+      "name": "pointer-targets",
+      "path": "scripts/fixtures/cycle-v2-agent-pointer-targets.json"
+    },
+    {
+      "name": "opengl-diagnostics",
+      "path": "scripts/fixtures/cycle-v2-agent-opengl-diagnostics.json"
+    },
+    {
+      "name": "menu-palette",
+      "path": "scripts/fixtures/cycle-v2-agent-menu-palette.json"
+    },
+    {
+      "name": "audio-capture",
+      "path": "scripts/fixtures/cycle-v2-agent-audio-capture.json"
+    },
+    {
+      "name": "ported-presets",
+      "path": "scripts/fixtures/cycle-v2-agent-ported-presets.json"
+    }
+  ],
+  "optional_screenshot": {
+    "name": "mesh-controls-os-screenshot",
+    "path": "scripts/fixtures/cycle-v2-agent-mesh-controls-os-screenshot.json",
+    "area": "canvas",
+    "output": "mesh-controls-os.png",
+    "assert_script": "scripts/assert_png_stats.py",
+    "assert_args": [
+      "--label",
+      "mesh-controls-os",
+      "--region",
+      "0.06,0.12,0.51,0.42",
+      "--region",
+      "0.06,0.58,0.88,0.32",
+      "--min-mean",
+      "0.02",
+      "--min-stddev",
+      "0.015"
+    ]
+  },
+  "visual_overrides": {
+    "opengl-diagnostics": {
+      "path": "scripts/fixtures/cycle-v2-agent-opengl-diagnostics-os-screenshot.json",
+      "area": "canvas",
+      "output": "opengl-diagnostics-os.png",
+      "assert_script": "scripts/assert_cycle_v2_gl_regions.py",
+      "assert_args": [
+        "--min-mean",
+        "0.02",
+        "--min-stddev",
+        "0.015"
+      ]
+    }
+  }
+}

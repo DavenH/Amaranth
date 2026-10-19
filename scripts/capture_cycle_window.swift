@@ -22,15 +22,16 @@ final class RecordingDelegate: NSObject, SCRecordingOutputDelegate {
 struct CycleWindowRecorder {
     static func main() async {
         guard CommandLine.arguments.count == 4,
+              let pid = Int32(CommandLine.arguments[1]), pid > 0,
               let fps = Int(CommandLine.arguments[3]),
               (1...120).contains(fps) else {
-            fputs("Usage: capture_cycle_window <bundle-id> <output.mp4> <fps>\n", stderr)
+            fputs("Usage: capture_cycle_window <pid> <output.mp4> <fps>\n", stderr)
             exit(2)
         }
 
         do {
             try await record(
-                bundleId: CommandLine.arguments[1],
+                pid: pid,
                 output: URL(fileURLWithPath: CommandLine.arguments[2]),
                 fps: fps)
         } catch {
@@ -40,20 +41,26 @@ struct CycleWindowRecorder {
     }
 
     @MainActor
-    static func record(bundleId: String, output: URL, fps: Int) async throws {
+    static func record(pid: Int32, output: URL, fps: Int) async throws {
         _ = NSApplication.shared
         var selectedWindow: SCWindow?
+        var discovered: [String] = []
         for _ in 0..<200 {
             let content = try await SCShareableContent.excludingDesktopWindows(
                 false, onScreenWindowsOnly: false)
-            selectedWindow = content.windows.filter {
-                $0.owningApplication?.bundleIdentifier == bundleId
+            discovered = content.windows.filter {
+                $0.owningApplication?.processID == pid
+            }.map { "\($0.windowID):\($0.title ?? ""):\($0.frame)" }
+            let candidates = content.windows.filter {
+                $0.owningApplication?.processID == pid
                     && $0.frame.width >= 400
                     && $0.frame.height >= 300
-            }.max { first, second in
-                first.frame.width * first.frame.height
-                    < second.frame.width * second.frame.height
             }
+            if candidates.count > 1 {
+                let found = candidates.map { "\($0.windowID):\($0.title ?? ""):\($0.frame)" }
+                throw RecorderError.ambiguousWindows(pid, found)
+            }
+            selectedWindow = candidates.first
             if selectedWindow != nil {
                 break
             }
@@ -61,9 +68,11 @@ struct CycleWindowRecorder {
         }
 
         guard let window = selectedWindow else {
-            throw RecorderError.windowMissing(bundleId)
+            throw RecorderError.windowMissing(pid, discovered)
         }
-        fputs("Cycle window: \(window.title ?? "") \(window.frame)\n", stderr)
+        fputs("Cycle window: pid=\(pid) window=\(window.windowID) "
+            + "x=\(Int(window.frame.minX)) y=\(Int(window.frame.minY)) "
+            + "width=\(Int(window.frame.width)) height=\(Int(window.frame.height))\n", stderr)
 
         let filter = SCContentFilter(desktopIndependentWindow: window)
         let streamConfiguration = SCStreamConfiguration()
@@ -108,7 +117,8 @@ struct CycleWindowRecorder {
 }
 
 enum RecorderError: Error {
-    case windowMissing(String)
+    case windowMissing(Int32, [String])
+    case ambiguousWindows(Int32, [String])
 }
 
 private var signalSource: DispatchSourceSignal?

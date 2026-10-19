@@ -273,6 +273,7 @@ def main():
     parser.add_argument("--per-command-delay", type=float, default=0.0, help="Delay between fixture commands so the app message loop can settle")
     parser.add_argument("--boundary-log", action="store_true", help="Write fixture boundary markers into the app session log")
     parser.add_argument("--opengl-diagnostics-each-fixture", action="store_true", help="Poll OpenGL diagnostics before and after every fixture")
+    parser.add_argument("--keep-alive", action="store_true", help="Leave the coordinator-owned session running")
     args = parser.parse_args()
 
     args.socket_path = str(Path(args.socket_path).expanduser())
@@ -339,13 +340,15 @@ def main():
         if args.command_delay > 0:
             time.sleep(args.command_delay)
 
-    try:
-        quit_response = send_command(args.socket_path, {"command": "quit"}, "quit", args.timeout)
-    except Exception as exc:
-        quit_response = {
-            "ok": False,
-            "message": str(exc),
-        }
+    quit_response = None
+    if not args.keep_alive:
+        try:
+            quit_response = send_command(args.socket_path, {"command": "quit"}, "quit", args.timeout)
+        except Exception as exc:
+            quit_response = {
+                "ok": False,
+                "message": str(exc),
+            }
 
     report = {
         "ok": suite_ok,

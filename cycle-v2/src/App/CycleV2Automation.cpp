@@ -391,6 +391,8 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return assertions->listAssertionPaths();
         case Command::WaitForIdle:
             return waitForIdle(commandValue);
+        case Command::Ping:
+            return okResult(command);
         case Command::Quit:
             return okResult(command);
     }
