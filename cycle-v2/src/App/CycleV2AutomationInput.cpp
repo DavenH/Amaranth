@@ -26,6 +26,11 @@ bool automationKeyPress(const String& name, KeyPress& result) {
         result = KeyPress(KeyPress::tabKey, modifiers, 0);
         return true;
     }
+    if (name.length() == 1 && CharacterFunctions::isLetter(name[0])) {
+        const juce_wchar character = CharacterFunctions::toLowerCase(name[0]);
+        result = KeyPress((int) character, ModifierKeys {}, character);
+        return true;
+    }
 
     const std::pair<const char*, int> keys[] {
             { "left", KeyPress::leftKey },
@@ -186,6 +191,12 @@ var CycleV2AutomationInput::key(const var& commandValue) {
     KeyPress keyPress;
     if (!automationKeyPress(keyName, keyPress)) {
         return failedResult("key", "Unknown key: " + keyName);
+    }
+    if (boolProperty(commandValue, "shift")) {
+        keyPress = KeyPress(
+                keyPress.getKeyCode(),
+                keyPress.getModifiers().withFlags(ModifierKeys::shiftModifier),
+                keyPress.getTextCharacter());
     }
 
     const bool handled = component->keyPressed(keyPress);

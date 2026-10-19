@@ -777,9 +777,6 @@ bool NodeWorkspace::performanceEndModWheelGestureForAutomation() {
 }
 
 bool NodeWorkspace::togglePreviewPlayback() {
-    if (!keyboard.isVisible()) {
-        return false;
-    }
     keyboard.togglePlayback();
     return true;
 }

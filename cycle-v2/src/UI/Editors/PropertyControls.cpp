@@ -450,6 +450,14 @@ void PrecisionSlider::setKeyboardStepper(KeyboardStepper stepper) {
     keyboardStepper = std::move(stepper);
 }
 
+void PrecisionSlider::setKeyboardTargetHandler(KeyboardTargetHandler handler) {
+    keyboardTargetHandler = std::move(handler);
+}
+
+void PrecisionSlider::setKeyboardShortcutHandler(KeyboardShortcutHandler handler) {
+    keyboardShortcutHandler = std::move(handler);
+}
+
 void PrecisionSlider::setValueSnapper(ValueSnapper snapper) {
     valueSnapper = std::move(snapper);
 }
@@ -469,6 +477,10 @@ void PrecisionSlider::setMorphPresentation(Colour accent) {
     repaint();
 }
 
+void PrecisionSlider::setValueFromKeyboard(double value) {
+    applyKeyboardStep(value - getValue());
+}
+
 Rectangle<float> PrecisionSlider::visibleTrackBounds() const {
     const Rectangle<float> bounds = getLookAndFeel()
             .getSliderLayout(const_cast<PrecisionSlider&>(*this))
@@ -479,7 +491,24 @@ Rectangle<float> PrecisionSlider::visibleTrackBounds() const {
                     PropertyControlMetrics::visibleTrackHeight);
 }
 
+void PrecisionSlider::mouseDown(const MouseEvent& event) {
+    if (keyboardTargetHandler != nullptr) {
+        keyboardTargetHandler();
+    }
+    Slider::mouseDown(event);
+}
+
+void PrecisionSlider::focusGained(FocusChangeType cause) {
+    Slider::focusGained(cause);
+    if (cause == focusChangedByTabKey && keyboardTargetHandler != nullptr) {
+        keyboardTargetHandler();
+    }
+}
+
 bool PrecisionSlider::keyPressed(const KeyPress& key) {
+    if (keyboardShortcutHandler != nullptr && keyboardShortcutHandler(key)) {
+        return true;
+    }
     if (!isArrowKey(key)) {
         return Slider::keyPressed(key);
     }
@@ -518,7 +547,6 @@ void PrecisionSlider::paint(Graphics& graphics) {
                 normalized,
                 *morphAccent,
                 isMouseOverOrDragging(),
-                hasKeyboardFocus(false),
                 isEnabled());
     } else {
         Slider::paint(graphics);

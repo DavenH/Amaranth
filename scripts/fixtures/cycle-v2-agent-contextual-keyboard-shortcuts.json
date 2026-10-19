@@ -1,0 +1,159 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/sitar-pad.cyclegraph"
+    },
+    { "command": "openMeshPopup", "nodeId": "magnitudeLayer1" },
+    { "command": "key", "area": "canvas", "key": "r" },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.focusedMorphAxis",
+      "equals": "red"
+    },
+    { "command": "key", "area": "canvas", "key": "space" },
+    { "command": "waitForIdle", "idleDelayMs": 100 },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": true },
+    { "command": "key", "area": "canvas", "key": "space" },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": false },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "targetX": 0.35,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "targetX": 0.35,
+      "targetY": 0.5,
+      "downTargetX": 0.35,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.focusedMorphAxis",
+      "equals": "red"
+    },
+    { "command": "key", "area": "canvas", "key": "left" },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "red",
+      "equals": "0.000"
+    },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "key", "area": "canvas", "key": "r" },
+    { "command": "key", "area": "canvas", "key": "l" },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "link.red",
+      "equals": "0"
+    },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "key", "area": "canvas", "key": "y" },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.focusedMorphAxis",
+      "equals": "yellow"
+    },
+    { "command": "key", "area": "canvas", "key": "left" },
+    { "command": "key", "area": "canvas", "key": "right", "shift": true },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "yellow",
+      "equals": "0.200"
+    },
+    { "command": "key", "area": "canvas", "key": "down" },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.focusedMorphAxis",
+      "equals": "red"
+    },
+    { "command": "key", "area": "canvas", "key": "down" },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.focusedMorphAxis",
+      "equals": "blue"
+    },
+    { "command": "key", "area": "canvas", "key": "right" },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "magnitudeLayer1",
+      "parameterId": "blue",
+      "equals": "1.000"
+    },
+    { "command": "key", "area": "canvas", "key": "escape" },
+    { "command": "waitForIdle", "idleDelayMs": 100 },
+    {
+      "command": "pointer",
+      "area": "canvas",
+      "event": "click",
+      "normalizedX": 0.8,
+      "normalizedY": 0.85
+    },
+    { "command": "key", "area": "canvas", "key": "c" },
+    { "command": "assertState", "path": "sidebarTab", "equals": "Curves" },
+    { "command": "key", "area": "canvas", "key": "p" },
+    { "command": "assertState", "path": "sidebarTab", "equals": "Presets" },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "scratchEnvelope1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    { "command": "key", "area": "canvas", "key": "r" },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.focusedMorphAxis",
+      "equals": "red"
+    },
+    { "command": "key", "area": "canvas", "key": "right" },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "scratchEnvelope1",
+      "parameterId": "red",
+      "equals": "1"
+    },
+    { "command": "key", "area": "canvas", "key": "left", "shift": true },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "scratchEnvelope1",
+      "parameterId": "red",
+      "equals": "0.8"
+    },
+    { "command": "undo", "waitForIdle": true, "idleDelayMs": 150 },
+    { "command": "key", "area": "canvas", "key": "l" },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.redLinked",
+      "equals": false
+    },
+    { "command": "key", "area": "canvas", "key": "down" },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.focusedMorphAxis",
+      "equals": "blue"
+    },
+    { "command": "key", "area": "canvas", "key": "right" },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "scratchEnvelope1",
+      "parameterId": "blue",
+      "equals": "1"
+    },
+    { "command": "key", "area": "canvas", "key": "space" },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": true },
+    { "command": "key", "area": "canvas", "key": "space" },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": false },
+    { "command": "inspectTargets", "area": "canvas" }
+  ],
+  "quit": false
+}

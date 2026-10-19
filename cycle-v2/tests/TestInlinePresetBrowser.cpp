@@ -27,6 +27,17 @@ Component* findDescendantWithID(Component& parent, const String& id) {
     return nullptr;
 }
 
+TEST_CASE("Canvas sidebar shortcuts select Curves and Presets",
+        "[cycle-v2][sidebar][keyboard]") {
+    REQUIRE(workspaceSidebarTabForShortcut(KeyPress('c'))
+            == WorkspaceSidebarTab::Curves);
+    REQUIRE(workspaceSidebarTabForShortcut(KeyPress('p'))
+            == WorkspaceSidebarTab::Presets);
+    REQUIRE_FALSE(workspaceSidebarTabForShortcut(KeyPress('r')).has_value());
+    REQUIRE_FALSE(workspaceSidebarTabForShortcut(KeyPress(
+            'p', ModifierKeys::commandModifier, 'p')).has_value());
+}
+
 bool clickTag(SidebarTagCloud& cloud, const String& tag, bool rightClick = true) {
     for (const auto& [id, bounds] : cloud.pointerTargetsForAutomation()) {
         if (id != "workspace.sidebar.tag." + tag.toLowerCase()) {

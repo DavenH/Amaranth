@@ -3,6 +3,7 @@
 #include "Graph/NodeGraph.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertyControls.h"
 #include "UI/EnvelopeToolbarMetrics.h"
 
@@ -18,7 +19,6 @@ const Colour kGroupBorder { 0xff536171 };
 const Colour kSelectedFill { 0xff2b415a };
 constexpr float kMorphLabelY = 0.f;
 constexpr float kMorphRowsY = 28.f;
-constexpr float kMorphRowStride = 44.f;
 constexpr float kActionTopInset = 4.f;
 constexpr float kActionBottomInset = 12.f;
 constexpr float kActionColumnGap = 28.f;
@@ -96,7 +96,8 @@ Rectangle<float> EnvelopeMorphControls::railColumn(Rectangle<float> controls) co
 
 Rectangle<float> EnvelopeMorphControls::morphGroupLabelBounds(Rectangle<float> controls) const {
     auto column = railColumn(controls);
-    column.removeFromRight(58.f);
+    column.removeFromRight(
+            58.f + PropertyControlMetrics::morphKeyboardFocusSlotWidth);
     return {
             column.getX(),
             column.getY() + kMorphLabelY,
@@ -107,8 +108,28 @@ Rectangle<float> EnvelopeMorphControls::morphGroupLabelBounds(Rectangle<float> c
 
 Rectangle<float> EnvelopeMorphControls::morphRow(Rectangle<float> controls, int axis) const {
     auto row = railColumn(controls);
-    row.removeFromTop(kMorphRowsY + kMorphRowStride * static_cast<float>(axis));
-    return row.removeFromTop(36.f);
+    row.removeFromTop(
+            kMorphRowsY
+                    + PropertyControlMetrics::morphRowStride
+                            * static_cast<float>(axis));
+    return row.removeFromTop(PropertyControlMetrics::morphRowHeight);
+}
+
+Rectangle<float> EnvelopeMorphControls::morphSliderBounds(
+        Rectangle<float> controls,
+        int axis) const {
+    auto row = morphRow(controls, axis);
+    row.removeFromRight(
+            58.f + PropertyControlMetrics::morphKeyboardFocusSlotWidth);
+    return row;
+}
+
+Rectangle<float> EnvelopeMorphControls::keyboardFocusBounds(
+        Rectangle<float> controls,
+        int axis) const {
+    return morphKeyboardFocusOutlineBounds(
+            morphRow(controls, axis),
+            linkBounds(controls, axis));
 }
 
 Rectangle<float> EnvelopeMorphControls::actionBarBounds(Rectangle<float> controls) const {
@@ -191,12 +212,26 @@ Rectangle<float> EnvelopeMorphControls::linkGroupLabelBounds(
 
 Rectangle<float> EnvelopeMorphControls::axisBounds(Rectangle<float> controls, int axis) const {
     const auto row = morphRow(controls, axis);
-    return { row.getRight() - 52.f, row.getCentreY() - 10.f, 20.f, 20.f };
+    return {
+            row.getRight()
+                    - PropertyControlMetrics::morphKeyboardFocusSlotWidth
+                    - 52.f,
+            row.getCentreY() - 10.f,
+            20.f,
+            20.f
+    };
 }
 
 Rectangle<float> EnvelopeMorphControls::linkBounds(Rectangle<float> controls, int axis) const {
     const auto row = morphRow(controls, axis);
-    return { row.getRight() - 26.f, row.getCentreY() - 10.f, 20.f, 20.f };
+    return {
+            row.getRight()
+                    - PropertyControlMetrics::morphKeyboardFocusSlotWidth
+                    - 26.f,
+            row.getCentreY() - 10.f,
+            20.f,
+            20.f
+    };
 }
 
 Rectangle<float> EnvelopeMorphControls::vertexBounds(Rectangle<float> controls) const {

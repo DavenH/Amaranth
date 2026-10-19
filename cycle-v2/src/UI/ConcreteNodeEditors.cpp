@@ -185,6 +185,7 @@ public:
         state.setProperty("polarityVisible", editor->polarityVisible());
         state.setProperty("phaseMode", editor->phaseModeValue());
         state.setProperty("phaseModeVisible", editor->phaseModeVisible());
+        state.setProperty("focusedMorphAxis", editor->focusedMorphAxis());
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);

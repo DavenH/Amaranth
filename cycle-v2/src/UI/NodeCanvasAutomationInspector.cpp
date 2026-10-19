@@ -584,6 +584,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("selectedNodeIds", selectedNodeIds);
     root->setProperty("selectedNodeCount", selectedNodeIds.size());
     root->setProperty("expandedNodeId", state.expandedNodeId);
+    root->setProperty("sidebarTab", state.sidebarTab);
     root->setProperty("selectedEdgeIndex", state.selectedEdgeIndex);
     root->setProperty("hoveredEdgeIndex", state.hoveredEdgeIndex);
     root->setProperty("documentDirty", context.document.isDirty());

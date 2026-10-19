@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "App/LibraryFavorites.h"
@@ -23,6 +24,10 @@ enum class WorkspaceSidebarTab {
     Patterns,
     Nodes
 };
+
+std::optional<WorkspaceSidebarTab> workspaceSidebarTabForShortcut(
+        const juce::KeyPress& key);
+juce::String workspaceSidebarTabName(WorkspaceSidebarTab tab);
 
 class InlinePresetBrowser final :
         public juce::Component
@@ -103,6 +108,7 @@ private:
     void renameSelected();
     void requestDeleteSelected();
     void deletePreset(const juce::File& file);
+    void focusPresetSearch();
     void updateVisibility();
     void styleTabButton(juce::TextButton& button);
 

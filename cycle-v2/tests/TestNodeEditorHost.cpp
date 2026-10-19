@@ -5,6 +5,7 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/NodeParameterMap.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
@@ -15,6 +16,7 @@
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Envelope/Editor/EnvelopeAxisScaleSelector.h"
+#include "Nodes/Envelope/Editor/EnvelopeEditorComponent.h"
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
@@ -3997,6 +3999,271 @@ TEST_CASE("Clicking an open Trimesh Guide selector dismisses its popup",
     REQUIRE(commands.showTrimeshGuideAttachmentMenu(
             "mesh", "amp", { 100, 100, 40, 30 }));
     REQUIRE_FALSE(commands.hasOpenTrimeshGuideAttachmentMenuFor("mesh", "amp"));
+}
+
+TEST_CASE("Trimesh morph shortcuts focus, reach poles, toggle links, and preserve Space",
+        "[cycle-v2][editor][trimesh][keyboard]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    owner.setBounds(0, 0, 900, 620);
+    owner.addToDesktop(ComponentPeer::windowIsTemporary);
+    owner.setVisible(true);
+
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(
+            NodeKind::TrilinearMesh,
+            "mesh",
+            {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+
+    REQUIRE(host.bind(
+            document.graph().findNode("mesh"),
+            owner.getLocalBounds(),
+            document.revision()));
+    auto* editor = dynamic_cast<TrimeshExpandedEditorComponent*>(host.component());
+    REQUIRE(editor != nullptr);
+    REQUIRE_FALSE(editor->keyPressed(KeyPress(KeyPress::spaceKey)));
+
+    REQUIRE(editor->keyPressed(KeyPress('r')));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+
+    Component focusSink;
+    focusSink.setWantsKeyboardFocus(true);
+    editor->addAndMakeVisible(focusSink);
+    focusSink.grabKeyboardFocus();
+    REQUIRE(focusSink.hasKeyboardFocus(false));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+
+    REQUIRE(owner.getPeer() != nullptr);
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::leftKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.f));
+    REQUIRE(document.undo());
+
+    Component* blueMorph {};
+    for (Component* child : editor->getChildren()) {
+        blueMorph = child->findChildWithID("trimesh.morph.blue");
+        if (blueMorph != nullptr) {
+            break;
+        }
+    }
+    REQUIRE(blueMorph != nullptr);
+    REQUIRE(editor->keyPressed(KeyPress('b')));
+    const float initialBlue = NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("blue", 0.5f);
+    blueMorph->grabKeyboardFocus();
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress('y')));
+    REQUIRE(editor->focusedMorphAxis() == "yellow");
+    REQUIRE(blueMorph->hasKeyboardFocus(false));
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::rightKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("yellow", 0.5f) == Catch::Approx(1.f));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("blue", 0.5f) == Catch::Approx(initialBlue));
+    REQUIRE(editor->focusedMorphAxis() == "yellow");
+    REQUIRE(document.undo());
+
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::downKey)));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::downKey)));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::downKey)));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::upKey)));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::leftKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.f));
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(
+            KeyPress::rightKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.2f));
+    REQUIRE(document.undo());
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.f));
+    REQUIRE(document.undo());
+
+    REQUIRE(editor->keyPressed(KeyPress('r')));
+    Component* redLink {};
+    for (Component* child : editor->getChildren()) {
+        redLink = child->findChildWithID("trimesh.link.red");
+        if (redLink != nullptr) {
+            break;
+        }
+    }
+    REQUIRE(redLink != nullptr);
+    redLink->grabKeyboardFocus();
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(editor->keyPressed(KeyPress('l')));
+    REQUIRE_FALSE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .boolValue("link.red", true));
+    REQUIRE(document.undo());
+
+    REQUIRE(editor->keyPressed(KeyPress('y')));
+    REQUIRE(editor->focusedMorphAxis() == "yellow");
+    REQUIRE(editor->keyPressed(KeyPress('b')));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("blue", 0.5f) == Catch::Approx(1.f));
+}
+
+TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
+        "[cycle-v2][editor][envelope][keyboard]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    owner.setBounds(0, 0, 900, 684);
+    owner.addToDesktop(ComponentPeer::windowIsTemporary);
+    owner.setVisible(true);
+
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    EnvelopeEditorResources resources;
+    NodeEditorCommandService commands(
+            owner,
+            document,
+            dispatcher,
+            presentation,
+            resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+
+    REQUIRE(host.bind(
+            document.graph().findNode("env"),
+            owner.getLocalBounds(),
+            document.revision()));
+    auto* editor = dynamic_cast<EnvelopeEditorComponent*>(host.component());
+    REQUIRE(editor != nullptr);
+    REQUIRE_FALSE(editor->keyPressed(KeyPress(KeyPress::spaceKey)));
+    REQUIRE_FALSE(editor->keyPressed(KeyPress('y')));
+
+    REQUIRE(editor->keyPressed(KeyPress('r')));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    Component* shortcutHint = editor->findChildWithID(
+            "envelopeEditor.morph.shortcuts");
+    Component* shortcutBubble = editor->findChildWithID(
+            "envelopeEditor.morph.shortcuts.bubble");
+    REQUIRE(shortcutHint != nullptr);
+    REQUIRE(shortcutBubble != nullptr);
+    REQUIRE(shortcutHint->isVisible());
+    REQUIRE(shortcutHint->getWidth() == 24);
+    REQUIRE(shortcutHint->getHeight() == 24);
+    REQUIRE_FALSE(shortcutBubble->isVisible());
+    shortcutHint->mouseDown(curvePanelMouseEvent(
+            *shortcutHint,
+            { 12.f, 12.f },
+            ModifierKeys::leftButtonModifier,
+            { 12.f, 12.f },
+            false));
+    REQUIRE_FALSE(shortcutBubble->isVisible());
+    shortcutHint->mouseEnter(curvePanelMouseEvent(
+            *shortcutHint, { 12.f, 12.f }, {}, { 12.f, 12.f }, false));
+    REQUIRE(shortcutBubble->isVisible());
+    REQUIRE(shortcutBubble->getWidth() == 168);
+    REQUIRE(shortcutBubble->getHeight() == 130);
+    REQUIRE(editor->getLocalBounds().contains(shortcutBubble->getBounds()));
+    REQUIRE(shortcutBubble->getBounds().getCentreX()
+            == shortcutHint->getBounds().getCentreX());
+    REQUIRE(shortcutBubble->getDescription().startsWith("R / B"));
+    REQUIRE(shortcutBubble->getDescription().contains(
+            "Shift + Left / Right"));
+    shortcutHint->mouseExit(curvePanelMouseEvent(
+            *shortcutHint, { 25.f, 12.f }, {}, { 12.f, 12.f }, false));
+    REQUIRE_FALSE(shortcutBubble->isVisible());
+
+    Component focusSink;
+    focusSink.setWantsKeyboardFocus(true);
+    editor->addAndMakeVisible(focusSink);
+    focusSink.grabKeyboardFocus();
+    REQUIRE(focusSink.hasKeyboardFocus(false));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+
+    REQUIRE(owner.getPeer() != nullptr);
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::leftKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.f));
+    REQUIRE(document.undo());
+    REQUIRE(host.bind(
+            document.graph().findNode("env"),
+            owner.getLocalBounds(),
+            document.revision()));
+
+    Component* blueMorph = editor->findChildWithID("envelopeEditor.morph.blue");
+    REQUIRE(blueMorph != nullptr);
+    REQUIRE(editor->keyPressed(KeyPress('b')));
+    blueMorph->grabKeyboardFocus();
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(owner.getPeer()->handleKeyPress(KeyPress('r')));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(blueMorph->hasKeyboardFocus(false));
+    REQUIRE(blueMorph->keyPressed(KeyPress(KeyPress::leftKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.f));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("blue", 0.5f) == Catch::Approx(0.5f));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE(document.undo());
+    REQUIRE(host.bind(
+            document.graph().findNode("env"),
+            owner.getLocalBounds(),
+            document.revision()));
+
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::downKey)));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::downKey)));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::upKey)));
+    REQUIRE(editor->focusedMorphAxis() == "red");
+    REQUIRE_FALSE(editor->keyPressed(KeyPress(
+            KeyPress::upKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(editor->keyPressed(KeyPress(
+            KeyPress::rightKey,
+            ModifierKeys::shiftModifier,
+            0)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("red", 0.5f) == Catch::Approx(0.7f));
+    REQUIRE(document.undo());
+    REQUIRE(host.bind(
+            document.graph().findNode("env"),
+            owner.getLocalBounds(),
+            document.revision()));
+
+    REQUIRE(editor->keyPressed(KeyPress('r')));
+    REQUIRE(editor->keyPressed(KeyPress('l')));
+    DynamicObject state;
+    host.appendAutomationState(state);
+    const var effectState = state.getProperty("effect2D");
+    const var panelState = effectState
+            .getProperty("panelState", {});
+    REQUIRE_FALSE((bool) panelState.getProperty("redLinked", true));
+    REQUIRE_FALSE(document.isDirty());
+
+    REQUIRE(editor->keyPressed(KeyPress('b')));
+    REQUIRE(editor->focusedMorphAxis() == "blue");
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::rightKey)));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
+            .floatValue("blue", 0.5f) == Catch::Approx(1.f));
 }
 
 TEST_CASE("Trimesh link toggles survive rebind and undo",

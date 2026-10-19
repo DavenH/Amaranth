@@ -74,6 +74,10 @@ public:
             juce::Rectangle<float> sideArea,
             int axisIndex,
             bool showOutputScale = false);
+    static juce::Rectangle<float> keyboardFocusBounds(
+            juce::Rectangle<float> sideArea,
+            int axisIndex,
+            bool showOutputScale = false);
     static juce::Rectangle<float> outputScaleRowBounds(juce::Rectangle<float> sideArea);
     static juce::Rectangle<float> outputScaleRailBounds(juce::Rectangle<float> sideArea);
     static juce::Rectangle<float> vertexParameterPanelBounds(

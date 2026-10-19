@@ -17,7 +17,6 @@ const Colour kText      { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
 constexpr float kSideInset       = 9.f;
 constexpr float kMorphHeaderH    = 18.f;
-constexpr float kMorphRowHeight  = 31.f;
 constexpr float kAxisButtonSize  = 20.f;
 constexpr float kRowButtonGap    = 6.f;
 constexpr float kVertexGap       = 10.f;
@@ -135,8 +134,9 @@ bool usesWideColumnLayout(Rectangle<float> sideArea) {
 float morphControlsHeight(bool showOutputScale) {
     const float morphHeight = kMorphHeaderH
             + kMorphTopGap
-            + 3.f * kMorphRowHeight
-            + 2.f * 5.f;
+            + 3.f * PropertyControlMetrics::morphRowHeight
+            + 2.f * (PropertyControlMetrics::morphRowStride
+                    - PropertyControlMetrics::morphRowHeight);
     return showOutputScale
             ? morphHeight + kRangeSectionGap + kMorphHeaderH + kRangeTopGap + kRangeRowHeight
             : morphHeight;
@@ -248,9 +248,10 @@ Rectangle<float> axisRowBounds(
 
     return {
             controls.getX(),
-            controls.getY() + (float) axisIndex * (kMorphRowHeight + 5.f),
+            controls.getY()
+                    + (float) axisIndex * PropertyControlMetrics::morphRowStride,
             controls.getWidth(),
-            kMorphRowHeight
+            PropertyControlMetrics::morphRowHeight
     };
 }
 
@@ -755,7 +756,11 @@ Rectangle<float> TrimeshSidePanelRenderer::morphRailBounds(
         bool showOutputScale) {
     auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
     row.removeFromLeft(kAxisLabelW + 10.f);
-    row.removeFromRight(kAxisButtonSize * 2.f + kRowButtonGap * 3.f + 6.f);
+    row.removeFromRight(
+            PropertyControlMetrics::morphKeyboardFocusSlotWidth
+                    + kAxisButtonSize * 2.f
+                    + kRowButtonGap * 3.f
+                    + 6.f);
     return row.withSizeKeepingCentre(jmax(36.f, row.getWidth()), 7.f);
 }
 
@@ -778,7 +783,10 @@ Rectangle<float> TrimeshSidePanelRenderer::primaryAxisBounds(
         bool showOutputScale) {
     auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
     return {
-            row.getRight() - kAxisButtonSize * 2.f - kRowButtonGap * 2.f,
+            row.getRight()
+                    - PropertyControlMetrics::morphKeyboardFocusSlotWidth
+                    - kAxisButtonSize * 2.f
+                    - kRowButtonGap * 2.f,
             row.getCentreY() - kAxisButtonSize * 0.5f,
             kAxisButtonSize,
             kAxisButtonSize
@@ -791,11 +799,23 @@ Rectangle<float> TrimeshSidePanelRenderer::linkToggleBounds(
         bool showOutputScale) {
     auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
     return {
-            row.getRight() - kAxisButtonSize - kRowButtonGap,
+            row.getRight()
+                    - PropertyControlMetrics::morphKeyboardFocusSlotWidth
+                    - kAxisButtonSize
+                    - kRowButtonGap,
             row.getCentreY() - kAxisButtonSize * 0.5f,
             kAxisButtonSize,
             kAxisButtonSize
     };
+}
+
+Rectangle<float> TrimeshSidePanelRenderer::keyboardFocusBounds(
+        Rectangle<float> sideArea,
+        int axisIndex,
+        bool showOutputScale) {
+    return morphKeyboardFocusOutlineBounds(
+            axisRowBounds(sideArea, axisIndex, showOutputScale),
+            linkToggleBounds(sideArea, axisIndex, showOutputScale));
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::outputScaleRowBounds(Rectangle<float> sideArea) {

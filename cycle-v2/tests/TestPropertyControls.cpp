@@ -1,6 +1,8 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
+#include "UI/Editors/MorphKeyboardShortcuts.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertyControls.h"
 #include "UI/Editors/PropertySegmentedSelector.h"
@@ -34,6 +36,73 @@ TEST_CASE("Property slider layout preserves useful travel or switches compact fo
     REQUIRE(compact.track.getY() - (float) compact.label.getBottom() <= 10.f);
     REQUIRE_FALSE(compact.label.intersects(compact.value));
     REQUIRE_FALSE(compact.track.intersects(compact.value.toFloat()));
+}
+
+TEST_CASE("Keyboard focus presentation scopes a morph tuple before its icon",
+        "[cycle-v2][ui][property-controls][keyboard]") {
+    const Rectangle<float> row { 20.f, 30.f, 220.f, 36.f };
+    const Rectangle<float> link { 190.f, 38.f, 20.f, 20.f };
+    const Rectangle<float> outline = morphKeyboardFocusOutlineBounds(row, link);
+    const Rectangle<float> icon = keyboardFocusIndicatorBounds(outline);
+    const Rectangle<float> hitTarget = keyboardFocusIndicatorHitBounds(outline);
+
+    REQUIRE(row.contains(outline));
+    REQUIRE(outline.getX() == Catch::Approx(row.getX() + 1.f));
+    REQUIRE(outline.getRight() == Catch::Approx(link.getRight() + 5.f));
+    REQUIRE(outline.getY() - row.getY() == Catch::Approx(1.f));
+    REQUIRE(row.getBottom() - outline.getBottom() == Catch::Approx(1.f));
+    REQUIRE(icon.getX() - outline.getRight() == Catch::Approx(4.f));
+    REQUIRE(icon.getCentreY() == Catch::Approx(outline.getCentreY()));
+    REQUIRE(icon.getWidth() == Catch::Approx(18.f));
+    REQUIRE(icon.getHeight() == Catch::Approx(13.f));
+    REQUIRE(icon.getWidth() / icon.getHeight() == Catch::Approx(18.f / 13.f));
+    REQUIRE(hitTarget.contains(icon));
+    REQUIRE(hitTarget.getWidth() == Catch::Approx(24.f));
+    REQUIRE(hitTarget.getHeight() == Catch::Approx(24.f));
+    REQUIRE(morphKeyboardShortcutHelpText(true).startsWith("Y / R / B"));
+    REQUIRE(morphKeyboardShortcutHelpText(false).startsWith("R / B"));
+    REQUIRE(morphKeyboardShortcutHelpText(false).contains(
+            "Shift + Left / Right"));
+    REQUIRE(morphKeyboardShortcutHelpText(false).contains("Toggle link"));
+
+    const ModifierKeys shift(ModifierKeys::shiftModifier);
+    REQUIRE(morphStepForKeyboardShortcut(
+            KeyPress(KeyPress::leftKey, shift, 0)).value() == Catch::Approx(-0.2f));
+    REQUIRE(morphStepForKeyboardShortcut(
+            KeyPress(KeyPress::rightKey, shift, 0)).value() == Catch::Approx(0.2f));
+    REQUIRE_FALSE(morphStepForKeyboardShortcut(
+            KeyPress(KeyPress::upKey, shift, 0)).has_value());
+    REQUIRE_FALSE(morphStepForKeyboardShortcut(
+            KeyPress(KeyPress::downKey, shift, 0)).has_value());
+}
+
+TEST_CASE("Envelope morph focus contains the tuple and reserves a trailing icon slot",
+        "[cycle-v2][ui][property-controls][keyboard][geometry]") {
+    const EnvelopeMorphControls controls;
+    const Rectangle<float> area { 0.f, 0.f, 900.f, 310.f };
+
+    for (int axis : { 1, 2 }) {
+        const Rectangle<float> row = controls.morphRow(area, axis);
+        const Rectangle<float> slider = controls.morphSliderBounds(area, axis);
+        const Rectangle<float> axisButton = controls.axisBounds(area, axis);
+        const Rectangle<float> link = controls.linkBounds(area, axis);
+        const Rectangle<float> focus = controls.keyboardFocusBounds(area, axis);
+        const Rectangle<float> icon = keyboardFocusIndicatorBounds(focus);
+
+        REQUIRE(slider.getRight() < axisButton.getX());
+        REQUIRE(focus.contains(axisButton));
+        REQUIRE(focus.contains(link));
+        REQUIRE(focus.getHeight() == Catch::Approx(
+                PropertyControlMetrics::morphRowHeight - 2.f));
+        REQUIRE(icon.getX() > link.getRight());
+        REQUIRE(icon.getRight() <= row.getRight());
+    }
+
+    const Rectangle<float> redFocus = controls.keyboardFocusBounds(area, 1);
+    const Rectangle<float> blueFocus = controls.keyboardFocusBounds(area, 2);
+    REQUIRE(blueFocus.getY() - redFocus.getBottom() == Catch::Approx(
+            PropertyControlMetrics::morphRowStride
+                    - PropertyControlMetrics::morphRowHeight + 2.f));
 }
 
 TEST_CASE("Property group labels establish scope without a surrounding box",

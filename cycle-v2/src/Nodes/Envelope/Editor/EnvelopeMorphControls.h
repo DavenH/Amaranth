@@ -18,6 +18,8 @@ public:
     Rectangle<float> railColumn(Rectangle<float> controls) const;
     Rectangle<float> morphGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> morphRow(Rectangle<float> controls, int axis) const;
+    Rectangle<float> morphSliderBounds(Rectangle<float> controls, int axis) const;
+    Rectangle<float> keyboardFocusBounds(Rectangle<float> controls, int axis) const;
     Rectangle<float> actionBarBounds(Rectangle<float> controls) const;
     Rectangle<float> actionRow(Rectangle<float> controls) const;
     Rectangle<float> markerGroupLabelBounds(Rectangle<float> controls) const;

@@ -760,6 +760,16 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
     return regions;
 }
 
+Rectangle<float> TrimeshWidget::expandedMorphKeyboardFocusBounds(
+        Rectangle<float> content,
+        int axisIndex,
+        bool showOutputScale) {
+    return TrimeshSidePanelRenderer::keyboardFocusBounds(
+            morphPanelBounds(content),
+            axisIndex,
+            showOutputScale);
+}
+
 Colour TrimeshWidget::surfaceColourForDomain(float value, PortDomain domain) {
     return surfaceColourForProfile(value, TrimeshRenderProfile::fromDomain(domain));
 }

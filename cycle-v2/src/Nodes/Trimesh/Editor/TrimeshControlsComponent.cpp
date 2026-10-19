@@ -1,7 +1,13 @@
 #include "Nodes/Trimesh/Editor/TrimeshControlsComponent.h"
 
 #include <algorithm>
+#include <array>
+#include <iterator>
 #include <utility>
+
+#include "UI/Editors/MorphKeyboardShortcutHelp.h"
+#include "UI/Editors/MorphKeyboardShortcuts.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
 
 namespace CycleV2 {
 
@@ -25,6 +31,11 @@ public:
         if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
             setComponentID("trimesh.link." + region.axisValue);
             setTitle("Link " + region.axisValue);
+            setWantsKeyboardFocus(true);
+        }
+        if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
+            setComponentID("trimesh.morph." + region.parameterId);
+            setTitle(region.parameterId + " morph");
             setWantsKeyboardFocus(true);
         }
         if (region.kind == TrimeshExpandedHitRegionKind::OutputScale) {
@@ -53,9 +64,6 @@ public:
                 : "TrimeshControlTarget");
     }
 
-    void paint(Graphics&) override {
-    }
-
     void mouseDown(const MouseEvent& event) override {
         owner.beginControlDrag(region, ownerPosition(event.position), getScreenBounds());
     }
@@ -72,11 +80,6 @@ public:
         if (key.getKeyCode() == KeyPress::spaceKey) {
             return false;
         }
-        if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle
-                && key.getKeyCode() == KeyPress::returnKey) {
-            owner.beginControlDrag(region, region.bounds.getCentre(), getScreenBounds());
-            return true;
-        }
         if (region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
                 && (key.getKeyCode() == KeyPress::upKey
                         || key.getKeyCode() == KeyPress::rightKey
@@ -86,7 +89,26 @@ public:
                     || key.getKeyCode() == KeyPress::rightKey;
             return owner.adjustGuideGainFromKeyboard(region, increases ? 0.01f : -0.01f);
         }
+        if (owner.keyPressed(key)) {
+            return true;
+        }
+        if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle
+                && key.getKeyCode() == KeyPress::returnKey) {
+            owner.beginControlDrag(region, region.bounds.getCentre(), getScreenBounds());
+            return true;
+        }
         return Component::keyPressed(key);
+    }
+
+    void focusGained(FocusChangeType cause) override {
+        if (cause == focusChangedByTabKey) {
+            owner.rememberMorphFocus(region);
+        }
+        owner.repaint();
+    }
+
+    void focusLost(FocusChangeType) override {
+        owner.repaint();
     }
 
 private:
@@ -102,6 +124,10 @@ TrimeshControlsComponent::TrimeshControlsComponent(TrimeshWidget& targetWidget) 
         widget(targetWidget) {
     setOpaque(false);
     setInterceptsMouseClicks(false, true);
+    keyboardShortcutHelp = std::make_unique<MorphKeyboardShortcutHelp>(
+            *this,
+            "trimesh.morph.shortcuts",
+            true);
 }
 
 TrimeshControlsComponent::~TrimeshControlsComponent() = default;
@@ -111,6 +137,9 @@ void TrimeshControlsComponent::setDelegate(TrimeshControlsDelegate* nextDelegate
 }
 
 void TrimeshControlsComponent::setNode(const Node& nextNode) {
+    if (node.id != nextNode.id) {
+        keyboardMorphAxis.clear();
+    }
     node = nextNode;
     updateHitRegions();
 }
@@ -157,8 +186,47 @@ int TrimeshControlsComponent::getVertexGuideAttachmentButtonCount() const {
     return countControlRegions(TrimeshExpandedHitRegionKind::VertexGuideAttachment);
 }
 
+String TrimeshControlsComponent::focusedMorphAxis() const {
+    return keyboardMorphAxis;
+}
+
+void TrimeshControlsComponent::paint(Graphics& graphics) {
+    const String axis = focusedMorphAxis();
+    if (axis.isEmpty()) {
+        return;
+    }
+
+    const int axisIndex = axis == "yellow" ? 0 : axis == "red" ? 1 : 2;
+    paintMorphKeyboardFocus(
+            graphics,
+            TrimeshWidget::expandedMorphKeyboardFocusBounds(
+                    contentBounds,
+                    axisIndex,
+                    widget.showsOutputScale()));
+}
+
 void TrimeshControlsComponent::resized() {
     updateHitRegions();
+}
+
+bool TrimeshControlsComponent::keyPressed(const KeyPress& key) {
+    const String axis = morphAxisForKeyboardShortcut(key);
+    if (axis.isNotEmpty()) {
+        return selectMorphControl(axis);
+    }
+    if (const auto direction = morphAxisNavigationForKeyboardShortcut(key)) {
+        return selectAdjacentMorphControl(*direction);
+    }
+    if (const auto pole = morphPoleForKeyboardShortcut(key)) {
+        return setFocusedMorphTo(*pole);
+    }
+    if (const auto amount = morphStepForKeyboardShortcut(key)) {
+        return adjustFocusedMorphBy(*amount);
+    }
+    if (isMorphLinkKeyboardShortcut(key)) {
+        return toggleFocusedMorphLink();
+    }
+    return false;
 }
 
 MouseCursor TrimeshControlsComponent::cursorFor(Point<float> position) {
@@ -218,6 +286,7 @@ void TrimeshControlsComponent::updateHitRegions() {
     const Rectangle<int> nextContentBounds = contentBounds.toNearestInt();
 
     if (nextContentBounds == lastHitRegionContentBounds && !controlRegions.empty()) {
+        updateKeyboardShortcutHint();
         return;
     }
 
@@ -230,6 +299,7 @@ void TrimeshControlsComponent::updateHitRegions() {
     lastHitRegionContentBounds = nextContentBounds;
 
     if (node.kind != NodeKind::TrilinearMesh || contentBounds.isEmpty()) {
+        updateKeyboardShortcutHint();
         return;
     }
 
@@ -245,6 +315,7 @@ void TrimeshControlsComponent::updateHitRegions() {
         controlRegions.push_back(std::move(component));
     }
     updateControlEnabledStates();
+    updateKeyboardShortcutHint();
 }
 
 int TrimeshControlsComponent::countControlRegions(TrimeshExpandedHitRegionKind kind) const {
@@ -294,6 +365,7 @@ void TrimeshControlsComponent::beginControlDrag(
         const TrimeshExpandedHitRegion& region,
         Point<float> position,
         Rectangle<int> screenArea) {
+    rememberMorphFocus(region);
     float value {};
 
     switch (region.kind) {
@@ -433,6 +505,100 @@ bool TrimeshControlsComponent::adjustGuideGainFromKeyboard(
     delegate->updateTrimeshVertexControlEdit(jlimit(0.f, 1.f, value + amount));
     delegate->endTrimeshVertexControlEdit();
     return true;
+}
+
+void TrimeshControlsComponent::rememberMorphFocus(
+        const TrimeshExpandedHitRegion& region) {
+    String axis;
+    if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
+        axis = region.parameterId;
+    } else if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis
+            || region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
+        axis = region.axisValue;
+    }
+    if (axis.isEmpty() || axis == keyboardMorphAxis) {
+        return;
+    }
+    keyboardMorphAxis = axis;
+    updateKeyboardShortcutHint();
+    repaint();
+}
+
+bool TrimeshControlsComponent::selectMorphControl(const String& axis) {
+    for (size_t index = 0; index < controlRegions.size(); ++index) {
+        const auto& region = controlHitRegions[index];
+        if (region.kind != TrimeshExpandedHitRegionKind::MorphControl
+                || region.parameterId != axis) {
+            continue;
+        }
+        keyboardMorphAxis = axis;
+        updateKeyboardShortcutHint();
+        repaint();
+        return true;
+    }
+    return false;
+}
+
+bool TrimeshControlsComponent::selectAdjacentMorphControl(int direction) {
+    const std::array<String, 3> axes {
+            String("yellow"),
+            String("red"),
+            String("blue")
+    };
+    const auto current = std::find(axes.begin(), axes.end(), focusedMorphAxis());
+    const int currentIndex = current == axes.end()
+            ? (direction < 0 ? static_cast<int>(axes.size()) : -1)
+            : static_cast<int>(std::distance(axes.begin(), current));
+    const int nextIndex = jlimit(
+            0,
+            static_cast<int>(axes.size()) - 1,
+            currentIndex + direction);
+    return selectMorphControl(axes[(size_t) nextIndex]);
+}
+
+bool TrimeshControlsComponent::setFocusedMorphTo(float value) {
+    const String axis = focusedMorphAxis();
+    if (axis.isEmpty() || delegate == nullptr) {
+        return false;
+    }
+    delegate->beginTrimeshMorphControlEdit(axis, value);
+    delegate->endTrimeshMorphControlEdit();
+    return true;
+}
+
+bool TrimeshControlsComponent::adjustFocusedMorphBy(float amount) {
+    const String axis = focusedMorphAxis();
+    if (axis.isEmpty() || delegate == nullptr) {
+        return false;
+    }
+    const float value = delegate->trimeshMorphControlValue(axis);
+    return setFocusedMorphTo(jlimit(0.f, 1.f, value + amount));
+}
+
+bool TrimeshControlsComponent::toggleFocusedMorphLink() {
+    const String axis = focusedMorphAxis();
+    if (axis.isEmpty() || delegate == nullptr) {
+        return false;
+    }
+    delegate->toggleTrimeshLinkAxis(axis);
+    return true;
+}
+
+void TrimeshControlsComponent::updateKeyboardShortcutHint() {
+    const String axis = focusedMorphAxis();
+    if (axis.isEmpty()
+            || node.kind != NodeKind::TrilinearMesh
+            || contentBounds.isEmpty()) {
+        keyboardShortcutHelp->hide();
+        return;
+    }
+
+    const int axisIndex = axis == "yellow" ? 0 : axis == "red" ? 1 : 2;
+    const Rectangle<float> focus = TrimeshWidget::expandedMorphKeyboardFocusBounds(
+            contentBounds,
+            axisIndex,
+            widget.showsOutputScale());
+    keyboardShortcutHelp->setAnchorBounds(focus);
 }
 
 }

@@ -28,6 +28,9 @@ constexpr float visibleTrackHeight = 4.f;
 constexpr float thumbWidth = 8.f;
 constexpr float indicatorWidth = 1.5f;
 constexpr float indicatorHeight = 17.f;
+constexpr float morphRowHeight = 36.f;
+constexpr float morphRowStride = 44.f;
+constexpr float morphKeyboardFocusSlotWidth = 24.f;
 
 }
 
@@ -119,6 +122,8 @@ juce::var propertyGroupLabelAutomationState(const PropertyGroupLabel& label);
 class PrecisionSlider final : public juce::Slider {
 public:
     using KeyboardStepper = std::function<double(double, bool, bool)>;
+    using KeyboardTargetHandler = std::function<void()>;
+    using KeyboardShortcutHandler = std::function<bool(const juce::KeyPress&)>;
     using ValueSnapper = std::function<double(double, DragMode)>;
 
     struct Landmark {
@@ -131,12 +136,17 @@ public:
 
     void setKeyboardSteps(double ordinary, double fine);
     void setKeyboardStepper(KeyboardStepper stepper);
+    void setKeyboardTargetHandler(KeyboardTargetHandler handler);
+    void setKeyboardShortcutHandler(KeyboardShortcutHandler handler);
     void setValueSnapper(ValueSnapper snapper);
     void setLandmarks(std::vector<Landmark> landmarks);
     void setTrackEndInset(float inset);
     void setMorphPresentation(juce::Colour accent);
+    void setValueFromKeyboard(double value);
     float getTrackEndInset() const { return trackEndInset; }
     juce::Rectangle<float> visibleTrackBounds() const;
+    void mouseDown(const juce::MouseEvent& event) override;
+    void focusGained(juce::Component::FocusChangeType cause) override;
     bool keyPressed(const juce::KeyPress& key) override;
     double snapValue(double attemptedValue, DragMode dragMode) override;
     void paint(juce::Graphics& graphics) override;
@@ -147,6 +157,8 @@ private:
     double ordinaryKeyboardStep { 0.01 };
     double fineKeyboardStep { 0.001 };
     KeyboardStepper keyboardStepper;
+    KeyboardTargetHandler keyboardTargetHandler;
+    KeyboardShortcutHandler keyboardShortcutHandler;
     ValueSnapper valueSnapper;
     std::vector<Landmark> landmarks;
     std::optional<juce::Colour> morphAccent;

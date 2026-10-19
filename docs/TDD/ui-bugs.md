@@ -1,5 +1,39 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved: Morph shortcut help required clicks before hover
+
+On 2026-10-19, the morph shortcut card failed on a fresh native hover and began
+working only after mouse clicks. The helper used a zero-delay JUCE
+`TooltipWindow`, but that class still polls every 123 ms, suppresses display at
+the last mouse-down position, and retains post-dismissal state. Cycle V2 also
+had multiple tooltip windows listening over the same editor area, while its
+synthetic pointer fixture bypassed the real `MouseInputSource` entirely.
+
+The shortcut card now uses native component enter/exit events with a passive
+JUCE `BubbleComponent` plus a target-local 60 Hz reconciliation timer for the
+OpenGL-attached peer's missed entry event. The redundant Envelope-local tooltip
+window was removed, and `NodeCanvas` remains the single owner of conventional
+delayed tooltips. The broader findings and validation rules are recorded in
+`docs/TDD/cycle-v2-hover-interaction-audit.md`. Status: resolved; native
+pre-click hover and pointer-leave dismissal were verified from a fresh process.
+Artifact: `.context/native-morph-hover-final-crop.png`.
+
+## P2: Full CTest run has broad pre-existing Cycle V2 failures
+
+On 2026-10-18, `ctest --test-dir build/tests -V` passed 1,267 of 1,353 tests
+while contextual-keyboard work was under verification. The 86 unrelated
+failures span previously recorded preset-fixture, Trimesh model/guide, graph
+audio, and spectral-reference issues. Four cases ended in `SIGSEGV`, including
+`A Trimesh vertex edit has a localized canonical JSON diff` and
+`Trimesh node model preserves live mesh pointers for equivalent publications`.
+The canonical-JSON case reproduces in isolation at
+`TestGraphSerializer.cpp:652` (exit 139).
+The four new `[keyboard]` cases pass within the focused 26-case keyboard suite
+(454 assertions), and the 45-command UI fixture passes. Artifact:
+`build/tests/Testing/Temporary/LastTest.log`; failed-case index:
+`build/tests/Testing/Temporary/LastTestsFailed.log`. Status: open and unrelated;
+continue tracking the existing broad-suite baseline separately.
+
 ## P3: Broad automation suites contain stale fixture expectations
 
 On 2026-10-18, the coordinated Cycle 2 smoke suite passed 10 of 13 fixtures.
@@ -638,6 +672,16 @@ On 2026-10-12, running the isolated zero-octave paint test produced JUCE
 after the assertion itself passed. The test now uses
 `ScopedJuceInitialiser_GUI`; rerunning the compact-editor test group passed
 without shutdown assertions. Current status: addressed.
+
+## P3: Trimesh pointer-ownership test cannot resolve its centre vertex
+
+On 2026-10-18, the focused `CycleV2_tests` case "Trimesh controls own expanded
+pointer interaction" failed reproducibly at `TestTrimeshNodeDsp.cpp:3353`:
+`findVertexSelectionAt` returned false for the centre of the expanded wave
+panel. The preceding control-routing assertions pass, and the contextual morph
+keyboard suite plus the app fixture pass. Current status: open and incidental
+to the keyboard-focus work; stabilize the test mesh/panel selection fixture or
+correct the hit-test expectation.
 
 ## P3: Background Cycle V2 comparison GL assertion can precede first render
 

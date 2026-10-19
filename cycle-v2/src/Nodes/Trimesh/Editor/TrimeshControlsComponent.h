@@ -10,11 +10,14 @@
 
 namespace CycleV2 {
 
+class MorphKeyboardShortcutHelp;
+
 class TrimeshControlsDelegate {
 public:
     virtual ~TrimeshControlsDelegate() = default;
     virtual void setTrimeshPrimaryAxis(const juce::String& axis) = 0;
     virtual void toggleTrimeshLinkAxis(const juce::String& axis) = 0;
+    virtual float trimeshMorphControlValue(const juce::String& id) const = 0;
     virtual void beginTrimeshMorphControlEdit(const juce::String& id, float value) = 0;
     virtual void updateTrimeshMorphControlEdit(float value) = 0;
     virtual void endTrimeshMorphControlEdit() = 0;
@@ -48,6 +51,7 @@ public:
     int getVertexParameterSliderCount() const;
     int getVertexGuideGainKnobCount() const;
     int getVertexGuideAttachmentButtonCount() const;
+    juce::String focusedMorphAxis() const;
 
     juce::MouseCursor cursorFor(juce::Point<float> position);
     void beginPointerInteraction(
@@ -56,7 +60,9 @@ public:
     void continuePointerInteraction(juce::Point<float> position);
     void endPointerInteraction();
 
+    void paint(juce::Graphics& graphics) override;
     void resized() override;
+    bool keyPressed(const juce::KeyPress& key) override;
 
 private:
     class ControlTarget;
@@ -81,6 +87,13 @@ private:
     bool adjustGuideGainFromKeyboard(
             const TrimeshExpandedHitRegion& region,
             float amount);
+    void rememberMorphFocus(const TrimeshExpandedHitRegion& region);
+    bool selectMorphControl(const juce::String& axis);
+    bool selectAdjacentMorphControl(int direction);
+    bool setFocusedMorphTo(float value);
+    bool adjustFocusedMorphBy(float amount);
+    bool toggleFocusedMorphLink();
+    void updateKeyboardShortcutHint();
     bool isControlEnabled(const TrimeshExpandedHitRegion& region) const;
     void updateControlEnabledStates();
 
@@ -88,11 +101,13 @@ private:
     TrimeshControlsDelegate* delegate {};
     Node node;
     DragTarget dragTarget { DragTarget::None };
+    juce::String keyboardMorphAxis;
     juce::String activeParameterId;
     float guideGainDragStartY {};
     float guideGainDragStartValue {};
     juce::Rectangle<float> contentBounds;
     juce::Rectangle<int> lastHitRegionContentBounds;
+    std::unique_ptr<MorphKeyboardShortcutHelp> keyboardShortcutHelp;
     std::vector<TrimeshExpandedHitRegion> controlHitRegions;
     std::vector<std::unique_ptr<ControlTarget>> controlRegions;
 

@@ -35,6 +35,8 @@
 #include "Nodes/Trimesh/Rendering/OutputScaleControlRenderer.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/Editors/PropertyControls.h"
 
 #include <App/SingletonRepo.h>
 #include <Audio/CycleDsp/OscillatorLaneRasterizer.h>
@@ -171,14 +173,19 @@ class RecordingTrimeshControlsDelegate final : public TrimeshControlsDelegate {
 public:
     void setTrimeshPrimaryAxis(const String& axis) override { primaryAxis = axis; }
     void toggleTrimeshLinkAxis(const String& axis) override { linkedAxis = axis; }
+    float trimeshMorphControlValue(const String&) const override { return morphValue; }
 
     void beginTrimeshMorphControlEdit(const String& id, float value) override {
         activeParameter = id;
         beginValue = value;
+        morphValue = value;
         ++morphBeginCount;
     }
 
-    void updateTrimeshMorphControlEdit(float value) override { updateValue = value; }
+    void updateTrimeshMorphControlEdit(float value) override {
+        updateValue = value;
+        morphValue = value;
+    }
     void endTrimeshMorphControlEdit() override { ++morphEndCount; }
 
     void beginTrimeshOutputScaleControlEdit(const String& id, float value) override {
@@ -214,6 +221,7 @@ public:
     int selectedVertex { -1 };
     float beginValue {};
     float updateValue {};
+    float morphValue { 0.5f };
     String activeParameter;
     String primaryAxis;
     String linkedAxis;
@@ -1366,6 +1374,9 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
                 TrimeshSidePanelRenderer::primaryAxisBounds(sideArea, i, true);
         const Rectangle<float> link =
                 TrimeshSidePanelRenderer::linkToggleBounds(sideArea, i, true);
+        const Rectangle<float> focus =
+                TrimeshSidePanelRenderer::keyboardFocusBounds(sideArea, i, true);
+        const Rectangle<float> icon = keyboardFocusIndicatorBounds(focus);
 
         REQUIRE(sideArea.contains(morphRail));
         REQUIRE(morphRail.getWidth() >= 96.f);
@@ -1373,7 +1384,21 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
         REQUIRE(sideArea.contains(link));
         REQUIRE(primary.getWidth() == Catch::Approx(link.getWidth()));
         REQUIRE(primary.getHeight() == Catch::Approx(link.getHeight()));
+        REQUIRE(focus.contains(primary));
+        REQUIRE(focus.contains(link));
+        REQUIRE(focus.getHeight() == Catch::Approx(
+                PropertyControlMetrics::morphRowHeight - 2.f));
+        REQUIRE(icon.getX() > link.getRight());
+        REQUIRE(icon.getRight() <= sideArea.getRight());
     }
+
+    const Rectangle<float> yellowFocus =
+            TrimeshSidePanelRenderer::keyboardFocusBounds(sideArea, 0, true);
+    const Rectangle<float> redFocus =
+            TrimeshSidePanelRenderer::keyboardFocusBounds(sideArea, 1, true);
+    REQUIRE(redFocus.getY() - yellowFocus.getBottom() == Catch::Approx(
+            PropertyControlMetrics::morphRowStride
+                    - PropertyControlMetrics::morphRowHeight + 2.f));
 
     for (int i = 0; i < 3; ++i) {
         const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
@@ -3430,7 +3455,29 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     REQUIRE(controls.getVertexParameterSliderCount() == 6);
     REQUIRE(controls.getVertexGuideGainKnobCount() == 6);
     REQUIRE(controls.getVertexGuideAttachmentButtonCount() == 6);
-    REQUIRE(controls.getNumChildComponents() == 28);
+    REQUIRE(controls.getNumChildComponents() == 30);
+    Component* shortcutHint = controls.findChildWithID("trimesh.morph.shortcuts");
+    Component* shortcutBubble = controls.findChildWithID(
+            "trimesh.morph.shortcuts.bubble");
+    REQUIRE(shortcutHint != nullptr);
+    REQUIRE(shortcutBubble != nullptr);
+    REQUIRE_FALSE(shortcutHint->isVisible());
+    REQUIRE_FALSE(shortcutBubble->isVisible());
+    REQUIRE(controls.keyPressed(KeyPress('r')));
+    REQUIRE(shortcutHint->isVisible());
+    REQUIRE(shortcutHint->getWidth() == 24);
+    REQUIRE(shortcutHint->getHeight() == 24);
+    shortcutHint->mouseMove(panelMouseEvent(
+            *shortcutHint, { 12.f, 12.f }, {}, { 12.f, 12.f }, false));
+    REQUIRE(shortcutBubble->isVisible());
+    REQUIRE(controls.getLocalBounds().contains(shortcutBubble->getBounds()));
+    REQUIRE(shortcutBubble->getBounds().getCentreX()
+            == shortcutHint->getBounds().getCentreX());
+    REQUIRE(shortcutBubble->getDescription().startsWith("Y / R / B"));
+    REQUIRE(shortcutBubble->getDescription().contains("Toggle link"));
+    shortcutHint->mouseExit(panelMouseEvent(
+            *shortcutHint, { 25.f, 12.f }, {}, { 12.f, 12.f }, false));
+    REQUIRE_FALSE(shortcutBubble->isVisible());
     Component* link = controls.findChildWithID("trimesh.link.red");
     REQUIRE(link != nullptr);
     REQUIRE_FALSE(link->keyPressed(KeyPress(' ')));

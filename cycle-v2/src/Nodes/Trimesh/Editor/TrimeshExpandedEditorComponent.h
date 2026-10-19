@@ -70,6 +70,8 @@ public:
     void mouseDown(const juce::MouseEvent& event) override;
     void mouseDrag(const juce::MouseEvent& event) override;
     void mouseUp(const juce::MouseEvent& event) override;
+    bool keyPressed(const juce::KeyPress& key) override;
+    juce::String focusedMorphAxis() const;
 
 private:
     juce::Rectangle<float> closeButtonBounds() const;
@@ -89,6 +91,7 @@ private:
     void setLocalMorphValue(const juce::String& id, float value);
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
     void toggleTrimeshLinkAxis(const juce::String& axis) override;
+    float trimeshMorphControlValue(const juce::String& id) const override;
     void beginTrimeshMorphControlEdit(const juce::String& id, float value) override;
     void updateTrimeshMorphControlEdit(float value) override;
     void endTrimeshMorphControlEdit() override;
