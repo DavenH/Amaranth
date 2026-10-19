@@ -100,6 +100,26 @@ bool scratchSourceEnabled(
     return true;
 }
 
+void applyTrimeshParameters(
+        TrimeshConfiguration& configuration,
+        const std::vector<NodeParameter>& parameters) {
+    const NodeParameterMap parameterMap(parameters);
+    configuration.enabled = parameterMap.boolValue("enabled", true);
+    configuration.gain = CycleDsp::outputGain(parameterMap.floatValue("gain", 0.5f));
+    configuration.range = parameterMap.floatValue("range", 0.5f);
+    configuration.phaseVelocity = parameterMap.stringValue("phaseMode", "absolute")
+            == "velocity";
+    configuration.bipolar = TrimeshSignalSemantics::isBipolar(parameters);
+    configuration.morph = {
+            parameterMap.floatValue("yellow", 0.5f),
+            parameterMap.floatValue("red", 0.5f),
+            parameterMap.floatValue("blue", 0.5f)
+    };
+    const String axis = parameterMap.stringValue("primaryAxis", "yellow");
+    configuration.primaryViewAxis = axis == "red" ? Vertex::Red
+            : (axis == "blue" ? Vertex::Blue : Vertex::Time);
+}
+
 std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model,
@@ -114,13 +134,7 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
     if (typedModel == nullptr) {
         return {};
     }
-    const NodeParameterMap parameterMap(parameters);
-    configuration->enabled = parameterMap.boolValue("enabled", true);
-    configuration->gain = CycleDsp::outputGain(parameterMap.floatValue("gain", 0.5f));
-    configuration->range = parameterMap.floatValue("range", 0.5f);
-    configuration->phaseVelocity = parameterMap.stringValue("phaseMode", "absolute")
-            == "velocity";
-    configuration->bipolar = TrimeshSignalSemantics::isBipolar(parameters);
+    applyTrimeshParameters(*configuration, parameters);
     configuration->scratchSourceEnabled = scratchSourceEnabled(
             graph,
             nodeId,
@@ -138,17 +152,22 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
             configuration->guideAssignmentCount = guides.assignmentCount;
         }
     }
-    configuration->morph = {
-            parameterMap.floatValue("yellow", 0.5f),
-            parameterMap.floatValue("red", 0.5f),
-            parameterMap.floatValue("blue", 0.5f)
-    };
-    const String axis = parameterMap.stringValue("primaryAxis", "yellow");
-    configuration->primaryViewAxis = axis == "red" ? Vertex::Red
-            : (axis == "blue" ? Vertex::Blue : Vertex::Time);
     return configuration;
 }
 
+}
+
+std::shared_ptr<const INodeDspConfiguration>
+NodeDspConfigurationFactory::refreshTrimeshParameters(
+        const std::vector<NodeParameter>& parameters,
+        const INodeDspConfiguration* previous) {
+    const auto* configuration = dynamic_cast<const TrimeshConfiguration*>(previous);
+    if (configuration == nullptr || configuration->role() != AudioModuleRole::MeshSource) {
+        return {};
+    }
+    auto refreshed = std::make_shared<TrimeshConfiguration>(*configuration);
+    applyTrimeshParameters(*refreshed, parameters);
+    return refreshed;
 }
 
 String NodeDspConfigurationFactory::keyFor(

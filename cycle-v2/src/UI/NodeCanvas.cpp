@@ -1434,6 +1434,12 @@ void NodeCanvas::newOpenGLContextCreated() {
 void NodeCanvas::renderOpenGL() {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Frame::OpenGlRender);
+    {
+        const juce::ScopedLock lock(comparisonRenderLock);
+        if (comparisonRenderCallback) {
+            comparisonRenderCallback((float) openGLContext.getRenderingScale());
+        }
+    }
     if (kUseGlCanvasUnderlay) {
         gl::glDisable(gl::GL_SCISSOR_TEST);
         OpenGLHelpers::clear(CanvasChromePalette::canvasBackground);
@@ -1458,6 +1464,12 @@ void NodeCanvas::renderOpenGL() {
 
 void NodeCanvas::openGLContextClosing() {
     ++openGlContextCloseCount;
+    {
+        const juce::ScopedLock lock(comparisonRenderLock);
+        if (comparisonGlClosingCallback) {
+            comparisonGlClosingCallback();
+        }
+    }
     editorCoordinator.releaseOpenGLResources();
     guideEditorCoordinator.releaseOpenGLResources();
 
@@ -1931,6 +1943,13 @@ void NodeCanvas::refreshCompiledStateAsync(
         safeThis->openGLContext.triggerRepaint();
         safeThis->refreshProbeDetail();
         safeThis->requestCanvasRepaint();
+        if (safeThis->comparisonRefreshPending
+                && !safeThis->commands.hasTransientEdit()) {
+            safeThis->comparisonRefreshPending = false;
+            if (safeThis->comparisonRefreshCallback) {
+                safeThis->comparisonRefreshCallback();
+            }
+        }
     };
     if (snapshot != nullptr) {
         presentation.refreshAsync(
@@ -2234,7 +2253,14 @@ void NodeCanvas::fitDocumentInViewport() {
 }
 
 var NodeCanvas::exportAutomationState() const {
-    return automation.exportState(automationPresentationState());
+    var state = automation.exportState(automationPresentationState());
+    if (auto* object = state.getDynamicObject()) {
+        object->setProperty("comparisonRefreshPending", comparisonRefreshPending);
+        object->setProperty("presentationGraphRevision",
+                (int64) presentation.snapshot().graphRevision);
+        object->setProperty("documentGraphRevision", (int64) document.revision());
+    }
+    return state;
 }
 
 String NodeCanvas::exportGraphJson() const {
@@ -3182,12 +3208,27 @@ void NodeCanvas::finishNodeEditorGesture(
         return;
     }
     notifyGraphDocumentStateChanged();
+    const Node* editedNode = graph.findNode(nodeId);
+    if (editedNode != nullptr && editedNode->kind == NodeKind::TrilinearMesh
+            && !document.presentation().comparisonSpyPins.empty()) {
+        if (presentation.prepareProbeCaptureForNode(graph, nodeId)) {
+            comparisonRefreshPending = false;
+            if (comparisonRefreshCallback) {
+                comparisonRefreshCallback();
+            }
+        } else {
+            comparisonRefreshPending = true;
+        }
+    }
     if (localField.isNotEmpty()) {
         presentation.commitLocalEditorState(
                 nodeId,
                 localField,
                 finished.effectiveFingerprint,
                 graphDocument.revision());
+        if (comparisonRefreshPending) {
+            refreshCompiledStateAsync(PresentationRefreshScope::Downstream);
+        }
         return;
     }
 

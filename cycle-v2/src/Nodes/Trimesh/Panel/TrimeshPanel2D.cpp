@@ -7,6 +7,7 @@
 #include <Util/LogRegions.h>
 
 #include <cmath>
+#include <utility>
 
 #include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
 #include "UI/MeshEditorPresentation.h"
@@ -52,6 +53,24 @@ void TrimeshPanel2D::panelResized() {
     updateNameTexturePos();
     updateBackground();
     doExtraResized();
+}
+
+void TrimeshPanel2D::zoomUpdated(int updateSource) {
+    Panel2D::zoomUpdated(updateSource);
+    if (zoomChangedCallback != nullptr) {
+        zoomChangedCallback(false);
+    }
+}
+
+void TrimeshPanel2D::doZoomExtra(bool commandDown) {
+    Panel2D::doZoomExtra(commandDown);
+    if (zoomChangedCallback != nullptr) {
+        zoomChangedCallback(true);
+    }
+}
+
+void TrimeshPanel2D::setZoomChangedCallback(std::function<void(bool)> callback) {
+    zoomChangedCallback = std::move(callback);
 }
 
 void TrimeshPanel2D::setDisplayDomain(PortDomain domain) {
@@ -158,7 +177,7 @@ void TrimeshPanel2D::drawSpectralPartials() {
     for (int i = 0; i < count - 1; ++i) {
         const float spacing = positions[i + 1] - positions[i];
         const float gap = jmax(1.f, jmin(3.5f, spacing * 0.25f));
-        const float left = positions[i] + gap * 0.5f;
+        const float left = positions[i] + (i == 0 ? 0.f : gap * 0.5f);
         const float right = positions[i + 1] - gap * 0.5f;
         if (right - left < 2.f) {
             denseStart = i;

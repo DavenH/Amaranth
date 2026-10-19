@@ -13,10 +13,9 @@
 
 namespace CycleV2 {
 
-TrimeshPanel3D::TrimeshPanel3D(SingletonRepo* repo, TrimeshPanelDataSource& source) :
+TrimeshPanel3D::TrimeshPanel3D(SingletonRepo* repo, Panel3D::DataRetriever& source) :
         SingletonAccessor  (repo, "CycleV2TrimeshPanel3D")
-    ,   Panel3D            (repo, "CycleV2TrimeshPanel3D", &source, 0, false, true)
-    ,   dataSource         (source) {
+    ,   Panel3D            (repo, "CycleV2TrimeshPanel3D", &source, 0, false, true) {
     applyGradientForProfile();
     volumeScale = 1.f;
     volumeTrans = 0.f;
@@ -31,6 +30,24 @@ void TrimeshPanel3D::panelResized() {
     updateNameTexturePos();
     updateBackground();
     doExtraResized();
+}
+
+void TrimeshPanel3D::zoomUpdated(int updateSource) {
+    Panel3D::zoomUpdated(updateSource);
+    if (zoomChangedCallback != nullptr) {
+        zoomChangedCallback(false);
+    }
+}
+
+void TrimeshPanel3D::doZoomExtra(bool commandDown) {
+    Panel3D::doZoomExtra(commandDown);
+    if (zoomChangedCallback != nullptr) {
+        zoomChangedCallback(true);
+    }
+}
+
+void TrimeshPanel3D::setZoomChangedCallback(std::function<void(bool)> callback) {
+    zoomChangedCallback = std::move(callback);
 }
 
 void TrimeshPanel3D::updateBackground(bool onlyVerticalBackground) {
@@ -117,6 +134,10 @@ void TrimeshPanel3D::setDisplayDomain(PortDomain domain) {
 }
 
 bool TrimeshPanel3D::getScalarSurfaceMaterial(ScalarSurfaceMaterial& material) const {
+    if (renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal) {
+        return false;
+    }
+
     material = renderProfile.getSurfaceStyle().surfaceMaterial();
     return true;
 }

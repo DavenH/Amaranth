@@ -64,7 +64,8 @@ public:
             const std::vector<float>& source,
             size_t columns,
             size_t rows,
-            int midiNote = 48) const;
+            int midiNote = 48,
+            float sourceGain = 1.f) const;
     std::vector<float> mapTrimeshValuesToDisplay(
             const std::vector<float>& source) const;
     std::vector<float> mapPitchColumnsToDisplay(

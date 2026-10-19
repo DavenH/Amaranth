@@ -36,6 +36,10 @@ public:
 
     void setDelegate(TrimeshPanelHostDelegate* delegate);
     void clearDelegate(TrimeshPanelHostDelegate* delegate);
+    void configureFrequencyViewport(
+            Range<float> limits,
+            float defaultStart,
+            bool enteringMagnitude);
     void initialiseSharedGlResources();
     void releaseSharedGlResources();
     void renderPanel3D(Rectangle<float> bounds, float scaleFactor);
@@ -54,6 +58,9 @@ private:
     PanelHostCallbacks createPanelHostCallbacks();
     void initialisePanel3DHost();
     void initialisePanel2DHost();
+    void frequencyZoomChanged(bool from2D, bool sourceNeedsRefresh);
+    bool applyFrequencyViewportTo2D();
+    bool applyFrequencyViewportTo3D();
     void renderPanel(Panel& panel, Rectangle<float> bounds, float scaleFactor);
     void requestPanelInvalidation(Panel* panel, PanelDirtyState::Flag flag);
     uint32_t availableRenderInvalidations() const override;
@@ -71,6 +78,11 @@ private:
     CommonGL* panel3DGfx {};
     TrimeshPanelHostDelegate* delegate {};
     RenderInvalidationAccumulator invalidation;
+    Range<float> frequencyLimits { 0.f, 1.f };
+    float frequencyStart {};
+    float frequencyWidth { 1.f };
+    bool frequencyZoomCustomized {};
+    bool synchronizingFrequencyZoom {};
     bool panel3DHostInitialised {};
     bool panel2DHostInitialised {};
     std::atomic<bool> sharedGlResourcesInitialised {};

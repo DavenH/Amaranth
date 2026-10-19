@@ -102,8 +102,8 @@ void ZoomPanel::setBounds(int x, int y, int width, int height) {
 void ZoomPanel::resized() {
     const int width = getWidth();
     const int height = getHeight();
-    int panelWidth  = width  - (context.haveVert ? scrollbarWidth : 0);
-    int panelHeight = height - (context.haveHorz ? scrollbarWidth : 0);
+    int panelWidth  = width  - (context.haveVert && scrollbarsVisible ? scrollbarWidth : 0);
+    int panelHeight = height - (context.haveHorz && scrollbarsVisible ? scrollbarWidth : 0);
     context.bounded->setBounds(0, 0, panelWidth, panelHeight);
 
     if(context.haveHorz) {
@@ -113,6 +113,16 @@ void ZoomPanel::resized() {
     if(context.haveVert) {
         vert.setBounds(width - scrollbarWidth, 0, scrollbarWidth, height);
     }
+}
+
+void ZoomPanel::setScrollbarsVisible(bool visible) {
+    if (scrollbarsVisible == visible) {
+        return;
+    }
+    scrollbarsVisible = visible;
+    horz.setVisible(visible && context.haveHorz);
+    vert.setVisible(visible && context.haveVert);
+    resized();
 }
 
 void ZoomPanel::mouseEnter(const MouseEvent& e) {

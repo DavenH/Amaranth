@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <Audio/AudioCallbackCapture.h>
+#include <Audio/PitchedSample.h>
 
 #include "Runtime/RealtimeGraphRenderer.h"
 
@@ -42,6 +43,11 @@ public:
     juce::var audioPerformance();
     void resetAudioPerformance();
     LiveCapture captureLiveAudio(int durationMs);
+    bool startReferenceAudition(const PitchedSample& sample);
+    void stopReferenceAudition();
+    bool isReferenceAuditioning() const {
+        return referencePlaying.load(std::memory_order_acquire);
+    }
 
     bool enqueueMidiMessage(
             const juce::MidiMessage& message,
@@ -75,6 +81,10 @@ private:
     void timerCallback() override;
     void adoptPendingGraph();
     void reclaimGraph(PreparedGraph* graph);
+    void renderReferenceAudition(
+            float* const* outputChannelData,
+            int outputChannelCount,
+            int frameCount);
     double currentTimeSeconds() const;
 
     std::unique_ptr<juce::PropertiesFile> deviceProperties;
@@ -89,6 +99,19 @@ private:
     std::atomic<PreparedGraph*> pendingGraph {};
     std::atomic<PreparedGraph*> retiredGraph {};
     PreparedGraph* activeGraph {};
+
+    struct PreparedReference {
+        juce::String sourcePath;
+        double outputSampleRate {};
+        std::vector<float> left;
+        std::vector<float> right;
+    };
+    std::vector<std::unique_ptr<PreparedReference>> referenceOwners;
+    std::atomic<PreparedReference*> pendingReference {};
+    PreparedReference* activeReference {};
+    size_t referencePosition {};
+    std::atomic<bool> referenceStopRequested {};
+    std::atomic<bool> referencePlaying {};
 
     std::atomic<bool> ready {};
     std::atomic<double> currentSampleRate { 44100.0 };

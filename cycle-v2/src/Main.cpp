@@ -53,10 +53,12 @@ public:
     public:
         enum Command : CommandID {
             CommandOpenGraph = 0x3000,
+            CommandImportWaveReference,
             CommandSaveGraph,
             CommandSaveGraphAs,
             CommandSpyRefreshOnRelease,
             CommandSpyRefreshLive,
+            CommandToggleComparisonShelf,
             TimeSurfaceFirst = 0x3100,
             SpectralSurfaceFirst = 0x3200,
             SpectralSurfaceDefault = 0x32ff
@@ -162,6 +164,7 @@ public:
 
             if (menuIndex == 0) {
                 menu.addCommandItem(&commandManager, CommandOpenGraph);
+                menu.addCommandItem(&commandManager, CommandImportWaveReference);
 
                 PopupMenu recentMenu;
                 if (fileHistory.addRecentMenuItems(recentMenu) > 0) {
@@ -182,6 +185,8 @@ public:
                 menu.addSeparator();
                 menu.addSubMenu("Spy Refresh", spyRefreshMenu);
             } else if (menuIndex == 1) {
+                menu.addCommandItem(&commandManager, CommandToggleComparisonShelf);
+                menu.addSeparator();
                 auto timeSurfaceMenu = TimeSurfaceStyles::menu(workspace->timeSurfaceStyle(), TimeSurfaceFirst);
                 menu.addSubMenu("Time Surface Colour", timeSurfaceMenu);
                 auto spectralSurfaceMenu = TimeSurfaceStyles::menu(
@@ -220,10 +225,12 @@ public:
         void getAllCommands(Array<CommandID>& commands) override {
             commands.addArray({
                     CommandOpenGraph,
+                    CommandImportWaveReference,
                     CommandSaveGraph,
                     CommandSaveGraphAs,
                     CommandSpyRefreshOnRelease,
-                    CommandSpyRefreshLive
+                    CommandSpyRefreshLive,
+                    CommandToggleComparisonShelf
             });
         }
 
@@ -232,6 +239,21 @@ public:
                 case CommandOpenGraph:
                     result.setInfo("Open Preset...", "Open a Cycle V2 preset", "File", 0);
                     result.addDefaultKeypress('o', ModifierKeys::commandModifier);
+                    break;
+
+                case CommandImportWaveReference:
+                    result.setInfo("Import Wave Reference...",
+                            "Add audio to the shared comparison library", "File", 0);
+                    break;
+
+                case CommandToggleComparisonShelf:
+                    result.setInfo("Show Comparison Shelf",
+                            "Show wave references and pinned Spies beside Trimesh",
+                            "View", 0);
+                    result.setActive(workspace != nullptr
+                            && workspace->canShowComparisonShelf());
+                    result.setTicked(workspace != nullptr
+                            && workspace->isComparisonShelfVisible());
                     break;
 
                 case CommandSaveGraph:
@@ -276,6 +298,14 @@ public:
             switch (info.commandID) {
                 case CommandOpenGraph:
                     chooseOpenGraph();
+                    return true;
+
+                case CommandImportWaveReference:
+                    workspace->importWaveReference();
+                    return true;
+
+                case CommandToggleComparisonShelf:
+                    workspace->toggleComparisonShelf();
                     return true;
 
                 case CommandSaveGraph:

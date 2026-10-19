@@ -239,10 +239,15 @@ std::vector<float> TrimeshRenderProfile::mapGridToDisplay(
         const std::vector<float>& source,
         size_t columns,
         size_t rows,
-        int midiNote) const {
+        int midiNote,
+        float sourceGain) const {
     std::vector<float> surface = source;
     if (surface.empty()) {
         return surface;
+    }
+    Buffer<float> buffer(surface.data(), (int) surface.size());
+    if (sourceGain != 1.f) {
+        buffer.mul(sourceGain);
     }
 
     if (domain == PortDomain::SpectralMagnitudeSignal
@@ -256,7 +261,6 @@ std::vector<float> TrimeshRenderProfile::mapGridToDisplay(
                 false);
     }
 
-    Buffer<float> buffer(surface.data(), (int) surface.size());
     mapValuesToDisplay(buffer);
     return surface;
 }

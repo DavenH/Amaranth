@@ -26,7 +26,7 @@ constexpr int kVertexParameterCount    = 6;
 }
 
 void TrimeshWidget::syncFromNode(const Node& node) {
-    bridge.syncFromNode(node, kPreviewRows, kPreviewColumns);
+    bridge.syncFromNode(node, kPreviewRows, lastExpandedColumnCount);
 }
 
 void TrimeshWidget::syncExpandedFromNode(const Node& node) {
@@ -109,51 +109,72 @@ void TrimeshWidget::paintCompact(
         float,
         const TrimeshRenderProfile& profile) {
     setRenderProfile(profile);
-    bridge.syncFromNode(node, kPreviewRows, kPreviewColumns);
-    const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
-    TrimeshNodeModel& model = bridge.getModel();
-    const uint64_t compactRevision = model.getDerivedRevisions().compactPreview;
+    syncFromNode(node);
+    const TrimeshRenderData& panelData = bridge.getDataSource().getRenderData();
     const Rectangle<float> previewArea = meshPreviewContentArea(area);
     const float surfaceAspectRatio = previewArea.getWidth()
             / jmax(1.f, previewArea.getHeight());
-    const int materialStyleSignature = profile.getSurfaceStyle().materialStyleSignature();
+    const int displayHeight = roundToInt(previewArea.getHeight());
 
-    if (!renderData.canDrawSurface()) {
+    if (!panelData.canDrawSurface()) {
         return;
     }
 
-    if (!compactHeatmap.image.isValid()
-            || compactHeatmap.valueCount != renderData.surface.size()
-            || compactHeatmap.rows != renderData.rows
-            || compactHeatmap.columns != renderData.columns
-            || compactHeatmap.revision != compactRevision
-            || compactHeatmap.domain != profile.getDomain()
-            || compactHeatmap.scalePolicy != profile.getScalePolicy()
-            || compactHeatmap.materialStyleSignature != materialStyleSignature
-            || compactHeatmap.midiNote != renderData.midiNote
-            || compactHeatmap.pitchSpansColumns != renderData.pitchSpansColumns
-            || compactHeatmap.surfaceAspectRatio != surfaceAspectRatio) {
-        compactHeatmap.image = TrimeshSurfaceRenderer::createHeatmapImage(
-                renderData,
-                profile,
-                false,
-                surfaceAspectRatio);
-        compactHeatmap.valueCount = renderData.surface.size();
-        compactHeatmap.rows = renderData.rows;
-        compactHeatmap.columns = renderData.columns;
-        compactHeatmap.revision = compactRevision;
-        compactHeatmap.domain = profile.getDomain();
-        compactHeatmap.scalePolicy = profile.getScalePolicy();
-        compactHeatmap.materialStyleSignature = materialStyleSignature;
-        compactHeatmap.midiNote = renderData.midiNote;
-        compactHeatmap.pitchSpansColumns = renderData.pitchSpansColumns;
-        compactHeatmap.surfaceAspectRatio = surfaceAspectRatio;
+    if (needsCompactHeatmapRefresh(panelData, profile, surfaceAspectRatio, displayHeight)) {
+        refreshCompactHeatmap(panelData, profile, surfaceAspectRatio, displayHeight);
     }
 
     if (compactHeatmap.image.isValid()) {
         g.setImageResamplingQuality(Graphics::lowResamplingQuality);
         g.drawImage(compactHeatmap.image, previewArea);
     }
+}
+
+bool TrimeshWidget::needsCompactHeatmapRefresh(
+        const TrimeshRenderData& panelData,
+        const TrimeshRenderProfile& profile,
+        float surfaceAspectRatio,
+        int displayHeight) const {
+    return !compactHeatmap.image.isValid()
+            || compactHeatmap.rows != panelData.rows
+            || compactHeatmap.columns != kPreviewColumns
+            || compactHeatmap.displayHeight != displayHeight
+            || compactHeatmap.revision != bridge.getModel().getDerivedRevisions().compactPreview
+            || compactHeatmap.domain != profile.getDomain()
+            || compactHeatmap.scalePolicy != profile.getScalePolicy()
+            || compactHeatmap.materialStyleSignature
+                    != profile.getSurfaceStyle().materialStyleSignature()
+            || compactHeatmap.midiNote != panelData.midiNote
+            || compactHeatmap.pitchSpansColumns != panelData.pitchSpansColumns
+            || compactHeatmap.surfaceAspectRatio != surfaceAspectRatio;
+}
+
+void TrimeshWidget::refreshCompactHeatmap(
+        const TrimeshRenderData& panelData,
+        const TrimeshRenderProfile& profile,
+        float surfaceAspectRatio,
+        int displayHeight) {
+    std::optional<TrimeshRenderData> compactGrid;
+    if (panelData.columns != kPreviewColumns) {
+        compactGrid = TrimeshGridRenderService::renderGrid(
+                bridge.getModel(), panelData.rows, kPreviewColumns, profile,
+                panelData.midiNote, bridge.getPreviewKeyScaleAxis());
+    }
+    const TrimeshRenderData& compactData = compactGrid.has_value()
+            ? *compactGrid : panelData;
+
+    compactHeatmap.image = TrimeshSurfaceRenderer::createTrimeshImage(
+            compactData, profile, surfaceAspectRatio, displayHeight);
+    compactHeatmap.rows = compactData.rows;
+    compactHeatmap.columns = compactData.columns;
+    compactHeatmap.displayHeight = displayHeight;
+    compactHeatmap.revision = bridge.getModel().getDerivedRevisions().compactPreview;
+    compactHeatmap.domain = profile.getDomain();
+    compactHeatmap.scalePolicy = profile.getScalePolicy();
+    compactHeatmap.materialStyleSignature = profile.getSurfaceStyle().materialStyleSignature();
+    compactHeatmap.midiNote = compactData.midiNote;
+    compactHeatmap.pitchSpansColumns = compactData.pitchSpansColumns;
+    compactHeatmap.surfaceAspectRatio = surfaceAspectRatio;
 }
 
 void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float> content) {
@@ -284,6 +305,7 @@ void TrimeshWidget::setExpandedPanelHostDelegate(TrimeshPanelHostDelegate* deleg
 
 void TrimeshWidget::clearExpandedPanelHostDelegate(TrimeshPanelHostDelegate* delegate) {
     bridge.clearPanelHostDelegate(delegate);
+    lastExpandedColumnCount = kPreviewColumns;
 }
 
 void TrimeshWidget::setMeshEditedCallback(
@@ -365,6 +387,7 @@ TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     const TrimeshRenderData& renderData = bridge.getRenderData();
     stats.surfaceColumnCount = renderData.columns;
     stats.surfaceRowCount = renderData.rows;
+    stats.surfaceRebuildCount = bridge.getDataSource().getRenderCounters().surfaceRebuilds;
     const auto& panelColumns = bridge.getDataSource().getPanelColumns();
     if (!panelColumns.empty()) {
         stats.firstPanelMidiNote = panelColumns.front().midiKey;

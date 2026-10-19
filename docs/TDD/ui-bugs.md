@@ -34,6 +34,20 @@ The four new `[keyboard]` cases pass within the focused 26-case keyboard suite
 `build/tests/Testing/Temporary/LastTestsFailed.log`. Status: open and unrelated;
 continue tracking the existing broad-suite baseline separately.
 
+## P3: Broad automation suites contain stale fixture expectations
+
+On 2026-10-18, the coordinated Cycle 2 smoke suite passed 10 of 13 fixtures.
+`graph-editing` could not connect `env2.env` to `waveMesh.scratch`, `pointer`
+failed `expandedNodeId` assertions, and `ported-presets` expected controls and
+graph counts absent after opening the saved graph. Report:
+`.context/cycle-automation/cycle-v2/31b4903fc578/report.json`. The Cycle 1
+suite passed 25 ordinary fixtures plus its expected-failure fixture; nine
+fixtures requested archived preset names such as `calming-keys` and
+`african-horn`. Report:
+`.context/cycle-automation/cycle1/baed9339362f/report.json`. Status: open;
+reconcile fixture expectations and preset names separately from coordinator
+ownership.
+
 ## P2: Factory preset graph tests expect stale saved topology
 
 On 2026-10-17, `[cycle-v2][graph][presets]` reported five failures in nine
@@ -440,9 +454,9 @@ Context:
 - This is independent of explicit Trimesh signal types and single Voice Context
   inference; the focused Trimesh semantic fixture passes.
 
-Current status: open; change the generic cable-insertion smoke to use a node
-whose execution scope is legal in the selected cable, or assert insertion
-separately from compilation validity.
+Current status: resolved 2026-10-19. The native authoring smoke inserts Delay
+between Global Input and Waveshaper, a legal global signal path. The focused
+`authoring` sequence passes with graph compilation enabled.
 
 ## P3: Archived preset tests still target moved fixtures
 
@@ -668,3 +682,14 @@ panel. The preceding control-routing assertions pass, and the contextual morph
 keyboard suite plus the app fixture pass. Current status: open and incidental
 to the keyboard-focus work; stabilize the test mesh/panel selection fixture or
 correct the hit-test expectation.
+
+## P3: Background Cycle V2 comparison GL assertion can precede first render
+
+On 2026-10-19, `cycle-v2-agent-cyclogram-comparison.json` passed its shelf,
+card, and capture-count assertions but reported
+`comparison.cards.0.surfaceView.contextCreateCount == 0` while the agent app
+was in the background. The focused launch gave the same result. A separate
+frontmost OS capture then rendered both sample and Spy surfaces correctly
+(`.context/shelf-os.png`). The app-side screenshot was black in the background
+run. Current status: open as an automation timing/focus issue; no surface
+rendering change was made for the elective shelf correction.

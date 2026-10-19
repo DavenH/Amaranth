@@ -1,0 +1,98 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "resizeWindow",
+      "width": 1280,
+      "height": 760
+    },
+    {
+      "command": "selectReference",
+      "referenceId": "factory:sine500"
+    },
+    {
+      "command": "pinComparisonSpy",
+      "probeId": "default-output"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "timeLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 350
+    },
+    {
+      "command": "openReferencePitchEditor",
+      "referenceId": "factory:sine500",
+      "waitForIdle": true,
+      "idleDelayMs": 400
+    },
+    {
+      "command": "assertState",
+      "path": "comparison.pitchEditor.cyclogramRevision",
+      "equals": 1
+    },
+    {
+      "command": "pointer",
+      "event": "move",
+      "targetId": "referencePitch.curve",
+      "targetX": 0.87,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "referencePitch.curve",
+      "targetX": 0.87,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "referencePitch.curve",
+      "downTargetId": "referencePitch.curve",
+      "targetX": 0.87,
+      "targetY": 0.42,
+      "downTargetX": 0.87,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "referencePitch.curve",
+      "downTargetId": "referencePitch.curve",
+      "targetX": 0.87,
+      "targetY": 0.32,
+      "downTargetX": 0.87,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "assertState",
+      "path": "comparison.pitchEditor.cyclogramRevision",
+      "equals": 1
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "referencePitch.curve",
+      "downTargetId": "referencePitch.curve",
+      "targetX": 0.87,
+      "targetY": 0.32,
+      "downTargetX": 0.87,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 350
+    },
+    {
+      "command": "assertState",
+      "path": "comparison.pitchEditor.cyclogramRevision",
+      "op": "greaterThan",
+      "value": 1
+    }
+  ],
+  "quit": true
+}

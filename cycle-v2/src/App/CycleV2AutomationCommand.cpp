@@ -20,6 +20,7 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "recreateCanvasOpenGLContext", Command::RecreateCanvasOpenGLContext },
             { "exportGraph", Command::ExportGraph },
             { "openGraph", Command::OpenGraph },
+            { "resizeWindow", Command::ResizeWindow },
             { "saveGraph", Command::SaveGraph },
             { "generatePresetPreview", Command::GeneratePresetPreview },
             { "listMenuItems", Command::ListMenuItems },
@@ -30,6 +31,9 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "captureAudio", Command::CaptureAudio },
             { "captureLiveAudio", Command::CaptureLiveAudio },
             { "openNodeEditor", Command::OpenNodeEditor },
+            { "pinComparisonSpy", Command::PinComparisonSpy },
+            { "selectReference", Command::SelectReference },
+            { "openReferencePitchEditor", Command::OpenReferencePitchEditor },
             { "openMeshPopup", Command::OpenNodeEditor },
             { "addNode", Command::AddNode },
             { "moveNode", Command::MoveNode },
@@ -59,6 +63,7 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "assertNodeParameter", Command::AssertNodeParameter },
             { "listAssertionPaths", Command::ListAssertionPaths },
             { "waitForIdle", Command::WaitForIdle },
+            { "ping", Command::Ping },
             { "quit", Command::Quit }
     };
     for (const auto& command : commands) {

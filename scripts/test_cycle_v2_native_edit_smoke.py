@@ -7,43 +7,28 @@ import socket
 import struct
 import subprocess
 import sys
-import tempfile
 import time
+
+from cycle_automation_support.identity import workspace, valid_instance
+from cycle_automation_support.lifecycle import owned_record
+from cycle_automation_support.profiles import PRODUCTS
+from cycle_automation_support.registry import instance_key, lease
 
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-APP = os.path.join(REPO, "build/standalone-debug/cycle-v2/CycleV2.app")
-APP_EXECUTABLE = os.path.join(APP, "Contents/MacOS/CycleV2")
 CLICK = "/opt/homebrew/bin/cliclick"
 SETTLE_SECONDS = 0.08
 
 
 class NativeEditSmoke:
     def __init__(self):
-        temporary = tempfile.gettempdir()
-        self.socket_path = os.path.join(temporary, "cycle-v2-native-edit-smoke.sock")
-        self.log_path = os.path.join(temporary, "cycle-v2-native-edit-smoke.log")
+        self.socket_path = None
         self.request_id = 0
         self.app_pid = None
-        self.render_capture_dir = tempfile.mkdtemp(prefix="cycle-v2-hover-render-")
-
-    @staticmethod
-    def app_pids():
-        result = subprocess.run(
-            ["ps", "-axo", "pid=,command="],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        matching = set()
-        for line in result.stdout.splitlines():
-            fields = line.strip().split(None, 1)
-            if len(fields) != 2:
-                continue
-            pid, command = fields
-            if command == APP_EXECUTABLE or command.startswith(APP_EXECUTABLE + " "):
-                matching.add(int(pid))
-        return matching
+        self.record = None
+        self.render_capture_dir = os.path.join(
+            REPO, ".context", "cycle-automation", "cycle-v2", f"native-{os.getpid()}")
+        os.makedirs(self.render_capture_dir, exist_ok=True)
 
     def start(self, require_native_pointer=True):
         if require_native_pointer:
@@ -59,36 +44,21 @@ class NativeEditSmoke:
                     "CycleV2 native edit smoke requires Accessibility permission for cliclick"
                 )
 
-        existing_pids = self.app_pids()
-        environment = os.environ.copy()
-        environment["CYCLE_APP_PATH"] = APP
-        environment["CYCLE_PROCESS_NAME"] = "CycleV2"
-        subprocess.run(
-            [os.path.join(REPO, "scripts/run_cycle_agent_session.sh"), self.socket_path, self.log_path],
-            cwd=REPO,
-            env=environment,
-            check=True,
-            stdout=subprocess.DEVNULL,
-        )
-        launched_pids = self.app_pids() - existing_pids
-        if len(launched_pids) != 1:
-            raise AssertionError(
-                f"Expected one newly launched CycleV2 process, found {sorted(launched_pids)}"
-            )
-        self.app_pid = launched_pids.pop()
-        self.focus_app()
+        result = subprocess.run(
+            [sys.executable, os.path.join(REPO, "scripts/cycle_automation.py"),
+             "start", "--product", "cycle-v2", "--json"],
+            cwd=REPO, check=True, capture_output=True, text=True)
+        started = json.loads(result.stdout)
+        self.socket_path = started["socket"]
+        self.app_pid = started["pid"]
+        self.record = owned_record(PRODUCTS["cycle-v2"], workspace()[2])
+        assert self.record and valid_instance(self.record)
 
     def stop(self):
-        try:
-            self.command({"command": "quit"})
-        except (ConnectionError, FileNotFoundError):
-            pass
-        deadline = time.monotonic() + 2.0
-        while time.monotonic() < deadline:
-            if self.app_pid not in self.app_pids():
-                return
-            time.sleep(0.02)
-        raise AssertionError("CycleV2 did not exit after native edit smoke")
+        subprocess.run(
+            [sys.executable, os.path.join(REPO, "scripts/cycle_automation.py"),
+             "stop", "--product", "cycle-v2", "--owned"],
+            cwd=REPO, check=True)
 
     def command(self, command):
         self.request_id += 1
@@ -105,7 +75,7 @@ class NativeEditSmoke:
         return decoded["result"].get("data", {})
 
     def focus_app(self):
-        if self.app_pid is None:
+        if self.record is None or not valid_instance(self.record):
             raise AssertionError("CycleV2 process identity is unavailable")
         script = (
             'tell application "System Events"\n'
@@ -547,18 +517,14 @@ class NativeEditSmoke:
 
     def create_from_palette(self, section_index, entry_index):
         canvas = self.target("canvas")
-        group = (
-            round(canvas["x"] + 54),
-            round(canvas["y"] + 74 + 7 + section_index * 78 + 30),
-        )
-        entry = (
-            round(canvas["x"] + 100 + 72),
-            round(canvas["y"] + 74 + 7 + section_index * 78 + entry_index * 52 + 22),
-        )
-        self.primary_click(group)
+        self.primary_click((round(canvas["x"] + 246), round(canvas["y"] + 22)))
+        palette_entries = {(4, 2): (218, 566), (5, 4): (145, 812)}
+        x, y = palette_entries[(section_index, entry_index)]
+        entry = (round(canvas["x"] + x), round(canvas["y"] + y))
         self.primary_click(entry)
         state = self.graph_state()
-        assert state["selectedNodeId"], (section_index, entry_index, state)
+        assert state["selectedNodeId"], (section_index, entry_index,
+                                         state["documentFile"], state["editStatusMessage"])
         return state["selectedNodeId"]
 
     @staticmethod
@@ -721,7 +687,7 @@ class NativeEditSmoke:
         )
         cable_before = self.target(f"edge:{fft_edge_index}")
         fft_node = self.target("node:fft")
-        fft_source = self.point(fft_node, 0.5, 0.5)
+        fft_source = self.point(fft_node, 0.5, 0.15)
         fft_destination = (fft_source[0] + 120, fft_source[1] + 80)
         self.drag_and_hold(fft_source, fft_destination)
         cable_during_drag = self.target(f"edge:{fft_edge_index}")
@@ -731,7 +697,7 @@ class NativeEditSmoke:
         self.key_chord("z")
 
         created_envelope = self.create_from_palette(4, 2)
-        assert created_envelope not in {node["id"] for node in initial["nodes"]}
+        assert created_envelope not in {node["id"] for node in initial["nodes"]}, created_envelope
         self.command({
             "command": "setNodeParameter",
             "nodeId": created_envelope,
@@ -748,7 +714,8 @@ class NativeEditSmoke:
             self.point(envelope_output, 0.5, 0.5),
             self.point(scratch_input, 0.5, 0.5),
         )
-        connected = self.graph_state()
+        connected = self.graph_state_until(
+            lambda state: self.has_edge(state, created_envelope, "env", "waveMesh", "scratch"))
         assert connected["compileSucceeded"]
         assert self.has_edge(connected, created_envelope, "env", "waveMesh", "scratch")
         assert not self.has_edge(connected, "scratchEnv", "env", "waveMesh", "scratch")
@@ -766,7 +733,7 @@ class NativeEditSmoke:
         )
         assert self.has_edge(redone_connection, created_envelope, "env", "waveMesh", "scratch")
 
-        saved_path = os.path.join(tempfile.gettempdir(), "cycle-v2-native-authoring.cyclegraph")
+        saved_path = os.path.join(self.render_capture_dir, "cycle-v2-native-authoring.cyclegraph")
         self.command({"command": "saveGraph", "path": saved_path})
         self.command({"command": "openGraph", "path": saved_path})
         reloaded = self.graph_state()
@@ -803,8 +770,8 @@ class NativeEditSmoke:
         created_delay = self.create_from_palette(5, 4)
         assert created_delay not in {node["id"] for node in insertion_initial["nodes"]}
         delay_node = self.target(f"node:{created_delay}")
-        wave_output = self.target("output:waveMesh.out")
-        fft_input = self.target("input:fft.time")
+        wave_output = self.target("output:globalInput.time")
+        fft_input = self.target("input:waveshaper.time")
         cable_midpoint = (
             round((self.point(wave_output, 0.5, 0.5)[0] + self.point(fft_input, 0.5, 0.5)[0]) * 0.5),
             round((self.point(wave_output, 0.5, 0.5)[1] + self.point(fft_input, 0.5, 0.5)[1]) * 0.5),
@@ -814,31 +781,31 @@ class NativeEditSmoke:
         assert inserted["compileSucceeded"]
         assert inserted["nodeCount"] == insertion_initial["nodeCount"] + 1
         assert inserted["edgeCount"] == insertion_initial["edgeCount"] + 1
-        assert not self.has_edge(inserted, "waveMesh", "out", "fft", "time")
-        assert self.has_edge(inserted, "waveMesh", "out", created_delay, "time")
-        assert self.has_edge(inserted, created_delay, "time", "fft", "time")
-        wave_bounds = self.node_bounds(inserted, "waveMesh")
+        assert not self.has_edge(inserted, "globalInput", "time", "waveshaper", "time")
+        assert self.has_edge(inserted, "globalInput", "time", created_delay, "time")
+        assert self.has_edge(inserted, created_delay, "time", "waveshaper", "time")
+        wave_bounds = self.node_bounds(inserted, "globalInput")
         delay_bounds = self.node_bounds(inserted, created_delay)
-        fft_bounds = self.node_bounds(inserted, "fft")
+        fft_bounds = self.node_bounds(inserted, "waveshaper")
         assert self.horizontal_gap(wave_bounds, delay_bounds) >= 55.9
         assert self.horizontal_gap(delay_bounds, fft_bounds) >= 55.9
 
         self.key_chord("z")
         insertion_undone = self.graph_state_until(
-            lambda state: self.has_edge(state, "waveMesh", "out", "fft", "time")
+            lambda state: self.has_edge(state, "globalInput", "time", "waveshaper", "time")
         )
-        assert self.has_edge(insertion_undone, "waveMesh", "out", "fft", "time")
-        assert not self.has_edge(insertion_undone, "waveMesh", "out", created_delay, "time")
+        assert self.has_edge(insertion_undone, "globalInput", "time", "waveshaper", "time")
+        assert not self.has_edge(insertion_undone, "globalInput", "time", created_delay, "time")
 
         self.key_chord("z", shift=True)
         insertion_redone = self.graph_state_until(
-            lambda state: self.has_edge(state, "waveMesh", "out", created_delay, "time")
+            lambda state: self.has_edge(state, "globalInput", "time", created_delay, "time")
         )
-        assert self.has_edge(insertion_redone, "waveMesh", "out", created_delay, "time")
-        assert self.has_edge(insertion_redone, created_delay, "time", "fft", "time")
-        redone_wave_bounds = self.node_bounds(insertion_redone, "waveMesh")
+        assert self.has_edge(insertion_redone, "globalInput", "time", created_delay, "time")
+        assert self.has_edge(insertion_redone, created_delay, "time", "waveshaper", "time")
+        redone_wave_bounds = self.node_bounds(insertion_redone, "globalInput")
         redone_delay_bounds = self.node_bounds(insertion_redone, created_delay)
-        redone_fft_bounds = self.node_bounds(insertion_redone, "fft")
+        redone_fft_bounds = self.node_bounds(insertion_redone, "waveshaper")
         assert self.horizontal_gap(redone_wave_bounds, redone_delay_bounds) >= 55.9
         assert self.horizontal_gap(redone_delay_bounds, redone_fft_bounds) >= 55.9
 
@@ -2052,7 +2019,7 @@ class NativeEditSmoke:
         assert len(topology["cubes"]) > 0
         assert all(len(cube["vertexIds"]) == 8 for cube in topology["cubes"])
 
-        saved_path = os.path.join(tempfile.gettempdir(), "cycle-v2-native-trimesh.cyclegraph")
+        saved_path = os.path.join(self.render_capture_dir, "cycle-v2-native-trimesh.cyclegraph")
         self.command({"command": "saveGraph", "path": saved_path})
         self.command({"command": "openGraph", "path": saved_path})
         reloaded_state = self.open_editor("waveMesh", trimesh=True)
@@ -2423,34 +2390,47 @@ class NativeEditSmoke:
             sequence != "keyboard-shortcuts" for sequence in sequences
         ))
         try:
-            self.command({
-                "command": "openGraph",
-                "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph"),
-            })
-            time.sleep(SETTLE_SECONDS)
-            available = {
-                "authoring": self.graph_authoring_sequence,
-                "waveshaper": self.effect2d_sequence,
-                "envelope": self.envelope_sequence,
-                "envelope-release": self.envelope_release_sequence,
-                "guide-previews": self.guide_preview_sequence,
-                "intercept-visuals": self.intercept_visual_sequence,
-                "trimesh": self.trimesh_sequence,
-                "trimesh-curve-drag": lambda: self.trimesh_sequence(False, True),
-                "trimesh-hover-render": self.trimesh_hover_render_sequence,
-                "trimesh-point-drag": self.trimesh_point_drag_sequence,
-                "trimesh-versioning": lambda: self.trimesh_sequence(True),
-                "spectral-trimesh": self.spectral_trimesh_sequence,
-                "causal-trimesh": self.causal_trimesh_sequence,
-                "trimesh-morph-drag": self.trimesh_morph_drag_sequence,
-                "keyboard-shortcuts": self.contextual_keyboard_shortcut_sequence,
-                "reverb-preview": self.reverb_preview_sequence,
-                "hover-cursor": self.hover_cursor_sequence,
-            }
-            for sequence in sequences:
-                available[sequence]()
+            identity, path, short_id = workspace()
+            owner = {"workspace_id": identity, "workspace_path": path,
+                     "run_id": f"native-{os.getpid()}", "app_pid": self.app_pid}
+            with lease(f"instance:{instance_key(short_id, 'cycle-v2')}", owner, "native-input"):
+                with lease("foreground", owner, "native-input"):
+                    self.focus_app()
+                    self.run_sequences(sequences)
         finally:
             self.stop()
+
+    def run_sequences(self, sequences):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph"),
+        })
+        expanded = self.graph_state()["expandedNodeId"]
+        if expanded:
+            self.primary_click(self.point(self.target(f"expanded:{expanded}.close"), 0.5, 0.5))
+            assert not self.graph_state()["expandedNodeId"]
+        time.sleep(SETTLE_SECONDS)
+        available = {
+            "authoring": self.graph_authoring_sequence,
+            "waveshaper": self.effect2d_sequence,
+            "envelope": self.envelope_sequence,
+            "envelope-release": self.envelope_release_sequence,
+            "guide-previews": self.guide_preview_sequence,
+            "intercept-visuals": self.intercept_visual_sequence,
+            "trimesh": self.trimesh_sequence,
+            "trimesh-curve-drag": lambda: self.trimesh_sequence(False, True),
+            "trimesh-hover-render": self.trimesh_hover_render_sequence,
+            "trimesh-point-drag": self.trimesh_point_drag_sequence,
+            "trimesh-versioning": lambda: self.trimesh_sequence(True),
+            "spectral-trimesh": self.spectral_trimesh_sequence,
+            "causal-trimesh": self.causal_trimesh_sequence,
+            "trimesh-morph-drag": self.trimesh_morph_drag_sequence,
+            "keyboard-shortcuts": self.contextual_keyboard_shortcut_sequence,
+            "reverb-preview": self.reverb_preview_sequence,
+            "hover-cursor": self.hover_cursor_sequence,
+        }
+        for sequence in sequences:
+            available[sequence]()
 
 
 if __name__ == "__main__":

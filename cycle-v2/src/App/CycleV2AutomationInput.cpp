@@ -212,7 +212,11 @@ var CycleV2AutomationInput::pointer(const var& commandValue) {
     const String downTargetId = stringProperty(commandValue, "downTargetId");
 
     if (targetId.startsWith("PerformanceKeyboard.")
-            || downTargetId.startsWith("PerformanceKeyboard.")) {
+            || downTargetId.startsWith("PerformanceKeyboard.")
+            || targetId.startsWith("referencePitch.")
+            || downTargetId.startsWith("referencePitch.")
+            || targetId == "comparisonDock"
+            || downTargetId == "comparisonDock") {
         area = "workspace";
     } else if (targetId.isNotEmpty() || downTargetId.isNotEmpty()) {
         area = "canvas";

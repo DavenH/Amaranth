@@ -2,6 +2,7 @@
 
 #include "Nodes/Trimesh/Panel/TrimeshPanel2D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
+#include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelHostDelegate.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelHosts.h"
@@ -55,6 +56,7 @@ public:
     void setRenderProfile(TrimeshRenderProfile profile);
     void setPreviewMidiNote(int midiNote);
     void setPreviewKeyScaleAxis(int axis);
+    int getPreviewKeyScaleAxis() const { return previewKeyScaleAxis; }
     bool isMeshEditGestureActive() const { return meshEditGestureActive; }
     void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
     void renderPanel2D(juce::Rectangle<float> bounds, float scaleFactor);

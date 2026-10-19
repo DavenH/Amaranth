@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
+#include <unordered_map>
 
 #include <JuceHeader.h>
 
@@ -33,12 +33,17 @@ public:
             const NodePreviewResult* runtimePreview,
             bool selected,
             float physicalScale);
+    NodeCanvasNodeLayerCacheAccess accessDuringMove(
+            const Node& node,
+            Rectangle<float> logicalBounds,
+            const NodePreviewResult* runtimePreview,
+            bool selected,
+            float physicalScale);
     void draw(Graphics& graphics, const NodeCanvasNodeLayerCacheAccess& access) const;
     NodeCanvasNodeLayerCacheStats endFrame();
 
 private:
     struct Entry {
-        String nodeId;
         Node nodeSnapshot;
         NodePreviewResult runtimePreviewSnapshot;
         Point<float> logicalSize;
@@ -57,7 +62,14 @@ private:
                 uint64_t contextFingerprint,
                 const NodePreviewResult* runtimePreview,
                 bool currentlySelected,
-                float scale) const;
+                float scale,
+                bool moving) const;
+    };
+
+    struct StringHash {
+        size_t operator()(const String& value) const {
+            return static_cast<size_t>(value.hashCode64());
+        }
     };
 
     void replaceEntry(
@@ -70,7 +82,7 @@ private:
             bool selected,
             float physicalScale);
 
-    std::vector<Entry> entries;
+    std::unordered_map<String, Entry, StringHash> entries;
     uint64_t paintGeneration {};
     NodeCanvasNodeLayerCacheStats frameStats;
 };

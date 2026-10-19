@@ -99,6 +99,9 @@ Implemented:
 
 Known gaps:
 
+- Cross-workspace process ownership, exact-PID capture, lifecycle leases, and
+  persistent host-side session reuse are specified in
+  [cycle-automation-coordinator.md](cycle-automation-coordinator.md).
 - `snapshotState` is useful for core UI state but does not yet include stable
   vertex handles or all dialog/modal visibility.
 - Broad UI coverage is tracked in

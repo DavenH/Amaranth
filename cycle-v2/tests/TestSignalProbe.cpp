@@ -7,6 +7,9 @@
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Runtime/GraphPresentationModel.h"
 #include "UI/SignalProbeCanvas.h"
 #include "UI/WorkspaceDockInteractionController.h"
@@ -294,4 +297,131 @@ TEST_CASE("Signal probe commands reattach remove and restore through undo", "[cy
     REQUIRE(document.graph().getSignalProbes().empty());
     REQUIRE(document.undo());
     REQUIRE(document.graph().findSignalProbe(probeId) != nullptr);
+}
+
+TEST_CASE("Pinned Spy batch matches targeted capture at one comparison note",
+        "[cycle-v2][probe][comparison][batch]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal,
+            ConnectionKind::Signal });
+    graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal,
+            ConnectionKind::Signal });
+    graph.addEdge({ "add", "out", "out", "time", PortDomain::TimeSignal,
+            ConnectionKind::Signal });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 2, 0.5f).succeeded());
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(graph, graph.getRevision()));
+
+    std::vector<String> ids;
+    for (const auto& probe : graph.getSignalProbes()) {
+        ids.push_back(probe.id);
+    }
+    ids.push_back(DefaultOutputProbeResolver::probeId);
+    constexpr int note = 57;
+    const size_t rows = GraphPreviewExecutor::sourceFrameCountForMidiNote(note);
+    const auto batch = presentation.captureProbePreviews(graph, ids, rows, note);
+    REQUIRE(batch.size() == ids.size());
+    for (size_t index = 0; index < ids.size(); ++index) {
+        const auto single = presentation.captureProbePreview(graph, ids[index], rows, note);
+        REQUIRE(batch[index].has_value() == single.has_value());
+        if (single.has_value()) {
+            REQUIRE(batch[index]->values == single->values);
+            REQUIRE(batch[index]->domain == single->domain);
+        }
+    }
+
+    const auto& plan = presentation.compileResult().plan;
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = note;
+    voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+    GraphAudioExecutor executor;
+    const auto batched = executor.processProbes(
+            plan, plan.signalProbes, rows, {}, voice, 512);
+    size_t separateStepVisits {};
+    for (const auto& probe : plan.signalProbes) {
+        separateStepVisits += executor.processProbe(
+                plan, probe, rows, {}, voice, 512).processedStepCount;
+    }
+    REQUIRE(batched.processedStepCount <= separateStepVisits);
+}
+
+TEST_CASE("Comparison morph capture preparation ignores unrelated graph and mesh content",
+        "[cycle-v2][probe][comparison][complexity]") {
+    const auto verify = [](int unrelatedNodes, int unrelatedCubes) {
+        GraphNodeFactory factory;
+        NodeGraph graph;
+        graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal,
+                ConnectionKind::Signal });
+        graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal,
+                ConnectionKind::Signal });
+        graph.addEdge({ "add", "out", "out", "time", PortDomain::TimeSignal,
+                ConnectionKind::Signal });
+        for (int index = 0; index < unrelatedNodes; ++index) {
+            graph.addNode(factory.createNode(
+                    NodeKind::Delay, "unrelated" + String(index), {}));
+        }
+        auto mesh = TrimeshMeshFactory::createDefaultMesh("comparison-complexity");
+        for (int index = 0; index < unrelatedCubes; ++index) {
+            TrimeshMeshFactory::addVoiceCube(
+                    *mesh, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f);
+        }
+        REQUIRE(graph.replaceNodeModel(
+                "mesh", TrimeshNodeModelState::copyOf(*mesh, 2)));
+        mesh->destroy();
+
+        GraphDocument document(std::move(graph));
+        GraphPresentationModel presentation;
+        REQUIRE(presentation.refresh(document.graph(), document.revision()));
+        const std::vector<String> selected { DefaultOutputProbeResolver::probeId };
+        const auto before = presentation.captureProbePreviews(
+                document.graph(), selected, 512, 57);
+        REQUIRE(before.size() == 1);
+        REQUIRE(before.front().has_value());
+        GraphCommandDispatcher commands(document);
+        REQUIRE(commands.setNodeParameter("mesh", "red", "Red", "0.73").succeeded());
+        InteractionComplexityDiagnostics::reset();
+        REQUIRE(presentation.prepareProbeCaptureForNode(document.graph(), "mesh"));
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(counts.graphCopies == 0);
+        REQUIRE(counts.meshCopies == 0);
+        REQUIRE(counts.modelSerializations == 0);
+        REQUIRE(counts.nodeLinearScans == 0);
+        REQUIRE(counts.assignmentLinearScans == 0);
+        const auto after = presentation.captureProbePreviews(
+                document.graph(), selected, 512, 57);
+        REQUIRE(after.front().has_value());
+        REQUIRE(after.front()->values != before.front()->values);
+
+        NodeGraph modelEdited = document.graph();
+        const auto previousModel = std::dynamic_pointer_cast<
+                const TrimeshNodeModelState>(modelEdited.findNode("mesh")->model);
+        REQUIRE(previousModel != nullptr);
+        REQUIRE(modelEdited.replaceNodeModel(
+                "mesh", TrimeshNodeModelState::copyOf(previousModel->mesh(), 3)));
+        InteractionComplexityDiagnostics::reset();
+        REQUIRE_FALSE(presentation.prepareProbeCaptureForNode(modelEdited, "mesh"));
+        const auto modelChangeCounts = InteractionComplexityDiagnostics::counts();
+        REQUIRE(modelChangeCounts.graphCopies == 0);
+        REQUIRE(modelChangeCounts.meshCopies == 0);
+        REQUIRE(modelChangeCounts.modelSerializations == 0);
+        return counts;
+    };
+
+    const auto small = verify(0, 0);
+    const auto large = verify(128, 128);
+    REQUIRE(large.graphCopies == small.graphCopies);
+    REQUIRE(large.meshCopies == small.meshCopies);
+    REQUIRE(large.modelSerializations == small.modelSerializations);
+    REQUIRE(large.nodeLinearScans == small.nodeLinearScans);
+    REQUIRE(large.assignmentLinearScans == small.assignmentLinearScans);
 }

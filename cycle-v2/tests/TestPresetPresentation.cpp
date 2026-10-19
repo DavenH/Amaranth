@@ -1,8 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
-
-#include "Graph/GraphDocument.h"
-#include "Graph/GraphCommandDispatcher.h"
 #include <UI/Panels/TimeSurfaceStyles.h>
+
+#include "Graph/GraphCommandDispatcher.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/PresetPresentation.h"
@@ -77,6 +78,87 @@ TEST_CASE("Preset MIDI changes are dirty presentation edits without graph public
     REQUIRE(document.revision() == graphRevision);
     REQUIRE_FALSE(document.canUndo());
     REQUIRE(document.presentation().sequence->notes[0].pitch == 36);
+}
+
+TEST_CASE("Comparison Spy pins follow preset presentation without graph edits",
+        "[cycle-v2][preset][comparison]") {
+    GraphDocument document(graphWithOutput());
+    GraphCommandDispatcher commands(document);
+    const auto graphRevision = document.revision();
+
+    REQUIRE(commands.pinComparisonSpy("default-output"));
+    REQUIRE_FALSE(commands.pinComparisonSpy("default-output"));
+    REQUIRE_FALSE(commands.pinComparisonSpy("missing-probe"));
+    REQUIRE(document.presentation().comparisonSpyPins
+            == std::vector<String> { "default-output" });
+    REQUIRE(document.revision() == graphRevision);
+    REQUIRE(document.isDirty());
+    REQUIRE_FALSE(document.canUndo());
+
+    const auto saved = GraphSerializer().loadJsonString(document.toJson());
+    REQUIRE(saved.succeeded());
+    REQUIRE(saved.presentation.comparisonSpyPins
+            == std::vector<String> { "default-output" });
+    REQUIRE(commands.unpinComparisonSpy("default-output"));
+    REQUIRE_FALSE(commands.unpinComparisonSpy("default-output"));
+    REQUIRE(document.presentation().comparisonSpyPins.empty());
+}
+
+TEST_CASE("Ordered Spy pins switch with presets and retain disconnected probes",
+        "[cycle-v2][preset][comparison]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addEdge({ "wave", "out", "output", "time",
+            PortDomain::TimeSignal, ConnectionKind::Signal });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    const String probeId = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const String unpinnedPreset = document.toJson();
+
+    REQUIRE(commands.pinComparisonSpy(probeId));
+    REQUIRE(commands.pinComparisonSpy("default-output"));
+    const String pinnedPreset = document.toJson();
+    REQUIRE(document.presentation().comparisonSpyPins
+            == std::vector<String> { probeId, "default-output" });
+
+    REQUIRE(document.loadJson(unpinnedPreset, false));
+    REQUIRE(document.presentation().comparisonSpyPins.empty());
+    REQUIRE(document.loadJson(pinnedPreset, false));
+    REQUIRE(document.presentation().comparisonSpyPins
+            == std::vector<String> { probeId, "default-output" });
+    REQUIRE(commands.removeEdgeAt(0).succeeded());
+    REQUIRE(document.presentation().comparisonSpyPins
+            == std::vector<String> { probeId, "default-output" });
+    REQUIRE(document.graph().findSignalProbe(probeId) != nullptr);
+}
+
+TEST_CASE("Connected Trimesh output creates one graph probe before it is pinned",
+        "[cycle-v2][preset][comparison]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
+    graph.addEdge({ "mesh", "out", "add", "right",
+            PortDomain::ControlSignal, ConnectionKind::Signal });
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const auto beforeProbe = document.revision();
+
+    REQUIRE(commands.toggleSignalProbe(0, 0.5f).succeeded());
+    REQUIRE(document.graph().getSignalProbes().size() == 1);
+    const String probeId = document.graph().getSignalProbes().front().id;
+    REQUIRE(document.revision() != beforeProbe);
+    const auto beforePin = document.revision();
+    REQUIRE(commands.pinComparisonSpy(probeId));
+    REQUIRE(document.revision() == beforePin);
+    REQUIRE(document.graph().getSignalProbes().size() == 1);
+    REQUIRE_FALSE(commands.pinComparisonSpy(probeId));
+    REQUIRE(document.graph().getSignalProbes().size() == 1);
+    REQUIRE(document.presentation().comparisonSpyPins
+            == std::vector<String> { probeId });
 }
 
 TEST_CASE("Editing loaded preset tags keeps the graph and later saves in sync",
