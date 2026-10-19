@@ -355,10 +355,6 @@ void ComparisonDock::selectReference(const juce::String& id) {
 }
 
 void ComparisonDock::refreshCaptures() {
-    if (library.selectedAnalysis() == nullptr && !library.records().empty()) {
-        juce::String error;
-        library.select(library.records().front().id, error);
-    }
     updateCards();
 }
 

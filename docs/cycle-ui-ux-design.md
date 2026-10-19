@@ -118,8 +118,9 @@ against these observable checks:
 
 - Importing a reference and finding it later are discoverable through an
   established application entry point. The source of factory references is
-  apparent. The UI does not require guessing what a generic `Reference` button
-  does.
+  apparent. Factory references stay in the source menu until the user opens
+  them; opening a Trimesh editor does not select one. The UI does not require
+  guessing what a generic `Reference` button does.
 - Adding a Spy opens a menu of available sources; an already pinned source is
   recognizable. Commands for one card live on that card or its menu.
 - The source menu shares the card row at its fixed left edge. The resize grip

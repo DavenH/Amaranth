@@ -177,6 +177,14 @@ the focused gesture fixture still reports one comparison capture on release.
 The production-size dock screenshot is
 `.context/comparison-dock-layout.png`.
 
+Opening a Trimesh editor must leave the comparison rail empty when the shared
+reference library has no open samples and the preset has no Spy pins. Factory
+references remain available in the source menu; opening one is an explicit
+selection. `ReferenceLibrary` continues to restore references already opened
+by the user across presets and launches. The dock no longer selects the first
+factory record during capture refresh. The empty-rail automation fixture
+asserts both the initial empty state and the explicit selection transition.
+
 The focused reference test covers pitch path commit, undo/redo, cyclogram
 change, and reload using a real Cycle WAV whose simplified path contains equal
 adjacent times. The surface test covers signed input and implicit-output
