@@ -2,8 +2,12 @@
 
 ## Status
 
-Proposed. This is a PR roadmap, not an implementation-complete design. Expand
-each nontrivial slice with the exact files, rough size envelope, lifecycle
+The first wave is implemented in independent drafts:
+[preset/node explanations](https://github.com/DavenH/Amaranth/pull/185),
+[synthesis capabilities](https://github.com/DavenH/Amaranth/pull/183),
+[performance suites](https://github.com/DavenH/Amaranth/pull/184), and
+[reference studies](cycle-v2-reference-studies.md). Remaining slices are proposed.
+Expand each nontrivial slice with the exact files, rough size envelope, lifecycle
 contract, and negative tests required by [the TDD policy](README.md) before
 implementing it. Dependencies below describe required behavior, not a mandatory
 single stack of branches.
@@ -231,3 +235,15 @@ Each PR carries one focused end-to-end demonstration and the proportionate
 semantic, audio or UI evidence. Apply the normal architecture audit and size
 review to nontrivial C++ changes. This roadmap does not mark the complete
 saxophone model, autonomous taste, or novel-preset quality as solved.
+
+## First Wave Verification
+
+The four independent slices merge cleanly and build together as the exact
+`CycleV2` and `CycleV2_tests` targets. The combined domain run passes 19 cases
+and 42,485 assertions; the two host suites pass 24 tests. The annotation branch
+also passes seven explanation cases without JUCE lifecycle diagnostics, its
+29-command fixture, and native click/type/Save/undo/preset/Escape checks.
+The combined code map has 100 entries and the architecture audit retains the
+existing 24 size triggers. Local aggregate evidence is recorded in
+`.context/integration-build.log`, `.context/integration-domain-tests.log` and
+`.context/integration-state.json`; each slice TDD records its runtime evidence.
