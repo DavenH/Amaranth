@@ -731,7 +731,7 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::icyHotProgram(bool program14) {
 ScalarSurfaceMaterial ScalarSurfaceMaterial::savedProgram(int number) {
     auto material = signedAmplitudeFlat();
     material.relief = (ScalarSurfaceRelief) ((int) ScalarSurfaceRelief::Program13
-            + juce::jlimit(13, 20, number) - 13);
+            + juce::jlimit(13, 21, number) - 13);
     return material;
 }
 
@@ -775,6 +775,8 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::forTimeStyle(ScalarSurfaceTimeStyle
             return savedProgram(19);
         case ScalarSurfaceTimeStyle::Bullion:
             return savedProgram(20);
+        case ScalarSurfaceTimeStyle::IcyHotRaw:
+            return savedProgram(21);
     }
     return blueDepthDirectionalDetail();
 }
@@ -788,7 +790,7 @@ ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyle() {
 }
 
 ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(int index) {
-    if (index >= 0 && index <= (int) ScalarSurfaceTimeStyle::Bullion) {
+    if (index >= 0 && index <= (int) ScalarSurfaceTimeStyle::IcyHotRaw) {
         return (ScalarSurfaceTimeStyle) index;
     }
     return ScalarSurfaceTimeStyle::BlueDepth;

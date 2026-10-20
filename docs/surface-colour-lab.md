@@ -1,7 +1,10 @@
 # Surface Colour Lab
 
-Saved programs 13 and 14 are also available in Cycle 1 and Cycle 2 under
-**View → Time Surface Colour → Icy-hot 13 / Icy-hot 14**. These are fixed versions
+Saved programs 13–21 are also available in Cycle 1 and Cycle 2 under
+**View → Time Surface Colour**. **Icy Hot (Raw)** is recipe 21: the raw signal
+through the cyan/purple/gold palette at gain 1.3, with detail disabled. **Icy Hot**
+is recipe 13: a greyscale base plus a band-pass colour overlay. These are different
+treatments, not interchangeable names for the same recipe. These are fixed versions
 of the saved recipes, not live links to Downloads. Cycle needs no Python at runtime;
 filters/compositing are cached when the scalar product changes.
 

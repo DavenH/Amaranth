@@ -15,9 +15,10 @@ struct Entry {
     Group group;
 };
 
-inline constexpr std::array<Entry, 14> entries {{
+inline constexpr std::array<Entry, 15> entries {{
     { ScalarSurfaceTimeStyle::Greyscale, "greyscale", "Greyscale", Group::Canonical },
     { ScalarSurfaceTimeStyle::IcyHot13, "icy-hot", "Icy Hot", Group::Canonical },
+    { ScalarSurfaceTimeStyle::IcyHotRaw, "icy-hot-raw", "Icy Hot (Raw)", Group::Canonical },
     { ScalarSurfaceTimeStyle::BlueDepth, "blues", "Blues", Group::Canonical },
     { ScalarSurfaceTimeStyle::Bullion, "bullion", "Bullion", Group::Canonical },
     { ScalarSurfaceTimeStyle::Recipe19, "recipe-19", "Recipe 19", Group::Experimental },

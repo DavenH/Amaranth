@@ -1,0 +1,122 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "resizeWindow",
+      "width": 1400,
+      "height": 950
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "PerformanceKeyboard.Note35",
+      "button": "right",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.surface.icy-hot-raw"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "assertState",
+      "path": "timeSurfaceStyleId",
+      "equals": "icy-hot-raw"
+    },
+    {
+      "command": "saveGraph",
+      "path": "../../.context/raw-surface-preset.cyclegraph"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.surface.greyscale"
+    },
+    {
+      "command": "openGraph",
+      "path": "../../.context/raw-surface-preset.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "timeSurfaceStyleId",
+      "equals": "icy-hot-raw"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "PerformanceKeyboard.Note35",
+      "button": "right",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewNote",
+      "equals": 35
+    },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "spy:probe"
+    },
+    {
+      "command": "assertState",
+      "path": "probeDetailOpen",
+      "equals": true
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/icy-hot-raw-canvas.png"
+    },
+    {
+      "command": "recreateCanvasOpenGLContext"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    },
+    {
+      "command": "pointer",
+      "event": "doubleClick",
+      "targetId": "probeDetail:probe"
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/organ.cyclegraph"
+    },
+    {
+      "command": "invokeMenuItem",
+      "id": "view.surface.icy-hot-raw"
+    },
+    {
+      "command": "openMeshPopup",
+      "nodeId": "timeLayer1"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 500
+    },
+    {
+      "command": "inspectOpenGLDiagnostics"
+    }
+  ],
+  "quit": false
+}

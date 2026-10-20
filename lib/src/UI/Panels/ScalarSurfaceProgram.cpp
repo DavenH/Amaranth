@@ -120,7 +120,7 @@ std::vector<float> detailAlpha(const std::vector<float>& centredDetail, float bo
 
 bool ScalarSurfaceProgram::isProgram(const ScalarSurfaceMaterial& material) {
     return material.relief >= ScalarSurfaceRelief::Program13
-            && material.relief <= ScalarSurfaceRelief::Program20;
+            && material.relief <= ScalarSurfaceRelief::Program21;
 }
 
 ScalarSurfaceHeightScales ScalarSurfaceProgram::render(
@@ -131,6 +131,17 @@ ScalarSurfaceHeightScales ScalarSurfaceProgram::render(
     const auto& program = SurfaceProgramData::programs[(size_t) material.relief
             - (size_t) ScalarSurfaceRelief::Program13];
     const int count = columns * rows;
+    std::vector<float> base = unitValues;
+    Buffer<float>(base.data(), count).add(-0.5f).mul(program.baseGain)
+            .add(0.5f + program.baseOffset).clip(0.f, 1.f);
+    auto baseChannels = mapPalette(base, program.base);
+    if (!program.detailEnabled) {
+        for (auto& channel : baseChannels) {
+            encodeSrgb(channel);
+        }
+        return packColours(baseChannels, columns, rows);
+    }
+
     auto band = program.innerSigma > 0.f
             ? gaussianY(unitValues, columns, rows, program.innerSigma) : unitValues;
     auto outer = gaussianY(unitValues, columns, rows, program.outerSigma);
@@ -141,10 +152,7 @@ ScalarSurfaceHeightScales ScalarSurfaceProgram::render(
     auto alpha = detailAlpha(band, program.alphaBoost);
     detail.add(0.5f).clip(0.f, 1.f);
 
-    std::vector<float> base = unitValues;
-    Buffer<float>(base.data(), count).add(-0.5f).mul(program.baseGain)
-            .add(0.5f + program.baseOffset).clip(0.f, 1.f);
-    auto channels = screenComposite(mapPalette(base, program.base), mapPalette(band, program.detail),
+    auto channels = screenComposite(std::move(baseChannels), mapPalette(band, program.detail),
             Buffer<float>(alpha.data(), count));
     return packColours(channels, columns, rows);
 }

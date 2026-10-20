@@ -1,5 +1,16 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Preset sidebar overlaps expanded Spy detail
+
+On 2026-10-19, open Stengah at 1400 × 950 with the Presets sidebar visible,
+then double-click `spy:probe`. The sidebar paints over the left portion of
+the expanded heatmap (sidebar ends at x=289; the heatmap starts behind it).
+The detail itself renders correctly. Reproduced while verifying raw surface
+recipe 21; no Spy layout code changed. App-side capture:
+`.context/icy-hot-raw-canvas.png`; passing fixture/report:
+`scripts/fixtures/cycle-v2-agent-raw-surface.json`, `.context/icy-hot-raw-report.json`.
+Status: open; detail/sidebar overlay visibility needs coordinated ownership.
+
 ## Resolved: Morph shortcut help required clicks before hover
 
 On 2026-10-19, the morph shortcut card failed on a fresh native hover and began
