@@ -9,6 +9,7 @@ class MorphControlLayout {
 public:
     MorphControlLayout(juce::Rectangle<float> bounds, int count,
             MorphDimensions::Plane plane = MorphDimensions::Plane::RedBlue);
+    static float minimumWidth();
     juce::Rectangle<float> diagram() const;
     juce::Rectangle<float> row(int axisIndex) const;
     juce::Rectangle<float> rail(int axisIndex) const;

@@ -20,6 +20,7 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "UI/Editors/MeshDimensionOptions.h"
 #include "UI/Editors/MorphControlLayout.h"
+#include "UI/Editors/PropertyControls.h"
 #include <Curve/Rasterization/Rasterizer/VoiceRasterizer.h>
 #include <Curve/Curve.h>
 
@@ -709,6 +710,40 @@ TEST_CASE("Static Trimesh compacts around its anchored property stack",
             if (control.kind != TrimeshExpandedHitRegionKind::OutputScale) {
                 REQUIRE_FALSE(curve.intersects(control.bounds));
             }
+        }
+    }
+}
+
+TEST_CASE("Mesh editors reserve usable vertex and morph slider travel before surface space",
+        "[cycle-v2][mesh-dimensions][property-controls]") {
+    for (const float width : { 740.f, 890.f, 1400.f }) {
+        const Rectangle<float> content(10.f, 42.f, width - 20.f, 710.f);
+        for (const int count : { 0, 1, 2, 3 }) {
+            const auto surface = TrimeshWidget::expandedGridPanelContentBounds(content, count);
+            const auto regions = TrimeshWidget::expandedControlHitRegions(content, true, "gain", count);
+            for (const auto& region : regions) {
+                REQUIRE(content.contains(region.bounds));
+                if (count > 0) {
+                    REQUIRE_FALSE(surface.intersects(region.bounds));
+                }
+                if (region.kind == TrimeshExpandedHitRegionKind::VertexParameter) {
+                    const float travel = region.bounds.getWidth() - 10.f;
+                    REQUIRE(travel >= PropertyControlMetrics::minimumUsableTrackWidth);
+                    REQUIRE(travel <= 220.f);
+                } else if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
+                    REQUIRE(region.bounds.getWidth() - 16.f >= PropertyControlMetrics::minimumUsableTrackWidth);
+                }
+            }
+        }
+    }
+
+    for (const float width : { 760.f, 820.f }) {
+        const auto vertices = MorphControlLayout({ 0.f, 0.f, width, 320.f }, 3).vertices();
+        for (int slot = 0; slot < 7; ++slot) {
+            const auto row = TrimeshSidePanelRenderer::vertexParameterRowBounds(vertices, slot, 1.f, 7);
+            const float travel = TrimeshSidePanelRenderer::vertexParameterRailBounds(row).getWidth();
+            REQUIRE(travel >= PropertyControlMetrics::minimumUsableTrackWidth);
+            REQUIRE(travel <= 220.f);
         }
     }
 }

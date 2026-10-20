@@ -20,12 +20,10 @@ constexpr float kColumnGap       = 12.f;
 constexpr float kRangeRowHeight  = 45.f;
 constexpr float kMorphColumnHeaderWidth = 24.f;
 constexpr float kAxisLabelW      = 62.f;
-constexpr float kVertexLabelW     = 56.f;
-constexpr float kWideVertexLabelW = 60.f;
-constexpr float kVertexGainSize  = 24.f;
-constexpr float kVertexGuideW    = 40.f;
-constexpr float kVertexCellGap   = 6.f;
-constexpr float kWideLayoutMinimumWidth = 480.f;
+constexpr float kVertexGainSize  = VertexPropertyMetrics::gainSize;
+constexpr float kVertexGuideW    = VertexPropertyMetrics::guideWidth;
+constexpr float kVertexCellGap   = VertexPropertyMetrics::cellGap;
+constexpr float kWideLayoutMinimumWidth = 2.f * VertexPropertyMetrics::minimumColumnWidth + kColumnGap;
 constexpr float kCubeAxisExpansion = 0.09f;
 
 const float kCubeProjection[4][2] {
@@ -165,12 +163,8 @@ Rectangle<float> vertexGuideBounds(Rectangle<float> row) {
     return row.removeFromRight(kVertexGuideW);
 }
 
-float vertexLabelWidth(Rectangle<float> row) {
-    return row.getWidth() >= 240.f ? kWideVertexLabelW : kVertexLabelW;
-}
-
 Rectangle<float> vertexLabelBounds(Rectangle<float> row) {
-    return row.removeFromLeft(vertexLabelWidth(row)).reduced(8.f, 0.f);
+    return row.removeFromLeft(VertexPropertyMetrics::labelWidth).reduced(8.f, 0.f);
 }
 
 std::array<bool, 8> linkedCubeHighlights(
@@ -687,7 +681,7 @@ Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRowBounds(
         int parameterIndex,
         float heightScale,
         int parameterCount) {
-    auto rows = parameterArea.reduced(8.f, 0.f);
+    auto rows = parameterArea.reduced(VertexPropertyMetrics::columnInset, 0.f);
     const float headerHeight = 34.f * heightScale;
     const float gap = 7.f * heightScale;
     const bool useTwoColumns = parameterArea.getWidth() >= kWideLayoutMinimumWidth;
@@ -717,7 +711,7 @@ bool TrimeshSidePanelRenderer::showsGuideControlsForParameter(const String& para
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRailBounds(
         Rectangle<float> parameterRow,
         GuideControls guideControls) {
-    parameterRow.removeFromLeft(vertexLabelWidth(parameterRow) + kVertexCellGap);
+    parameterRow.removeFromLeft(VertexPropertyMetrics::labelWidth + kVertexCellGap);
     if (guideControls == GuideControls::Visible) {
         parameterRow.removeFromRight(
                 kVertexGuideW

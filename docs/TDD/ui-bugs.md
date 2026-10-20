@@ -1,5 +1,16 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Native verification intermittently fails exact-PID foreground activation
+
+On 2026-10-20, the first vertex-slider native review stopped before dispatching
+Cmd-Z: `launch_cycle_app --focus 92424` reported that the PID did not become
+frontmost. Mode clicks and the preceding vertex drag succeeded. A fresh complete
+run passed all modes, endpoint/intermediate drags and Undo at both window sizes.
+No product crash was observed. Status: intermittent automation activation;
+retain exact-PID ownership and foreground leases. Artifacts:
+`.context/vertex-travel-native-focus-failure.log` and
+`.context/vertex-travel-native.log`.
+
 ## Resolved: Morph shortcut help required clicks before hover
 
 On 2026-10-19, the morph shortcut card failed on a fresh native hover and began

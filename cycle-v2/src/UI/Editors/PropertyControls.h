@@ -34,6 +34,20 @@ constexpr float morphKeyboardFocusSlotWidth = 24.f;
 
 }
 
+namespace VertexPropertyMetrics {
+
+constexpr float labelWidth = 60.f;
+constexpr float guideWidth = 40.f;
+constexpr float gainSize = 24.f;
+constexpr float cellGap = 6.f;
+constexpr float columnInset = 8.f;
+constexpr float rowChromeWidth = labelWidth + guideWidth + gainSize + 3.f * cellGap;
+constexpr float minimumColumnWidth = PropertyControlMetrics::minimumUsableTrackWidth
+        + rowChromeWidth + 2.f * columnInset;
+constexpr float maximumColumnWidth = minimumColumnWidth + 80.f;
+
+}
+
 struct PropertySliderLayout {
     bool compact {};
     juce::Rectangle<int> label;

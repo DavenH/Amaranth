@@ -839,9 +839,9 @@ Rectangle<float> TrimeshWidget::meshPreviewContentArea(Rectangle<float> area) {
 
 Rectangle<float> TrimeshWidget::expandedSidePanelContentBounds(Rectangle<float> content, int dimensionCount) {
     auto topRow = content.removeFromTop(content.getHeight() * (dimensionCount == 0 ? 1.f : kExpandedTopRowRatio));
-    topRow.removeFromLeft(topRow.getWidth() * kExpandedGridRatio);
-    topRow.removeFromLeft(kExpandedPanelGap);
-    return topRow;
+    const float width = jmax(topRow.getWidth() * (1.f - kExpandedGridRatio) - kExpandedPanelGap,
+            MorphControlLayout::minimumWidth());
+    return topRow.withLeft(topRow.getRight() - width);
 }
 
 Rectangle<float> TrimeshWidget::morphPanelBounds(Rectangle<float> content, int dimensionCount) {
@@ -930,8 +930,9 @@ Rectangle<float> TrimeshWidget::expandedGridPanelContentBounds(Rectangle<float> 
     if (dimensionCount == 0) {
         return {};
     }
+    const auto sidePanel = expandedSidePanelContentBounds(content, dimensionCount);
     auto topRow = content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
-    return topRow.removeFromLeft(topRow.getWidth() * kExpandedGridRatio);
+    return topRow.withRight(sidePanel.getX() - kExpandedPanelGap);
 }
 
 int TrimeshWidget::expandedColumnCount(Rectangle<float>) {

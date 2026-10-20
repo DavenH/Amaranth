@@ -3,16 +3,31 @@
 
 namespace CycleV2 {
 
+namespace {
+
+constexpr float kInset = 8.f;
+constexpr float kMorphLabelWidth = 42.f;
+constexpr float kMorphControlsWidth = 56.f + PropertyControlMetrics::morphKeyboardFocusSlotWidth;
+
+}
+
 MorphControlLayout::MorphControlLayout(juce::Rectangle<float> bounds, int count, MorphDimensions::Plane plane) :
-        area       (bounds.reduced(8.f))
+        area       (bounds.reduced(kInset))
     ,   dimensions (count, plane) {}
 
 juce::Rectangle<float> MorphControlLayout::vertices() const {
-    return area.withTrimmedLeft(area.getWidth() * 0.52f);
+    const float width = juce::jlimit(VertexPropertyMetrics::minimumColumnWidth,
+            VertexPropertyMetrics::maximumColumnWidth, area.getWidth() * 0.48f);
+    return area.withTrimmedLeft(area.getWidth() - width);
 }
 
 juce::Rectangle<float> MorphControlLayout::morphColumn() const {
-    return area.withWidth(area.getWidth() * 0.48f);
+    return area.withRight(vertices().getX() - PropertyControlMetrics::sectionGap);
+}
+
+float MorphControlLayout::minimumWidth() {
+    return 2.f * kInset + kMorphLabelWidth + PropertyControlMetrics::minimumUsableTrackWidth + kMorphControlsWidth
+            + PropertyControlMetrics::sectionGap + VertexPropertyMetrics::minimumColumnWidth;
 }
 
 float MorphControlLayout::diagramSize() const {
@@ -41,8 +56,7 @@ juce::Rectangle<float> MorphControlLayout::row(int axisIndex) const {
 
 juce::Rectangle<float> MorphControlLayout::rail(int axisIndex) const {
     auto bounds = row(axisIndex);
-    return bounds.isEmpty() ? bounds : bounds.withTrimmedLeft(42.f).withTrimmedRight(
-            56.f + PropertyControlMetrics::morphKeyboardFocusSlotWidth);
+    return bounds.isEmpty() ? bounds : bounds.withTrimmedLeft(kMorphLabelWidth).withTrimmedRight(kMorphControlsWidth);
 }
 
 juce::Rectangle<float> MorphControlLayout::axis(int axisIndex) const {

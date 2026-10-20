@@ -1,6 +1,6 @@
 # Unified Mesh Dimensionality
 
-Status: Complete — persistent properties, reduced diagrams and compact Static editing verified.
+Status: Complete — usable vertex slider travel enforced and verified at normal and compact widths.
 
 ## Contract
 
@@ -231,3 +231,54 @@ Follow-up completion proof:
   the old lower-right-cube layout assertion is also stale. Reproduction is
   recorded in `ui-bugs.md` and `.context/morph-properties-tests-broad.log`.
   Focused success is not a claim of full-suite success.
+
+## Follow-up: slider travel is a layout constraint
+
+Reserve 140–220 px of visible vertex slider travel after label/guide/gain costs.
+The shared property-control design system's 140 px minimum takes precedence over
+surface width, empty space and percentage-based column balance. Maintain the
+same anchors through dimension changes and retain the smaller Static editor.
+For normalized vertex values this gives at least 1.4 px per 1% adjustment;
+the layout does not promise per-pixel thousandth resolution.
+
+Ownership: PropertyControls owns the shared role metrics; MorphControlLayout
+allocates the two columns from those metrics. TrimeshWidget gives that control
+group its required width before assigning the adjacent surface. Painting and
+routed input continue to share the side-panel renderer's row geometry. Remove
+the fixed percentage split that underfunded compact controls and the unrelated
+two-column threshold that could split a usable property column into tiny tracks.
+No gesture mapping, domain edit, undo or audio behavior changes.
+
+Acceptance: geometry assertions for actual travel in all four modes at normal,
+compact and narrower editor widths; endpoint and intermediate native vertex edits
+with Undo; production-size normal/compact screenshots; focused tests, CycleV2
+build with `--parallel 10`, architecture, code-map and style review.
+
+Completion proof:
+
+- Shared role metrics replace the renderer's local label/guide/gain widths.
+  MorphControlLayout reserves the property column and a 16 px group gap before
+  allocating the morph column; TrimeshWidget reserves their combined minimum
+  before the surface. The independent 480 px two-column threshold is gone.
+  Static retains its compact height and controls stay anchored across all modes.
+- 46 focused cases / 3,323 assertions pass, including actual hit-region travel
+  in every mode at 740, 890 and 1,400 px editor widths. Envelope row travel is
+  verified through the same renderer and shared layout. The 85-command UI
+  fixture passes for both node families. CycleV2 and tests build with
+  `--parallel 10`; architecture, code-map, style and whitespace checks pass.
+- Native macOS input confirms a 140 px amplitude track at both reviewed window
+  sizes with identical bounds through 3D, 2D, 1D and Static. Drags to 0, 0.25,
+  0.73 and 1 change the mesh correctly; native Cmd-Z restores the original mesh
+  after each edit. Normal/compact Static and 2D captures and compact Envelope
+  capture reviewed at production size. Evidence: `.context/vertex-travel-tests.log`,
+  `vertex-travel-ui-run.json`, `vertex-travel-native.log`, and
+  `vertex-travel-{normal,compact}-{two,static-verified}.png`.
+- One native attempt stopped before Undo because exact-PID foreground activation
+  failed. A fresh complete run passed; the intermittent automation failure is
+  recorded in `ui-bugs.md` with its separate log.
+- Responsibility review: TrimeshWidget 957 -> 958 lines remains the domain
+  model/view adapter and delegates control width to shared layout. Side-panel
+  painter 745 -> 739 lines consumes shared geometry metrics. MorphControlLayout
+  66 -> 80 lines owns allocation; PropertyControls header 219 -> 233 owns role
+  tokens. No new interaction, transaction, DSP or invalidation responsibilities.
+  The fixed-split and local-width deletion targets are complete.

@@ -94,6 +94,13 @@ curve editor inside every comparison card would be a second interaction system.
 2. Treat visible size, hit area, value indication, and manipulation mapping as
    separate properties. A thin slider can have a larger hit target; a compact
    control still needs a precise readout and useful drag range.
+   Usable slider travel is an inviolable layout constraint. Reserve the shared
+   140 px ordinary minimum after label, guide, value, thumb and end-inset costs
+   before allocating space to visualizations or gaps. Reflow or resize the
+   surrounding layout when necessary; a wider hit target does not compensate
+   for a short track. Avoid excessively long tracks as well: mesh vertex rows
+   use 140–220 px of visible travel at normal and compact widths. Verify actual
+   painted travel and routed endpoint/intermediate gestures at both sizes.
 3. Preserve canvas space. Put only the essential controls in a workspace band.
    Expand a resource for detail instead of permanently showing every edit
    control in each card. Keep a dock resizable, but size its cards and vacant
