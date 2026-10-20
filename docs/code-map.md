@@ -36,8 +36,8 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `lib/src/Audio/` — Shared audio plumbing and DSP infrastructure; reuse before product-local utilities.
 - `lib/src/Audio/CycleDsp/` — Cycle DSP kernels and state; reuse for Cycle 1/2 audio parity.
 - `lib/src/Audio/Filters/` — Filters, convolution, oversampling, and delay primitives; reuse in node processors.
-- `lib/src/Curve/Mesh/` — Mesh geometry and topology types; authoritative shared mesh representation.
-- `lib/src/Curve/Rasterization/` — Composable mesh/curve rasterization; reuse policies, builders, and samplers.
+- `lib/src/Curve/Mesh/` — Mesh topology, morph dimensions, and orthogonal projection; shared representation.
+- `lib/src/Curve/Rasterization/` — Mesh/curve rasterization and static geometry preparation; shared policies and sampling.
 - `lib/src/Curve/Rasterization/Rasterizer/` — Authoritative rasterizer interfaces and implementations.
 - `lib/src/Curve/Rasterization/EnvelopePlaybackEngine.h` — Shared envelope playback semantics; reuse across apps.
 - `lib/src/Inter/` — Mature mesh/curve interaction and collision behavior; reuse or extract, never copy.
@@ -86,8 +86,10 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/` — Domain node implementations; keep DSP, model, editor, panel, and rendering layers distinct.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
+- `cycle-v2/src/Graph/MeshDimensionality.h` — Shared node axis eligibility, projection, and dimensional edit semantics.
+- `cycle-v2/src/UI/Editors/MorphControlLayout.h` — Shared dimension-aware morph control geometry.
 - `cycle-v2/src/Nodes/Curve/` — Curve node model/editor/panel adapters over shared curve behavior.
-- `cycle-v2/src/Nodes/Envelope/` — Envelope state, purpose, playback, editor, and signal processing.
+- `cycle-v2/src/Nodes/Envelope/` — Envelope state, playback, editor, morph surfaces, and signal processing.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
 - `cycle-v2/src/UI/NodeWorkspace.h` — Top-level CycleV2 workspace composition and sidebar/canvas ownership.
 - `cycle-v2/src/UI/NodeCanvas.h` — Canvas orchestrator; delegate interaction, scene, presentation, and commands.

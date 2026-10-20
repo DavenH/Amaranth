@@ -98,6 +98,9 @@ list(APPEND APP_SOURCES
 list(REMOVE_DUPLICATES APP_SOURCES)
 
 set(GRAPH_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/MeshDimensionality.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/MeshDimensionalityMigration.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphMeshCommands.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/DefaultOutputProbeResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphMigration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphRepresentationMigration.cpp"
@@ -201,6 +204,8 @@ set(RUNTIME_SOURCES
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/Rendering/EnvelopeMorphSurfacePreview.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MorphControlLayout.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EffectEnableButton.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MorphKeyboardShortcutHelp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertyControlLookAndFeel.cpp"
@@ -379,6 +384,8 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphTopologyValidator.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSignalSemantics.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/TrimeshSemanticRepresentationMigration.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/MeshDimensionality.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/MeshDimensionalityMigration.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphValidator.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphVoiceContextAssignments.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeDefinition.cpp"
@@ -394,6 +401,11 @@ if(BUILD_TESTING)
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeMeshState.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopePurpose.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideHeatmapAsset.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurveMeshPreparation.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurveSnapshotProvider.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideCurvePreparation.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideHeatmapSampler.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Panel/FlatCurvePreparation.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Guide/GuideAttachmentTarget.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Model/TrimeshMeshFactory.cpp"

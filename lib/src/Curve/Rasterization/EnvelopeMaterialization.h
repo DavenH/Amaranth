@@ -75,7 +75,8 @@ namespace Rasterization {
     class RealtimeEnvelopeMaterializer {
     public:
         bool prepare(const RealtimeEnvelopePlan& plan);
-        bool materialize(float red, float blue);
+        bool materialize(const MorphPosition& morph);
+        bool materialize(float red, float blue) { return materialize(MorphPosition(0.f, red, blue)); }
 
         PreparedEnvelopePlaybackView preparedPlaybackView() const;
         const RealtimeEnvelopeMaterializationDiagnostics& diagnostics() const {

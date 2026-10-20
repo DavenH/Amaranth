@@ -1,4 +1,6 @@
 #include "Nodes/Trimesh/Editor/TrimeshControlsComponent.h"
+#include "Graph/NodeParameterMap.h"
+#include "Graph/MeshDimensionality.h"
 
 #include <algorithm>
 #include <array>
@@ -137,6 +139,14 @@ void TrimeshControlsComponent::setDelegate(TrimeshControlsDelegate* nextDelegate
 }
 
 void TrimeshControlsComponent::setNode(const Node& nextNode) {
+    if (NodeParameterMap(node).intValue("dimensionCount", 0)
+            != NodeParameterMap(nextNode).intValue("dimensionCount", 0)) {
+        lastHitRegionContentBounds = {};
+    }
+    if (!keyboardMorphAxis.isEmpty()
+            && !MeshDimensionality::inputActive(nextNode, keyboardMorphAxis)) {
+        keyboardMorphAxis.clear();
+    }
     if (node.id != nextNode.id) {
         keyboardMorphAxis.clear();
     }
@@ -202,7 +212,8 @@ void TrimeshControlsComponent::paint(Graphics& graphics) {
             TrimeshWidget::expandedMorphKeyboardFocusBounds(
                     contentBounds,
                     axisIndex,
-                    widget.showsOutputScale()));
+                    widget.showsOutputScale(),
+                    MeshDimensionality::dimensions(node).axisCount()));
 }
 
 void TrimeshControlsComponent::resized() {
@@ -306,7 +317,8 @@ void TrimeshControlsComponent::updateHitRegions() {
     controlHitRegions = widget.expandedControlHitRegions(
             contentBounds,
             widget.showsOutputScale(),
-            widget.outputScaleParameterId());
+            widget.outputScaleParameterId(),
+            NodeParameterMap(node).intValue("dimensionCount", 0));
 
     for (const auto& region : controlHitRegions) {
         auto component = std::make_unique<ControlTarget>(*this, region);
@@ -549,11 +561,12 @@ bool TrimeshControlsComponent::selectAdjacentMorphControl(int direction) {
     const int currentIndex = current == axes.end()
             ? (direction < 0 ? static_cast<int>(axes.size()) : -1)
             : static_cast<int>(std::distance(axes.begin(), current));
-    const int nextIndex = jlimit(
-            0,
-            static_cast<int>(axes.size()) - 1,
-            currentIndex + direction);
-    return selectMorphControl(axes[(size_t) nextIndex]);
+    for (int index = currentIndex + direction; index >= 0 && index < 3; index += direction) {
+        if (selectMorphControl(axes[(size_t) index])) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool TrimeshControlsComponent::setFocusedMorphTo(float value) {
@@ -597,7 +610,8 @@ void TrimeshControlsComponent::updateKeyboardShortcutHint() {
     const Rectangle<float> focus = TrimeshWidget::expandedMorphKeyboardFocusBounds(
             contentBounds,
             axisIndex,
-            widget.showsOutputScale());
+            widget.showsOutputScale(),
+            MeshDimensionality::dimensions(node).axisCount());
     keyboardShortcutHelp->setAnchorBounds(focus);
 }
 

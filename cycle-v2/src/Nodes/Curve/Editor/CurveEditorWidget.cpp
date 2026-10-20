@@ -62,6 +62,19 @@ void CurveEditorWidget::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) {
     }
 }
 
+void CurveEditorWidget::paintEnvelopeMorphSurface(Graphics& graphics,
+        Rectangle<float> bounds, int axis, const MorphPosition& morph) {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->paintMorphSurface(graphics, bounds, axis, morph);
+    }
+}
+
+void CurveEditorWidget::setEnvelopeDimensions(int count, bool yellowLinked) {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->setDimensions(count, yellowLinked);
+    }
+}
+
 void CurveEditorWidget::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
     if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
         envelope->setAxisLinks(redLinked, blueLinked);

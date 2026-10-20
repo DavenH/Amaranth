@@ -18,6 +18,7 @@ std::vector<float> TrimeshGridRenderService::renderSlice(
     const bool cyclic = domain == PortDomain::TimeSignal;
     TrimeshBlockwiseDsp blockwiseDsp;
     SignalPayload slice;
+    blockwiseDsp.setDimensionality(model.getDimensionCount());
     blockwiseDsp.setGuideCurveProvider(model.guideCurveProvider.get());
     blockwiseDsp.setMesh(&model.mesh());
     blockwiseDsp.setMorphPosition(model.morph);
@@ -82,8 +83,13 @@ TrimeshRenderData TrimeshGridRenderService::renderGrid(
     result.pitchSpansColumns = pitchSpansColumns;
 
     result.slice = renderSlice(model, rows, renderProfile, midiNote);
+    if (model.getDimensionCount() == 0) {
+        result.columns = 0;
+        return result;
+    }
 
     TrimeshGridwiseDsp gridwiseDsp;
+    gridwiseDsp.setDimensionality(model.getDimensionCount());
     gridwiseDsp.setCyclic(cyclic);
     gridwiseDsp.setGuideCurveProvider(model.guideCurveProvider.get());
     gridwiseDsp.setFrequencyMidiNote(midiNote);

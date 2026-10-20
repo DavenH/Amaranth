@@ -64,7 +64,8 @@ bool TrimeshMeshDeltaOverlay::prepare() {
                     replacement.vertices[(size_t) slot]->values,
                     Vertex::numElements);
             if (edit.target == TrimeshVertexEditTarget::VertexValue
-                    && original == editedVertex && edit.changed()) {
+                    && ((slot ^ source->indexOf(editedVertex)) & ~edit.replicatedPoles) == 0
+                    && edit.changed()) {
                 replacement.vertices[(size_t) slot]->values[edit.valueIndex]
                         = edit.changes.front().after;
             }

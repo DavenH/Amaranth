@@ -7,19 +7,10 @@
 #include <algorithm>
 #include <array>
 
-#include "Runtime/AudioProcessTypes.h"
+#include "Runtime/MorphInputs.h"
 #include "Runtime/SmoothedMorphPosition.h"
 
 namespace CycleV2 {
-
-struct TrimeshMorphInputs {
-    std::array<const SignalPayload*, 3> absoluteMorph {};
-    std::array<float, 3> absoluteOverrides {};
-    std::array<bool, 3> hasAbsoluteOverride {};
-    const SignalPayload* scratch {};
-    float scratchOverride {};
-    bool hasScratchOverride {};
-};
 
 class TrimeshMorphResolver {
 public:
@@ -39,23 +30,18 @@ public:
             size_t sampleOffset,
             size_t elapsedSamples,
             double sampleRate,
-            bool scratchEnabled) {
+            bool scratchEnabled,
+            int dimensionCount = 3) {
         if (!initialized) {
             reset(fallback);
         }
 
-        const float time = absoluteValue(
-                inputs,
-                0,
-                sampleOffset,
-                fallback.time.getCurrentValue());
-        const MorphPosition targets {
-                time,
-                absoluteValue(inputs, 1, sampleOffset,
-                        fallback.red.getCurrentValue()),
-                absoluteValue(inputs, 2, sampleOffset,
-                        fallback.blue.getCurrentValue())
-        };
+        const MorphDimensions dimensions(dimensionCount);
+        if (dimensionCount == 0) {
+            return fallback;
+        }
+        const MorphPosition targets = inputs.resolve(fallback, dimensions, sampleOffset);
+        const float time = targets.time;
         if (snapDepthOnNextResolve) {
             smoothedMorph.reset({
                     smoothedMorph.current().time.getCurrentValue(),
@@ -65,11 +51,12 @@ public:
             snapDepthOnNextResolve = false;
         }
         smoothedMorph.setTargets(targets);
-        smoothedMorph.advance(elapsedSamples, sampleRate);
+        smoothedMorph.advance(elapsedSamples, sampleRate, dimensions);
 
-        const MorphPosition morph = smoothedMorph.current().withTime(time);
+        const MorphPosition morph = dimensions.constrain(
+                smoothedMorph.current().withTime(time), fallback);
         const auto scratchDomain = domainFor(outputDomain);
-        if (!scratchEnabled
+        if (!dimensions.active(Vertex::Time) || !scratchEnabled
                 || (!inputs.hasScratchOverride && inputs.scratch == nullptr)
                 || !Rasterization::ScratchPositionPolicy::shouldApply(
                         scratchDomain, primaryAxis)) {
@@ -104,13 +91,7 @@ public:
             const SignalPayload* input,
             size_t sampleOffset,
             float fallback) {
-        if (input == nullptr || input->block.samples.empty()) {
-            return fallback;
-        }
-        const size_t index = std::min(
-                sampleOffset,
-                input->block.samples.size() - 1);
-        return jlimit(0.f, 1.f, input->block.samples[index]);
+        return MorphInputs::value(input, sampleOffset, fallback);
     }
 
     static float absoluteValue(
@@ -118,10 +99,7 @@ public:
             size_t axis,
             size_t sampleOffset,
             float fallback) {
-        if (inputs.hasAbsoluteOverride[axis]) {
-            return jlimit(0.f, 1.f, inputs.absoluteOverrides[axis]);
-        }
-        return absoluteValue(inputs.absoluteMorph[axis], sampleOffset, fallback);
+        return inputs.value(axis, sampleOffset, fallback);
     }
 
 private:

@@ -34,7 +34,11 @@ public:
             const std::array<juce::String, 6>& guideAttachmentLabels,
             bool showOutputScale,
             PortDomain outputDomain,
-            float outputScale);
+            float outputScale,
+            int dimensionCount = 3);
+    static void drawMorphControls(
+            juce::Graphics& g, juce::Rectangle<float> area,
+            const std::array<AxisState, 3>& axes, int dimensionCount);
     static void drawMorphCubePreview(
             juce::Graphics& g,
             juce::Rectangle<float> area,
@@ -77,16 +81,18 @@ public:
     static juce::Rectangle<float> keyboardFocusBounds(
             juce::Rectangle<float> sideArea,
             int axisIndex,
-            bool showOutputScale = false);
-    static juce::Rectangle<float> outputScaleRowBounds(juce::Rectangle<float> sideArea);
-    static juce::Rectangle<float> outputScaleRailBounds(juce::Rectangle<float> sideArea);
+            bool showOutputScale = false,
+            int dimensionCount = 3);
+    static juce::Rectangle<float> outputScaleRowBounds(juce::Rectangle<float> sideArea, int dimensionCount = 3);
+    static juce::Rectangle<float> outputScaleRailBounds(juce::Rectangle<float> sideArea, int dimensionCount = 3);
     static juce::Rectangle<float> vertexParameterPanelBounds(
             juce::Rectangle<float> sideArea,
             bool showOutputScale = false);
     static juce::Rectangle<float> vertexParameterRowBounds(
             juce::Rectangle<float> parameterArea,
             int parameterIndex,
-            float heightScale = 1.f);
+            float heightScale = 1.f,
+            int parameterCount = 6);
     static bool showsGuideControlsForParameter(int parameterIndex);
     static juce::Rectangle<float> vertexParameterRailBounds(
             juce::Rectangle<float> parameterRow,

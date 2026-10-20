@@ -114,7 +114,13 @@ void GraphDelta::apply(NodeGraph& graph, bool forward) const {
         for (const auto& assignment : changes.removedGuideAssignments) {
             graph.removeGuideAssignment(assignment.targetNodeId, assignment.target);
         }
+        for (const auto& assignment : changes.addedGuideAssignments) {
+            graph.assignGuideCurve(assignment);
+        }
     } else {
+        for (const auto& assignment : changes.addedGuideAssignments) {
+            graph.removeGuideAssignment(assignment.targetNodeId, assignment.target);
+        }
         for (const auto& edge : changes.removedEdges) {
             graph.addEdge(edge);
         }
@@ -388,8 +394,8 @@ GraphDelta GraphDeltaBuilder::finish(
     return result;
 }
 
-void GraphDeltaBuilder::restore(NodeGraph& graph) const {
-    GraphDelta delta = finish(graph, {});
+void GraphDeltaBuilder::restore(NodeGraph& graph, GraphChangeSet changes) const {
+    GraphDelta delta = finish(graph, std::move(changes));
     delta.applyInverse(graph);
 }
 

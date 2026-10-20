@@ -527,7 +527,7 @@ GlobalAudioGraphRepresentationMigration::migrate(var& graph) const {
         return result;
     }
     const int version = (int) root->getProperty("formatVersion");
-    if (version == 6 || version == 7) {
+    if (version == 6 || version == 7 || version == 8) {
         return result;
     }
     if (version == 5) {

@@ -4,7 +4,9 @@
 
 Cycle 1 must first export the legacy .cyc document as canonical preset JSON.
 This script translates ownership and routing while preserving authored meshes,
-guide curves, envelope meshes, and cube-component guide assignments.
+guide curves, envelope meshes, and cube-component guide assignments. The shared
+C++ representation migrator emits format 8 with explicit mesh dimensions and
+orthogonal Envelope Yellow poles.
 """
 
 import argparse

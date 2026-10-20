@@ -22,6 +22,9 @@ public:
     void setEnvelopeBipolar(bool bipolar);
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
+    void setEnvelopeDimensions(int count, bool yellowLinked);
+    void paintEnvelopeMorphSurface(Graphics& graphics, Rectangle<float> bounds,
+            int axis, const MorphPosition& morph);
     void fitEnvelopeVerticalRange();
     void resetEnvelopeVerticalRange();
     void setImpulseResponseAudioResource(const AudioSampleResource* resource);

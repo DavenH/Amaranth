@@ -27,7 +27,7 @@ public:
         ,   axisLabel     (std::move(axisLabelToUse))
         ,   defaultSource (std::move(defaultSourceToUse))
         ,   commands      (commandsToUse) {
-        const StringArray names {
+        StringArray names {
                 "Voice Time", "Velocity", "1-Velocity", "Key Scale",
                 "Mod Wheel", "Channel Pressure", "MIDI CC", "Constant"
         };
@@ -35,6 +35,10 @@ public:
                 "voiceTime", "velocity", "inverseVelocity", "keyScale",
                 "modWheel", "channelPressure", "midiCC", "constant"
         };
+        if (prefix.isNotEmpty()) {
+            names.insert(0, "Unmapped");
+            sourceIds.insert(0, "unmapped");
+        }
         for (int index = 0; index < names.size(); ++index) {
             source.addItem(names[index], index + 1);
         }
@@ -138,10 +142,10 @@ private:
     }
 
     Colour axisColour() const {
-        if (prefix == "yellow") {
+        if (prefix.endsWithIgnoreCase("yellow")) {
             return colourForMorphDimension(MorphDimension::Yellow);
         }
-        if (prefix == "red") {
+        if (prefix.endsWithIgnoreCase("red")) {
             return colourForMorphDimension(MorphDimension::Red);
         }
         return colourForMorphDimension(MorphDimension::Blue);
@@ -185,6 +189,9 @@ public:
             addRow("yellow", "Y", "voiceTime", commands);
             addRow("red", "R", "keyScale", commands);
             addRow("blue", "B", "modWheel", commands);
+            addRow("envelopeYellow", "Y", "unmapped", commands);
+            addRow("envelopeRed", "R", "keyScale", commands);
+            addRow("envelopeBlue", "B", "modWheel", commands);
         } else {
             addRow({}, {}, "modWheel", commands);
         }
@@ -198,15 +205,32 @@ public:
 
     void paint(Graphics& graphics) override {
         chrome.paint(graphics);
+        if (kind == NodeKind::ModulationTriple) {
+            auto headings = getLocalBounds().reduced(16).withTrimmedTop(34).removeFromTop(24);
+            graphics.setColour(Colour(0xffb8c1cd));
+            graphics.setFont(FontOptions(12.f));
+            graphics.drawText("Trimesh", headings.removeFromLeft(headings.getWidth() / 2),
+                    Justification::centred);
+            graphics.drawText("Envelope", headings, Justification::centred);
+        }
     }
 
     void resized() override {
         chrome.resized();
         Rectangle<int> area = getLocalBounds().reduced(16);
         area.removeFromTop(34);
-        const int rowHeight = jmax(48, area.getHeight() / jmax(1, (int) rows.size()));
-        for (auto& row : rows) {
-            row->setBounds(area.removeFromTop(rowHeight));
+        if (kind == NodeKind::ModulationTriple) {
+            area.removeFromTop(24);
+            auto left = area.removeFromLeft(area.getWidth() / 2);
+            left.removeFromRight(8);
+            area.removeFromLeft(8);
+            const int rowHeight = jmax(48, area.getHeight() / 3);
+            for (size_t axis = 0; axis < 3; ++axis) {
+                rows[axis]->setBounds(left.removeFromTop(rowHeight));
+                rows[axis + 3]->setBounds(area.removeFromTop(rowHeight));
+            }
+        } else {
+            rows.front()->setBounds(area.removeFromTop(jmax(48, area.getHeight())));
         }
     }
 
@@ -219,6 +243,11 @@ public:
         state->setProperty("yellow", rows[0]->automationState());
         state->setProperty("red", rows[1]->automationState());
         state->setProperty("blue", rows[2]->automationState());
+        auto* envelope = new DynamicObject();
+        envelope->setProperty("yellow", rows[3]->automationState());
+        envelope->setProperty("red", rows[4]->automationState());
+        envelope->setProperty("blue", rows[5]->automationState());
+        state->setProperty("envelope", var(envelope));
         return state;
     }
 

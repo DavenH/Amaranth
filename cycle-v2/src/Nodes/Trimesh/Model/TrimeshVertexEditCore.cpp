@@ -3,6 +3,7 @@
 #include "Graph/InteractionComplexityDiagnostics.h"
 
 #include <Curve/Mesh/Mesh.h>
+#include <Curve/Mesh/MorphDimensions.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Curve/Mesh/VertCube.h>
 
@@ -22,6 +23,23 @@ const Vertex* vertexAt(const Mesh& mesh, int index) {
 
 Vertex* vertexAt(Mesh& mesh, int index) {
     return const_cast<Vertex*>(vertexAt(static_cast<const Mesh&>(mesh), index));
+}
+
+template<typename Operation>
+void forLogicalCorner(Vertex& reference, int replicatedPoles, Operation operation) {
+    if (replicatedPoles == 0) {
+        operation(reference);
+        return;
+    }
+    for (auto* cube : reference.owners) {
+        InteractionComplexityDiagnostics::recordMeshEditOwnerVisit();
+        const int selected = cube->indexOf(&reference);
+        for (int corner = 0; corner < 8; ++corner) {
+            if (((corner ^ selected) & ~replicatedPoles) == 0) {
+                operation(*cube->getVertex(corner));
+            }
+        }
+    }
 }
 
 float averageGuideGain(const Vertex& vertex, int valueIndex) {
@@ -57,16 +75,20 @@ std::optional<TrimeshVertexEditDelta> TrimeshVertexEditCore::prepareVertexValue(
         const Mesh& mesh,
         int vertexIndex,
         const juce::String& parameterId,
-        float value) {
+        float value,
+        int dimensionCount) {
     const Vertex* vertex = vertexAt(mesh, vertexIndex);
     const int element = valueIndex(parameterId);
-    if (vertex == nullptr || element < 0) {
+    const MorphDimensions dimensions(dimensionCount);
+    const bool morphCoordinate = element == Vertex::Time || element == Vertex::Red || element == Vertex::Blue;
+    if (vertex == nullptr || element < 0 || (morphCoordinate && !dimensions.active(element))) {
         return std::nullopt;
     }
 
     TrimeshVertexEditDelta delta;
     delta.vertexIndex = vertexIndex;
     delta.valueIndex = element;
+    delta.replicatedPoles = ~MorphDimensions(dimensionCount).cornerMask() & 7;
     const float target = jlimit(0.f, 1.f, value);
     if (vertex->values[element] != target) {
         delta.changes.push_back({ -1, vertex->values[element], target });
@@ -166,7 +188,9 @@ bool TrimeshVertexEditCore::apply(
     Vertex* vertex = vertexAt(mesh, delta.vertexIndex);
     for (const auto& change : delta.changes) {
         if (delta.target == TrimeshVertexEditTarget::VertexValue) {
-            vertex->values[delta.valueIndex] = change.after;
+            forLogicalCorner(*vertex, delta.replicatedPoles, [&](Vertex& logical) {
+                logical.values[delta.valueIndex] = change.after;
+            });
         } else {
             InteractionComplexityDiagnostics::recordMeshEditOwnerVisit();
             vertex->owners[change.ownerOrdinal]
@@ -204,6 +228,15 @@ bool TrimeshVertexEditCore::canApply(
         return false;
     }
 
+    if (delta.target == TrimeshVertexEditTarget::VertexValue && delta.changed()) {
+        bool consistent = true;
+        forLogicalCorner(*const_cast<Vertex*>(vertex), delta.replicatedPoles, [&](const Vertex& logical) {
+            consistent &= logical.values[delta.valueIndex] == delta.changes.front().before;
+        });
+        if (!consistent) {
+            return false;
+        }
+    }
     int previousOrdinal = -1;
     for (const auto& change : delta.changes) {
         if (delta.target == TrimeshVertexEditTarget::VertexValue) {
@@ -236,7 +269,8 @@ std::optional<TrimeshVertexEditDelta> TrimeshVertexEditCore::compose(
         const TrimeshVertexEditDelta& movement) {
     if (accumulated.target != movement.target
             || accumulated.vertexIndex != movement.vertexIndex
-            || accumulated.valueIndex != movement.valueIndex) {
+            || accumulated.valueIndex != movement.valueIndex
+            || accumulated.replicatedPoles != movement.replicatedPoles) {
         return std::nullopt;
     }
 
@@ -244,6 +278,7 @@ std::optional<TrimeshVertexEditDelta> TrimeshVertexEditCore::compose(
     result.target = accumulated.target;
     result.vertexIndex = accumulated.vertexIndex;
     result.valueIndex = accumulated.valueIndex;
+    result.replicatedPoles = accumulated.replicatedPoles;
     result.changes.reserve(accumulated.changes.size() + movement.changes.size());
     size_t accumulatedIndex {};
     size_t movementIndex {};

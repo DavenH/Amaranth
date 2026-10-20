@@ -10,6 +10,8 @@ using juce::Rectangle;
 
 class EnvelopeMorphControls {
 public:
+    void setDimensionCount(int count) { dimensionCount = count; }
+    int getDimensionCount() const { return dimensionCount; }
     static constexpr float controlsHeight = 310.f;
     static constexpr float vertexParameterHeightScale = 0.82f;
 
@@ -46,20 +48,18 @@ public:
             bool redLinked,
             bool blueLinked,
             bool loopSelected,
-            bool sustainSelected) const;
+            bool sustainSelected,
+            float yellow = 0.f,
+            bool yellowLinked = true) const;
 
 private:
+    int dimensionCount { 2 };
     Rectangle<float> squareColumn(Rectangle<float> controls) const;
     Rectangle<float> actionColumnBounds(Rectangle<float> controls, int column) const;
     Rectangle<float> actionGroupLabelBounds(
             Rectangle<float> controls,
             int column) const;
     Colour axisColour(int axis) const;
-    void drawPlane(
-            Graphics& graphics,
-            Rectangle<float> controls,
-            float red,
-            float blue) const;
     void drawActionGroups(
             Graphics& graphics,
             Rectangle<float> controls,

@@ -33,6 +33,7 @@ struct GraphChangeSet {
     std::vector<String> nodeIds;
     std::vector<Edge> removedEdges;
     std::vector<GuideCurveAssignment> removedGuideAssignments;
+    std::vector<GuideCurveAssignment> addedGuideAssignments;
     bool topologyChanged {};
     bool layoutChanged {};
     bool probesChanged {};

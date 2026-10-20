@@ -86,6 +86,7 @@ public:
     GraphEditResult clearGuideHeatmap(
             const juce::String& guideId,
             uint64_t expectedRevision);
+    GraphEditResult setMeshDimensions(const String& nodeId, int count);
     GraphEditResult setNodeParameter(
             const juce::String& nodeId,
             const juce::String& parameterId,

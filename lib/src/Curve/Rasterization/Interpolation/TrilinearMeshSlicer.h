@@ -1,6 +1,8 @@
 #pragma once
 
 #include <algorithm>
+#include <Curve/Mesh/MorphDimensions.h>
+#include <Curve/Rasterization/PreparedMeshSlice.h>
 #include <utility>
 #include <vector>
 
@@ -26,7 +28,11 @@ namespace Rasterization {
                 const VertCube& cube,
                 int dimension,
                 VertCube::ReductionData& data,
-                const MorphPosition& position) const {
+                const MorphPosition& position,
+                int dimensionCount = 3) const {
+            if (dimensionCount < 3) {
+                return sliceReduced(cube, dimension, data, position, dimensionCount);
+            }
             data.pointOverlaps = false;
             data.lineOverlaps = false;
 
@@ -82,7 +88,9 @@ namespace Rasterization {
                         pointScaling,
                         applyGuide,
                         output,
-                        reductionData);
+                        reductionData,
+                        request.preparedSlice != nullptr
+                                ? &request.preparedSlice->cells[(size_t) i] : nullptr);
             }
 
             std::sort(output.intercepts.begin(), output.intercepts.end());
@@ -113,6 +121,45 @@ namespace Rasterization {
         }
 
     private:
+        bool sliceReduced(
+                const VertCube& cube, int axis, VertCube::ReductionData& data,
+                const MorphPosition& position, int count) const {
+            const int bit = axis == Vertex::Time ? 4 : axis == Vertex::Red ? 2 : 1;
+            VecOps::copy(cube.getVertex(0)->values, data.v0.values, Vertex::numElements);
+            VecOps::copy(cube.getVertex(bit)->values, data.v1.values, Vertex::numElements);
+            if (count == 2 && axis == Vertex::Time) {
+                if (!sliceFace(cube.getFace(Vertex::Time, VertCube::LowPole),
+                        Vertex::Red, Vertex::Blue, { position.red, position.blue },
+                        data.v00, data.v10, data.v0)) {
+                    data.lineOverlaps = false;
+                    data.pointOverlaps = false;
+                    return false;
+                }
+                VecOps::copy(data.v0.values, data.v1.values, Vertex::numElements);
+                data.v0.values[Vertex::Time] = 0.f;
+                data.v1.values[Vertex::Time] = 1.f;
+            } else if (count == 2) {
+                const int otherAxis = axis == Vertex::Red ? Vertex::Blue : Vertex::Red;
+                const int otherBit = axis == Vertex::Red ? 1 : 2;
+                if (!containsSlicePosition(cube.getVertex(0)->values[otherAxis],
+                            cube.getVertex(otherBit)->values[otherAxis], position[otherAxis])
+                        || !containsSlicePosition(cube.getVertex(bit)->values[otherAxis],
+                            cube.getVertex(bit | otherBit)->values[otherAxis], position[otherAxis])) {
+                    data.lineOverlaps = false;
+                    data.pointOverlaps = false;
+                    return false;
+                }
+                VertCube::vertexAt(position[otherAxis], otherAxis,
+                        cube.getVertex(0), cube.getVertex(otherBit), &data.v0);
+                VertCube::vertexAt(position[otherAxis], otherAxis,
+                        cube.getVertex(bit), cube.getVertex(bit | otherBit), &data.v1);
+            }
+            data.lineOverlaps = true;
+            data.pointOverlaps = containsSlicePosition(
+                    data.v0.values[axis], data.v1.values[axis], position[axis]);
+            return data.pointOverlaps;
+        }
+
         static float independentValue(int dimension, const MorphPosition& morph) {
             return dimension == Vertex::Time ? morph.time :
                    dimension == Vertex::Red  ? morph.red  :
@@ -129,8 +176,13 @@ namespace Rasterization {
                 const PointScalingPolicy& pointScaling,
                 GuideApplier&& applyGuide,
                 RenderResult& output,
-                VertCube::ReductionData& reductionData) const {
-            slice(*cube, sliceDimension, reductionData, request.morph);
+                VertCube::ReductionData& reductionData,
+                const VertCube::ReductionData* prepared) const {
+            if (prepared != nullptr) {
+                PreparedMeshSlice::copy(*prepared, reductionData);
+            } else {
+                slice(*cube, sliceDimension, reductionData, request.morph, request.dimensionCount);
+            }
             if (!reductionData.pointOverlaps) {
                 return;
             }

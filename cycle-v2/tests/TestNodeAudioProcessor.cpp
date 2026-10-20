@@ -188,7 +188,7 @@ NodeModelStatePtr curveModel(std::vector<FlatCurveVertex> vertices) {
 
 std::vector<NodeParameter> envelopeParameters(const String& payload = EnvelopeMeshState::defaultSnapshot()) {
     (void) payload;
-    return {};
+    return { { "dimensionCount", "Dimensions", "3" } };
 }
 
 SignalPayload payload(std::initializer_list<float> samples) {
@@ -256,6 +256,10 @@ void prepareProcessor(
     }
     if (model == nullptr && role == AudioModuleRole::ImpulseResponse) {
         model = CurveNodeDomainCodec(NodeKind::ImpulseResponse).createDefault();
+    }
+    if (model == nullptr && role == AudioModuleRole::Envelope) {
+        EnvelopeNodeModel envelope;
+        model = CurveNodeModelState::copyOf(envelope, 0.5f, 0.5f, 1);
     }
     AudioExecutionSpec spec;
     spec.maximumFrameCount = maximumFrameCount == 0 ? context.frameCount : maximumFrameCount;
@@ -871,7 +875,9 @@ TEST_CASE("Envelope latches absolute morph inputs per note",
     auto parameters = envelopeParameters();
     parameters.push_back({ "red", "Red", "0.5" });
     parameters.push_back({ "blue", "Blue", "0.5" });
-    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    EnvelopeNodeModel model;
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(
+            parameters, CurveNodeModelState::copyOf(model, 0.5f, 0.5f, 1));
     REQUIRE(configuration != nullptr);
 
     EnvelopeSignalProcessor processor;

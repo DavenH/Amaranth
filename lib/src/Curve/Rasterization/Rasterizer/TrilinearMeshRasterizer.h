@@ -173,6 +173,11 @@ namespace Rasterization {
             request.morph.blue.setValueDirect(blue);
         }
 
+        void setDimensionality(int count, const PreparedMeshSlice* prepared = nullptr) {
+            request.dimensionCount = count;
+            request.preparedSlice = prepared;
+        }
+
         void setCalcDepthDimensions(bool calc) {
             request.calcDepthDimensions = calc;
         }

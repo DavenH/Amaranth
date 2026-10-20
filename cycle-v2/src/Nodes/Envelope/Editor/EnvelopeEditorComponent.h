@@ -20,6 +20,7 @@ public:
 
 private:
     struct Impl;
+    Rectangle<float> morphSurfaceBounds() const;
     Rectangle<float> editorPanelBounds() const override;
     Rectangle<float> editorControlBounds() const override;
     void paintEditor(Graphics&) override;
@@ -40,6 +41,7 @@ private:
     bool dragVertexParameter(Point<float> position);
     bool handleMorphKeyboardShortcut(const juce::KeyPress& key);
     void rememberMorphFocus(const juce::String& axis);
+    bool selectableMorphAxis(const juce::String& axis) const;
     bool selectMorphAxis(const juce::String& axis);
     bool selectAdjacentMorphAxis(int direction);
     PrecisionSlider* focusedMorphSlider() const;

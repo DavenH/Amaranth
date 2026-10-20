@@ -1,4 +1,5 @@
 #include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
+#include "UI/Editors/MorphControlLayout.h"
 
 #include "Graph/NodeGraph.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
@@ -79,13 +80,7 @@ Rectangle<float> EnvelopeMorphControls::planeGroupLabelBounds(
 }
 
 Rectangle<float> EnvelopeMorphControls::planeBounds(Rectangle<float> controls) const {
-    auto bounds = squareColumn(controls);
-    bounds.removeFromTop(28.f);
-    const float size = jmin(bounds.getWidth() - 14.f, bounds.getHeight());
-    return Rectangle<float>(size, size).withCentre({
-            bounds.getCentreX(),
-            bounds.getY() + size * 0.5f
-    });
+    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount).diagram();
 }
 
 Rectangle<float> EnvelopeMorphControls::railColumn(Rectangle<float> controls) const {
@@ -107,21 +102,14 @@ Rectangle<float> EnvelopeMorphControls::morphGroupLabelBounds(Rectangle<float> c
 }
 
 Rectangle<float> EnvelopeMorphControls::morphRow(Rectangle<float> controls, int axis) const {
-    auto row = railColumn(controls);
-    row.removeFromTop(
-            kMorphRowsY
-                    + PropertyControlMetrics::morphRowStride
-                            * static_cast<float>(axis));
-    return row.removeFromTop(PropertyControlMetrics::morphRowHeight);
+    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount).row(axis);
 }
 
 Rectangle<float> EnvelopeMorphControls::morphSliderBounds(
         Rectangle<float> controls,
         int axis) const {
-    auto row = morphRow(controls, axis);
-    row.removeFromRight(
-            58.f + PropertyControlMetrics::morphKeyboardFocusSlotWidth);
-    return row;
+    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount)
+            .row(axis).withTrimmedRight(dimensionCount > 1 ? 56.f : 28.f);
 }
 
 Rectangle<float> EnvelopeMorphControls::keyboardFocusBounds(
@@ -211,34 +199,15 @@ Rectangle<float> EnvelopeMorphControls::linkGroupLabelBounds(
 }
 
 Rectangle<float> EnvelopeMorphControls::axisBounds(Rectangle<float> controls, int axis) const {
-    const auto row = morphRow(controls, axis);
-    return {
-            row.getRight()
-                    - PropertyControlMetrics::morphKeyboardFocusSlotWidth
-                    - 52.f,
-            row.getCentreY() - 10.f,
-            20.f,
-            20.f
-    };
+    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount).axis(axis);
 }
 
 Rectangle<float> EnvelopeMorphControls::linkBounds(Rectangle<float> controls, int axis) const {
-    const auto row = morphRow(controls, axis);
-    return {
-            row.getRight()
-                    - PropertyControlMetrics::morphKeyboardFocusSlotWidth
-                    - 26.f,
-            row.getCentreY() - 10.f,
-            20.f,
-            20.f
-    };
+    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount).link(axis);
 }
 
 Rectangle<float> EnvelopeMorphControls::vertexBounds(Rectangle<float> controls) const {
-    controls.reduce(12.f, 8.f);
-    controls.removeFromLeft(546.f);
-    controls.setHeight(270.f);
-    return controls.translated(0.f, -5.f);
+    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount).vertices();
 }
 
 Rectangle<float> EnvelopeMorphControls::vertexParameterRowBounds(
@@ -247,7 +216,7 @@ Rectangle<float> EnvelopeMorphControls::vertexParameterRowBounds(
     return TrimeshSidePanelRenderer::vertexParameterRowBounds(
             vertexBounds(controls),
             parameterIndex,
-            vertexParameterHeightScale);
+            vertexParameterHeightScale, dimensionCount + 4);
 }
 
 Colour EnvelopeMorphControls::axisColour(int axis) const {
@@ -259,89 +228,21 @@ Colour EnvelopeMorphControls::axisColour(int axis) const {
     return colourForMorphDimension(dimensions[jlimit(0, 2, axis)]);
 }
 
-void EnvelopeMorphControls::drawPlane(
-        Graphics& graphics,
-        Rectangle<float> controls,
-        float red,
-        float blue) const {
-    auto column = squareColumn(controls);
-    auto header = planeGroupLabelBounds(controls);
-    const auto square = planeBounds(controls);
-    const Point<float> cursor {
-        square.getX() + square.getWidth() * red,
-        square.getBottom() - square.getHeight() * blue
-    };
-    const auto cursorBounds = Rectangle<float>(8.f, 8.f).withCentre(cursor);
-
-    paintPropertyGroupLabel(graphics, header, "Morph plane");
-    graphics.setColour(Colour(0xff5f91e8).withAlpha(0.20f));
-    graphics.fillRect(square);
-    graphics.setGradientFill(ColourGradient(
-            Colour(0x00d65a5a),
-            square.getCentreX(),
-            square.getY(),
-            Colour(0x66d65a5a),
-            square.getCentreX(),
-            square.getBottom(),
-            false));
-    graphics.fillRect(square);
-    graphics.setColour(kText.withAlpha(0.3f));
-    graphics.drawRect(square, 1.f);
-    graphics.setColour(Colours::black.withAlpha(0.75f));
-    graphics.fillEllipse(cursorBounds);
-    graphics.setColour(kText);
-    graphics.drawEllipse(cursorBounds, 1.2f);
-}
-
 void EnvelopeMorphControls::draw(
-        Graphics& graphics,
-        Rectangle<float> controls,
-        float red,
-        float blue,
-        int viewAxis,
-        bool redLinked,
-        bool blueLinked,
-        bool loopSelected,
-        bool sustainSelected) const {
-    const bool linked[] { redLinked, blueLinked };
-    drawPlane(graphics, controls, red, blue);
+        Graphics& graphics, Rectangle<float> controls, float red, float blue,
+        int viewAxis, bool redLinked, bool blueLinked, bool loopSelected,
+        bool sustainSelected, float yellow, bool yellowLinked) const {
+    const std::array<TrimeshSidePanelRenderer::AxisState, 3> axes {
+            TrimeshSidePanelRenderer::AxisState { "Yellow", "Y", axisColour(0), yellow, viewAxis == 0, yellowLinked },
+            TrimeshSidePanelRenderer::AxisState { "Red", "R", axisColour(1), red, viewAxis == 1, redLinked },
+            TrimeshSidePanelRenderer::AxisState { "Blue", "B", axisColour(2), blue, viewAxis == 2, blueLinked }
+    };
+    TrimeshSidePanelRenderer::drawMorphControls(graphics,
+            controls.withTrimmedBottom(kActionBarHeight), axes, dimensionCount);
     drawActionGroups(graphics, controls, loopSelected, sustainSelected);
-    paintPropertyGroupLabel(
-            graphics,
-            morphGroupLabelBounds(controls),
-            "Morph position");
-    paintPropertyGroupLabel(
-            graphics,
-            markerGroupLabelBounds(controls),
-            "Markers");
-    paintPropertyGroupLabel(
-            graphics,
-            axisScaleGroupLabelBounds(controls),
-            "Scaling");
-    paintPropertyGroupLabel(
-            graphics,
-            rangeGroupLabelBounds(controls),
-            "Zoom");
-    paintPropertyGroupLabel(graphics, axisGroupLabelBounds(controls), "Axis");
-    paintPropertyGroupLabel(graphics, linkGroupLabelBounds(controls), "Link");
-
-    for (int axis = 0; axis < 3; ++axis) {
-        const auto axisArea = axisBounds(controls, axis);
-        const auto colour = axisColour(axis);
-        graphics.setColour(colour.withAlpha(axis == viewAxis ? 0.45f : 0.06f));
-        graphics.fillRoundedRectangle(axisArea, CanvasChromeMetrics::controlCornerRadius);
-        graphics.setColour(colour.withAlpha(axis == viewAxis ? 1.f : 0.32f));
-        graphics.drawRoundedRectangle(
-                axisArea,
-                CanvasChromeMetrics::controlCornerRadius,
-                axis == viewAxis
-                        ? CanvasChromeMetrics::activeBorderWidth
-                        : CanvasChromeMetrics::restingBorderWidth);
-        if (axis > 0) {
-            paintPropertyLinkToggle(
-                    graphics, linkBounds(controls, axis), colour, linked[axis - 1]);
-        }
-    }
+    paintPropertyGroupLabel(graphics, markerGroupLabelBounds(controls), "Markers");
+    paintPropertyGroupLabel(graphics, axisScaleGroupLabelBounds(controls), "Scaling");
+    paintPropertyGroupLabel(graphics, rangeGroupLabelBounds(controls), "Zoom");
 }
 
 void EnvelopeMorphControls::drawActionGroups(

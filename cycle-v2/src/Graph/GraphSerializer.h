@@ -32,7 +32,7 @@ struct GraphLoadResult {
 
 class GraphSerializer {
 public:
-    static constexpr int currentFormatVersion = 7;
+    static constexpr int currentFormatVersion = 8;
 
     var writeJSON(const NodeGraph& graph) const;
     var writeJSON(

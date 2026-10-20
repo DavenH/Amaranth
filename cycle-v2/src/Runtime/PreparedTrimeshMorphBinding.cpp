@@ -30,7 +30,7 @@ bool usesVoiceTimeSource(
         if (defaultConfiguration != nullptr
                 && sourceIndex >= 0
                 && sourceIndex < (int) defaultConfiguration->sources.size()
-                && defaultConfiguration->sources[(size_t) sourceIndex].mode
+                && defaultConfiguration->source((size_t) sourceIndex, buffer.envelopeModulationProfile).mode
                         == ModulationSourceMode::VoiceTime) {
             return true;
         }

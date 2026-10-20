@@ -1,4 +1,5 @@
 #include "Nodes/Curve/Panel/CurvePanelController.h"
+#include "Nodes/Envelope/Rendering/EnvelopeMorphSurfacePreview.h"
 
 #include <optional>
 
@@ -577,6 +578,7 @@ public:
 
         panel->clearInteractionState();
         if (adapter.syncFromNode(node)) {
+            ++transientContentRevision;
             if (guideNodeId != node.id) {
                 guideNodeId = node.id;
                 guideConfigurationKey.clear();
@@ -608,6 +610,7 @@ public:
                 GuideCurveTargetKind::EnvelopeCubeComponent);
         guideCurveProvider = std::move(prepared.provider);
         envelopePanel().setEnvelopeGuideProvider(guideCurveProvider.get());
+        ++transientContentRevision;
         if (envelopePurposeFor(node) == EnvelopePurpose::Pitch) {
             envelopePanel().fitEnvelopeVerticalRange();
         }
@@ -625,6 +628,18 @@ public:
         }
         adapter.setLogarithmic(logarithmic);
         envelopePanel().setEnvelopeLogarithmic(logarithmic);
+    }
+
+    void paintMorphSurface(Graphics& graphics, Rectangle<float> bounds,
+            int axis, const MorphPosition& morph) override {
+        morphSurface.paint(graphics, bounds, adapter.mesh(), guideCurveProvider.get(),
+                contentRevision(), morph, axis, adapter.dimensionCount());
+    }
+
+    void setDimensions(int count, bool yellowLinked) override {
+        this->yellowLinked = yellowLinked;
+        adapter.setDimensionCount(count);
+        envelopePanel().setEnvelopeDimensions(count, yellowLinked);
     }
 
     void setAxisLinks(bool redLinked, bool blueLinked) override {
@@ -672,6 +687,8 @@ public:
     }
 
 private:
+    EnvelopeMorphSurfacePreview morphSurface;
+    bool yellowLinked { true };
     bool frameOnNextNodeSync { true };
     String guideNodeId;
     String guideConfigurationKey;
@@ -694,12 +711,13 @@ private:
     }
 
     void applyDomainPanelSettings() override {
+        envelopePanel().setEnvelopeDimensions(adapter.dimensionCount(), yellowLinked);
         envelopePanel().setEnvelopeLogarithmic(adapter.logarithmic());
         envelopePanel().setEnvelopeAxisLinks(adapter.redLinked(), adapter.blueLinked());
     }
 
-    void applyDomainControlValues(float red, float blue, float) override {
-        adapter.setMorph(red, blue);
+    void applyDomainControlValues(float red, float blue, float yellow) override {
+        adapter.setMorph({ yellow, red, blue });
     }
 
     const Mesh& modelMesh() const override {

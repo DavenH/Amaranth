@@ -18,6 +18,15 @@ delayed tooltips. The broader findings and validation rules are recorded in
 pre-click hover and pointer-leave dismissal were verified from a fresh process.
 Artifact: `.context/native-morph-hover-final-crop.png`.
 
+## P2: Empty Trimesh test fixture dereferences its first vertex
+
+On 2026-10-20, the focused `[trimesh],[envelope],[modulation]` run stopped at
+`TestNodeEditorHost.cpp:4803`: the mesh-edit fixture calls `getVerts().front()`
+on the factory's empty Trimesh model. `TrimeshNodeModelCodec::createDefault()`
+already creates an empty mesh in the preceding commit. Tests that need authored
+geometry must install an explicit mesh fixture before dereferencing vertices.
+Artifact: `.context/dimensions-tests.log`.
+
 ## P2: Full CTest run has broad pre-existing Cycle V2 failures
 
 On 2026-10-18, `ctest --test-dir build/tests -V` passed 1,267 of 1,353 tests

@@ -1,6 +1,8 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Graph/MeshDimensionality.h"
+#include "UI/Editors/MorphControlLayout.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 
 #include <Curve/Mesh/Vertex.h>
@@ -112,6 +114,13 @@ void TrimeshWidget::paintCompact(
     syncFromNode(node);
     const TrimeshRenderData& panelData = bridge.getDataSource().getRenderData();
     const Rectangle<float> previewArea = meshPreviewContentArea(area);
+    if (MeshDimensionality::dimensions(node).axisCount() == 0) {
+        TrimeshSliceRenderer2D::drawGrid(g, previewArea, profile);
+        TrimeshSliceRenderer2D::drawTraceFill(g, previewArea, panelData.slice, profile);
+        TrimeshSliceRenderer2D::drawTrace(g, previewArea, panelData.slice,
+                profile.getCurveStyle().positiveColour.toColour());
+        return;
+    }
     const float surfaceAspectRatio = previewArea.getWidth()
             / jmax(1.f, previewArea.getHeight());
     const int displayHeight = roundToInt(previewArea.getHeight());
@@ -184,9 +193,9 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     const TrimeshRenderData& renderData = bridge.getDataSource().getRenderData();
     TrimeshNodeModel& model = bridge.getModel();
 
-    const Rectangle<float> gridPanel = expandedGridPanelContentBounds(content);
-    const Rectangle<float> sidePanel = expandedSidePanelContentBounds(content);
-    const Rectangle<float> waveshapePanel = expandedWavePanelContentBounds(content);
+    const Rectangle<float> gridPanel = expandedGridPanelContentBounds(content, MeshDimensionality::dimensions(node).axisCount());
+    const Rectangle<float> sidePanel = expandedSidePanelContentBounds(content, MeshDimensionality::dimensions(node).axisCount());
+    const Rectangle<float> waveshapePanel = expandedWavePanelContentBounds(content, MeshDimensionality::dimensions(node).axisCount());
 
     const bool hasPanel3DHost = bridge.getPanel3DHostComponentIfCreated() != nullptr;
     const bool hasPanel2DHost = bridge.getPanel2DHostComponentIfCreated() != nullptr;
@@ -212,7 +221,18 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
         TrimeshSliceRenderer2D::drawVertexMarkers(g, waveshapePanel.reduced(8.f), model.getVertexMarkers());
     }
 
-    const auto selectedParameters = model.getSelectedVertexParameters();
+    auto selectedParameters = model.getSelectedVertexParameters();
+    const auto dimensions = MeshDimensionality::dimensions(node);
+    if (!dimensions.active(Vertex::Time) && !selectedParameters.empty()) {
+        selectedParameters.front().label = "comp";
+        selectedParameters.front().guideOnly = true;
+    }
+    selectedParameters.erase(std::remove_if(selectedParameters.begin(), selectedParameters.end(),
+            [&](const TrimeshVertexParameter& parameter) {
+                const int axis = parameter.id == "vertex.red" ? Vertex::Red
+                        : parameter.id == "vertex.blue" ? Vertex::Blue : -1;
+                return axis >= 0 && !dimensions.active(axis);
+            }), selectedParameters.end());
     const int primaryAxis = model.getPrimaryViewAxis();
     const NodeParameterMap parameters(node);
     const std::array<TrimeshSidePanelRenderer::AxisState, 3> axes {
@@ -253,7 +273,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
             profile.getDomain(),
             parameters.floatValue(
                     profile.getSliceStyle().isSpectral() ? "range" : "gain",
-                    0.5f));
+                    0.5f), dimensions.axisCount());
 }
 
 void TrimeshWidget::renderExpandedPanelsOpenGL(
@@ -262,8 +282,10 @@ void TrimeshWidget::renderExpandedPanelsOpenGL(
         float scaleFactor) {
     setRenderProfile(displayProfile);
     syncExpandedNode(node, content);
-    bridge.renderPanel3D(expandedGridPanelContentBounds(content), scaleFactor);
-    bridge.renderPanel2D(expandedWavePanelContentBounds(content), scaleFactor);
+    if (MeshDimensionality::dimensions(node).axisCount() > 0) {
+        bridge.renderPanel3D(expandedGridPanelContentBounds(content, MeshDimensionality::dimensions(node).axisCount()), scaleFactor);
+    }
+    bridge.renderPanel2D(expandedWavePanelContentBounds(content, MeshDimensionality::dimensions(node).axisCount()), scaleFactor);
 }
 
 Component* TrimeshWidget::prepareExpandedPanel3DComponent(
@@ -482,6 +504,18 @@ TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     return stats;
 }
 
+Rectangle<float> TrimeshWidget::controlRail(Rectangle<float> content, int axis) const {
+    const int count = bridge.getModel().getDimensionCount();
+    auto area = morphPanelBounds(content, count);
+    if (count == 3) {
+        return morphRailBounds(area, axis, showsOutputScale());
+    }
+    if (showsOutputScale()) {
+        area.removeFromBottom(52.f);
+    }
+    return MorphControlLayout(area, count).rail(axis);
+}
+
 bool TrimeshWidget::findMorphControlAt(
         Rectangle<float> content,
         Point<float> position,
@@ -495,8 +529,10 @@ bool TrimeshWidget::findMorphControlAt(
     };
 
     for (int i = 0; i < (int) parameterIds.size(); ++i) {
-        const Rectangle<float> rail = morphRailBounds(
-                morphArea, i, showsOutputScale());
+        const Rectangle<float> rail = controlRail(content, i);
+        if (rail.isEmpty()) {
+            continue;
+        }
 
         if (!rail.expanded(8.f, 12.f).contains(position)) {
             continue;
@@ -526,8 +562,10 @@ bool TrimeshWidget::morphValueForParameterAt(
             continue;
         }
 
-        const Rectangle<float> rail = morphRailBounds(
-                morphPanelBounds(content), i, showsOutputScale());
+        const Rectangle<float> rail = controlRail(content, i);
+        if (rail.isEmpty()) {
+            return false;
+        }
         value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
         return true;
     }
@@ -540,7 +578,8 @@ bool TrimeshWidget::outputScaleValueAt(
         Point<float> position,
         float& value) const {
     const Rectangle<float> rail = TrimeshSidePanelRenderer::outputScaleRailBounds(
-            morphPanelBounds(content));
+            morphPanelBounds(content, bridge.getModel().getDimensionCount()),
+            bridge.getModel().getDimensionCount());
     value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
     return true;
 }
@@ -549,20 +588,15 @@ bool TrimeshWidget::findPrimaryAxisAt(
         Rectangle<float> content,
         Point<float> position,
         String& axisValue) const {
-    const Rectangle<float> morphArea = morphPanelBounds(content);
-
-    for (int i = 0; i < 3; ++i) {
-        const Rectangle<float> button = primaryAxisBounds(
-                morphArea, i, showsOutputScale());
-
-        if (!button.expanded(4.f).contains(position)) {
-            continue;
+    const auto regions = expandedControlHitRegions(content, showsOutputScale(),
+            outputScaleParameterId(), bridge.getModel().getDimensionCount());
+    for (const auto& region : regions) {
+        if (region.kind == TrimeshExpandedHitRegionKind::PrimaryAxis
+                && region.bounds.contains(position)) {
+            axisValue = region.axisValue;
+            return true;
         }
-
-        axisValue = primaryAxisValue(i);
-        return true;
     }
-
     return false;
 }
 
@@ -570,20 +604,15 @@ bool TrimeshWidget::findLinkToggleAt(
         Rectangle<float> content,
         Point<float> position,
         String& axisValue) const {
-    const Rectangle<float> morphArea = morphPanelBounds(content);
-
-    for (int i = 0; i < 3; ++i) {
-        const Rectangle<float> button = linkToggleBounds(
-                morphArea, i, showsOutputScale());
-
-        if (!button.expanded(4.f).contains(position)) {
-            continue;
+    const auto regions = expandedControlHitRegions(content, showsOutputScale(),
+            outputScaleParameterId(), bridge.getModel().getDimensionCount());
+    for (const auto& region : regions) {
+        if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle
+                && region.bounds.contains(position)) {
+            axisValue = region.axisValue;
+            return true;
         }
-
-        axisValue = primaryAxisValue(i);
-        return true;
     }
-
     return false;
 }
 
@@ -594,14 +623,24 @@ bool TrimeshWidget::findVertexParameterAt(
         float& value) const {
     const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
 
+    int visibleRow = -1;
+    const MorphDimensions dimensions(bridge.getModel().getDimensionCount());
     for (int i = 0; i < kVertexParameterCount; ++i) {
-        const Rectangle<float> row = vertexParameterRowBounds(parameterArea, i);
+        if (i > 0 && i < 3 && !dimensions.active(MorphDimensions::axes[(size_t) i])) {
+            continue;
+        }
+        ++visibleRow;
+        const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, visibleRow,
+                        1.f, dimensions.axisCount() <= 1 ? 4 : 6);
         const Rectangle<float> rail = vertexParameterRailBounds(row);
 
         if (!rail.expanded(5.f, 8.f).contains(position)) {
             continue;
         }
 
+        if (i == 0 && !dimensions.active(Vertex::Time)) {
+            return false;
+        }
         parameterId = vertexParameterId(i);
         value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
         return true;
@@ -616,8 +655,15 @@ bool TrimeshWidget::findVertexGuideAttachmentAt(
         String& parameterId) const {
     const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
 
+    int visibleRow = -1;
+    const MorphDimensions dimensions(bridge.getModel().getDimensionCount());
     for (int i = 0; i < kVertexParameterCount; ++i) {
-        const Rectangle<float> row = vertexParameterRowBounds(parameterArea, i);
+        if (i > 0 && i < 3 && !dimensions.active(MorphDimensions::axes[(size_t) i])) {
+            continue;
+        }
+        ++visibleRow;
+        const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, visibleRow,
+                        1.f, dimensions.axisCount() <= 1 ? 4 : 6);
         const Rectangle<float> guide = TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
 
         if (!guide.expanded(4.f).contains(position)) {
@@ -638,13 +684,20 @@ bool TrimeshWidget::vertexParameterValueForParameterAt(
         float& value) const {
     const Rectangle<float> parameterArea = vertexParameterPanelBounds(content);
 
+    int visibleRow = -1;
+    const MorphDimensions dimensions(bridge.getModel().getDimensionCount());
     for (int i = 0; i < kVertexParameterCount; ++i) {
+        if (i > 0 && i < 3 && !dimensions.active(MorphDimensions::axes[(size_t) i])) {
+            continue;
+        }
+        ++visibleRow;
         if (vertexParameterId(i) != parameterId) {
             continue;
         }
 
         const Rectangle<float> rail = vertexParameterRailBounds(
-                vertexParameterRowBounds(parameterArea, i));
+                TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, visibleRow,
+                        1.f, dimensions.axisCount() <= 1 ? 4 : 6));
         value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
         return true;
     }
@@ -658,7 +711,8 @@ bool TrimeshWidget::findVertexSelectionAt(
         Point<float> position,
         int& vertexIndex) {
     syncFromNode(node);
-    const Rectangle<float> waveshape = waveshapeContentBounds(content);
+    const Rectangle<float> waveshape = waveshapeContentBounds(
+            content, bridge.getModel().getDimensionCount());
 
     if (!waveshape.expanded(8.f).contains(position)) {
         return false;
@@ -673,9 +727,16 @@ bool TrimeshWidget::findVertexSelectionAt(
 std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
         Rectangle<float> content,
         bool showOutputScale,
-        const String& outputScaleParameter) {
+        const String& outputScaleParameter,
+        int dimensionCount) {
     std::vector<TrimeshExpandedHitRegion> regions;
-    const Rectangle<float> morphArea = morphPanelBounds(content);
+    const Rectangle<float> morphArea = morphPanelBounds(content, dimensionCount);
+    auto reducedArea = morphArea;
+    if (showOutputScale) {
+        reducedArea.removeFromBottom(52.f);
+    }
+    const MorphControlLayout reduced(reducedArea, dimensionCount);
+    const MorphDimensions dimensions(dimensionCount);
     const std::array<String, 3> parameterIds {
             String("yellow"),
             String("red"),
@@ -683,9 +744,12 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
     };
 
     for (int i = 0; i < (int) parameterIds.size(); ++i) {
+        if (!dimensions.active(MorphDimensions::axes[(size_t) i])) {
+            continue;
+        }
         regions.push_back({
                 TrimeshExpandedHitRegionKind::MorphControl,
-                morphRailBounds(morphArea, i, showOutputScale).expanded(8.f, 12.f),
+                (dimensionCount < 3 ? reduced.rail(i) : morphRailBounds(morphArea, i, showOutputScale)).expanded(8.f, 12.f),
                 parameterIds[(size_t) i],
                 {}
         });
@@ -694,7 +758,7 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
     if (showOutputScale) {
         regions.push_back({
                 TrimeshExpandedHitRegionKind::OutputScale,
-                TrimeshSidePanelRenderer::outputScaleRailBounds(morphArea)
+                TrimeshSidePanelRenderer::outputScaleRailBounds(morphArea, dimensionCount)
                         .expanded(8.f, 12.f),
                 outputScaleParameter,
                 {}
@@ -702,35 +766,46 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
     }
 
     for (int i = 0; i < 3; ++i) {
+        if (dimensionCount <= 1 || !dimensions.active(MorphDimensions::axes[(size_t) i])) {
+            continue;
+        }
         regions.push_back({
                 TrimeshExpandedHitRegionKind::PrimaryAxis,
-                primaryAxisBounds(morphArea, i, showOutputScale).expanded(4.f),
+                (dimensionCount < 3 ? reduced.axis(i) : primaryAxisBounds(morphArea, i, showOutputScale)).expanded(4.f),
                 {},
                 primaryAxisValue(i)
         });
     }
 
     for (int i = 0; i < 3; ++i) {
+        if (!dimensions.active(MorphDimensions::axes[(size_t) i])) {
+            continue;
+        }
         regions.push_back({
                 TrimeshExpandedHitRegionKind::LinkToggle,
-                linkToggleBounds(morphArea, i, showOutputScale).expanded(4.f),
+                (dimensionCount < 3 ? reduced.link(i) : linkToggleBounds(morphArea, i, showOutputScale)).expanded(4.f),
                 {},
                 primaryAxisValue(i)
         });
     }
 
-    const Rectangle<float> parameterArea = TrimeshSidePanelRenderer::vertexParameterPanelBounds(
-            morphArea,
-            showOutputScale);
+    const Rectangle<float> parameterArea = dimensionCount < 3 ? reduced.vertices()
+            : TrimeshSidePanelRenderer::vertexParameterPanelBounds(morphArea, showOutputScale);
 
+    int visibleRow = 0;
     for (int i = 0; i < kVertexParameterCount; ++i) {
-        const Rectangle<float> row = vertexParameterRowBounds(parameterArea, i);
+        if (i > 0 && i < 3 && !dimensions.active(MorphDimensions::axes[(size_t) i])) {
+            continue;
+        }
+        const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(
+                parameterArea, visibleRow++, 1.f, dimensionCount <= 1 ? 4 : 6);
         const bool showGuideControls =
                 TrimeshSidePanelRenderer::showsGuideControlsForParameter(i);
         const auto guideControls = showGuideControls
                 ? TrimeshSidePanelRenderer::GuideControls::Visible
                 : TrimeshSidePanelRenderer::GuideControls::Hidden;
 
+        if (i != 0 || dimensions.active(Vertex::Time)) {
         regions.push_back({
                 TrimeshExpandedHitRegionKind::VertexParameter,
                 TrimeshSidePanelRenderer::vertexParameterRailBounds(
@@ -739,6 +814,7 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
                 vertexParameterId(i),
                 {}
         });
+        }
         if (!showGuideControls) {
             continue;
         }
@@ -763,11 +839,13 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
 Rectangle<float> TrimeshWidget::expandedMorphKeyboardFocusBounds(
         Rectangle<float> content,
         int axisIndex,
-        bool showOutputScale) {
+        bool showOutputScale,
+        int dimensionCount) {
     return TrimeshSidePanelRenderer::keyboardFocusBounds(
             morphPanelBounds(content),
             axisIndex,
-            showOutputScale);
+            showOutputScale,
+            dimensionCount);
 }
 
 Colour TrimeshWidget::surfaceColourForDomain(float value, PortDomain domain) {
@@ -782,15 +860,18 @@ Rectangle<float> TrimeshWidget::meshPreviewContentArea(Rectangle<float> area) {
     return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
 }
 
-Rectangle<float> TrimeshWidget::expandedSidePanelContentBounds(Rectangle<float> content) {
+Rectangle<float> TrimeshWidget::expandedSidePanelContentBounds(Rectangle<float> content, int dimensionCount) {
+    if (dimensionCount == 0) {
+        return content.removeFromRight(jmin(290.f, content.getWidth() * 0.29f));
+    }
     auto topRow = content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
     topRow.removeFromLeft(topRow.getWidth() * kExpandedGridRatio);
     topRow.removeFromLeft(kExpandedPanelGap);
     return topRow;
 }
 
-Rectangle<float> TrimeshWidget::morphPanelBounds(Rectangle<float> content) {
-    return expandedSidePanelContentBounds(content);
+Rectangle<float> TrimeshWidget::morphPanelBounds(Rectangle<float> content, int dimensionCount) {
+    return expandedSidePanelContentBounds(content, dimensionCount);
 }
 
 Rectangle<float> TrimeshWidget::morphRailBounds(
@@ -827,6 +908,14 @@ String TrimeshWidget::primaryAxisValue(int axis) {
 }
 
 Rectangle<float> TrimeshWidget::vertexParameterPanelBounds(Rectangle<float> content) const {
+    const int count = bridge.getModel().getDimensionCount();
+    if (count < 3) {
+        auto area = morphPanelBounds(content, count);
+        if (showsOutputScale()) {
+            area.removeFromBottom(52.f);
+        }
+        return MorphControlLayout(area, count).vertices();
+    }
     return TrimeshSidePanelRenderer::vertexParameterPanelBounds(
             morphPanelBounds(content),
             showsOutputScale());
@@ -859,13 +948,19 @@ String TrimeshWidget::guideGainParameterId(int parameterIndex) {
             : String();
 }
 
-Rectangle<float> TrimeshWidget::waveshapeContentBounds(Rectangle<float> content) {
+Rectangle<float> TrimeshWidget::waveshapeContentBounds(Rectangle<float> content, int dimensionCount) {
+    if (dimensionCount == 0) {
+        return content.withTrimmedRight(jmin(300.f, content.getWidth() * 0.3f));
+    }
     content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
     content.removeFromTop(kExpandedPanelGap);
     return content;
 }
 
-Rectangle<float> TrimeshWidget::expandedGridPanelContentBounds(Rectangle<float> content) {
+Rectangle<float> TrimeshWidget::expandedGridPanelContentBounds(Rectangle<float> content, int dimensionCount) {
+    if (dimensionCount == 0) {
+        return {};
+    }
     auto topRow = content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
     return topRow.removeFromLeft(topRow.getWidth() * kExpandedGridRatio);
 }
@@ -879,7 +974,10 @@ void TrimeshWidget::syncExpandedNode(const Node& node, Rectangle<float> content)
     bridge.syncFromNode(node, kExpandedRows, lastExpandedColumnCount);
 }
 
-Rectangle<float> TrimeshWidget::expandedWavePanelContentBounds(Rectangle<float> content) {
+Rectangle<float> TrimeshWidget::expandedWavePanelContentBounds(Rectangle<float> content, int dimensionCount) {
+    if (dimensionCount == 0) {
+        return content.withTrimmedRight(jmin(300.f, content.getWidth() * 0.3f));
+    }
     content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
     content.removeFromTop(kExpandedPanelGap);
     return content;

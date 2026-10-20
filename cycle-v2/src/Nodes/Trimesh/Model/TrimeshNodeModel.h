@@ -117,6 +117,7 @@ public:
     void markMeshEdited();
 
     const MorphPosition& getMorphPosition() const { return morph; }
+    int getDimensionCount() const { return dimensionCount; }
     int getPrimaryViewAxis() const { return primaryViewAxis; }
     int getSelectedVertexIndex() const { return selectedVertexIndex; }
     uint64_t getRevision() const { return revision; }
@@ -143,6 +144,7 @@ private:
     std::unique_ptr<Mesh> ownedMesh;
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis {};
+    int dimensionCount { 3 };
     int selectedVertexIndex { -1 };
     uint64_t revision {};
     uint64_t appliedModelRevision {};

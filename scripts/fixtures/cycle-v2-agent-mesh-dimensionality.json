@@ -1,0 +1,348 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/with-spies.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveMesh",
+      "waitForIdle": true,
+      "idleDelayMs": 350
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/mesh-dimensions-3d.png"
+    },
+    {
+      "command": "pointer",
+      "targetId": "expanded:waveMesh.meshDimensions.one",
+      "event": "click",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.dimensionCount",
+      "equals": 1
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.surfaceVisible",
+      "equals": true
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/mesh-dimensions-1.png"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "Yellow",
+      "value": "0",
+      "waitForIdle": true,
+      "idleDelayMs": 100
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "equals": "0"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "targetX": 0.2,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "downTargetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "targetX": 0.55,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "downTargetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "targetX": 0.82,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "equals": "0"
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "downTargetId": "expanded:waveMesh.trimeshMorphRail.yellow",
+      "targetX": 0.82,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5,
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "op": "notEquals",
+      "value": "0"
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "equals": "0"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "dimensionCount",
+      "label": "Dimensions",
+      "value": "2",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.dimensionCount",
+      "equals": 2
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.surfaceVisible",
+      "equals": true
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/mesh-dimensions-2.png"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "dimensionCount",
+      "label": "Dimensions",
+      "value": "0",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.dimensionCount",
+      "equals": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.surfaceVisible",
+      "equals": false
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/mesh-dimensions-0.png"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "dimensionCount",
+      "label": "Dimensions",
+      "value": "3",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.dimensionCount",
+      "equals": 3
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.surfaceVisible",
+      "equals": true
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/mesh-dimensions-3.png"
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "dimensionCount",
+      "equals": "0"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "env",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "env",
+      "parameterId": "dimensionCount",
+      "label": "Dimensions",
+      "value": "3",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.dimensionCount",
+      "equals": 3
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/envelope-dimensions-3.png"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "env",
+      "parameterId": "dimensionCount",
+      "label": "Dimensions",
+      "value": "1",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.dimensionCount",
+      "equals": 1
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/envelope-dimensions-1.png"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "env",
+      "parameterId": "dimensionCount",
+      "label": "Dimensions",
+      "value": "0",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.dimensionCount",
+      "equals": 0
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/envelope-dimensions-0.png"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "env",
+      "parameterId": "dimensionCount",
+      "label": "Dimensions",
+      "value": "2",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.dimensionCount",
+      "equals": 2
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/envelope-dimensions-2.png"
+    },
+    {
+      "command": "inspectTargets",
+      "area": "canvas"
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "resizeWindow",
+      "width": 1100,
+      "height": 800,
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "env",
+      "parameterId": "dimensionCount",
+      "label": "Dimensions",
+      "value": "1",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/envelope-dimensions-compact.png"
+    },
+    {
+      "command": "addNode",
+      "kind": "modulationTriple",
+      "x": 540,
+      "y": 280
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "modTriple",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/modulation-profiles-compact.png"
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "modTriple",
+      "parameterId": "envelopeYellowSource",
+      "equals": "unmapped"
+    },
+    {
+      "command": "resizeWindow",
+      "width": 1728,
+      "height": 962,
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/modulation-profiles.png"
+    }
+  ],
+  "quit": true
+}

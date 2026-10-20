@@ -8,6 +8,7 @@
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertyControls.h"
 #include "UI/NodeIconRenderer.h"
+#include "UI/Editors/MorphControlLayout.h"
 
 namespace CycleV2 {
 
@@ -429,7 +430,22 @@ void TrimeshSidePanelRenderer::drawSidePanel(
         const std::array<String, 6>& guideAttachmentLabels,
         bool showOutputScale,
         PortDomain outputDomain,
-        float outputScale) {
+        float outputScale,
+        int dimensionCount) {
+    if (dimensionCount < 3) {
+        auto controls = area;
+        if (showOutputScale) {
+            controls.removeFromBottom(52.f);
+        }
+        drawMorphControls(g, controls, axes, dimensionCount);
+        drawVertexParameters(g, MorphControlLayout(controls, dimensionCount).vertices(),
+                parameters, guideAttachmentLabels);
+        if (showOutputScale) {
+            OutputScaleControlRenderer::draw(g, outputScaleRowBounds(area, dimensionCount),
+                    outputScaleRailBounds(area, dimensionCount), outputDomain, outputScale);
+        }
+        return;
+    }
     auto morphControls = morphControlsBounds(area, showOutputScale);
 
     Rectangle<float> cube = morphCubeBounds(area, showOutputScale);
@@ -481,6 +497,49 @@ void TrimeshSidePanelRenderer::drawSidePanel(
                 outputScaleRailBounds(area),
                 outputDomain,
                 outputScale);
+    }
+}
+
+void TrimeshSidePanelRenderer::drawMorphControls(
+        Graphics& g, Rectangle<float> area,
+        const std::array<AxisState, 3>& axes, int dimensionCount) {
+    const MorphControlLayout layout(area, dimensionCount);
+    const auto plane = layout.diagram();
+    if (dimensionCount == 3) {
+        drawMorphCubePreview(g, plane, axes, {});
+    } else if (!plane.isEmpty()) {
+        g.setColour(Colour(0xff1c2531));
+        g.fillRect(plane);
+        g.setColour(Colour(0xff657181));
+        g.drawRect(plane, 1.f);
+        for (int index = 1; index < 4; ++index) {
+            const float portion = index * 0.25f;
+            g.setColour(Colours::white.withAlpha(0.07f));
+            g.drawVerticalLine(roundToInt(plane.getX() + portion * plane.getWidth()),
+                    plane.getY(), plane.getBottom());
+            g.drawHorizontalLine(roundToInt(plane.getY() + portion * plane.getHeight()),
+                    plane.getX(), plane.getRight());
+        }
+        const Point<float> position(plane.getX() + axes[1].value * plane.getWidth(),
+                plane.getBottom() - axes[2].value * plane.getHeight());
+        g.setColour(Colours::white.withAlpha(0.85f));
+        g.fillEllipse(Rectangle<float>(4.f, 4.f).withCentre(position));
+    }
+    for (int index = 0; index < 3; ++index) {
+        const auto row = layout.row(index);
+        if (row.isEmpty()) {
+            continue;
+        }
+        const auto& state = axes[(size_t) index];
+        drawAxisSlider(g, row, layout.rail(index), state);
+        paintPropertyLinkToggle(g, layout.link(index), state.colour, state.linked);
+        const auto axis = layout.axis(index);
+        if (!axis.isEmpty()) {
+            g.setColour(state.colour.withAlpha(state.primary ? 0.45f : 0.1f));
+            g.fillRoundedRectangle(axis, 3.f);
+            g.setColour(state.colour.withAlpha(state.primary ? 1.f : 0.4f));
+            g.drawRoundedRectangle(axis, 3.f, 1.f);
+        }
     }
 }
 
@@ -654,7 +713,7 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
     }
 
     const int rowCount = area.getWidth() >= kWideLayoutMinimumWidth
-            ? 3
+            ? ((int) parameters.size() + 1) / 2
             : jmax(1, (int) parameters.size());
     const float desiredHeight = heightScale * (34.f + (float) rowCount * 40.f);
     area = area.withHeight(jmin(area.getHeight(), desiredHeight));
@@ -666,7 +725,7 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         const auto& parameter = parameters[(size_t) i];
         Graphics::ScopedSaveState rowState(g);
         g.setOpacity(parameter.enabled ? 1.f : 0.55f);
-        const auto row = vertexParameterRowBounds(area, i, heightScale);
+        const auto row = vertexParameterRowBounds(area, i, heightScale, (int) parameters.size());
         const auto labelBox = vertexLabelBounds(row);
         const bool showRowGuideControls = guideControls == GuideControls::Visible
                 && showsGuideControlsForParameter(i);
@@ -704,9 +763,10 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
             continue;
         }
 
-        const String guideLabel = i < (int) guideAttachmentLabels.size()
-                ? guideAttachmentLabels[(size_t) i]
-                : String();
+        const String field = parameter.id.fromLastOccurrenceOf(".", false, false);
+        const int guideIndex = field == "time" ? 0 : field == "red" ? 1
+                : field == "blue" ? 2 : field == "phase" ? 3 : field == "amp" ? 4 : 5;
+        const String guideLabel = guideAttachmentLabels[(size_t) guideIndex];
         paintGuideGainKnob(g, gainBox, parameter.guideGain, guideLabel.isNotEmpty());
         g.setColour(guideLabel.isEmpty() ? Colour(0xff15191e) : Colour(0xff202833));
         g.fillRect(guideBox);
@@ -812,13 +872,24 @@ Rectangle<float> TrimeshSidePanelRenderer::linkToggleBounds(
 Rectangle<float> TrimeshSidePanelRenderer::keyboardFocusBounds(
         Rectangle<float> sideArea,
         int axisIndex,
-        bool showOutputScale) {
+        bool showOutputScale,
+        int dimensionCount) {
+    if (dimensionCount < 3) {
+        const MorphControlLayout layout(sideArea, dimensionCount);
+        return morphKeyboardFocusOutlineBounds(layout.axis(axisIndex), layout.link(axisIndex));
+    }
     return morphKeyboardFocusOutlineBounds(
             axisRowBounds(sideArea, axisIndex, showOutputScale),
             linkToggleBounds(sideArea, axisIndex, showOutputScale));
 }
 
-Rectangle<float> TrimeshSidePanelRenderer::outputScaleRowBounds(Rectangle<float> sideArea) {
+Rectangle<float> TrimeshSidePanelRenderer::outputScaleRowBounds(Rectangle<float> sideArea, int dimensionCount) {
+    if (dimensionCount < 3) {
+        const float offset = dimensionCount == 0 ? 220.f : dimensionCount == 1 ? 220.f : 282.f;
+        auto row = sideArea.reduced(9.f, 0.f);
+        return row.withY(jmin(sideArea.getY() + offset, sideArea.getBottom() - kRangeRowHeight))
+                .withHeight(kRangeRowHeight);
+    }
     const Rectangle<float> lastMorph = axisRowBounds(sideArea, 2, true);
     const float y = lastMorph.getBottom()
             + kRangeSectionGap
@@ -832,8 +903,8 @@ Rectangle<float> TrimeshSidePanelRenderer::outputScaleRowBounds(Rectangle<float>
     };
 }
 
-Rectangle<float> TrimeshSidePanelRenderer::outputScaleRailBounds(Rectangle<float> sideArea) {
-    auto row = outputScaleRowBounds(sideArea);
+Rectangle<float> TrimeshSidePanelRenderer::outputScaleRailBounds(Rectangle<float> sideArea, int dimensionCount) {
+    auto row = outputScaleRowBounds(sideArea, dimensionCount);
     row.removeFromLeft(kAxisLabelW + 10.f);
     row.removeFromRight(8.f);
     return {
@@ -853,12 +924,13 @@ Rectangle<float> TrimeshSidePanelRenderer::vertexParameterPanelBounds(
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRowBounds(
         Rectangle<float> parameterArea,
         int parameterIndex,
-        float heightScale) {
+        float heightScale,
+        int parameterCount) {
     auto rows = parameterArea.reduced(8.f, 0.f);
     const float headerHeight = 34.f * heightScale;
     const float gap = 7.f * heightScale;
     const bool useTwoColumns = parameterArea.getWidth() >= kWideLayoutMinimumWidth;
-    const int rowCount = useTwoColumns ? 3 : kVertexParamCount;
+    const int rowCount = useTwoColumns ? (parameterCount + 1) / 2 : jmax(1, parameterCount);
     const float rowHeight = jmin(
             34.f * heightScale,
             jmax(0.f, (rows.getHeight() - headerHeight - gap * (float) (rowCount - 1)) / rowCount));
@@ -878,7 +950,7 @@ Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRowBounds(
 }
 
 bool TrimeshSidePanelRenderer::showsGuideControlsForParameter(int parameterIndex) {
-    return isPositiveAndBelow(parameterIndex, kVertexParamCount);
+    return parameterIndex >= 0;
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRailBounds(

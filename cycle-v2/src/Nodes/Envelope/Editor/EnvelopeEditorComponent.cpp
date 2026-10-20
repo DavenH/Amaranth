@@ -1,6 +1,8 @@
 #include <array>
 
 #include "Graph/NodeParameterMap.h"
+#include "Graph/MeshDimensionality.h"
+#include "UI/Editors/MeshDimensionOptions.h"
 #include "Nodes/Envelope/Editor/EnvelopeEditorComponent.h"
 #include "Nodes/Envelope/Editor/EnvelopeAxisScaleSelector.h"
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
@@ -87,11 +89,14 @@ struct EnvelopeEditorComponent::Impl {
             enabled     ("Envelope enabled",
                          "Toggles this Envelope layer",
                          "Enable or disable this Envelope layer")
+        ,   yellowMorph (owner, "Yellow")
         ,   redMorph    (owner, "Red")
         ,   blueMorph   (owner, "Blue") {
         stylePropertyLabel(timeLabel, "Time");
         stylePropertyLabel(purposeLabel, "Purpose");
         purposeLabel.setJustificationType(Justification::centredRight);
+        yellowMorph.slider.setMorphPresentation(Colour(0xffe0c247));
+        yellowMorph.slider.setComponentID("envelopeEditor.morph.yellow");
         redMorph.slider.setMorphPresentation(Colour(0xffd65a5a));
         blueMorph.slider.setMorphPresentation(Colour(0xff5f91e8));
         redMorph.slider.setComponentID("envelopeEditor.morph.red");
@@ -107,10 +112,20 @@ struct EnvelopeEditorComponent::Impl {
         keyboardShortcutHelp = std::make_unique<MorphKeyboardShortcutHelp>(
                 owner,
                 "envelopeEditor.morph.shortcuts",
-                false);
+                true);
     }
 
+    LabeledParameterSlider& morph(int axis) {
+        return axis == 0 ? yellowMorph : axis == 1 ? redMorph : blueMorph;
+    }
+
+    bool& linked(int axis) {
+        return axis == 0 ? yellowLinked : axis == 1 ? redLinked : blueLinked;
+    }
+
+    PropertySegmentedSelector dimensionSelector { meshDimensionOptions() };
     EffectEnableButton enabled;
+    LabeledParameterSlider yellowMorph;
     LabeledParameterSlider redMorph;
     LabeledParameterSlider blueMorph;
     Label timeLabel;
@@ -143,6 +158,7 @@ struct EnvelopeEditorComponent::Impl {
     EnvelopePurpose appliedPurpose { EnvelopePurpose::Control };
     int viewAxis {};
     bool hasAppliedPurpose {};
+    bool yellowLinked { true };
     bool redLinked { true };
     bool blueLinked { true };
     String linkNodeId;
@@ -157,7 +173,20 @@ struct EnvelopeEditorComponent::Impl {
 EnvelopeEditorComponent::EnvelopeEditorComponent(CurveEditorWidget& target) :
         CurveExpandedEditorComponent(target)
     ,   impl(std::make_unique<Impl>(*this)) {
-    bindContinuousControls({ &impl->redMorph, &impl->blueMorph });
+    impl->dimensionSelector.setComponentID("envelopeEditor.dimensions");
+    impl->dimensionSelector.onChange = [this](const String& count) {
+        if (!syncingControls) {
+            setNodeParameterText("dimensionCount", "Dimensions", count);
+        }
+    };
+    addAndMakeVisible(impl->dimensionSelector);
+    bindContinuousControls({ &impl->yellowMorph, &impl->redMorph, &impl->blueMorph });
+    impl->yellowMorph.slider.setKeyboardShortcutHandler([this](const KeyPress& key) {
+        return keyPressed(key);
+    });
+    impl->yellowMorph.slider.setKeyboardTargetHandler([this] {
+        rememberMorphFocus("yellow");
+    });
     impl->redMorph.slider.setKeyboardShortcutHandler([this](const KeyPress& key) {
         return keyPressed(key);
     });
@@ -250,11 +279,11 @@ bool EnvelopeEditorComponent::handleMorphKeyboardShortcut(const KeyPress& key) {
         return true;
     }
     if (isMorphLinkKeyboardShortcut(key)) {
-        bool& linked = slider == &impl->redMorph.slider
-                ? impl->redLinked
-                : impl->blueLinked;
+        bool& linked = impl->linked(slider == &impl->yellowMorph.slider ? 0
+                : slider == &impl->redMorph.slider ? 1 : 2);
         linked = !linked;
-        widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
+        widget.setEnvelopeDimensions(MeshDimensionality::dimensions(node).axisCount(), impl->yellowLinked);
+    widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
         requestRepaint();
         return true;
     }
@@ -262,7 +291,7 @@ bool EnvelopeEditorComponent::handleMorphKeyboardShortcut(const KeyPress& key) {
 }
 
 void EnvelopeEditorComponent::rememberMorphFocus(const String& axis) {
-    if ((axis != "red" && axis != "blue")
+    if (!selectableMorphAxis(axis)
             || axis == impl->keyboardMorphAxis) {
         return;
     }
@@ -272,27 +301,42 @@ void EnvelopeEditorComponent::rememberMorphFocus(const String& axis) {
 }
 
 bool EnvelopeEditorComponent::selectMorphAxis(const String& axis) {
-    if (axis != "red" && axis != "blue") {
+    if (!selectableMorphAxis(axis)) {
         return false;
     }
     rememberMorphFocus(axis);
     return true;
 }
 
+bool EnvelopeEditorComponent::selectableMorphAxis(const String& axis) const {
+    const int dimension = MeshDimensionality::axisForPort(axis);
+    return dimension >= 0 && MeshDimensionality::dimensions(node).active(dimension);
+}
+
 bool EnvelopeEditorComponent::selectAdjacentMorphAxis(int direction) {
-    if (impl->keyboardMorphAxis.isEmpty()) {
-        return selectMorphAxis(direction < 0 ? "blue" : "red");
+    const std::array<String, 3> axes { "yellow", "red", "blue" };
+    int current = -1;
+    for (int index = 0; index < 3; ++index) {
+        if (axes[(size_t) index] == impl->keyboardMorphAxis) {
+            current = index;
+        }
     }
-    if (direction < 0 && impl->keyboardMorphAxis == "blue") {
-        return selectMorphAxis("red");
+    for (int index = current < 0 ? (direction < 0 ? 2 : 0) : current + direction;
+            index >= 0 && index < 3; index += direction) {
+        if (selectableMorphAxis(axes[(size_t) index])) {
+            return selectMorphAxis(axes[(size_t) index]);
+        }
     }
-    if (direction > 0 && impl->keyboardMorphAxis == "red") {
-        return selectMorphAxis("blue");
-    }
-    return true;
+    return false;
 }
 
 PrecisionSlider* EnvelopeEditorComponent::focusedMorphSlider() const {
+    if (!selectableMorphAxis(impl->keyboardMorphAxis)) {
+        return nullptr;
+    }
+    if (impl->keyboardMorphAxis == "yellow") {
+        return &impl->yellowMorph.slider;
+    }
     if (impl->keyboardMorphAxis == "red") {
         return &impl->redMorph.slider;
     }
@@ -309,7 +353,7 @@ void EnvelopeEditorComponent::updateKeyboardShortcutHint() {
         return;
     }
 
-    const int axisIndex = axis == "red" ? 1 : 2;
+    const int axisIndex = axis == "yellow" ? 0 : axis == "red" ? 1 : 2;
     const Rectangle<float> focus = impl->presentation.keyboardFocusBounds(
             editorControlBounds(),
             axisIndex);
@@ -318,17 +362,37 @@ void EnvelopeEditorComponent::updateKeyboardShortcutHint() {
 
 Rectangle<float> EnvelopeEditorComponent::editorControlBounds() const {
     auto bounds = contentBounds();
-    return bounds.removeFromTop(EnvelopeMorphControls::controlsHeight);
+    return bounds.removeFromTop((MeshDimensionality::dimensions(node).axisCount() == 0 ? 200.f
+            : MeshDimensionality::dimensions(node).axisCount() == 1 ? 240.f : 310.f));
+}
+
+Rectangle<float> EnvelopeEditorComponent::morphSurfaceBounds() const {
+    if (MeshDimensionality::dimensions(node).axisCount() == 0) {
+        return {};
+    }
+    auto bounds = contentBounds().withTrimmedTop(editorControlBounds().getHeight());
+    bounds.removeFromLeft(bounds.getWidth() * 0.57f + 8.f);
+    return bounds;
 }
 
 Rectangle<float> EnvelopeEditorComponent::editorPanelBounds() const {
     auto bounds = contentBounds();
-    bounds.removeFromTop(EnvelopeMorphControls::controlsHeight);
+    bounds.removeFromTop((MeshDimensionality::dimensions(node).axisCount() == 0 ? 200.f
+            : MeshDimensionality::dimensions(node).axisCount() == 1 ? 240.f : 310.f));
+    if (MeshDimensionality::dimensions(node).axisCount() > 0) {
+        bounds.setWidth(bounds.getWidth() * 0.57f);
+    }
     return bounds;
 }
 
 void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
     const auto controls = editorControlBounds();
+    const auto dimensions = MeshDimensionality::dimensions(node);
+    const int selectedAxis = MorphDimensions::axes[(size_t) impl->viewAxis];
+    const int surfaceAxis = dimensions.active(selectedAxis) ? selectedAxis : dimensions.primaryAxis();
+    widget.paintEnvelopeMorphSurface(graphics, morphSurfaceBounds(), surfaceAxis,
+            { (float) impl->yellowMorph.slider.getValue(),
+                    (float) impl->redMorph.slider.getValue(), (float) impl->blueMorph.slider.getValue() });
     impl->presentation.draw(
             graphics,
             controls,
@@ -338,11 +402,12 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
             impl->redLinked,
             impl->blueLinked,
             impl->loop.getToggleState(),
-            impl->sustain.getToggleState());
+            impl->sustain.getToggleState(),
+            static_cast<float>(impl->yellowMorph.slider.getValue()), impl->yellowLinked);
 
     const String focusedAxis = focusedMorphAxis();
     if (focusedAxis.isNotEmpty()) {
-        const int axis = focusedAxis == "red" ? 1 : 2;
+        const int axis = focusedAxis == "yellow" ? 0 : focusedAxis == "red" ? 1 : 2;
         paintMorphKeyboardFocus(
                 graphics,
                 impl->presentation.keyboardFocusBounds(controls, axis));
@@ -373,6 +438,8 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
 void EnvelopeEditorComponent::layoutEditor() {
     const auto controls = editorControlBounds();
     const auto header = embeddedEditorHeaderLayout(getLocalBounds().toFloat(), true);
+    impl->dimensionSelector.setBounds(Rectangle<float>(188.f, 26.f)
+            .withPosition(header.title.getX() + 110.f, header.header.getCentreY() - 13.f).toNearestInt());
     impl->mode.setBounds(Rectangle<float>(
             EnvelopeToolbarMetrics::purposeSelectorWidth,
             EnvelopeToolbarMetrics::controlHeight)
@@ -388,14 +455,15 @@ void EnvelopeEditorComponent::layoutEditor() {
             60,
             impl->mode.getHeight());
 
-    auto timeRow = impl->presentation.morphRow(controls, 0).toNearestInt();
-    impl->timeLabel.setBounds(timeRow.removeFromLeft(42));
-
-    auto redRow = impl->presentation.morphSliderBounds(controls, 1).toNearestInt();
-    impl->redMorph.setBounds(redRow, 42, 0);
-
-    auto blueRow = impl->presentation.morphSliderBounds(controls, 2).toNearestInt();
-    impl->blueMorph.setBounds(blueRow, 42, 0);
+    impl->timeLabel.setVisible(false);
+    const auto dimensions = MeshDimensionality::dimensions(node);
+    for (int axis = 0; axis < 3; ++axis) {
+        auto& control = impl->morph(axis);
+        const bool active = dimensions.active(MorphDimensions::axes[(size_t) axis]);
+        control.label.setVisible(false);
+        control.slider.setVisible(active);
+        control.setBounds(impl->presentation.morphSliderBounds(controls, axis).toNearestInt(), 42, 0);
+    }
 
     auto markerGroup = impl->presentation.markerGroupBounds(controls).toNearestInt();
     const int markerWidth = markerGroup.getWidth() / 2;
@@ -421,12 +489,20 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     impl->enabled.setToggleState(
             parameters.boolValue("enabled", true),
             dontSendNotification);
+    const auto dimensions = MeshDimensionality::dimensions(node);
+    if (!dimensions.active(MorphDimensions::axes[(size_t) impl->viewAxis])) {
+        impl->viewAxis = dimensions.axisCount() == 2 ? 1 : 0;
+    }
+    impl->presentation.setDimensionCount(parameters.intValue("dimensionCount", 0));
+    impl->dimensionSelector.setSelectedValue(parameters.stringValue("dimensionCount", "0"));
+    impl->yellowMorph.slider.setValue(parameters.floatValue("yellow", 0.f), dontSendNotification);
     impl->mode.setPurpose(purpose);
     impl->redMorph.slider.setValue(parameters.floatValue("red", 0.5f), dontSendNotification);
     impl->blueMorph.slider.setValue(parameters.floatValue("blue", 0.5f), dontSendNotification);
     if (impl->linkNodeId != node.id) {
         impl->linkNodeId = node.id;
         impl->keyboardMorphAxis.clear();
+        impl->yellowLinked = true;
         impl->redLinked = true;
         impl->blueLinked = true;
     }
@@ -434,6 +510,7 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     const bool logarithmic = parameters.boolValue("logarithmic", false);
     impl->axisScale.setLogarithmic(logarithmic, dontSendNotification);
     impl->axisScale.setEnabled(envelopePurposeAllowsLogarithmic(purpose));
+    widget.setEnvelopeDimensions(MeshDimensionality::dimensions(node).axisCount(), impl->yellowLinked);
     widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
     widget.setEnvelopeLogarithmic(logarithmic);
     syncInteractionControls();
@@ -444,8 +521,9 @@ void EnvelopeEditorComponent::applyEditorStateToWidget() {
             true,
             static_cast<float>(impl->redMorph.slider.getValue()),
             static_cast<float>(impl->blueMorph.slider.getValue()),
-            0.5f,
+            static_cast<float>(impl->yellowMorph.slider.getValue()),
             0);
+    widget.setEnvelopeDimensions(MeshDimensionality::dimensions(node).axisCount(), impl->yellowLinked);
     widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
     const EnvelopePurpose purpose = impl->mode.purpose();
     const bool enteringPitch = purpose == EnvelopePurpose::Pitch
@@ -466,8 +544,7 @@ bool EnvelopeEditorComponent::editorInteractionIsSessionOnly(Point<float> positi
     const auto controls = editorControlBounds();
     for (int axis = 0; axis < 3; ++axis) {
         if (impl->presentation.axisBounds(controls, axis).contains(position)
-                || (axis > 0
-                        && impl->presentation.linkBounds(controls, axis).contains(position))) {
+                || (impl->presentation.linkBounds(controls, axis).contains(position))) {
             return true;
         }
     }
@@ -509,6 +586,7 @@ std::vector<NodeParameter> EnvelopeEditorComponent::editorControls() const {
             "declick",
             "Declick",
             retainedEditorParameter(node, "declick", "0"));
+    addEditorParameter(result, node, "yellow", "Yellow Morph", String(impl->yellowMorph.slider.getValue()));
     addEditorParameter(result, node, "red", "Red Morph", String(impl->redMorph.slider.getValue()));
     addEditorParameter(result, node, "blue", "Blue Morph", String(impl->blueMorph.slider.getValue()));
     addEditorParameter(result, node, "level", "Level", retainedEditorParameter(node, "level", "1"));
@@ -519,6 +597,8 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     const auto controls = editorControlBounds();
     const Rectangle<float> redFocus = impl->presentation.keyboardFocusBounds(controls, 1);
     const Rectangle<float> blueFocus = impl->presentation.keyboardFocusBounds(controls, 2);
+    state.setProperty("dimensionCount", impl->presentation.getDimensionCount());
+    state.setProperty("yellowMorph", impl->yellowMorph.slider.getValue());
     state.setProperty("redMorph", impl->redMorph.slider.getValue());
     state.setProperty("enabled", impl->enabled.getToggleState());
     state.setProperty("blueMorph", impl->blueMorph.slider.getValue());
@@ -731,7 +811,7 @@ bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
     for (int axis = 0; axis < 3; ++axis) {
         interactive = interactive || impl->presentation.axisBounds(controls, axis).contains(position);
         interactive = interactive
-                || (axis > 0 && impl->presentation.linkBounds(controls, axis).contains(position));
+                || (impl->presentation.linkBounds(controls, axis).contains(position));
     }
 
     const auto parameters = widget.selectedVertexParameters();
@@ -774,18 +854,17 @@ bool EnvelopeEditorComponent::handleAxisMouseDown(
         Rectangle<float> controls) {
     for (int axis = 0; axis < 3; ++axis) {
         if (impl->presentation.axisBounds(controls, axis).contains(position)) {
-            if (axis > 0) {
-                rememberMorphFocus(axis == 1 ? "red" : "blue");
-            }
+            rememberMorphFocus(axis == 0 ? "yellow" : axis == 1 ? "red" : "blue");
             impl->viewAxis = axis;
             requestRepaint();
             return true;
         }
-        if (axis > 0 && impl->presentation.linkBounds(controls, axis).contains(position)) {
-            rememberMorphFocus(axis == 1 ? "red" : "blue");
-            bool& linked = axis == 1 ? impl->redLinked : impl->blueLinked;
+        if (impl->presentation.linkBounds(controls, axis).contains(position)) {
+            rememberMorphFocus(axis == 0 ? "yellow" : axis == 1 ? "red" : "blue");
+            bool& linked = impl->linked(axis);
             linked = !linked;
-            widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
+            widget.setEnvelopeDimensions(MeshDimensionality::dimensions(node).axisCount(), impl->yellowLinked);
+    widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
             requestRepaint();
             return true;
         }

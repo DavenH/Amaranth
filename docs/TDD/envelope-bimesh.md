@@ -11,6 +11,16 @@ This is not a genuine bimesh; old storage, rasterization, and DSP remain
 unchanged. The migration below is still required to eliminate Time-pole
 vertices from the model itself.
 
+## Unified dimensionality direction
+
+The active `cycle-v2-mesh-dimensionality.md` supersedes the assumption that
+Envelope intrinsically has only two morph axes. Both Envelope and Trimesh now
+share 0–3 axis modes, with Yellow distinct from envelope playback time. The
+first implementation retains compatible cubes with canonical orthogonal poles.
+Future reduced persistent topology must serve both families and all axis counts,
+while Envelope retains its marker and playback semantics. Do not introduce a
+separate two-axis-only envelope storage hierarchy.
+
 ## Motivation
 
 The Envelope editor presents Time as a morph axis because its current model is

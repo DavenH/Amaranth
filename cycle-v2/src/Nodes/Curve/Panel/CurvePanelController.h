@@ -73,6 +73,9 @@ public:
     virtual void setBipolar(bool bipolar) = 0;
     virtual void setLogarithmic(bool logarithmic) = 0;
     virtual void setAxisLinks(bool redLinked, bool blueLinked) = 0;
+    virtual void setDimensions(int count, bool yellowLinked) = 0;
+    virtual void paintMorphSurface(Graphics& graphics, Rectangle<float> bounds,
+            int axis, const MorphPosition& morph) = 0;
     virtual void fitVerticalRange() = 0;
     virtual void resetVerticalRange() = 0;
     virtual bool hasSingleSelectedVertex() = 0;

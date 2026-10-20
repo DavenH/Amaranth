@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include <Curve/Mesh/MorphDimensions.h>
 
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeModelDecodeDiagnostics.h"
@@ -774,7 +775,14 @@ int CurveNodeDomainCodec::currentVersion() const {
 }
 
 NodeModelStatePtr CurveNodeDomainCodec::createDefault() const {
-    const var state = defaultCurveModelState(kind);
+    var state = defaultCurveModelState(kind);
+    if (kind == NodeKind::Envelope) {
+        EnvelopeNodeModel model;
+        if (model.readJSON(state)) {
+            MorphDimensions::project(model.getMesh(), MorphDimensions(0), { 0.f, 0.5f, 0.5f });
+            state = model.writeJSON();
+        }
+    }
     String error;
     return readJSON(NodeModelEnvelopeCodec::write(
             schemaId(), currentVersion(), 1, "state", state), error);

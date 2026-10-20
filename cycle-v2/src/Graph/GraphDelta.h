@@ -129,7 +129,7 @@ public:
     void captureCableDeletion(const NodeGraph& graph, const CableDeletionPlan& plan);
 
     GraphDelta finish(const NodeGraph& graph, GraphChangeSet changes) const;
-    void restore(NodeGraph& graph) const;
+    void restore(NodeGraph& graph, GraphChangeSet changes = {}) const;
     bool empty() const;
     NodeModelStatePtr originalNodeModel(const juce::String& nodeId) const;
     const GuideCurveResource* originalGuideCurve(const juce::String& guideId) const;

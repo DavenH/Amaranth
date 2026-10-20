@@ -1,4 +1,5 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
+#include "Graph/MeshDimensionality.h"
 
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Trimesh/Rendering/TrimeshGuideRailRenderService.h"
@@ -118,9 +119,10 @@ void TrimeshPanelBridge::syncFromNode(
         int rows,
         int columns) {
     const NodeParameterMap parameters(node);
-    const bool yellowLinked = parameters.boolValue("link.yellow", true);
-    const bool redLinked = parameters.boolValue("link.red", true);
-    const bool blueLinked = parameters.boolValue("link.blue", true);
+    const auto dimensions = MeshDimensionality::dimensions(node);
+    const bool yellowLinked = !dimensions.active(Vertex::Time) || parameters.boolValue("link.yellow", true);
+    const bool redLinked = !dimensions.active(Vertex::Red) || parameters.boolValue("link.red", true);
+    const bool blueLinked = !dimensions.active(Vertex::Blue) || parameters.boolValue("link.blue", true);
     const bool linksChanged = lastYellowLink < 0
             || lastRedLink < 0
             || lastBlueLink < 0

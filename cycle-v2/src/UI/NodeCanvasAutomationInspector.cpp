@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "UI/NodeCanvasAutomationInspector.h"
+#include "Graph/MeshDimensionality.h"
 
 #include "UI/SignalProbeDetailView.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
@@ -492,10 +493,13 @@ public:
             content.removeFromTop(kExpandedEditorHeaderHeight);
             content = content.reduced(10.f, 8.f);
 
-            targets.add(pointerTargetToVar("expanded:" + node.id + ".panel3D", "trimeshPanel3D",
-                                           TrimeshWidget::expandedGridPanelContentBounds(content), node.id));
+            const int count = MeshDimensionality::dimensions(node).axisCount();
+            if (count > 0) {
+                targets.add(pointerTargetToVar("expanded:" + node.id + ".panel3D", "trimeshPanel3D",
+                        TrimeshWidget::expandedGridPanelContentBounds(content, count), node.id));
+            }
             targets.add(pointerTargetToVar("expanded:" + node.id + ".panel2D", "trimeshPanel2D",
-                                           TrimeshWidget::expandedWavePanelContentBounds(content), node.id));
+                                           TrimeshWidget::expandedWavePanelContentBounds(content, count), node.id));
 
             const auto* trimeshEditor = dynamic_cast<const TrimeshExpandedEditorComponent*>(
                     editorComponent);
@@ -506,7 +510,7 @@ public:
                     showOutputScale,
                     trimeshEditor != nullptr
                             ? trimeshEditor->outputScaleParameterId()
-                            : "range")) {
+                            : "range", count)) {
                 const String kind = trimeshHitRegionKind(region.kind);
                 const String suffix = region.parameterId.isNotEmpty() ? region.parameterId : region.axisValue;
                 const Rectangle<float> targetBounds =
@@ -530,6 +534,24 @@ public:
                         "effect2DPanel",
                         panelHost,
                         node.id));
+            }
+        }
+
+        if (MeshDimensionality::applies(node.kind) && editorComponent != nullptr) {
+            std::vector<const Component*> pending { editorComponent };
+            while (!pending.empty()) {
+                const auto* child = pending.back();
+                pending.pop_back();
+                const String id = child->getComponentID();
+                if (id.startsWith("meshDimensions.")) {
+                    const auto bounds = editorComponent->getLocalArea(child, child->getLocalBounds())
+                            .toFloat().translated(panel.getX(), panel.getY());
+                    targets.add(pointerTargetToVar("expanded:" + node.id + "." + id,
+                            "meshDimension", bounds, node.id));
+                }
+                for (int index = 0; index < child->getNumChildComponents(); ++index) {
+                    pending.push_back(child->getChildComponent(index));
+                }
             }
         }
 

@@ -114,7 +114,7 @@ TEST_CASE("Pitch Envelope Guide phase is distinct per Unison lane and stable per
     EnvRasterizer legacy(
             configuration->guideCurveProvider.get(), "BrassPitchComparison");
     legacy.setMesh(configuration->mesh.get());
-    legacy.setMorphPosition({ 0.f, configuration->redMorph, configuration->blueMorph });
+    legacy.setMorphPosition(configuration->morph);
     legacy.setLowresCurves(configuration->lowResolution);
     legacy.setCalcDepthDimensions(false);
     legacy.setWantOneSamplePerCycle(true);

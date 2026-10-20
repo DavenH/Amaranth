@@ -92,6 +92,7 @@ struct GraphBufferPlan {
     DefaultModulationSlot defaultModulationSlot { DefaultModulationSlot::None };
     std::shared_ptr<const INodeDspConfiguration> defaultModulation;
     int defaultModulationNoteOffset {};
+    bool envelopeModulationProfile {};
 };
 
 struct GraphDependencyIndex {

@@ -1,6 +1,7 @@
 #include "UI/NodeEditorHost.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Graph/MeshDimensionality.h"
 #include "Runtime/FingerprintBuilder.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
@@ -554,7 +555,8 @@ bool NodeEditorCommandService::updateTrimeshVertexParameterEditValue(float value
                         activeVertexWidget->currentMesh(),
                         activeVertexIndex,
                         activeVertexParameterId,
-                        value);
+                        value,
+                        MeshDimensionality::dimensions(*node).axisCount());
         if (!movement.has_value()) {
             return false;
         }

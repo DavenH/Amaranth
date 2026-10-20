@@ -5,6 +5,7 @@
 #include <unordered_set>
 
 #include "Graph/GraphSerializer.h"
+#include "Graph/MeshDimensionalityMigration.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphValidator.h"
 #include "Graph/GlobalAudioGraphRepresentationMigration.h"
@@ -733,6 +734,11 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
                 GraphLoadCode::UnsupportedVersion,
                 trimeshMigration.error
         });
+        return result;
+    }
+    const auto dimensionalityMigration = MeshDimensionalityMigration().migrate(migratedValue);
+    if (!dimensionalityMigration.succeeded()) {
+        result.issues.push_back({ GraphLoadCode::InvalidSchema, dimensionalityMigration.error });
         return result;
     }
     const auto* root = migratedValue.getDynamicObject();

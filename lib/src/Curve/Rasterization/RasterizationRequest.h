@@ -9,7 +9,10 @@
 class Mesh;
 
 namespace Rasterization {
+    struct PreparedMeshSlice;
     struct RasterizationRequest {
+        int dimensionCount { 3 };
+        const PreparedMeshSlice* preparedSlice {};
         Dimensions dims;
         MorphPosition morph;
 

@@ -411,23 +411,41 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ChannelLayout::Mono, PortSide::Right,
                               ConnectionKind::ConfigurationAttachment, AttachmentType::ModulationTriple) }, {
                             choice("yellowSource", "Yellow Source", "voiceTime", {
-                                    "voiceTime", "velocity", "inverseVelocity", "keyScale",
+                                    "unmapped", "voiceTime", "velocity", "inverseVelocity", "keyScale",
                                     "modWheel", "channelPressure", "midiCC", "constant"
-                            }, dsp | presentation),
-                            integer("yellowController", "Yellow Controller", 1, 0, 127, dsp | presentation),
-                            number("yellowConstant", "Yellow Constant", 0.5f, 0.f, 1.f, dsp | presentation),
+                            }, graph | dsp | presentation),
+                            integer("yellowController", "Yellow Controller", 1, 0, 127, graph | dsp | presentation),
+                            number("yellowConstant", "Yellow Constant", 0.5f, 0.f, 1.f, graph | dsp | presentation),
                             choice("redSource", "Red Source", "keyScale", {
-                                    "voiceTime", "velocity", "inverseVelocity", "keyScale",
+                                    "unmapped", "voiceTime", "velocity", "inverseVelocity", "keyScale",
                                     "modWheel", "channelPressure", "midiCC", "constant"
-                            }, dsp | presentation),
-                            integer("redController", "Red Controller", 1, 0, 127, dsp | presentation),
-                            number("redConstant", "Red Constant", 0.5f, 0.f, 1.f, dsp | presentation),
+                            }, graph | dsp | presentation),
+                            integer("redController", "Red Controller", 1, 0, 127, graph | dsp | presentation),
+                            number("redConstant", "Red Constant", 0.5f, 0.f, 1.f, graph | dsp | presentation),
                             choice("blueSource", "Blue Source", "modWheel", {
-                                    "voiceTime", "velocity", "inverseVelocity", "keyScale",
+                                    "unmapped", "voiceTime", "velocity", "inverseVelocity", "keyScale",
                                     "modWheel", "channelPressure", "midiCC", "constant"
-                            }, dsp | presentation),
-                            integer("blueController", "Blue Controller", 1, 0, 127, dsp | presentation),
-                            number("blueConstant", "Blue Constant", 0.5f, 0.f, 1.f, dsp | presentation)
+                            }, graph | dsp | presentation),
+                            integer("blueController", "Blue Controller", 1, 0, 127, graph | dsp | presentation),
+                            number("blueConstant", "Blue Constant", 0.5f, 0.f, 1.f, graph | dsp | presentation),
+                            choice("envelopeYellowSource", "Envelope Yellow Source", "unmapped", {
+                                    "unmapped", "voiceTime", "velocity", "inverseVelocity", "keyScale",
+                                    "modWheel", "channelPressure", "midiCC", "constant"
+                            }, graph | dsp | presentation),
+                            integer("envelopeYellowController", "Envelope Yellow Controller", 1, 0, 127, graph | dsp | presentation),
+                            number("envelopeYellowConstant", "Envelope Yellow Constant", 0.5f, 0.f, 1.f, graph | dsp | presentation),
+                            choice("envelopeRedSource", "Envelope Red Source", "keyScale", {
+                                    "unmapped", "voiceTime", "velocity", "inverseVelocity", "keyScale",
+                                    "modWheel", "channelPressure", "midiCC", "constant"
+                            }, graph | dsp | presentation),
+                            integer("envelopeRedController", "Envelope Red Controller", 1, 0, 127, graph | dsp | presentation),
+                            number("envelopeRedConstant", "Envelope Red Constant", 0.5f, 0.f, 1.f, graph | dsp | presentation),
+                            choice("envelopeBlueSource", "Envelope Blue Source", "modWheel", {
+                                    "unmapped", "voiceTime", "velocity", "inverseVelocity", "keyScale",
+                                    "modWheel", "channelPressure", "midiCC", "constant"
+                            }, graph | dsp | presentation),
+                            integer("envelopeBlueController", "Envelope Blue Controller", 1, 0, 127, graph | dsp | presentation),
+                            number("envelopeBlueConstant", "Envelope Blue Constant", 0.5f, 0.f, 1.f, graph | dsp | presentation)
                     }))
                     .help("Maps three performance controls to the mesh axes.")
                     .runtime(AudioModuleRole::ModulationTriple, PreviewModuleRole::None)
@@ -467,6 +485,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                               ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
+                            integer("dimensionCount", "Dimensions", 0, 0, 3, graph | dsp | preview | presentation),
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             number("gain", "Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -536,8 +555,13 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Red),
                       input("blue", "Blue Morph", PortDomain::ControlSignal,
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
-                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue),
+                      input("yellow", "Yellow Morph", PortDomain::ControlSignal,
+                              ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Yellow) },
                     { output("env", "Control", PortDomain::ControlSignal) }, {
+                            integer("dimensionCount", "Dimensions", 0, 0, 3, graph | dsp | preview | presentation),
+                            number("yellow", "Yellow", 0.f, 0.f, 1.f, dsp | preview | presentation),
                             boolean("enabled", "Enabled", true, dsp | preview | presentation),
                             choice("purpose", "Purpose", "control",
                                     { "control", "volume", "pitch", "scratch" },

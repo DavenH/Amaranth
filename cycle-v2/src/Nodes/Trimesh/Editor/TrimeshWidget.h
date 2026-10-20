@@ -124,9 +124,9 @@ public:
     juce::String outputScaleParameterId() const {
         return displayProfile.getSliceStyle().isSpectral() ? "range" : "gain";
     }
-    static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content);
+    static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content, int dimensionCount = 3);
     static int expandedColumnCount(juce::Rectangle<float> content);
-    static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content);
+    static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content, int dimensionCount = 3);
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);
     static juce::Colour surfaceColourForProfile(float value, const TrimeshRenderProfile& profile);
 
@@ -174,13 +174,16 @@ public:
     static std::vector<TrimeshExpandedHitRegion> expandedControlHitRegions(
             juce::Rectangle<float> content,
             bool showOutputScale,
-            const juce::String& outputScaleParameter = "range");
+            const juce::String& outputScaleParameter = "range",
+            int dimensionCount = 3);
     static juce::Rectangle<float> expandedMorphKeyboardFocusBounds(
             juce::Rectangle<float> content,
             int axisIndex,
-            bool showOutputScale = false);
+            bool showOutputScale = false,
+            int dimensionCount = 3);
 
 private:
+    juce::Rectangle<float> controlRail(juce::Rectangle<float> content, int axis) const;
     void syncExpandedNode(const Node& node, juce::Rectangle<float> content);
 
     struct CachedHeatmap {
@@ -209,8 +212,8 @@ private:
             int displayHeight);
 
     static juce::Rectangle<float> meshPreviewContentArea(juce::Rectangle<float> area);
-    static juce::Rectangle<float> expandedSidePanelContentBounds(juce::Rectangle<float> content);
-    static juce::Rectangle<float> morphPanelBounds(juce::Rectangle<float> content);
+    static juce::Rectangle<float> expandedSidePanelContentBounds(juce::Rectangle<float> content, int dimensionCount = 3);
+    static juce::Rectangle<float> morphPanelBounds(juce::Rectangle<float> content, int dimensionCount = 3);
     static juce::Rectangle<float> morphRailBounds(
             juce::Rectangle<float> morphArea,
             int axisIndex,
@@ -229,7 +232,7 @@ private:
     static juce::Rectangle<float> vertexParameterRailBounds(juce::Rectangle<float> parameterRow);
     static juce::String guideGainParameterId(int parameterIndex);
     static juce::String vertexParameterId(int parameterIndex);
-    static juce::Rectangle<float> waveshapeContentBounds(juce::Rectangle<float> content);
+    static juce::Rectangle<float> waveshapeContentBounds(juce::Rectangle<float> content, int dimensionCount = 3);
 
     TrimeshPanelBridge bridge;
     CachedHeatmap compactHeatmap;

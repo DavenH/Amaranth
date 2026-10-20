@@ -1,4 +1,5 @@
 #include "Graph/NodeParameterMap.h"
+#include "Graph/MeshDimensionality.h"
 #include "Nodes/Curve/Editor/CurveEditorWidget.h"
 #include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
 #include "Nodes/Delay/DelayNodeEditor.h"
@@ -176,6 +177,9 @@ public:
         Array<var> primaryAxisButtons;
         Array<var> linkToggles;
         const NodeParameterMap parameters(boundNode);
+        const auto dimensions = MeshDimensionality::dimensions(boundNode);
+        state.setProperty("dimensionCount", dimensions.axisCount());
+        state.setProperty("surfaceVisible", dimensions.axisCount() > 0);
         state.setProperty("enabled", parameters.boolValue("enabled", true));
         state.setProperty("range", editor->spectralRangeValue());
         state.setProperty("gain", parameters.floatValue("gain", 0.5f));
@@ -187,6 +191,9 @@ public:
         state.setProperty("phaseModeVisible", editor->phaseModeVisible());
         state.setProperty("focusedMorphAxis", editor->focusedMorphAxis());
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
+            if (!MeshDimensionality::inputActive(boundNode, axis)) {
+                continue;
+            }
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);
             slider->setProperty("value", parameters.floatValue(axis, 0.5f));
@@ -199,7 +206,11 @@ public:
             primary->setProperty(
                     "selected",
                     parameters.stringValue("primaryAxis", "yellow") == axis);
-            primaryAxisButtons.add(primary);
+            if (dimensions.axisCount() > 1) {
+                primaryAxisButtons.add(primary);
+            } else {
+                delete primary;
+            }
 
             auto* link = new DynamicObject();
             link->setProperty("id", axis);
@@ -323,6 +334,10 @@ private:
                 "enabled",
                 "Enabled",
                 enabled ? 1.f : 0.f);
+    }
+
+    bool setTrimeshDimensionCount(int count) override {
+        return commands.setNodeParameterText(nodeId, "dimensionCount", "Dimensions", String(count));
     }
 
     bool setTrimeshSignalTypeValue(const String& signalType) override {

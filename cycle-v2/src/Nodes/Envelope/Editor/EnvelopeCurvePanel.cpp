@@ -2,6 +2,7 @@
 
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/VertCube.h>
+#include <Curve/Mesh/MorphDimensions.h>
 #include <Curve/Mesh/Vertex.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 #include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
@@ -47,19 +48,11 @@ public:
     }
 
     bool shouldDrawSelectedVertex(const Vertex& vertex) const override {
-        for (VertCube* cube : vertex.owners) {
-            if (cube == nullptr) {
-                continue;
-            }
-            Vertex* timePair = cube->getOtherVertexAlong(
-                    Vertex::Time, const_cast<Vertex*>(&vertex));
-            if (timePair != nullptr) {
-                return vertex.values[Vertex::Time] < timePair->values[Vertex::Time]
-                        || (vertex.values[Vertex::Time] == timePair->values[Vertex::Time]
-                                && std::less<const Vertex*>()(&vertex, timePair));
-            }
+        if (vertex.owners.isEmpty()) {
+            return true;
         }
-        return true;
+        const int corner = vertex.owners.getFirst()->indexOf(&vertex);
+        return corner < 0 || (corner & ~MorphDimensions(dimensionCount).cornerMask()) == 0;
     }
 
     EnvelopeCurvePanel(
@@ -204,6 +197,12 @@ public:
         Panel2D::repaint();
     }
 
+    void setEnvelopeDimensions(int count, bool yellowLinked) override {
+        dimensionCount = count;
+        envelopeYellowLinked = yellowLinked;
+        envRasterizer.setDimensionality(count);
+    }
+
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked) override {
         const ScopedLock lock(vertexLock);
         if (envelopeRedLinked == redLinked && envelopeBlueLinked == blueLinked) {
@@ -326,19 +325,17 @@ public:
         }
 
         Array<Vertex*> moving;
-        moving.add(startVertex);
-        if (Vertex* timePair = cube->getOtherVertexAlong(Vertex::Time, startVertex)) {
-            moving.addIfNotAlreadyThere(timePair);
+        const auto dimensions = MorphDimensions(dimensionCount);
+        int linked = ~dimensions.cornerMask() & 7;
+        linked |= envelopeYellowLinked ? 4 : 0;
+        linked |= envelopeRedLinked ? 2 : 0;
+        linked |= envelopeBlueLinked ? 1 : 0;
+        const int selectedCorner = cube->indexOf(startVertex);
+        for (int corner = 0; corner < 8; ++corner) {
+            if ((corner & ~linked) == (selectedCorner & ~linked)) {
+                moving.addIfNotAlreadyThere(cube->getVertex(corner));
+            }
         }
-
-        if (envelopeRedLinked && envelopeBlueLinked) {
-            moving = cube->toArray();
-        } else if (envelopeRedLinked) {
-            moving = cube->getFace(Vertex::Blue, startVertex).toArray();
-        } else if (envelopeBlueLinked) {
-            moving = cube->getFace(Vertex::Red, startVertex).toArray();
-        }
-
         return moving;
     }
 
@@ -542,7 +539,9 @@ public:
         const auto gain = [cube](int dimension) {
             return cube != nullptr ? cube->guideCurveGainAt(dimension) : 0.5f;
         };
-        return {
+        std::vector<TrimeshVertexParameter> parameters {
+                { "vertex.time", "yellow", vertex->values[Vertex::Time], 0.f, 1.f,
+                        gain(Vertex::Time) },
                 { "guide.time", "comp", 0.f, 0.f, 1.f, gain(Vertex::Time), true, true },
                 { "vertex.red", "red", vertex->values[Vertex::Red], 0.f, 1.f,
                         gain(Vertex::Red) },
@@ -555,6 +554,15 @@ public:
                 { "vertex.curve", "curve", vertex->values[Vertex::Curve], 0.f, 1.f,
                         gain(Vertex::Curve) }
         };
+        const MorphDimensions dimensions(dimensionCount);
+        parameters.erase(std::remove_if(parameters.begin(), parameters.end(),
+                [&](const TrimeshVertexParameter& parameter) {
+                    const int axis = parameter.id == "vertex.time" ? Vertex::Time
+                            : parameter.id == "vertex.red" ? Vertex::Red
+                            : parameter.id == "vertex.blue" ? Vertex::Blue : -1;
+                    return axis >= 0 && !dimensions.active(axis);
+                }), parameters.end());
+        return parameters;
     }
 
     bool setSelectedVertexParameter(
@@ -685,10 +693,10 @@ public:
 protected:
     MorphPosition envelopeMorphPosition() const {
         MorphPosition position;
-        position.time.setValueDirect(0.f);
+        position.time.setValueDirect(controlC);
         position.red.setValueDirect(controlA);
         position.blue.setValueDirect(controlB);
-        position.timeDepth = 0.001f;
+        position.timeDepth = 1.f;
         position.redDepth = 1.f;
         position.blueDepth = 1.f;
         return position;
@@ -710,7 +718,7 @@ protected:
 
         MorphPosition position;
         position.time.setValueDirect(0.f);
-        position.timeDepth = 0.001f;
+        position.timeDepth = 1.f;
         position.red.setValueDirect(0.f);
         position.redDepth = 1.f;
         position.blue.setValueDirect(0.f);
@@ -797,7 +805,7 @@ protected:
         }
 
         MorphPosition position;
-        position.time.setValueDirect(0.f);
+        position.time.setValueDirect(controlC);
         position.red.setValueDirect(controlA);
         position.blue.setValueDirect(controlB);
 
@@ -1273,6 +1281,8 @@ protected:
 
     bool enabled { true };
     bool envelopeLogarithmic {};
+    int dimensionCount { 2 };
+    bool envelopeYellowLinked { true };
     bool envelopeRedLinked { true };
     bool envelopeBlueLinked { true };
     bool pendingVerticalFit {};

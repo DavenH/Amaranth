@@ -20,6 +20,7 @@ public:
     virtual void closeTrimeshEditor() = 0;
     virtual void repaintTrimeshEditorOpenGL() = 0;
     virtual void setTrimeshEnabled(bool enabled) = 0;
+    virtual bool setTrimeshDimensionCount(int) { return false; }
     virtual bool setTrimeshSignalTypeValue(const juce::String& signalType) = 0;
     virtual bool setTrimeshPolarityValue(const juce::String& polarity) = 0;
     virtual bool setTrimeshPhaseModeValue(const juce::String& phaseMode) = 0;
@@ -118,6 +119,7 @@ private:
             "Toggles this Trimesh layer",
             "Enable or disable this Trimesh layer"
     };
+    PropertySegmentedSelector dimensionSelector;
     juce::Label signalTypeLabel;
     PropertySegmentedSelector signalTypeSelector;
     juce::Label polarityLabel;
