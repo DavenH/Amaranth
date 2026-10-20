@@ -7,6 +7,7 @@
 #include <Inter/Interactor.h>
 #include <UI/Panels/Panel.h>
 #include <UI/Panels/Panel3D.h>
+#include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "CycleTour.h"
 #include "CycleAutomation.h"
@@ -290,7 +291,8 @@ void Initializer::setDefaultSettings() {
     getObj(Settings).addDocumentSetting(DocSettings::ResamplingAlgoRend,   "ResamplingAlgoRend",   Resampling::Sinc);
     getObj(Settings).addDocumentSetting(DocSettings::OversampleFactorRltm, "OversampleFactorRltm", 1);
     getObj(Settings).addDocumentSetting(DocSettings::OversampleFactorRend, "OversampleFactorRend", 2);
-    getObj(Settings).addDocumentSetting(DocSettings::TimeSurfaceStyle, "TimeSurfaceStyle", 2, true);
+    getObj(Settings).addDocumentSetting(DocSettings::TimeSurfaceStyle, "TimeSurfaceStyle",
+            (int) TimeSurfaceStyles::defaultStyle, true);
 
     getSetting(IgnoringMessages) 		= true;
     getSetting(MagnitudeDrawMode) 		= true;

@@ -6,6 +6,8 @@
 
 namespace TimeSurfaceStyles {
 
+inline constexpr auto defaultStyle = ScalarSurfaceTimeStyle::IcyHotRaw;
+
 enum class Group { Canonical, Experimental, Legacy };
 
 struct Entry {

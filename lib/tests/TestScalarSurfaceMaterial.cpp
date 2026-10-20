@@ -6,6 +6,7 @@
 
 #include "UI/Panels/ScalarSurfaceMaterial.h"
 #include "UI/Panels/GLScalarSurfaceRenderer.h"
+#include "UI/Panels/TimeSurfaceStyles.h"
 #include "Array/Buffer.h"
 
 namespace {
@@ -205,7 +206,9 @@ TEST_CASE("Time surface style selection changes only the time material",
     REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(3)
             == ScalarSurfaceTimeStyle::BipolarFlat);
     REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(99)
-            == ScalarSurfaceTimeStyle::BlueDepth);
+            == ScalarSurfaceTimeStyle::IcyHotRaw);
+    REQUIRE(TimeSurfaceStyles::fromId({}) == ScalarSurfaceTimeStyle::IcyHotRaw);
+    REQUIRE(TimeSurfaceStyles::fromId("unknown") == ScalarSurfaceTimeStyle::IcyHotRaw);
     REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, bipolar)
             != ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, blue));
     REQUIRE(ScalarSurfaceMaterial::unipolarMagnitude().palette

@@ -64,3 +64,16 @@ The attached recipe was absent from the shipped catalog, rather than incorrectly
 implemented by the existing Icy Hot style. It is now available as Icy Hot (Raw)
 in both apps, using the established per-preset selection. Comparison fixed-gain
 mapping remains a documented independent difference, not a hidden style change.
+
+Follow-up: the user selected recipe 21 as the time-domain default in both apps.
+`TimeSurfaceStyles::defaultStyle` owns that choice for initial material selection,
+ID/index fallback and Cycle 1 document settings. Existing explicit preset styles
+retain their meaning; missing fields reset to recipe 21 instead of inheriting
+the prior preset. No renderer, normalization, audio or spectral-default changes.
+Both standalone apps and focused test targets rebuilt successfully. Shared
+surface/settings checks pass 2,715 assertions in 27 cases; Cycle V2 program/
+persistence checks pass 98 assertions in three cases. Existing style fixtures
+pass 16 Cycle 1 commands and 31 Cycle V2 commands with the new missing-field
+default, saved-choice preservation and context recreation. Audit, code-map and
+whitespace checks pass. Material evaluation remains in its existing owner;
+this follow-up adds only a shared default constant and selection routing.

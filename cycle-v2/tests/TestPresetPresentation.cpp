@@ -243,7 +243,7 @@ TEST_CASE("Time surface styles belong to each preset without changing graph or a
     REQUIRE(document.presentation().timeSurfaceStyle == "bullion");
     REQUIRE(document.loadJson(oldPreset, false));
     REQUIRE(TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle)
-            == ScalarSurfaceTimeStyle::BlueDepth);
+            == ScalarSurfaceTimeStyle::IcyHotRaw);
 
     const File temporary = File::getSpecialLocation(File::tempDirectory)
             .getNonexistentChildFile("surface-style-preset", ".cyclegraph");

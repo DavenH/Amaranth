@@ -8,6 +8,9 @@ treatments, not interchangeable names for the same recipe. These are fixed versi
 of the saved recipes, not live links to Downloads. Cycle needs no Python at runtime;
 filters/compositing are cached when the scalar product changes.
 
+Icy Hot (Raw) is the default time-domain surface in both apps. Presets with an
+explicit saved selection retain it; missing or unknown selections use this default.
+
 A local Python/browser sketchbook for scalar-field colour experiments. No Cycle
 build is needed, and nothing changes Cycle's materials, presets or source data.
 

@@ -57,7 +57,7 @@
     {
       "command": "assertState",
       "path": "panels.waveform3D.view.timeSurfaceStyle",
-      "equals": 2
+      "equals": 14
     },
     {
       "command": "invokeMenuItem",

@@ -8,13 +8,14 @@
 #include "Array/VecOps.h"
 #include "ScalarSurfaceMaterial.h"
 #include "ScalarSurfaceProgram.h"
+#include "TimeSurfaceStyles.h"
 
 namespace {
 
 constexpr float minimumIllumination = 0.16f;
 constexpr int linearTransferTableSize = 4096;
 std::atomic<ScalarSurfaceTimeStyle> selectedTimeSurfaceStyle {
-        ScalarSurfaceTimeStyle::BlueDepth };
+        TimeSurfaceStyles::defaultStyle };
 std::atomic<int> selectedBipolarMagnitudeStyle { -1 };
 
 float smoothUnit(float value) {
@@ -778,7 +779,7 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::forTimeStyle(ScalarSurfaceTimeStyle
         case ScalarSurfaceTimeStyle::IcyHotRaw:
             return savedProgram(21);
     }
-    return blueDepthDirectionalDetail();
+    return forTimeStyle(TimeSurfaceStyles::defaultStyle);
 }
 
 ScalarSurfaceMaterial ScalarSurfaceMaterial::timeDomain() {
@@ -793,7 +794,7 @@ ScalarSurfaceTimeStyle ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(int inde
     if (index >= 0 && index <= (int) ScalarSurfaceTimeStyle::IcyHotRaw) {
         return (ScalarSurfaceTimeStyle) index;
     }
-    return ScalarSurfaceTimeStyle::BlueDepth;
+    return TimeSurfaceStyles::defaultStyle;
 }
 
 int ScalarSurfaceMaterial::timeSurfaceStyleIndex(ScalarSurfaceTimeStyle style) {
