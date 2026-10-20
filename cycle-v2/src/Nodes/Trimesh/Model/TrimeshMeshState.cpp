@@ -7,6 +7,7 @@
 #include <Curve/Mesh/Mesh.h>
 
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/ModelAuthoringValidation.h"
 
 namespace CycleV2 {
 
@@ -112,6 +113,16 @@ NodeModelStatePtr TrimeshNodeModelCodec::readJSON(const var& value, String& erro
     }
     return std::shared_ptr<const TrimeshNodeModelState>(
             new TrimeshNodeModelState(std::move(validated), envelope->revision));
+}
+
+NodeModelStatePtr TrimeshNodeModelCodec::readAuthoringJSON(const var& value, String& error) const {
+    if (!ModelAuthoringValidation::envelope(value, schemaId(), currentVersion())
+            || !ModelAuthoringValidation::mesh(value["mesh"])) {
+        error = "Invalid authored Trimesh model fields, identities or topology";
+        return nullptr;
+    }
+    // Replacement validates structure; gesture collision policy remains with the editor.
+    return readJSON(value, error);
 }
 
 }

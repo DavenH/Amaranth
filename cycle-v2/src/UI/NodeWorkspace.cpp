@@ -453,6 +453,14 @@ bool NodeWorkspace::undoForAutomation() {
     return canvas.undoForAutomation();
 }
 
+bool NodeWorkspace::redoForAutomation() {
+    return canvas.redoForAutomation();
+}
+
+GraphEditResult NodeWorkspace::applyNodeEditsForAutomation(const NodeAuthoringEdits& edits) {
+    return canvas.applyNodeEditsForAutomation(edits);
+}
+
 bool NodeWorkspace::setGuideParameterForAutomation(
         const String& guideId,
         const String& parameterId,

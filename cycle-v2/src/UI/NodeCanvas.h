@@ -119,6 +119,9 @@ public:
     bool loadGuideHeatmapForAutomation(const String& guideId, const File& file);
     bool clearGuideHeatmapForAutomation(const String& guideId);
     bool undoForAutomation();
+    bool redoForAutomation();
+    GraphEditResult applyNodeEditsForAutomation(const NodeAuthoringEdits& edits);
+    uint64_t documentRevisionForAutomation() const { return document.revision(); }
     bool setGuideParameterForAutomation(
             const String& guideId,
             const String& parameterId,

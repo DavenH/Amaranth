@@ -74,7 +74,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Graph/NodeGraph.h` — Durable graph data model; read through dispatcher-owned edit views in UI code.
 - `cycle-v2/src/Graph/GraphDocument.h` — Committed graph ownership, publication, and document observers.
 - `cycle-v2/src/Graph/GraphCommandDispatcher.h` — Authoritative semantic edit, gesture, undo, and commit boundary.
-- `cycle-v2/src/Graph/GraphDelta.h` — Semantic graph changes and consolidated change reporting.
+- `cycle-v2/src/Graph/GraphDelta.h` — Ordered semantic deltas for atomic graph edits, rollback, undo, and redo.
 - `cycle-v2/src/Graph/GraphSerializer.h` — Current graph persistence and migration-facing serialization.
 - `cycle-v2/src/Graph/GraphCompiler.h` — Compiles graph topology into executable runtime structure.
 - `cycle-v2/src/Graph/GraphValidator.h` — Coordinates graph validation; reuse focused validators beneath it.
@@ -146,7 +146,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Mesh geometry or traversal | `lib/src/Curve/Mesh/` | Shared mesh types own topology; do not clone logic in UI. |
 | Rasterization or sampling | `lib/src/Curve/Rasterization/` | Compose policies/builders/samplers before adding algorithms. |
 | Mature editor interaction | `lib/src/Inter/`, `cycle/src/Inter/` | Reuse/extract Cycle 1 behavior and preserve phase costs. |
-| Cycle 2 semantic edit | `GraphCommandDispatcher.h` | UI supplies intent; dispatcher owns gesture, undo, and publication. |
+| Cycle 2 semantic edit | `GraphCommandDispatcher.h`, `scripts/create_cycle_v2_candidates.py` | `applyNodeEdits` authors atomic candidates; dispatcher owns validation, undo, and publication. |
 | Synthesis discovery | `Graph/SynthesisCapabilities.h` | Export registered metadata and canonical physical conversions. |
 | Cycle 2 audio execution | `cycle-v2/src/Runtime/` | Separate realtime, preview, preparation, and presentation work. |
 | Performance suites | `scripts/render_cycle_v2_performance_suite.py` | Reuse captureAudio and coordinator; keep scheduling outside DSP. |

@@ -28,6 +28,8 @@ public:
     juce::var loadGuideHeatmap(const juce::var& command);
     juce::var clearGuideHeatmap(const juce::var& command);
     juce::var undo();
+    juce::var redo();
+    juce::var applyNodeEdits(const juce::var& command);
     juce::var setGuideParameter(const juce::var& command);
     juce::var setNodeParameter(const juce::var& command);
     juce::var inspectNodeControls(const juce::var& command) const;

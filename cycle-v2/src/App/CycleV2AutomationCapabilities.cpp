@@ -4,6 +4,9 @@
 #include "App/CycleV2Automation.h"
 
 #include "App/CycleV2AutomationProtocol.h"
+#include "App/CycleV2AutomationCommand.h"
+#include "Graph/GraphEditTypes.h"
+#include "Nodes/ModelAuthoringValidation.h"
 #include "Graph/SynthesisCapabilities.h"
 
 namespace CycleV2 {
@@ -37,7 +40,25 @@ var CycleV2Automation::inspectSynthesisCapabilities(const var& command) const {
     if (!readContext(command, context)) {
         return failedResult("inspectSynthesisCapabilities", "Invalid mapping context");
     }
-    const var capabilities = SynthesisCapabilities::exportJSON(context);
+    var capabilities = SynthesisCapabilities::exportJSON(context);
+    var authoring = makeObject();
+    auto& fields = *objectFor(authoring);
+    fields.setProperty("command", automationCommandName(CycleV2AutomationCommand::ApplyNodeEdits));
+    fields.setProperty("maximumNodeEdits", (int) maximumNodeAuthoringEdits);
+    fields.setProperty("maximumParameters", (int) maximumNodeAuthoringParameters);
+    fields.setProperty("maximumModelVertices", ModelAuthoringValidation::maximumVertices);
+    fields.setProperty("maximumModelCubes", ModelAuthoringValidation::maximumCubes);
+    fields.setProperty("atomic", true);
+    fields.setProperty("requiresDocumentRevision", true);
+    fields.setProperty("requiresModelRevisionForReplacement", true);
+    Array<var> lifecycle;
+    for (const auto operation : { CycleV2AutomationCommand::InspectNodeControls,
+            CycleV2AutomationCommand::OpenGraph, CycleV2AutomationCommand::SaveGraph,
+            CycleV2AutomationCommand::Undo, CycleV2AutomationCommand::Redo }) {
+        lifecycle.add(automationCommandName(operation));
+    }
+    fields.setProperty("lifecycleCommands", lifecycle);
+    objectFor(capabilities)->setProperty("authoring", authoring);
     const File path = resolveCommandPath(stringProperty(command, "path"));
     if (path == File()) {
         return okResult("inspectSynthesisCapabilities", capabilities);

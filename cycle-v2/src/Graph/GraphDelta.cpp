@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "Graph/GraphEditor.h"
+#include "Graph/GraphGuideIndex.h"
 
 namespace CycleV2 {
 
@@ -65,14 +66,13 @@ bool GraphDelta::empty() const {
         && nodeGroups.empty()
         && probePositions.empty()
         && guides.empty()
-        && edgeInputs.empty()
-        && cableDeletions.empty();
+        && routing.empty();
 }
 
 void GraphDelta::apply(NodeGraph& graph, bool forward) const {
     if (!forward) {
-        for (auto deletion = cableDeletions.rbegin(); deletion != cableDeletions.rend(); ++deletion) {
-            applyCableDeletion(graph, *deletion, false);
+        for (auto delta = routing.rbegin(); delta != routing.rend(); ++delta) {
+            applyRouting(graph, *delta, false);
         }
     }
     for (const auto& delta : parameters) {
@@ -106,25 +106,26 @@ void GraphDelta::apply(NodeGraph& graph, bool forward) const {
     for (const auto& delta : guides) {
         graph.applyGuideCurveState(forward ? delta.after : delta.before);
     }
-    applyEdgeInputs(graph, forward);
     if (forward) {
-        for (const auto& edge : changes.removedEdges) {
-            graph.removeEdge(edge);
-        }
         for (const auto& assignment : changes.removedGuideAssignments) {
-            graph.removeGuideAssignment(assignment.targetNodeId, assignment.target);
+            graph.removeGuideAssignment(
+                    assignment.assignment.targetNodeId, assignment.assignment.target);
         }
     } else {
-        for (const auto& edge : changes.removedEdges) {
-            graph.addEdge(edge);
+        for (auto assignment = changes.removedGuideAssignments.rbegin();
+                assignment != changes.removedGuideAssignments.rend(); ++assignment) {
+            const size_t index = std::min(assignment->index, graph.guideAssignments.size());
+            graph.guideAssignments.insert(
+                    graph.guideAssignments.begin() + (int) index, assignment->assignment);
+            ++graph.revision;
         }
-        for (const auto& assignment : changes.removedGuideAssignments) {
-            graph.assignGuideCurve(assignment);
+        if (!changes.removedGuideAssignments.empty()) {
+            graph.guideIndex->rebuildAssignments(graph.guideAssignments);
         }
     }
     if (forward) {
-        for (const auto& deletion : cableDeletions) {
-            applyCableDeletion(graph, deletion, true);
+        for (const auto& delta : routing) {
+            applyRouting(graph, delta, true);
         }
     }
 }
@@ -164,32 +165,27 @@ void GraphDelta::applyCableDeletion(
     }
 }
 
-void GraphDelta::applyEdgeInputs(NodeGraph& graph, bool forward) const {
-    if (edgeInputs.empty()) {
+void GraphDelta::applyRouting(NodeGraph& graph, const RoutingDelta& delta, bool forward) {
+    if (const auto* deletion = std::get_if<CableDeletionDelta>(&delta)) {
+        applyCableDeletion(graph, *deletion, forward);
         return;
     }
-
-    std::vector<IndexedEdgeState> sourceEdges;
-    std::vector<IndexedEdgeState> targetEdges;
-    for (const auto& delta : edgeInputs) {
-        const auto& source = forward ? delta.before : delta.after;
-        const auto& target = forward ? delta.after : delta.before;
-        sourceEdges.insert(sourceEdges.end(), source.begin(), source.end());
-        targetEdges.insert(targetEdges.end(), target.begin(), target.end());
-    }
-    std::sort(sourceEdges.begin(), sourceEdges.end(), [](const auto& left, const auto& right) {
+    const auto& edges = std::get<EdgeRoutingDelta>(delta);
+    auto source = forward ? edges.before : edges.after;
+    auto target = forward ? edges.after : edges.before;
+    std::sort(source.begin(), source.end(), [](const auto& left, const auto& right) {
         return left.index > right.index;
     });
-    for (const auto& state : sourceEdges) {
+    for (const auto& state : source) {
         jassert(state.index < graph.edges.size());
         if (state.index < graph.edges.size()) {
             graph.edges.erase(graph.edges.begin() + (int) state.index);
         }
     }
-    std::sort(targetEdges.begin(), targetEdges.end(), [](const auto& left, const auto& right) {
+    std::sort(target.begin(), target.end(), [](const auto& left, const auto& right) {
         return left.index < right.index;
     });
-    for (const auto& state : targetEdges) {
+    for (const auto& state : target) {
         const size_t index = std::min(state.index, graph.edges.size());
         graph.edges.insert(graph.edges.begin() + (int) index, state.edge);
     }
@@ -210,6 +206,10 @@ void GraphDeltaBuilder::captureNodeParameter(
             before != nullptr ? std::optional<NodeParameter>(*before) : std::nullopt,
             {}
     });
+    const Node* node = graph.findNode(nodeId);
+    if (node != nullptr && node->kind == NodeKind::Envelope && parameterId == "purpose") {
+        captureNodeParameter(graph, nodeId, "logarithmic");
+    }
 }
 
 void GraphDeltaBuilder::captureNodeModel(const NodeGraph& graph, const String& nodeId) {
@@ -289,7 +289,7 @@ void GraphDeltaBuilder::captureEdgesToInput(
                 return delta.nodeId == nodeId && delta.portId == portId;
             });
     if (!alreadyCaptured) {
-        edgeInputs.push_back({ nodeId, portId, edgesToInput(graph, nodeId, portId), {} });
+        edgeInputs.push_back({ nodeId, portId, edgesToInput(graph, nodeId, portId) });
     }
 }
 
@@ -332,6 +332,29 @@ void GraphDeltaBuilder::captureCableDeletion(
     cableDeletions.push_back(std::move(state));
 }
 
+void GraphDeltaBuilder::finishCommand(
+        const NodeGraph& graph, const GraphChangeSet& changes, bool changed) {
+    if (changed) {
+        EdgeRoutingDelta delta;
+        for (const auto& input : edgeInputs) {
+            delta.before.insert(delta.before.end(), input.before.begin(), input.before.end());
+            const auto after = edgesToInput(graph, input.nodeId, input.portId);
+            delta.after.insert(delta.after.end(), after.begin(), after.end());
+        }
+        if (!delta.before.empty() || !delta.after.empty()) {
+            routing.emplace_back(std::move(delta));
+        }
+        for (auto& deletion : cableDeletions) {
+            routing.emplace_back(std::move(deletion));
+        }
+        if (!changes.removedEdges.empty()) {
+            routing.emplace_back(EdgeRoutingDelta { changes.removedEdges, {} });
+        }
+    }
+    edgeInputs.clear();
+    cableDeletions.clear();
+}
+
 GraphDelta GraphDeltaBuilder::finish(
         const NodeGraph& graph,
         GraphChangeSet changes) const {
@@ -343,8 +366,7 @@ GraphDelta GraphDeltaBuilder::finish(
     result.nodeGroups = nodeGroups;
     result.probePositions = probePositions;
     result.guides = guides;
-    result.edgeInputs = edgeInputs;
-    result.cableDeletions = cableDeletions;
+    result.routing = routing;
     result.changes = std::move(changes);
 
     for (auto& delta : result.parameters) {
@@ -382,14 +404,11 @@ GraphDelta GraphDeltaBuilder::finish(
             delta.after = *guide;
         }
     }
-    for (auto& delta : result.edgeInputs) {
-        delta.after = edgesToInput(graph, delta.nodeId, delta.portId);
-    }
     return result;
 }
 
-void GraphDeltaBuilder::restore(NodeGraph& graph) const {
-    GraphDelta delta = finish(graph, {});
+void GraphDeltaBuilder::restore(NodeGraph& graph, GraphChangeSet changes) const {
+    GraphDelta delta = finish(graph, std::move(changes));
     delta.applyInverse(graph);
 }
 
@@ -402,7 +421,8 @@ bool GraphDeltaBuilder::empty() const {
         && probePositions.empty()
         && guides.empty()
         && edgeInputs.empty()
-        && cableDeletions.empty();
+        && cableDeletions.empty()
+        && routing.empty();
 }
 
 NodeModelStatePtr GraphDeltaBuilder::originalNodeModel(const String& nodeId) const {

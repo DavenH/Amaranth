@@ -55,6 +55,48 @@ Inspect artifacts in this order:
 3. Raw log: only when the filtered log omits needed detail.
 4. LLDB transcript for breakpoint runs, or a crash report when available.
 
+## Semantic Candidate Authoring
+
+Use `inspectSynthesisCapabilities` to discover `authoring` bounds and each model's
+`authoringReplacement` support. `inspectNodeControls` returns the current typed
+model and `documentRevision` without opening an editor. Submit one synchronous
+`applyNodeEdits` request with that expected document revision and an `edits` array:
+
+```json
+{
+  "command": "applyNodeEdits",
+  "expectedDocumentRevision": 12,
+  "edits": [{
+    "nodeId": "shape",
+    "parameters": [{"id": "pre", "value": "0.65"}]
+  }]
+}
+```
+
+A replacement additionally supplies `model` using its inspected codec envelope and
+`expectedModelRevision`. Increment both outer and inner model revisions when the
+codec has an inner revision. Values are stored strings; use existing physical
+conversion discovery when authoring in physical units. A changed batch publishes
+once and uses one undo step. Rejection preserves graph/document/history state;
+active gestures and stale revisions are rejected. Model validation covers safe
+structure and factory-compatible coordinates; musical quality and gesture-specific
+collision eligibility require separate evaluation.
+
+Save a baseline with `saveGraph`, create candidates with `applyNodeEdits`, save each,
+and discard by reopening the baseline through `openGraph`. The demonstration below
+uses that lifecycle and the existing repeatable performance-suite renderer:
+
+```sh
+python3 scripts/create_cycle_v2_candidates.py --no-build \
+    --output-dir .context/semantic-candidates
+```
+
+The default example uses existing `waveshaper`, `timeLayer1` and `voice` nodes in
+`old/sat-bass.cyclegraph`; custom baselines must retain those node contracts.
+It saves two candidate presets, command evidence and suite WAV/results, checking
+undo/redo, reload, rejection isolation, distinct nonzero audio and repeatability.
+Build the exact app first; it attaches through the canonical coordinator/session.
+
 ## Native macOS Edit Smoke
 
 In-app `pointer` commands call component methods directly and do not verify

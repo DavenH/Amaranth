@@ -120,12 +120,12 @@ var SynthesisCapabilities::exportJSON(const ParameterMappingContext& context) {
     fields.setProperty("mappingContext", mappingContext(context));
     fields.setProperty("guidance", var(StringArray {
             "Stored parameter values are strings; physical values use declared conversions, not interpolation of examples.",
-            "Use setNodeParameter for validated authoring edits and connectPorts for connections; domain validation still applies.",
+            "Use applyNodeEdits for atomic stored parameter/model edits and connectPorts for connections; domain validation still applies.",
             "staticAuthoring describes stored configuration, not a continuous performance-modulation input.",
             "Continuous morph controls update at the configured control interval, not necessarily each audio sample.",
             "Envelope morph inputs are sampled at note-on; changing CC during a note does not continuously remorph its envelope.",
             "Modulation-source output depends on source selection; velocity/key are note properties, CC/pressure are live controls.",
-            "Model defaults are valid codec examples, not complete JSON Schema or an available bulk-replacement command.",
+            "Model defaults are codec examples. Authored replacement is available only when model.authoringReplacement is true; it validates structure, not musical quality.",
             "Connection domains can specialize with graph context and signalType; exported ports are declared defaults.",
             "Unknown physical mappings, control timing and perceptual effects are unspecified; no universal brightness control is promised."
     }));
@@ -162,6 +162,7 @@ var SynthesisCapabilities::exportJSON(const ParameterMappingContext& context) {
             auto model = object();
             model.getDynamicObject()->setProperty("schemaId", definition.modelCodec->schemaId());
             model.getDynamicObject()->setProperty("version", definition.modelCodec->currentVersion());
+            model.getDynamicObject()->setProperty("authoringReplacement", definition.modelCodec->supportsAuthoring());
             model.getDynamicObject()->setProperty("default", definition.modelCodec->createDefault()->writeJSON());
             nodeFields.setProperty("model", model);
         }

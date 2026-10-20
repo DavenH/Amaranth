@@ -93,6 +93,7 @@ public:
             const juce::String& parameterId,
             const juce::String& label,
             const juce::String& value);
+    GraphEditResult applyNodeEdits(const NodeAuthoringEdits& edits);
     GraphEditResult publishCurveState(const CurveNodeStatePublication& publication);
     GraphEditResult setPreviewMorph(float red, float blue);
     GraphEditResult setMappedPreviewMorph(
@@ -173,6 +174,7 @@ private:
     bool compoundActive {};
     bool compoundChanged {};
     int compoundDepth {};
+    uint64_t compoundGraphRevision {};
     std::optional<TransientEdit> transientEdit;
 };
 

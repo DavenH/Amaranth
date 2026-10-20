@@ -1,10 +1,15 @@
 #include <utility>
 
 #include <catch2/catch_test_macros.hpp>
+#include <Curve/Mesh/Mesh.h>
 
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 
 using namespace CycleV2;
 
@@ -47,6 +52,92 @@ TEST_CASE("Cancelled graph commands leave the document unchanged", "[cycle-v2][g
     REQUIRE(document.revision() == revision);
     REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "octave") == "0");
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Cancelled compound edits restore implicit removals in serialized order",
+        "[cycle-v2][graph][transaction][rollback]") {
+    GraphNodeFactory factory;
+    NodeGraph graph;
+    for (const String id : { "env-a", "env-b" }) {
+        graph.addNode(factory.createNode(NodeKind::Envelope, id, {}));
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, id, "purpose", "Purpose", "volume").succeeded());
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, id, "logarithmic", "Logarithmic", "1").succeeded());
+    }
+    graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply-a", {}));
+    graph.addNode(factory.createNode(NodeKind::Multiply, "multiply-b", {}));
+    graph.addEdge({ "wave", "out", "multiply-a", "left", PortDomain::TimeSignal });
+    graph.addEdge({ "env-a", "env", "multiply-a", "right", PortDomain::TimeSignal });
+    graph.addEdge({ "wave", "out", "multiply-b", "left", PortDomain::TimeSignal });
+    graph.addEdge({ "env-b", "env", "multiply-b", "right", PortDomain::TimeSignal });
+    graph.addEdge({ "wave", "out", "output", "time", PortDomain::TimeSignal });
+
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    TrimeshMeshFactory::addVoiceCube(*mesh, 0.2f, 0.8f, 0.2f, 0.8f, 0.5f);
+    TrimeshMeshFactory::addVoiceCube(*mesh, 0.3f, 0.7f, 0.3f, 0.7f, 0.5f);
+    for (const String id : { "mesh-a", "mesh-b" }) {
+        Node node = factory.createNode(NodeKind::TrilinearMesh, id, {});
+        node.model = TrimeshNodeModelState::copyOf(*mesh, 1);
+        graph.addNode(std::move(node));
+    }
+    GuideCurveResource guide;
+    guide.id = "guide";
+    guide.name = "Guide";
+    guide.model = createDefaultGuideCurveModel();
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    for (const auto& item : std::vector<std::pair<String, int>> {
+            { "mesh-a", 0 }, { "mesh-a", 8 }, { "mesh-b", 0 },
+            { "mesh-a", 9 }, { "mesh-b", 9 }, { "mesh-a", 1 }, { "mesh-b", 8 } }) {
+        REQUIRE(graph.assignGuideCurve({ "guide", item.first,
+                { item.second, GuideCurveField::Amplitude } }));
+    }
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.setNodeParameter("wave", "level", "Level", "0.1").succeeded());
+    REQUIRE(document.undo());
+    const String before = document.toJson();
+    const uint64_t revision = document.revision();
+    const uint64_t graphRevision = document.graph().getRevision();
+    const bool dirty = document.isDirty();
+    int publications = 0;
+    document.setListener([&](uint64_t, const GraphChangeSet&) { ++publications; });
+    InteractionComplexityDiagnostics::reset();
+
+    commands.beginCompoundEdit();
+    REQUIRE(commands.setNodeParameter("env-a", "purpose", "Purpose", "scratch").succeeded());
+    REQUIRE(commands.setNodeParameter("env-b", "purpose", "Purpose", "scratch").succeeded());
+    auto smaller = TrimeshMeshFactory::createDefaultMesh();
+    REQUIRE(commands.replaceNodeModel("mesh-a", 1,
+            TrimeshNodeModelState::copyOf(*smaller, 2)).succeeded());
+    REQUIRE(commands.replaceNodeModel("mesh-b", 1,
+            TrimeshNodeModelState::copyOf(*smaller, 2)).succeeded());
+    REQUIRE(document.graph().getGuideAssignments().size() == 3);
+    commands.cancelCompoundEdit();
+
+    REQUIRE(document.toJson() == before);
+    REQUIRE(document.revision() == revision);
+    REQUIRE(document.graph().getRevision() == graphRevision);
+    REQUIRE(document.isDirty() == dirty);
+    REQUIRE_FALSE(document.canUndo());
+    REQUIRE(document.canRedo());
+    REQUIRE(publications == 0);
+    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+
+    commands.beginCompoundEdit();
+    REQUIRE(commands.setNodeParameter("env-a", "purpose", "Purpose", "scratch").succeeded());
+    REQUIRE(commands.replaceNodeModel("mesh-a", 1,
+            TrimeshNodeModelState::copyOf(*smaller, 2)).succeeded());
+    REQUIRE(commands.commitCompoundEdit());
+    const String after = document.toJson();
+    REQUIRE(document.undo());
+    REQUIRE(document.toJson() == before);
+    REQUIRE(document.redo());
+    REQUIRE(document.toJson() == after);
+    mesh->destroy();
+    smaller->destroy();
 }
 
 TEST_CASE("Connection deltas preserve edge order through undo and redo",

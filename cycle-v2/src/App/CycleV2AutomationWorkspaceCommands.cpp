@@ -1,5 +1,7 @@
 #include "App/CycleV2AutomationWorkspaceCommands.h"
 
+#include "App/NodeAuthoringAutomation.h"
+
 #include "App/CycleV2AutomationProtocol.h"
 #include "UI/NodeWorkspace.h"
 
@@ -154,6 +156,21 @@ var CycleV2AutomationWorkspaceCommands::undo() {
         return failedResult("undo", "Nothing to undo");
     }
     return okResult("undo", snapshot());
+}
+
+var CycleV2AutomationWorkspaceCommands::redo() {
+    return workspace.redoForAutomation() ? okResult("redo", snapshot())
+            : failedResult("redo", "Nothing to redo");
+}
+
+var CycleV2AutomationWorkspaceCommands::applyNodeEdits(const var& command) {
+    NodeAuthoringEdits request;
+    String error;
+    if (!decodeNodeAuthoringEdits(command, request, error)) {
+        return failedResult("applyNodeEdits", error);
+    }
+    const auto result = workspace.applyNodeEditsForAutomation(request);
+    return nodeAuthoringResult(result, workspace.documentRevisionForAutomation());
 }
 
 var CycleV2AutomationWorkspaceCommands::setGuideParameter(const var& commandValue) {

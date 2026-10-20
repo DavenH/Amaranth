@@ -119,6 +119,11 @@ struct GuideCurveAssignment {
     }
 };
 
+struct IndexedGuideAssignmentState {
+    size_t index {};
+    GuideCurveAssignment assignment;
+};
+
 enum class PortSide {
     Left,
     Right,
@@ -366,7 +371,7 @@ public:
     int removeGuideAssignmentsOutsideCubeRange(
             const String& nodeId,
             int cubeCount,
-            std::vector<GuideCurveAssignment>* removed = nullptr);
+            std::vector<IndexedGuideAssignmentState>* removed = nullptr);
     int guideUsageCount(const String& guideId) const;
     const std::vector<String>& guideTargetNodeIds(const String& guideId) const;
     const std::vector<String>& guideIdsForTargetNode(const String& nodeId) const;

@@ -589,6 +589,9 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("selectedEdgeIndex", state.selectedEdgeIndex);
     root->setProperty("hoveredEdgeIndex", state.hoveredEdgeIndex);
     root->setProperty("documentDirty", context.document.isDirty());
+    root->setProperty("documentRevision", (int64) context.document.revision());
+    root->setProperty("canUndo", context.document.canUndo());
+    root->setProperty("canRedo", context.document.canRedo());
     root->setProperty("documentFile", context.document.file().getFullPathName());
     root->setProperty("previewVoiceLengthSeconds", state.previewVoiceLengthSeconds);
     root->setProperty("editStatusMessage", state.editStatusMessage);
@@ -844,6 +847,7 @@ var NodeCanvasAutomationInspector::inspectNodeControls(const String& nodeId,
     auto* root = new DynamicObject();
     const Node* node = context.document.graph().findNode(nodeId);
     root->setProperty("nodeId", nodeId);
+    root->setProperty("documentRevision", (int64) context.document.revision());
     root->setProperty("resolved", node != nullptr);
 
     if (node == nullptr) {

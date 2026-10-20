@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <climits>
 #include <cmath>
+#include <cstdlib>
 #include <type_traits>
 
 #include "Graph/NodeDefinition.h"
@@ -360,6 +361,29 @@ bool hasImpact(ParameterImpact impacts, ParameterImpact impact) {
 
 bool ParameterMappingContext::isValid() const {
     return std::isfinite(sampleRate) && sampleRate > 0.0 && beatsPerMeasure > 0;
+}
+
+NodeModelStatePtr NodeModelCodec::readAuthoringJSON(const var&, String& error) const {
+    error = "This model codec does not support authored replacements";
+    return nullptr;
+}
+
+bool ParameterDefinition::acceptsAuthoringValue(const String& value) const {
+    if (type == ParameterType::Integer || type == ParameterType::Float) {
+        const String trimmed = value.trim();
+        if (!trimmed.containsOnly("0123456789+-.eE")) {
+            return false;
+        }
+        const char* start = trimmed.toRawUTF8();
+        char* end = nullptr;
+        const double parsed = std::strtod(start, &end);
+        if (start == end || *end != '\0' || !std::isfinite(parsed)
+                || (type == ParameterType::Integer
+                        && (std::floor(parsed) != parsed || parsed != trimmed.getIntValue()))) {
+            return false;
+        }
+    }
+    return accepts(value);
 }
 
 bool ParameterDefinition::accepts(const String& value) const {

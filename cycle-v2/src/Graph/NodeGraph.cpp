@@ -455,17 +455,23 @@ const GuideCurveAssignment* NodeGraph::guideAssignmentForTarget(
 int NodeGraph::removeGuideAssignmentsOutsideCubeRange(
         const String& nodeId,
         int cubeCount,
-        std::vector<GuideCurveAssignment>* removed) {
+        std::vector<IndexedGuideAssignmentState>* removed) {
     InteractionComplexityDiagnostics::recordAssignmentLinearScan();
     const size_t previousCount = guideAssignments.size();
+    const size_t firstRemoval = removed != nullptr ? removed->size() : 0;
+    size_t index = 0;
     eraseIf(guideAssignments, [&](const GuideCurveAssignment& assignment) {
         const bool shouldRemove = assignment.targetNodeId == nodeId
                 && !isPositiveAndBelow(assignment.target.cubeIndex, cubeCount);
         if (shouldRemove && removed != nullptr) {
-            removed->push_back(assignment);
+            removed->push_back({ index, assignment });
         }
+        ++index;
         return shouldRemove;
     });
+    if (removed != nullptr) {
+        std::reverse(removed->begin() + (int) firstRemoval, removed->end());
+    }
     const int removedCount = (int) (previousCount - guideAssignments.size());
     if (removedCount == 0) {
         return 0;

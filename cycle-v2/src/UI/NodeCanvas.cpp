@@ -2384,6 +2384,27 @@ bool NodeCanvas::undoForAutomation() {
     return result.succeeded;
 }
 
+bool NodeCanvas::redoForAutomation() {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
+    const auto result = authoring.redo();
+    applyAuthoringResult(result);
+    if (result.succeeded && !document.lastChange().explanationsChanged) {
+        rebindGuideEditor();
+    }
+    return result.succeeded;
+}
+
+GraphEditResult NodeCanvas::applyNodeEditsForAutomation(const NodeAuthoringEdits& edits) {
+    presentation.cancelPendingRefreshes();
+    const auto result = commands.applyNodeEdits(edits);
+    if (result.succeeded() && result.changed) {
+        presentation.refresh(document.graph(), document.revision(), document.lastChange());
+        applyAuthoringResult({ true, true, true, result.code, {}, { true, true } });
+        rebindGuideEditor();
+    }
+    return result;
+}
+
 bool NodeCanvas::setGuideParameterForAutomation(
         const String& guideId,
         const String& parameterId,
