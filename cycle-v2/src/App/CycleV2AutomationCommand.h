@@ -20,6 +20,8 @@ enum class CycleV2AutomationCommand {
     RequestCanvasOpenGLFrame,
     RecreateCanvasOpenGLContext,
     ExportGraph,
+    InspectSynthesisCapabilities,
+    ConvertSynthesisParameter,
     OpenGraph,
     ResizeWindow,
     SaveGraph,

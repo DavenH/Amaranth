@@ -19,6 +19,8 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "requestCanvasOpenGLFrame", Command::RequestCanvasOpenGLFrame },
             { "recreateCanvasOpenGLContext", Command::RecreateCanvasOpenGLContext },
             { "exportGraph", Command::ExportGraph },
+            { "inspectSynthesisCapabilities", Command::InspectSynthesisCapabilities },
+            { "convertSynthesisParameter", Command::ConvertSynthesisParameter },
             { "openGraph", Command::OpenGraph },
             { "resizeWindow", Command::ResizeWindow },
             { "saveGraph", Command::SaveGraph },

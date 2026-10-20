@@ -80,6 +80,36 @@ underlay plus expanded Trimesh 3D/2D panel host creation, visibility, and
 bounds; with OS screenshots enabled, the smoke runner asserts luma stats for
 the diagnostics-discovered GL panel regions.
 
+## Synthesis Capability Discovery
+
+`inspectSynthesisCapabilities` returns the registered node types, declared ports,
+parameter defaults/constraints/impacts, processing scopes, and model codec
+identities with valid default examples. It requires no open editor. Add `path`
+to write the discovery JSON to a file. Model examples are not a full JSON Schema
+or an available bulk model-replacement API.
+
+```json
+{"command":"inspectSynthesisCapabilities","sampleRate":48000,"beatsPerMeasure":4}
+{"command":"convertSynthesisParameter","typeId":"equalizer","parameterId":"band3Frequency","direction":"toStored","value":2500}
+{"command":"convertSynthesisParameter","typeId":"delay","parameterId":"time","value":0.5,"beatsPerMeasure":7}
+```
+
+Conversions call the same physical mappings used by DSP/editors. `value` is
+numeric; `toPhysical` (the default direction) reads a stored value, while
+`toStored` reads a physical value. Results include the normalized stored string
+and its achieved physical value, so quantization and non-unique inverses remain
+visible. Out-of-range requests and unavailable mappings/inverses fail explicitly.
+Reverb kernel seconds and IR prefilter frequency depend on `sampleRate`; delay
+beats depend on `beatsPerMeasure`. These explicit context defaults are 44100 Hz
+and four beats per measure; they do not inspect the open document or audio device.
+Mapping examples illustrate the range; use conversion queries for exact values.
+
+Known morph-input timing distinguishes continuous Trimesh control from Envelope
+morph sampled at note-on. Continuous updates still follow the control interval.
+`staticAuthoring` means stored configuration rather than a continuous modulation
+input; it does not promise click-free realtime reconfiguration. Undeclared timing,
+physical mappings and perceptual effects remain unspecified.
+
 ## Current Editor Controls
 
 - drag empty canvas: pan
