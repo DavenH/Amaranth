@@ -481,6 +481,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/PatternScheduleAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/Reference/ReferenceSampleAnalysis.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/Reference/ReferenceLibrary.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/Reference/ReferenceAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserPage.cpp"
             ${TEST_SOURCES}
         )

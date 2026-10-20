@@ -147,6 +147,36 @@ The editor should feel like a studio canvas rather than a legacy panel UI:
 - rich per-node previews: trilinear mesh surfaces, 2D mesh slices, waveform/cyclogram views, spectrograms, spectral magnitude/phase graphs, envelopes, and meters
 - double-click expansion into a larger editor for the selected node
 
+## Reference Studies
+
+Reference studies can collect labelled recordings and numerical pitch/cyclogram
+analysis without file choosers:
+
+```sh
+python3 scripts/cycle_reference_study.py \
+    --study scripts/fixtures/cycle-v2-reference-study.json \
+    --output .context/reference-study --include-grid
+```
+
+Use `--validate-only` to inspect a study before launching Cycle. Study entries
+accept a library `referenceId` or a source path relative to the manifest. Labels
+declare `observed` or `inferred` origin and optional confidence; unspecified
+controls remain unknown. Rerun using the generated `report.json` as `--study`
+to reuse resolved library IDs instead of importing again. Source-only entries
+also reuse byte-identical library recordings. Choose a fresh output directory
+for each run so a failed collection cannot invalidate earlier artifacts.
+Crops select intervals
+within the existing decoded analysis; they do not retrack or create audio copies.
+The decoded analysis may cover only the initial portion of a long source,
+according to the existing `PitchedSample` loading limit.
+
+The automation commands `listReferences`, `importReference` (`path`) and
+`exportReferenceAnalysis` (optional `path`, `includeGrid`) expose the same
+reference library. Select a reference explicitly before exporting; export does
+not change selection. Original tracking confidence remains separate from the
+effective, possibly edited pitch path. Grid amplitudes preserve existing
+peak normalization and half-gain folding, rather than absolute recording level.
+
 ## Visual References
 
 These generated UI mockups are visual references, not implementation snapshots. They capture the intended density, routing clarity, node-preview richness, and studio-canvas atmosphere.
