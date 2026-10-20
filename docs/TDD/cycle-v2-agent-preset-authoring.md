@@ -2,7 +2,7 @@
 
 ## Status
 
-The first wave is implemented in independent drafts:
+The first wave is implemented in independent PRs:
 [preset/node explanations](https://github.com/DavenH/Amaranth/pull/185),
 [synthesis capabilities](https://github.com/DavenH/Amaranth/pull/183),
 [performance suites](https://github.com/DavenH/Amaranth/pull/184), and
@@ -55,6 +55,7 @@ Include an information action within the node header, hover reading through
 the existing console, a shared text-editing interaction, and direct agent
 read/write commands in the same PR. Do not duplicate console explanations in
 hover popups or position the information control outside the node's bounds.
+Console reading preserves authored line breaks and wraps at a readable size.
 Keep generic type help in the definition registry. Empty notes need no expanded
 editor area.
 
