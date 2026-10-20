@@ -783,6 +783,7 @@ void GraphCommandDispatcher::accumulateChange(
     destination.parameterImpacts = destination.parameterImpacts | change.parameterImpacts;
     destination.modelChanged = destination.modelChanged || change.modelChanged;
     destination.editorStateChanged = destination.editorStateChanged || change.editorStateChanged;
+    destination.explanationsChanged = destination.explanationsChanged || change.explanationsChanged;
     destination.resourcesChanged = destination.resourcesChanged || change.resourcesChanged;
 }
 

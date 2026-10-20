@@ -1,4 +1,5 @@
 #include "UI/NodeCanvasPresentation.h"
+#include "UI/ExplanationEditor.h"
 
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
@@ -131,24 +132,62 @@ String NodeCanvasPresentation::canvasStatusText(
     return hoverText.isNotEmpty() ? hoverText : statusMessage;
 }
 
+TextLayout NodeCanvasPresentation::canvasStatusLayout(const String& text, float width) {
+    AttributedString attributed;
+    attributed.setJustification(Justification::topLeft);
+    attributed.setWordWrap(AttributedString::byWord);
+    attributed.setLineSpacing(2.f);
+    attributed.append(text, Font(FontOptions(CanvasChromeMetrics::sectionTitleFontSize)),
+            CanvasChromePalette::text.withAlpha(0.8f));
+    TextLayout result;
+    result.createLayout(attributed, jmax(1.f, width));
+    return result;
+}
+
 void NodeCanvasPresentation::paintStatus(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    const String text = canvasStatusText(frame.statusMessage, frame.hoverText);
-    if (text.isEmpty()) {
-        return;
-    }
-
     const Rectangle<float> status = CanvasUtilityDock::layout(
             frame.utilityBounds, frame.keyboardExtraControllerCount).status;
-    if (status.getWidth() < 180.f) {
+    graphics.setColour(CanvasChromePalette::canvasBackground);
+    graphics.fillRect(status.expanded(2.f));
+    const String text = canvasStatusText(frame.statusMessage, frame.hoverText);
+    const Rectangle<float> textBounds = status.withTrimmedLeft(
+            (float) ExplanationBadge::presetButtonWidth + 8.f).reduced(2.f, 5.f);
+    if (text.isEmpty() || textBounds.getWidth() < 40.f || textBounds.getHeight() < 14.f) {
         return;
     }
-
-    const Rectangle<float> textBounds = status.reduced(2.f, 1.f);
+    if (statusTextCache != text || statusTextWidthCache != textBounds.getWidth()) {
+        statusLayoutCache = canvasStatusLayout(text, textBounds.getWidth());
+        statusTextCache = text;
+        statusTextWidthCache = textBounds.getWidth();
+    }
+    auto visibleText = textBounds;
+    const bool overflow = statusLayoutCache.getHeight() > visibleText.getHeight();
+    if (overflow) {
+        const float availableHeight = visibleText.getHeight()
+                - CanvasChromeMetrics::sectionTitleFontSize - 2.f;
+        float completeLineHeight = 0.f;
+        for (const auto& line : statusLayoutCache) {
+            const float bottom = line.getLineBoundsY().getEnd();
+            if (bottom > availableHeight) {
+                break;
+            }
+            completeLineHeight = bottom;
+        }
+        visibleText.setHeight(completeLineHeight);
+    }
+    {
+        Graphics::ScopedSaveState save(graphics);
+        graphics.reduceClipRegion(visibleText.toNearestInt());
+        statusLayoutCache.draw(graphics, visibleText);
+    }
+    if (!overflow) {
+        return;
+    }
     graphics.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
-    graphics.setColour(CanvasChromePalette::text.withAlpha(0.8f));
-    graphics.drawText(text, textBounds, Justification::centredLeft);
+    graphics.setColour(CanvasChromePalette::mutedText);
+    graphics.drawText("…", textBounds.withTop(visibleText.getBottom()), Justification::topLeft);
 }
 
 void NodeCanvasPresentation::paintPalette(

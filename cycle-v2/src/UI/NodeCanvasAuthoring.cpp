@@ -181,7 +181,9 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::loadSnapshot(const File& file) {
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::undo() {
-    presentation.cancelPendingRefreshes();
+    if (!document.nextUndoIsExplanation()) {
+        presentation.cancelPendingRefreshes();
+    }
     if (!document.undo()) {
         return handledResult(false, "Nothing to undo", { true });
     }
@@ -190,7 +192,9 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::undo() {
 }
 
 NodeCanvasAuthoringResult NodeCanvasAuthoring::redo() {
-    presentation.cancelPendingRefreshes();
+    if (!document.nextRedoIsExplanation()) {
+        presentation.cancelPendingRefreshes();
+    }
     if (!document.redo()) {
         return handledResult(false, "Nothing to redo", { true });
     }
@@ -205,6 +209,9 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::restoreGraphJson(
         return handledResult(false, "Restore failed", { true });
     }
 
+    if (json.isEmpty() && document.lastChange().explanationsChanged) {
+        return handledResult(true, statusMessage, { true });
+    }
     reconcileDocumentSelection();
     refreshPresentation();
     return restoredDocumentResult(statusMessage);

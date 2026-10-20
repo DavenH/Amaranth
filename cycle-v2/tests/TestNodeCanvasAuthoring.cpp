@@ -1077,3 +1077,25 @@ TEST_CASE("Time cable Pan supports a complete edit and undo sequence",
     REQUIRE(authoring.undo().succeeded);
     REQUIRE(document.graph().findNode(inserted.nodeId) == nullptr);
 }
+
+TEST_CASE("Explanation undo and redo preserve the prepared canvas audio plan",
+        "[cycle-v2][explanations][authoring]") {
+    GraphDocument document(NodeGraph::createDemoGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    NullEditorCommands editorCommands;
+    auto authoring = makeAuthoring(document, commands, presentation, editorCommands);
+    const auto audioRevision = presentation.audioPlanRevision();
+    const auto presentationRevision = presentation.revision();
+    const auto compilations = presentation.compilationCount();
+    const auto previewRenders = presentation.previewRenderCount();
+    presentation.resetPerformanceMetrics();
+    REQUIRE(commands.setPresetDescription("Play gently for a soft attack").changed);
+    REQUIRE(authoring.undo().succeeded);
+    REQUIRE(authoring.redo().succeeded);
+    REQUIRE(presentation.audioPlanRevision() == audioRevision);
+    REQUIRE(presentation.revision() == presentationRevision);
+    REQUIRE(presentation.compilationCount() == compilations);
+    REQUIRE(presentation.previewRenderCount() == previewRenders);
+    REQUIRE(document.presentation().description == "Play gently for a soft attack");
+}

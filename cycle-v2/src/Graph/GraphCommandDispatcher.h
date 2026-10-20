@@ -37,6 +37,8 @@ public:
     bool setPresetPatternId(const juce::String& id);
     bool setPresetTags(juce::StringArray tags);
     bool setPresetTitle(const juce::String& title);
+    GraphEditResult setNodeRationale(const juce::String& nodeId, const juce::String& text);
+    GraphEditResult setPresetDescription(const juce::String& text);
     GraphEditResult removeNode(const juce::String& nodeId);
     GraphEditResult removeEdgeAt(size_t edgeIndex);
     GraphEditResult removeCable(const std::vector<size_t>& edgeIndices);

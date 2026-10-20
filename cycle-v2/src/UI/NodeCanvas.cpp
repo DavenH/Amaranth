@@ -220,6 +220,16 @@ NodeCanvas::NodeCanvas() :
     ,   hitRouter(graph, palette, queries)
     ,   addToSelectionCursor(MiscGraphics::createCursor(MiscGraphics::CrossAddCursor)) {
     settings.initialiseSettings();
+    presetInformation.setComponentID("workspace.presetInformation");
+    presetInformation.onClick = [this] { openExplanationEditor({}); };
+    presetInformation.onStateChange = [this] {
+        if (presetInformation.isMouseOver()) {
+            resolvedHoverText = document.presentation().description.isNotEmpty()
+                    ? document.presentation().description : "Read or edit this preset explanation";
+        }
+        requestCanvasStatusRepaint();
+    };
+    addAndMakeVisible(presetInformation);
     ScalarSurfaceMaterial::setTimeSurfaceStyle(
             TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle));
     ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(-1);
@@ -371,7 +381,7 @@ void NodeCanvas::paint(Graphics& g) {
     const uint64_t framePreparationStartedAt = performanceMetrics.timestamp();
     const NodeCanvasPresentationFrame frame = presentationFrame();
     const Rectangle<int> status = statusRepaintBounds(
-            frame.canvasBounds, frame.keyboardExtraControllerCount);
+            frame.utilityBounds, frame.keyboardExtraControllerCount);
     if (!status.isEmpty() && status.contains(g.getClipBounds())) {
         canvasPresentation.paintStatus(g, frame);
         return;
@@ -413,6 +423,11 @@ void NodeCanvas::resized() {
     palette.setWorkspaceBounds(GuideCurveShelf::guideWorkspace(
             getLocalBounds().toFloat(), guideShelfState.minimized));
     viewport.setBounds(canvasContentBounds());
+    const auto status = CanvasUtilityDock::layout(
+            canvasUtilityBounds(), extraMidiControllerCount()).status;
+    presetInformation.setBounds(status.withSize(
+            (float) ExplanationBadge::presetButtonWidth,
+            (float) ExplanationBadge::presetButtonWidth).toNearestInt());
     if (!documentViewportFitted && !canvasContentBounds().isEmpty()) {
         fitDocumentInViewport();
         documentViewportFitted = true;
@@ -557,6 +572,11 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
         const float gain = NodeParameterMap(*outputFader).floatValue("gain", 0.5f);
         resolvedHoverText = "Master gain: " + OutputMeterPresentation::gainLabel(gain);
     }
+    const Node* explanationNode = explanationNodeAt(position);
+    if (explanationNode != nullptr) {
+        resolvedHoverText = explanationNode->rationale.isNotEmpty() ? explanationNode->rationale
+                : "Add an explanation of this component";
+    }
     switch (NodeCanvasCursorPolicy::cursorFor(
             adjustsInlinePan || adjustsOutputGain,
             modifiers)) {
@@ -567,7 +587,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
             setMouseCursor(addToSelectionCursor);
             break;
         case NodeCanvasCursorKind::Normal:
-            setMouseCursor(hoveredQuickCreatePortId.isNotEmpty()
+            setMouseCursor(explanationNode != nullptr || hoveredQuickCreatePortId.isNotEmpty()
                     ? MouseCursor::PointingHandCursor
                     : MouseCursor::NormalCursor);
             break;
@@ -699,6 +719,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
 
     const GraphEdgeIndex& groupEdgeIndex = queries.presentationFacts().edgeIndex();
+    if (const Node* node = explanationNodeAt(event.position)) {
+        openExplanationEditor(node->id);
+        return;
+    }
     const auto& scene = sceneBuilder.build(
             graph,
             viewport,
@@ -1565,7 +1589,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             lastMousePosition,
             selectedNodeId,
             editStatusMessage,
-            pointerInsideCanvas && !pointerOccluded ? resolvedHoverText : String {},
+            (pointerInsideCanvas || presetInformation.isMouseOver()) && !pointerOccluded
+                    ? resolvedHoverText : String {},
             std::move(pending),
             snapGuides,
             presentation.revision(),
@@ -2089,6 +2114,16 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
 NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const {
     NodeCanvasAutomationPresentation result;
     result.selectedNodeId = selectedNodeId;
+    result.presetInformationBounds = presetInformation.getBounds().toFloat();
+    if (explanationEditor != nullptr) {
+        result.explanationEditor = explanationEditor->automationState();
+        for (auto* child : explanationEditor->getChildren()) {
+            if (child->getComponentID().isNotEmpty()) {
+                result.explanationTargets.emplace_back(child->getComponentID(),
+                        getLocalArea(child, child->getLocalBounds()).toFloat());
+            }
+        }
+    }
     result.selectedNodeIds = selectedNodeIds;
     result.expandedNodeId = expandedNodeId;
     if (presetSidebar != nullptr) {
@@ -2343,7 +2378,7 @@ bool NodeCanvas::undoForAutomation() {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
     const auto result = authoring.undo();
     applyAuthoringResult(result);
-    if (result.succeeded) {
+    if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
     }
     return result.succeeded;
@@ -2875,6 +2910,9 @@ bool NodeCanvas::saveGraphToFile(const File& file) {
 }
 
 bool NodeCanvas::loadGraphFromFile(const File& file) {
+    if (explanationEditor != nullptr) {
+        explanationEditor->dismiss();
+    }
     performanceMetrics.beginPresetLoad(file.getFileName());
     const bool loaded = applyAuthoringResult(authoring.loadGraph(file));
     if (loaded) {

@@ -284,4 +284,28 @@ var CycleV2AutomationWorkspaceCommands::setVertexParameter(const var& commandVal
     return okResult("setVertexParameter", workspace.inspectNodeControlsForAutomation(nodeId));
 }
 
+var CycleV2AutomationWorkspaceCommands::explanation(const var& commandValue) {
+    const String command = stringProperty(commandValue, "command");
+    const String scope = stringProperty(commandValue, "scope");
+    const String nodeId = stringProperty(commandValue, "nodeId");
+    if ((scope != "node" && scope != "preset")
+            || (scope == "node" && nodeId.isEmpty())
+            || (scope == "preset" && nodeId.isNotEmpty())) {
+        return failedResult(command, "Use scope node with nodeId, or scope preset without nodeId");
+    }
+    if (workspace.inspectExplanationForAutomation(nodeId).isVoid()) {
+        return failedResult(command, "Unknown explanation target");
+    }
+    if (command == "setExplanation") {
+        const var text = commandValue.getProperty("text", {});
+        if (!text.isString() || !workspace.setExplanationForAutomation(nodeId, text.toString())) {
+            return failedResult(command, "Explanation must be text of at most 16384 characters; target must be editable");
+        }
+    } else if (command == "openExplanationEditor"
+            && !workspace.openExplanationEditorForAutomation(nodeId)) {
+        return failedResult(command, "Could not open explanation editor");
+    }
+    return okResult(command, workspace.inspectExplanationForAutomation(nodeId));
+}
+
 }

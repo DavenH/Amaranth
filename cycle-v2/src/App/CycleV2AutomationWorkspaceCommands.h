@@ -31,6 +31,7 @@ public:
     juce::var setGuideParameter(const juce::var& command);
     juce::var setNodeParameter(const juce::var& command);
     juce::var inspectNodeControls(const juce::var& command) const;
+    juce::var explanation(const juce::var& command);
     juce::var setMorphSlider(const juce::var& command);
     juce::var setPrimaryAxis(const juce::var& command);
     juce::var toggleLink(const juce::var& command);

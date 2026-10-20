@@ -42,6 +42,7 @@ struct GraphChangeSet {
     bool modelChanged {};
     bool editorStateChanged {};
     bool resourcesChanged {};
+    bool explanationsChanged {};
 };
 
 struct NodeAudioResourceEdit {

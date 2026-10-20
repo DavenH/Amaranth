@@ -214,6 +214,8 @@ struct NodeAudioResourceSummary {
     int sampleCount {};
 };
 
+constexpr int maximumExplanationLength = 16384;
+
 struct Node {
     String id;
     NodeKind kind { NodeKind::GenericProcessor };
@@ -225,6 +227,7 @@ struct Node {
     NodeModelStatePtr model;
     var editorState;
     bool reverseInputPortOrder {};
+    String rationale;
 };
 
 struct NodeGroup {
@@ -395,6 +398,7 @@ public:
     static NodeGraph createDemoGraph();
 
 private:
+    friend class GraphDocument;
     friend class GraphCommandDispatcher;
     friend class GraphDelta;
     friend class GraphEditor;

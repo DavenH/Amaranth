@@ -498,6 +498,18 @@ bool NodeWorkspace::getNodeParameterForAutomation(
     return canvas.getNodeParameterForAutomation(nodeId, parameterId, value);
 }
 
+bool NodeWorkspace::setExplanationForAutomation(const String& nodeId, const String& text) {
+    return canvas.setExplanation(nodeId, text);
+}
+
+var NodeWorkspace::inspectExplanationForAutomation(const String& nodeId) const {
+    return canvas.inspectExplanation(nodeId);
+}
+
+bool NodeWorkspace::openExplanationEditorForAutomation(const String& nodeId) {
+    return canvas.openExplanationEditor(nodeId);
+}
+
 var NodeWorkspace::inspectNodeControlsForAutomation(const String& nodeId) const {
     return canvas.inspectNodeControlsForAutomation(nodeId);
 }
