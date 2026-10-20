@@ -1,6 +1,6 @@
 # Cycle V2 Preset And Node Explanations
 
-Status: In Progress. Implements roadmap PR 1 only.
+Status: Implemented. Implements roadmap PR 1 only.
 
 ## Contract And Ownership
 
@@ -78,16 +78,27 @@ canvas note undo/redo preserves the compiled/audio/preview revisions and counts.
 The 29-command explanation fixture passes, including real routed in-app badge
 and Save/Cancel controls. Corrected production-size component screenshots show
 inset header information, readable generic help, and preset access outside the
-sidebar. Native OS editing is still being diagnosed separately; it has not been
-accepted as complete. The coding-agent foreground lease also encountered an
-independent workspace's native run and waited without disturbing that instance.
+sidebar. The exact-PID native smoke also passes badge click, multiline typing,
+local draft inspection, Save, one-step undo, preset information and Escape.
+Its earlier click misses coincided with a stale same-bundle root instance
+remaining frontmost after System Events reported successful activation; that
+instance was stopped through its owning coordinator. A fresh exact-worktree
+app and exact-PID activation completed the native route without an app failure.
+The coordinator also encountered an independent workspace's foreground lease
+and waited without disturbing that instance.
 
 New production implementation files are 59 lines for graph commands, under
 160 for shared editing/geometry and under 100 for canvas note orchestration.
 Clang-tidy on the three new implementation files reports no user-code
 diagnostics. The semantic map and diff whitespace checks pass. The architecture
-size review below records existing large owners and the small canvas-header
-threshold crossing. Final native and OS screenshot evidence remains pending.
+size review below records existing large owners and the final canvas-header
+size. The final closed-editor OS window capture is
+`.context/annotation-header.png`, showing console explanation text with no
+canvas popup; native proof is
+`.context/native-explanation-report.json` and `.context/native-explanation-final.log`.
+The GUI fixture report is `.context/explanations-report.json`, and focused test
+proof is `.context/explanations-ctest.log`. Screenshots were inspected at the
+actual production size.
 
 
 ## Implementation Shape Review
@@ -104,19 +115,18 @@ buttons separated by 8 pixels. Return inserts a line break; Escape cancels;
 Command+Return saves. Full note text is available through the existing hover console, without popup tooltips.
 
 Baseline/touched large sources: NodeCanvas 3468 -> 3505 lines, presentation
-1511 -> 1521, serializer 1322 -> 1340, authoring 1036 -> 1043, automation
-inspector 1139 -> 1162, NodeGraph header 464 -> 468, canvas header 442 -> 453.
+1511 -> 1525, serializer 1322 -> 1340, authoring 1036 -> 1043, automation
+inspector 1139 -> 1162, NodeGraph header 464 -> 468, canvas header 442 -> 450.
 Canvas remains the widget-lifecycle/input coordinator; `NodeCanvasExplanations`
 owns note hit resolution, editor orchestration and inspection. `ExplanationEditor`
 owns shared editing and badge eligibility/geometry, and
 `GraphExplanationCommands` owns explanation validation/history integration.
-The canvas header crosses the 450-line trigger by three lines: the additional
-public note actions and owned widget lifetime remain cohesive with its existing
-surface. The stable extraction target is its existing sidebar/overlay
-composition, including preset information, rather than a note-specific facade.
+The canvas header reaches the 450-line trigger: the additional public note
+actions and owned widget lifetime remain cohesive with its existing surface.
+The stable extraction target is its existing sidebar/overlay composition, including preset information, rather than a note-specific facade.
 Serializer continues to own the one graph codec; no schema or persistence
 policy is duplicated. There are no new NodeKind/DSP branches or compatibility
-paths. Pending semantic and screenshot evidence remains required.
+paths. The semantic, native and screenshot acceptance evidence is complete.
 
 Document replacement extends the existing graph snapshot history with optional
 matching `PresetPresentation`; only replacement snapshots capture it. Ordinary
