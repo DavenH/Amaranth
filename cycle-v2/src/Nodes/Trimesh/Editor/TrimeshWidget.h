@@ -117,6 +117,7 @@ public:
     bool hasGuideAttachmentForParameter(const juce::String& parameterId) const;
     std::vector<TrimeshVertexParameter> vertexParametersForIndex(int vertexIndex);
     std::vector<TrimeshVertexParameter> selectedVertexParameters();
+    static bool vertexPropertyActive(const juce::String& parameterId, int dimensionCount);
     int selectedVertexIndexForPanel() const;
     std::vector<TrimeshVertexMarker> vertexMarkers();
     const TrimeshRenderData& renderDataForAutomation() const;
@@ -127,6 +128,7 @@ public:
         return displayProfile.getSliceStyle().isSpectral() ? "range" : "gain";
     }
     static juce::Rectangle<float> expandedGridPanelContentBounds(juce::Rectangle<float> content, int dimensionCount = 3);
+    static juce::Rectangle<float> staticEditorBounds(juce::Rectangle<float> fullBounds);
     static int expandedColumnCount(juce::Rectangle<float> content);
     static juce::Rectangle<float> expandedWavePanelContentBounds(juce::Rectangle<float> content, int dimensionCount = 3);
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);

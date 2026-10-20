@@ -362,6 +362,10 @@ bool TrimeshControlsComponent::isControlEnabled(
     if (isVertexControl && widget.selectedVertexIndexForPanel() < 0) {
         return false;
     }
+    if (isVertexControl && !TrimeshWidget::vertexPropertyActive(
+                region.parameterId, NodeParameterMap(node).intValue("dimensionCount", 0))) {
+        return false;
+    }
 
     return region.kind != TrimeshExpandedHitRegionKind::VertexGuideGain
             || widget.hasGuideAttachmentForParameter(region.parameterId);

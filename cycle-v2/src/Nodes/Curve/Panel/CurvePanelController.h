@@ -63,6 +63,7 @@ public:
     virtual uint64_t modelRevision() const = 0;
     virtual uint64_t contentRevision() const = 0;
     virtual std::vector<TrimeshVertexParameter> selectedVertexParameters() const = 0;
+    virtual std::vector<TrimeshCubePreviewVertex> morphPreviewVertices() const { return {}; }
     virtual bool setSelectedVertexParameter(const String& parameterId, float value) = 0;
 };
 

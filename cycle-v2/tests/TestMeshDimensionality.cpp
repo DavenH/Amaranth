@@ -636,14 +636,15 @@ TEST_CASE("Surviving Trimesh rails and parameters occupy stable slots in every m
     const Rectangle<float> content(20.f, 40.f, 1200.f, 650.f);
     const auto full = TrimeshWidget::expandedControlHitRegions(content, true, "gain", 3);
     for (const int count : { 2, 1, 0 }) {
-        const auto reduced = TrimeshWidget::expandedControlHitRegions(content, true, "gain", count);
+        const auto modeContent = count == 0 ? content.withHeight(content.getHeight() * 0.54f) : content;
+        const auto reduced = TrimeshWidget::expandedControlHitRegions(modeContent, true, "gain", count);
         for (const auto& region : reduced) {
             const auto before = std::find_if(full.begin(), full.end(), [&](const auto& candidate) {
                 return candidate.kind == region.kind && candidate.parameterId == region.parameterId
                         && candidate.axisValue == region.axisValue;
             });
             REQUIRE(before != full.end());
-            REQUIRE(region.bounds == before->bounds);
+            REQUIRE(region.bounds.toNearestInt() == before->bounds.toNearestInt());
         }
     }
     for (const auto plane : { MorphDimensions::Plane::YellowRed, MorphDimensions::Plane::RedBlue }) {
@@ -687,6 +688,27 @@ TEST_CASE("Format eight Red Blue Trimeshes retain their variation when adopting 
         for (const float blue : { 0.f, 0.3f, 1.f }) {
             REQUIRE(amplitude(migrated->mesh(), { 0.4f, red, blue })
                     == Catch::Approx(amplitude(expected->mesh(), { 0.4f, red, blue })));
+        }
+    }
+}
+
+TEST_CASE("Static Trimesh compacts around its anchored property stack",
+        "[cycle-v2][mesh-dimensions][ui]") {
+    for (const auto size : { Point<float>(1400.f, 920.f), Point<float>(890.f, 760.f) }) {
+        const Rectangle<float> full(40.f, 25.f, size.x, size.y);
+        const auto reduced = TrimeshWidget::staticEditorBounds(full);
+        REQUIRE(reduced.getPosition() == full.getPosition());
+        REQUIRE(reduced.getWidth() == full.getWidth());
+        REQUIRE(reduced.getHeight() < full.getHeight() * 0.6f);
+        const Rectangle<float> content(10.f, 42.f, size.x - 20.f, reduced.getHeight() - 50.f);
+        const auto curve = TrimeshWidget::expandedWavePanelContentBounds(content, 0);
+        REQUIRE(content.contains(curve));
+        REQUIRE(curve.getHeight() > content.getHeight() * 0.8f);
+        const auto controls = TrimeshWidget::expandedControlHitRegions(content, true, "gain", 0);
+        for (const auto& control : controls) {
+            if (control.kind != TrimeshExpandedHitRegionKind::OutputScale) {
+                REQUIRE_FALSE(curve.intersects(control.bounds));
+            }
         }
     }
 }

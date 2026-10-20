@@ -3,6 +3,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "Graph/MeshDimensionality.h"
 #include "UI/Editors/MorphControlLayout.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 
 #include <Curve/Mesh/Vertex.h>
@@ -23,7 +24,7 @@ constexpr int kPreviewRows             = 320;
 constexpr int kPreviewColumns          = 96;
 constexpr int kExpandedRows            = 320;
 constexpr int kExpandedColumns         = 768;
-constexpr int kVertexParameterCount    = 6;
+constexpr int kVertexParameterCount    = 7;
 
 }
 
@@ -223,18 +224,8 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
         TrimeshSliceRenderer2D::drawVertexMarkers(g, waveshapePanel.reduced(8.f), model.getVertexMarkers());
     }
 
-    auto selectedParameters = model.getSelectedVertexParameters();
+    const auto selectedParameters = selectedVertexParameters();
     const auto dimensions = MeshDimensionality::dimensions(node);
-    if (!dimensions.active(Vertex::Time) && !selectedParameters.empty()) {
-        selectedParameters.front().label = "comp";
-        selectedParameters.front().guideOnly = true;
-    }
-    selectedParameters.erase(std::remove_if(selectedParameters.begin(), selectedParameters.end(),
-            [&](const TrimeshVertexParameter& parameter) {
-                const int axis = parameter.id == "vertex.red" ? Vertex::Red
-                        : parameter.id == "vertex.blue" ? Vertex::Blue : -1;
-                return axis >= 0 && !dimensions.active(axis);
-            }), selectedParameters.end());
     const int primaryAxis = model.getPrimaryViewAxis();
     const NodeParameterMap parameters(node);
     const std::array<TrimeshSidePanelRenderer::AxisState, 3> axes {
@@ -388,7 +379,24 @@ std::vector<TrimeshVertexParameter> TrimeshWidget::vertexParametersForIndex(int 
 }
 
 std::vector<TrimeshVertexParameter> TrimeshWidget::selectedVertexParameters() {
-    return bridge.getModel().getSelectedVertexParameters();
+    auto parameters = bridge.getModel().getSelectedVertexParameters();
+    if (parameters.empty()) {
+        return parameters;
+    }
+    const auto& yellow = parameters.front();
+    parameters.insert(parameters.begin() + 1,
+            { "guide.time", "component", 0.f, 0.f, 1.f, yellow.guideGain, yellow.enabled, true });
+    for (auto& parameter : parameters) {
+        parameter.enabled &= vertexPropertyActive(parameter.id, bridge.getModel().getDimensionCount());
+    }
+    return parameters;
+}
+
+bool TrimeshWidget::vertexPropertyActive(const String& parameterId, int dimensionCount) {
+    const String field = parameterId.fromLastOccurrenceOf(".", false, false);
+    const int axis = field == "time" && parameterId == "vertex.time" ? Vertex::Time
+            : field == "red" ? Vertex::Red : field == "blue" ? Vertex::Blue : -1;
+    return axis < 0 || MorphDimensions::trimesh(dimensionCount).active(axis);
 }
 
 int TrimeshWidget::selectedVertexIndexForPanel() const {
@@ -623,19 +631,19 @@ bool TrimeshWidget::findVertexParameterAt(
 
     const auto dimensions = MorphDimensions::trimesh(bridge.getModel().getDimensionCount());
     for (int i = 0; i < kVertexParameterCount; ++i) {
-        if (i > 0 && i < 3 && !dimensions.active(MorphDimensions::axes[(size_t) i])) {
+        if (!vertexPropertyActive(vertexParameterId(i), dimensions.axisCount())) {
             continue;
         }
         const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i,
-                        1.f, 6);
+                        1.f, 7);
         const Rectangle<float> rail = vertexParameterRailBounds(row);
 
         if (!rail.expanded(5.f, 8.f).contains(position)) {
             continue;
         }
 
-        if (i == 0 && !dimensions.active(Vertex::Time)) {
-            return false;
+        if (vertexParameterId(i) == "guide.time") {
+            continue;
         }
         parameterId = vertexParameterId(i);
         value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
@@ -653,11 +661,14 @@ bool TrimeshWidget::findVertexGuideAttachmentAt(
 
     const auto dimensions = MorphDimensions::trimesh(bridge.getModel().getDimensionCount());
     for (int i = 0; i < kVertexParameterCount; ++i) {
-        if (i > 0 && i < 3 && !dimensions.active(MorphDimensions::axes[(size_t) i])) {
+        if (!vertexPropertyActive(vertexParameterId(i), dimensions.axisCount())) {
             continue;
         }
         const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i,
-                        1.f, 6);
+                        1.f, 7);
+        if (!TrimeshSidePanelRenderer::showsGuideControlsForParameter(vertexParameterId(i))) {
+            continue;
+        }
         const Rectangle<float> guide = TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
 
         if (!guide.expanded(4.f).contains(position)) {
@@ -680,16 +691,16 @@ bool TrimeshWidget::vertexParameterValueForParameterAt(
 
     const auto dimensions = MorphDimensions::trimesh(bridge.getModel().getDimensionCount());
     for (int i = 0; i < kVertexParameterCount; ++i) {
-        if (i > 0 && i < 3 && !dimensions.active(MorphDimensions::axes[(size_t) i])) {
+        if (!vertexPropertyActive(vertexParameterId(i), dimensions.axisCount())) {
             continue;
         }
-        if (vertexParameterId(i) != parameterId) {
+        if (vertexParameterId(i) == "guide.time" || vertexParameterId(i) != parameterId) {
             continue;
         }
 
         const Rectangle<float> rail = vertexParameterRailBounds(
                 TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i,
-                        1.f, 6));
+                        1.f, 7));
         value = jlimit(0.f, 1.f, (position.x - rail.getX()) / rail.getWidth());
         return true;
     }
@@ -784,43 +795,19 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
     const Rectangle<float> parameterArea = reduced.vertices();
 
     for (int i = 0; i < kVertexParameterCount; ++i) {
-        if (i > 0 && i < 3 && !dimensions.active(MorphDimensions::axes[(size_t) i])) {
-            continue;
+        const String id = vertexParameterId(i);
+        const auto row = TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i, 1.f, 7);
+        if (id != "guide.time") {
+            regions.push_back({ TrimeshExpandedHitRegionKind::VertexParameter,
+                    TrimeshSidePanelRenderer::vertexParameterRailBounds(row).expanded(5.f, 8.f), id, {} });
         }
-        const Rectangle<float> row = TrimeshSidePanelRenderer::vertexParameterRowBounds(
-                parameterArea, i, 1.f, 6);
-        const bool showGuideControls =
-                TrimeshSidePanelRenderer::showsGuideControlsForParameter(i);
-        const auto guideControls = showGuideControls
-                ? TrimeshSidePanelRenderer::GuideControls::Visible
-                : TrimeshSidePanelRenderer::GuideControls::Hidden;
-
-        if (i != 0 || dimensions.active(Vertex::Time)) {
-        regions.push_back({
-                TrimeshExpandedHitRegionKind::VertexParameter,
-                TrimeshSidePanelRenderer::vertexParameterRailBounds(
-                        row,
-                        guideControls).expanded(5.f, 8.f),
-                vertexParameterId(i),
-                {}
-        });
+        if (TrimeshSidePanelRenderer::showsGuideControlsForParameter(id)) {
+            regions.push_back({ TrimeshExpandedHitRegionKind::VertexGuideGain,
+                    TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row).expanded(3.f, 2.f),
+                    guideGainParameterId(i), {} });
+            regions.push_back({ TrimeshExpandedHitRegionKind::VertexGuideAttachment,
+                    TrimeshSidePanelRenderer::vertexParameterGuideBounds(row).expanded(4.f), id, {} });
         }
-        if (!showGuideControls) {
-            continue;
-        }
-        regions.push_back({
-                TrimeshExpandedHitRegionKind::VertexGuideGain,
-                TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row)
-                        .expanded(3.f, 2.f),
-                guideGainParameterId(i),
-                {}
-        });
-        regions.push_back({
-                TrimeshExpandedHitRegionKind::VertexGuideAttachment,
-                TrimeshSidePanelRenderer::vertexParameterGuideBounds(row).expanded(4.f),
-                vertexParameterId(i),
-                {}
-        });
     }
 
     return regions;
@@ -832,7 +819,7 @@ Rectangle<float> TrimeshWidget::expandedMorphKeyboardFocusBounds(
         bool showOutputScale,
         int dimensionCount) {
     return TrimeshSidePanelRenderer::keyboardFocusBounds(
-            morphPanelBounds(content),
+            morphPanelBounds(content, dimensionCount),
             axisIndex,
             showOutputScale,
             dimensionCount);
@@ -851,7 +838,7 @@ Rectangle<float> TrimeshWidget::meshPreviewContentArea(Rectangle<float> area) {
 }
 
 Rectangle<float> TrimeshWidget::expandedSidePanelContentBounds(Rectangle<float> content, int dimensionCount) {
-    auto topRow = content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
+    auto topRow = content.removeFromTop(content.getHeight() * (dimensionCount == 0 ? 1.f : kExpandedTopRowRatio));
     topRow.removeFromLeft(topRow.getWidth() * kExpandedGridRatio);
     topRow.removeFromLeft(kExpandedPanelGap);
     return topRow;
@@ -895,7 +882,7 @@ String TrimeshWidget::primaryAxisValue(int axis) {
 }
 
 Rectangle<float> TrimeshWidget::vertexParameterPanelBounds(Rectangle<float> content) const {
-    auto area = morphPanelBounds(content);
+    auto area = morphPanelBounds(content, bridge.getModel().getDimensionCount());
     if (showsOutputScale()) {
         area.removeFromBottom(52.f);
     }
@@ -913,11 +900,12 @@ Rectangle<float> TrimeshWidget::vertexParameterRailBounds(Rectangle<float> param
 String TrimeshWidget::vertexParameterId(int parameterIndex) {
     switch (parameterIndex) {
         case 0:     return "vertex.time";
-        case 1:     return "vertex.red";
-        case 2:     return "vertex.blue";
-        case 3:     return "vertex.phase";
-        case 4:     return "vertex.amp";
-        case 5:     return "vertex.curve";
+        case 1:     return "guide.time";
+        case 2:     return "vertex.red";
+        case 3:     return "vertex.blue";
+        case 4:     return "vertex.phase";
+        case 5:     return "vertex.amp";
+        case 6:     return "vertex.curve";
         default:    return {};
     }
 }
@@ -930,9 +918,12 @@ String TrimeshWidget::guideGainParameterId(int parameterIndex) {
 }
 
 Rectangle<float> TrimeshWidget::waveshapeContentBounds(Rectangle<float> content, int dimensionCount) {
-    content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
-    content.removeFromTop(kExpandedPanelGap);
-    return content;
+    return expandedWavePanelContentBounds(content, dimensionCount);
+}
+
+Rectangle<float> TrimeshWidget::staticEditorBounds(Rectangle<float> fullBounds) {
+    const float chromeHeight = CanvasChromeMetrics::embeddedEditorHeaderHeight + 16.f;
+    return fullBounds.withHeight(chromeHeight + (fullBounds.getHeight() - chromeHeight) * kExpandedTopRowRatio);
 }
 
 Rectangle<float> TrimeshWidget::expandedGridPanelContentBounds(Rectangle<float> content, int dimensionCount) {
@@ -953,6 +944,11 @@ void TrimeshWidget::syncExpandedNode(const Node& node, Rectangle<float> content)
 }
 
 Rectangle<float> TrimeshWidget::expandedWavePanelContentBounds(Rectangle<float> content, int dimensionCount) {
+    if (dimensionCount == 0) {
+        const auto controls = expandedSidePanelContentBounds(content, 0).withTrimmedBottom(52.f);
+        const auto properties = MorphControlLayout(controls, 0).vertices();
+        return content.withRight(properties.getX() - kExpandedPanelGap).withTrimmedBottom(52.f);
+    }
     content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
     content.removeFromTop(kExpandedPanelGap);
     return content;

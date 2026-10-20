@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "UI/NodeCanvasAutomationInspector.h"
+#include "UI/NodeCanvasEditorCoordinator.h"
 #include "Graph/MeshDimensionality.h"
 
 #include "UI/SignalProbeDetailView.h"
@@ -20,7 +21,6 @@ namespace CycleV2 {
 namespace {
 
 constexpr float kExpandedEditorHeaderHeight = 34.f;
-constexpr float kExpandedEditorMinMargin = 18.f;
 
 String updateProductLabel(UpdateProduct product) {
     switch (product) {
@@ -319,8 +319,7 @@ public:
     static Rectangle<float> expandedEditorBounds(
             Rectangle<float> canvasContentBounds,
             const Node& node) {
-        return NodeViewModuleRegistry::instance().moduleFor(node.kind).expandedEditorBounds(
-                canvasContentBounds, kExpandedEditorMinMargin);
+        return NodeCanvasEditorCoordinator::boundsFor(&node, canvasContentBounds);
     }
 
     static Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {

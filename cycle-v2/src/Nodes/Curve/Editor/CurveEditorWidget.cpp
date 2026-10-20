@@ -257,6 +257,10 @@ uint64_t CurveEditorWidget::contentRevision() const {
     return controller->contentRevision();
 }
 
+std::vector<TrimeshCubePreviewVertex> CurveEditorWidget::morphPreviewVertices() const {
+    return controller->morphPreviewVertices();
+}
+
 std::vector<TrimeshVertexParameter> CurveEditorWidget::selectedVertexParameters() const {
     return controller->selectedVertexParameters();
 }

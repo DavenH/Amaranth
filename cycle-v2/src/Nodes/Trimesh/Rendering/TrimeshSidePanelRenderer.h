@@ -47,7 +47,7 @@ public:
             juce::Rectangle<float> area,
             const std::array<AxisState, 3>& axes,
             const std::vector<TrimeshCubePreviewVertex>& cubeVertices);
-    static void drawMorphPlanePreview(
+    static void drawReducedMorphPreview(
             juce::Graphics& graphics, juce::Rectangle<float> area,
             const std::array<AxisState, 3>& axes, MorphDimensions dimensions,
             const std::vector<TrimeshCubePreviewVertex>& vertices);
@@ -102,13 +102,20 @@ public:
             int parameterIndex,
             float heightScale = 1.f,
             int parameterCount = 6);
-    static bool showsGuideControlsForParameter(int parameterIndex);
+    static bool showsGuideControlsForParameter(const juce::String& parameterId);
     static juce::Rectangle<float> vertexParameterRailBounds(
             juce::Rectangle<float> parameterRow,
             GuideControls guideControls = GuideControls::Visible);
     static juce::Rectangle<float> vertexParameterGuideGainBounds(
             juce::Rectangle<float> parameterRow);
     static juce::Rectangle<float> vertexParameterGuideBounds(juce::Rectangle<float> parameterRow);
+
+private:
+
+    static void drawVertexParameter(
+            juce::Graphics& graphics, juce::Rectangle<float> row,
+            const TrimeshVertexParameter& parameter,
+            const std::array<juce::String, 6>& guideAttachmentLabels, GuideControls guideControls);
 };
 
 }

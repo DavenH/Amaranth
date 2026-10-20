@@ -182,6 +182,7 @@ public:
 class NodeEditorFactory {
 public:
     virtual ~NodeEditorFactory() = default;
+    virtual Rectangle<float> layoutBounds(const Node&, Rectangle<float> bounds) const { return bounds; }
     virtual std::unique_ptr<NodeEditor> create(
             const Node& node,
             const NodeEditorContext& context) const = 0;

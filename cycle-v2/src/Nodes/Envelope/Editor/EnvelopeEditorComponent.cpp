@@ -408,7 +408,7 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
             impl->blueLinked,
             impl->loop.getToggleState(),
             impl->sustain.getToggleState(),
-            static_cast<float>(impl->yellowMorph.slider.getValue()), impl->yellowLinked);
+            static_cast<float>(impl->yellowMorph.slider.getValue()), impl->yellowLinked, widget.morphPreviewVertices());
 
     const String focusedAxis = focusedMorphAxis();
     if (focusedAxis.isNotEmpty()) {
@@ -557,6 +557,10 @@ bool EnvelopeEditorComponent::editorInteractionIsSessionOnly(Point<float> positi
     }
     const auto parameters = widget.selectedVertexParameters();
     for (int index = 0; index < (int) parameters.size(); ++index) {
+        if (!parameters[(size_t) index].enabled
+                || !TrimeshSidePanelRenderer::showsGuideControlsForParameter(parameters[(size_t) index].id)) {
+            continue;
+        }
         const auto row = impl->presentation.vertexParameterRowBounds(controls, parameters[(size_t) index].id);
         if (TrimeshSidePanelRenderer::vertexParameterGuideBounds(row).contains(position)) {
             return true;
@@ -803,12 +807,14 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
                 controls, parameters[(size_t) index].id);
         auto* rail = new DynamicObject();
         rail->setProperty("id", parameters[static_cast<size_t>(index)].id);
+        rail->setProperty("enabled", parameters[(size_t) index].enabled);
         rail->setProperty("bounds", editorBoundsToVar(
                 TrimeshSidePanelRenderer::vertexParameterRailBounds(row)));
-        rail->setProperty("guideBounds", editorBoundsToVar(
-                TrimeshSidePanelRenderer::vertexParameterGuideBounds(row)));
-        rail->setProperty("guideGainBounds", editorBoundsToVar(
-                TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row)));
+        const bool guides = TrimeshSidePanelRenderer::showsGuideControlsForParameter(parameters[(size_t) index].id);
+        rail->setProperty("guideBounds", editorBoundsToVar(guides
+                ? TrimeshSidePanelRenderer::vertexParameterGuideBounds(row) : Rectangle<float>()));
+        rail->setProperty("guideGainBounds", editorBoundsToVar(guides
+                ? TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row) : Rectangle<float>()));
         parameterRails.add(rail);
     }
     state.setProperty("vertexParameterRails", parameterRails);
@@ -825,14 +831,19 @@ bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
 
     const auto parameters = widget.selectedVertexParameters();
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
-        const auto row = impl->presentation.vertexParameterRowBounds(controls, parameters[(size_t) index].id);
+        const auto& parameter = parameters[(size_t) index];
+        if (!parameter.enabled) {
+            continue;
+        }
+        const bool guides = TrimeshSidePanelRenderer::showsGuideControlsForParameter(parameter.id);
+        const auto row = impl->presentation.vertexParameterRowBounds(controls, parameter.id);
         const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(
                 row);
         interactive = interactive
                 || (!parameters[(size_t) index].guideOnly
                         && rail.expanded(5.f, 8.f).contains(position))
-                || TrimeshSidePanelRenderer::vertexParameterGuideBounds(row).contains(position)
-                || TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row).contains(position);
+                || (guides && (TrimeshSidePanelRenderer::vertexParameterGuideBounds(row).contains(position)
+                        || TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row).contains(position)));
     }
     setMouseCursor(interactive ? MouseCursor::PointingHandCursor : MouseCursor::NormalCursor);
     return interactive;
@@ -873,7 +884,7 @@ bool EnvelopeEditorComponent::handleAxisMouseDown(
             bool& linked = impl->linked(axis);
             linked = !linked;
             widget.setEnvelopeDimensions(MeshDimensionality::dimensions(node).axisCount(), impl->yellowLinked);
-    widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
+            widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
             requestRepaint();
             return true;
         }
@@ -888,9 +899,13 @@ bool EnvelopeEditorComponent::handleVertexParameterMouseDown(
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
         const auto row = impl->presentation.vertexParameterRowBounds(controls, parameters[(size_t) index].id);
         const auto& parameter = parameters[(size_t) index];
+        if (!parameter.enabled) {
+            continue;
+        }
+        const bool guides = TrimeshSidePanelRenderer::showsGuideControlsForParameter(parameter.id);
         const String field = parameter.id.fromLastOccurrenceOf(".", false, false);
         const auto guideBox = TrimeshSidePanelRenderer::vertexParameterGuideBounds(row);
-        if (guideBox.contains(position)) {
+        if (guides && guideBox.contains(position)) {
             if (delegate != nullptr && widget.selectedEnvelopeGuideCubeIndex() >= 0) {
                 delegate->showEnvelopeGuideAttachmentMenu(
                         field,
@@ -899,7 +914,7 @@ bool EnvelopeEditorComponent::handleVertexParameterMouseDown(
             return true;
         }
         const auto gainBox = TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row);
-        if (gainBox.contains(position) && widget.selectedEnvelopeGuideCubeIndex() >= 0) {
+        if (guides && gainBox.contains(position) && widget.selectedEnvelopeGuideCubeIndex() >= 0) {
             impl->parameterId = "guideGain." + field;
             impl->draggingParameter = true;
             impl->guideGainDragStartY = position.y;
@@ -955,7 +970,9 @@ bool EnvelopeEditorComponent::dragVertexParameter(Point<float> position) {
         const auto& parameter = parameters[(size_t) index];
         const String guideGainId = "guideGain."
                 + parameter.id.fromLastOccurrenceOf(".", false, false);
-        if (parameter.id != impl->parameterId && guideGainId != impl->parameterId) {
+        if (!parameter.enabled || (parameter.id != impl->parameterId && guideGainId != impl->parameterId)
+                || (guideGainId == impl->parameterId
+                        && !TrimeshSidePanelRenderer::showsGuideControlsForParameter(parameter.id))) {
             continue;
         }
         const auto row = impl->presentation.vertexParameterRowBounds(

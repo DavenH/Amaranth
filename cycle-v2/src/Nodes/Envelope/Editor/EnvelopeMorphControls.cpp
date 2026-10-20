@@ -231,14 +231,16 @@ Colour EnvelopeMorphControls::axisColour(int axis) const {
 void EnvelopeMorphControls::draw(
         Graphics& graphics, Rectangle<float> controls, float red, float blue,
         int viewAxis, bool redLinked, bool blueLinked, bool loopSelected,
-        bool sustainSelected, float yellow, bool yellowLinked) const {
+        bool sustainSelected, float yellow, bool yellowLinked,
+        const std::vector<TrimeshCubePreviewVertex>& vertices) const {
     const std::array<TrimeshSidePanelRenderer::AxisState, 3> axes {
             TrimeshSidePanelRenderer::AxisState { "Yellow", "Y", axisColour(0), yellow, viewAxis == 0, yellowLinked },
             TrimeshSidePanelRenderer::AxisState { "Red", "R", axisColour(1), red, viewAxis == 1, redLinked },
             TrimeshSidePanelRenderer::AxisState { "Blue", "B", axisColour(2), blue, viewAxis == 2, blueLinked }
     };
     TrimeshSidePanelRenderer::drawMorphControls(graphics,
-            controls.withTrimmedBottom(kActionBarHeight), axes, dimensionCount);
+            controls.withTrimmedBottom(kActionBarHeight), axes, dimensionCount,
+            MorphDimensions::Plane::RedBlue, vertices);
     drawActionGroups(graphics, controls, loopSelected, sustainSelected);
     paintPropertyGroupLabel(graphics, markerGroupLabelBounds(controls), "Markers");
     paintPropertyGroupLabel(graphics, axisScaleGroupLabelBounds(controls), "Scaling");

@@ -1,6 +1,6 @@
 # Unified Mesh Dimensionality
 
-Status: Implemented and verified — native fixture timing caveat recorded in ui-bugs.
+Status: Complete — persistent properties, reduced diagrams and compact Static editing verified.
 
 ## Contract
 
@@ -100,7 +100,7 @@ Baseline -> after lines for the large production files:
 | NodeCanvasAutomationInspector.cpp | 1139 -> 1161 | Existing target serialization; adds selector discovery, no edit policy. |
 | EnvelopeEditorComponent.cpp | 923 -> 1011 | Domain tools and layout; shared morph layout and renderer compose controls; surface cache is separate. |
 | TrimeshWidget.cpp | 888 -> 961 | Existing model/view adapter; shared MorphControlLayout supplies stable geometry; CurvePanelHost owns compact snapshots. |
-| TrimeshSidePanelRenderer.cpp | 912 -> 737 | Painting authority shared by both families; MorphControlLayout owns geometry; the 96-line plane painter is separate. |
+| TrimeshSidePanelRenderer.cpp | 912 -> 737 | Painting authority shared by both families; MorphControlLayout owns geometry; the reduced plane/line painter is separate. |
 | CurveNodeModels.cpp | 862 -> 870 | Typed model identities/codecs; shared projection canonicalizes new Static envelopes. |
 | NodeEditorCommandService.cpp | 849 -> 851 | Gesture transaction owner; forwards dimension policy into existing semantic deltas. |
 | NodeDefinition.cpp | 824 -> 848 | Declarative node schemas and defaults only. |
@@ -173,3 +173,61 @@ Follow-up proof:
   with-spies capture scenario has intermittent fast-drag delivery, recorded in
   ui-bugs; one complete run passed drag, Undo and captures. This does not establish
   broad native-suite timing reliability.
+
+## Follow-up: persistent properties and orthographic reduced diagrams
+
+Keep seven stable property slots in both editors: Yellow, Component, Red, Blue,
+Phase, Amplitude, Curve. Coordinate properties outside the active dimensions are
+visible and disabled, including their inapplicable guide controls. Component is
+an independent, always-applicable guide selector using the existing Time-slot
+component-guide semantics. Yellow does not duplicate that selector.
+
+Use the existing shared side-panel painter and MorphControlLayout for both
+families. 2D is a front-facing square, with crisp offset and extended axis rails,
+blended fill, selected authored geometry and cursor projections. 1D occupies the
+same diagram slot with a Yellow line, cursor and linked/selected endpoint state.
+No control changes position as dimensions change. Static uses a smaller editor,
+collapsing the unused lower row and placing the editable curve beside the property
+stack. Preserve the header origin and inspector
+control coordinates through a factory-owned layout adjustment. Canonical panel
+bounds remain shared by painting, input and automation.
+
+Ownership: domain models retain coordinate and guide data; presentation exposes
+applicability without changing stored geometry or input eligibility. Hit routing
+must reject disabled properties and keep Component guide gestures available.
+Delete the Static-only component alias and dimension-based property erasure.
+Verify property persistence, rejection, guide routing, diagrams, normal/compact
+captures, app build and focused tests before completing this slice.
+
+Follow-up completion proof:
+
+- CycleV2 and CycleV2_tests build with `--parallel 10`; 45 focused cases / 2,632
+  assertions pass. The fresh 85-command fixture covers all four modes in both
+  families, including all seven property slots and their applicability.
+- Native macOS input verifies descending modes, unchanged mesh/revision after a
+  disabled Blue click, Yellow link toggling, Component menu access and a real
+  point drag in the compact Static editor. Production-size native captures cover
+  normal and compact windows. Evidence: `.context/morph-properties-native-review.log`,
+  `morph-properties-native-{2,1,1-unlinked,static,static-compact}.png`,
+  `morph-properties-ui-run.json`, and `morph-properties-tests.log`.
+- Removed dimension-based property erasure and the Static-only Component alias.
+  The shared side-panel renderer paints the seven stable slots for both families;
+  disabled input is rejected before routing. The reduced preview replaces the
+  old plane painter and adds the one-axis line. 3D retains its mature cube.
+- Envelope's selected-corner read-through visits only eight authoritative cube
+  vertices. It translates selection for the existing shared renderer; it does
+  not serialize geometry or copy interpolation/selection algorithms. The new
+  factory layout hook keeps Static sizing with its editor, and both runtime
+  placement and automation use the coordinator's canonical bounds.
+- Current slice responsibility review (baseline -> after): EnvelopeCurvePanel
+  1305 -> 1324 remains the mature interaction adapter; EnvelopeEditorComponent
+  1011 -> 1028 composes domain controls and input guards; TrimeshWidget
+  961 -> 957 remains its model/view adapter; side-panel painter 737 -> 745
+  extracts a private row painter. AutomationInspector 1161 -> 1160 delegates
+  placement rather than adding layout policy. NodeEditorHost header 359 -> 360
+  adds one default-identity factory hook. No DSP, transaction, or realtime
+  responsibilities moved. Style, whitespace, code-map and architecture checks pass.
+- A broader Trimesh filter still hits known empty-fixture failures and SIGSEGV;
+  the old lower-right-cube layout assertion is also stale. Reproduction is
+  recorded in `ui-bugs.md` and `.context/morph-properties-tests-broad.log`.
+  Focused success is not a claim of full-suite success.

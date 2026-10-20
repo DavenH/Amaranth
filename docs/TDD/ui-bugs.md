@@ -27,6 +27,16 @@ already creates an empty mesh in the preceding commit. Tests that need authored
 geometry must install an explicit mesh fixture before dereferencing vertices.
 Artifact: `.context/dimensions-tests.log`.
 
+The 2026-10-20 property-layout follow-up broad filter
+`[nodes][trimesh],[editor][envelope],[mesh-dimensions],[property-controls]`
+again crashed in `Trimesh node model preserves live mesh pointers for equivalent
+publications` at its empty `getVerts().front()`. Earlier failures in the same
+run were the obsolete lower-right-cube layout contract and a bridge fixture
+expecting three columns from an empty model. The focused 45-case dimensionality,
+property, guide and keyboard selection passes. Artifact:
+`.context/morph-properties-tests-broad.log`. Status: existing fixture debt;
+the broader run does not establish full-suite success.
+
 ## P2: Full CTest run has broad pre-existing Cycle V2 failures
 
 On 2026-10-18, `ctest --test-dir build/tests -V` passed 1,267 of 1,353 tests

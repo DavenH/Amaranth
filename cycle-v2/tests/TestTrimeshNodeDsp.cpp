@@ -1315,11 +1315,15 @@ TEST_CASE("Trimesh vertex deformer controls cover every guide-capable dimension"
         "[cycle-v2][nodes][trimesh][geometry][guide]") {
     const Rectangle<float> parameterArea { 20.f, 40.f, 620.f, 150.f };
 
+    const std::array<String, 6> ids { "guide.time", "vertex.red", "vertex.blue",
+            "vertex.phase", "vertex.amp", "vertex.curve" };
+    REQUIRE_FALSE(TrimeshSidePanelRenderer::showsGuideControlsForParameter("vertex.time"));
     for (int i = 0; i < 6; ++i) {
         const Rectangle<float> row =
                 TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
         const bool showsGuideControls =
-                TrimeshSidePanelRenderer::showsGuideControlsForParameter(i);
+                TrimeshSidePanelRenderer::showsGuideControlsForParameter(
+                        ids[(size_t) i]);
         const Rectangle<float> rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(
                 row,
                 showsGuideControls

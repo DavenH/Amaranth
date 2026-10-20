@@ -453,6 +453,8 @@ public:
             encoded->setProperty("id", parameter.id);
             encoded->setProperty("value", parameter.value);
             encoded->setProperty("guideGain", parameter.guideGain);
+            encoded->setProperty("enabled", parameter.enabled);
+            encoded->setProperty("guideOnly", parameter.guideOnly);
             vertexParameters.add(encoded);
         }
         root->setProperty("selectedVertexParameters", vertexParameters);
@@ -542,7 +544,7 @@ public:
         std::vector<TrimeshVertexParameter> parameters {
                 { "vertex.time", "yellow", vertex->values[Vertex::Time], 0.f, 1.f,
                         gain(Vertex::Time) },
-                { "guide.time", "comp", 0.f, 0.f, 1.f, gain(Vertex::Time), true, true },
+                { "guide.time", "component", 0.f, 0.f, 1.f, gain(Vertex::Time), true, true },
                 { "vertex.red", "red", vertex->values[Vertex::Red], 0.f, 1.f,
                         gain(Vertex::Red) },
                 { "vertex.blue", "blue", vertex->values[Vertex::Blue], 0.f, 1.f,
@@ -555,14 +557,30 @@ public:
                         gain(Vertex::Curve) }
         };
         const MorphDimensions dimensions(dimensionCount);
-        parameters.erase(std::remove_if(parameters.begin(), parameters.end(),
-                [&](const TrimeshVertexParameter& parameter) {
-                    const int axis = parameter.id == "vertex.time" ? Vertex::Time
-                            : parameter.id == "vertex.red" ? Vertex::Red
-                            : parameter.id == "vertex.blue" ? Vertex::Blue : -1;
-                    return axis >= 0 && !dimensions.active(axis);
-                }), parameters.end());
+        for (auto& parameter : parameters) {
+            const int axis = parameter.id == "vertex.time" ? Vertex::Time
+                    : parameter.id == "vertex.red" ? Vertex::Red
+                    : parameter.id == "vertex.blue" ? Vertex::Blue : -1;
+            parameter.enabled &= axis < 0 || dimensions.active(axis);
+        }
         return parameters;
+    }
+
+    std::vector<TrimeshCubePreviewVertex> morphPreviewVertices() const override {
+        auto& panel = *const_cast<EnvelopeCurvePanel*>(this);
+        const auto* cube = panel.selectedEnvelopeCubeForModel();
+        if (cube == nullptr) {
+            return {};
+        }
+        const auto& selected = panel.getSelected();
+        std::vector<TrimeshCubePreviewVertex> vertices;
+        vertices.reserve(VertCube::numVerts);
+        for (int corner = 0; corner < VertCube::numVerts; ++corner) {
+            const auto* vertex = cube->getVertex(corner);
+            vertices.push_back({ vertex->values[Vertex::Time], vertex->values[Vertex::Red],
+                    vertex->values[Vertex::Blue], std::find(selected.begin(), selected.end(), vertex) != selected.end() });
+        }
+        return vertices;
     }
 
     bool setSelectedVertexParameter(
@@ -593,7 +611,8 @@ public:
         const float value = parameterValueFromNormalized(parameterId, normalizedValue);
         const int dimension = vertexDimensionForParameter(parameterId);
 
-        if (dimension < 0) {
+        if (dimension < 0 || ((dimension == Vertex::Time || dimension == Vertex::Red || dimension == Vertex::Blue)
+                && !MorphDimensions(dimensionCount).active(dimension))) {
             return false;
         }
 

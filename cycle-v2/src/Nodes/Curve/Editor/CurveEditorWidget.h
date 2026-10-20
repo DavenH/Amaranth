@@ -68,6 +68,7 @@ public:
     uint64_t previewRevision() const { return previewPresentationRevision; }
     uint64_t previewSnapshotRevision() const;
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
+    std::vector<TrimeshCubePreviewVertex> morphPreviewVertices() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
     int selectedEnvelopeGuideCubeIndex();
     bool hasSingleSelectedEnvelopeVertex();

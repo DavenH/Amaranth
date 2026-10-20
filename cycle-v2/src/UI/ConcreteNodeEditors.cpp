@@ -237,6 +237,8 @@ public:
             encoded->setProperty("id", parameter.id);
             encoded->setProperty("value", parameter.value);
             encoded->setProperty("guideGain", parameter.guideGain);
+            encoded->setProperty("enabled", parameter.enabled);
+            encoded->setProperty("guideOnly", parameter.guideOnly);
             selectedParameters.add(encoded);
         }
         meshState->setProperty("selectedVertexParameters", selectedParameters);
@@ -436,6 +438,11 @@ private:
 
 class TrimeshNodeEditorFactory final : public NodeEditorFactory {
 public:
+    Rectangle<float> layoutBounds(const Node& node, Rectangle<float> bounds) const override {
+        return MeshDimensionality::dimensions(node).axisCount() == 0
+                ? TrimeshWidget::staticEditorBounds(bounds) : bounds;
+    }
+
     std::unique_ptr<NodeEditor> create(
             const Node& node,
             const NodeEditorContext& context) const override {

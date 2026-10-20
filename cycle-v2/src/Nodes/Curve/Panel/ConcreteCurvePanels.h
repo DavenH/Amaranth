@@ -36,6 +36,7 @@ public:
     virtual var automationState() const = 0;
     virtual std::vector<CurvePanelGridLine> verticalMajorGridLines() const { return {}; }
     virtual std::vector<TrimeshVertexParameter> selectedVertexParameters() const = 0;
+    virtual std::vector<TrimeshCubePreviewVertex> morphPreviewVertices() const { return {}; }
     virtual bool setSelectedVertexParameter(const String& parameterId, float normalizedValue) = 0;
 };
 

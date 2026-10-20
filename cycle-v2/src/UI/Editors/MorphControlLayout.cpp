@@ -20,7 +20,7 @@ float MorphControlLayout::diagramSize() const {
 }
 
 juce::Rectangle<float> MorphControlLayout::diagram() const {
-    if (dimensions.axisCount() < 2) {
+    if (dimensions.axisCount() == 0) {
         return {};
     }
     const auto column = morphColumn();

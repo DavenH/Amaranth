@@ -96,7 +96,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodeCanvasInteraction.h` — Pointer/gesture routing; preserve semantic command and cost boundaries.
 - `cycle-v2/src/UI/NodeCanvasPresentation.h` — Builds visible canvas presentation from graph/runtime facts.
 - `cycle-v2/src/UI/NodeCanvasScene.h` — Retained node scene and geometry used by hit-testing and rendering.
-- `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and placement owner.
+- `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement adjustments.
 - `cycle-v2/src/UI/NodePreviewRenderer.h` — Compact node preview rendering and reusable preview resources.
 - `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy/probe overview and detail presentation.
 - `cycle-v2/src/UI/InlinePresetBrowser.h` — Preset sidebar workflow and selection behavior.

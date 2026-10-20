@@ -360,7 +360,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/OutputScaleControlRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshRenderProfile.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshMorphPlanePreview.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshReducedMorphPreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshSliceRenderer2D.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Editor/TrimeshWidget.cpp"

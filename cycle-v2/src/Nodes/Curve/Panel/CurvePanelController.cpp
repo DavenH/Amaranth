@@ -144,6 +144,10 @@ public:
         return panel->selectedVertexParameters();
     }
 
+    std::vector<TrimeshCubePreviewVertex> morphPreviewVertices() const override {
+        return panel->morphPreviewVertices();
+    }
+
     bool setSelectedVertexParameter(const String& parameterId, float value) override {
         if (!panel->setSelectedVertexParameter(parameterId, value)) {
             return false;

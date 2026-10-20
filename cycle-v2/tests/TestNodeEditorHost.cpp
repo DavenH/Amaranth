@@ -26,7 +26,6 @@
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
-#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
@@ -4988,4 +4987,95 @@ TEST_CASE("Envelope enable button commits one undoable edit",
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("env"), "enabled") == "1");
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Trimesh keeps inactive properties disabled and its Component selector available",
+        "[cycle-v2][mesh-dimensions][editor][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    owner.setBounds(0, 0, 1100, 800);
+    NodeGraph graph;
+    auto node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("PersistentProperties");
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 1);
+    mesh->destroy();
+    graph.addNode(std::move(node));
+    auto* selection = new DynamicObject();
+    selection->setProperty("selectedVertexId", 0);
+    REQUIRE(GraphNodeStateEditor().setNodeEditorState(graph, "mesh", var(selection)).succeeded());
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+    Rectangle<int> previousComponentBounds;
+
+    for (const int count : { 3, 2, 1, 0 }) {
+        REQUIRE(dispatcher.setMeshDimensions("mesh", count).succeeded());
+        REQUIRE(commands.selectTrimeshVertexIndex("mesh", 0));
+        widget.syncFromNode(*document.graph().findNode("mesh"));
+        const auto* factory = NodeEditorFactoryRegistry::instance().find(NodeKind::TrilinearMesh);
+        const auto bounds = factory->layoutBounds(*document.graph().findNode("mesh"), owner.getLocalBounds().toFloat());
+        REQUIRE(host.bind(document.graph().findNode("mesh"), bounds.toNearestInt(), document.revision()));
+        const auto parameters = widget.selectedVertexParameters();
+        REQUIRE(parameters.size() == 7);
+        REQUIRE(parameters[1].id == "guide.time");
+        REQUIRE(parameters[1].enabled);
+        REQUIRE(parameters[1].guideOnly);
+        const auto dimensions = MorphDimensions::trimesh(count);
+        REQUIRE(parameters[0].enabled == dimensions.active(Vertex::Time));
+        REQUIRE(parameters[2].enabled == dimensions.active(Vertex::Red));
+        REQUIRE(parameters[3].enabled == dimensions.active(Vertex::Blue));
+        bool foundControls = false;
+        for (auto* child : host.component()->getChildren()) {
+            if (auto* target = child->findChildWithID("trimesh.vertex.time")) {
+                foundControls = true;
+                REQUIRE(target->isEnabled() == dimensions.active(Vertex::Time));
+                REQUIRE(child->findChildWithID("trimesh.vertex.red")->isEnabled()
+                        == dimensions.active(Vertex::Red));
+                REQUIRE(child->findChildWithID("trimesh.vertex.blue")->isEnabled()
+                        == dimensions.active(Vertex::Blue));
+                auto* componentGuide = child->findChildWithID("trimesh.guide.time");
+                REQUIRE(componentGuide != nullptr);
+                REQUIRE(componentGuide->isEnabled());
+                if (count < 3) {
+                    REQUIRE(componentGuide->getBounds() == previousComponentBounds);
+                }
+                previousComponentBounds = componentGuide->getBounds();
+            }
+        }
+        REQUIRE(foundControls);
+    }
+}
+
+TEST_CASE("Envelope retains disabled morph properties and an independent Component guide row",
+        "[cycle-v2][mesh-dimensions][editor][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    for (const int count : { 0, 1, 2, 3 }) {
+        NodeGraph graph;
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher dispatcher(document);
+        REQUIRE(dispatcher.setMeshDimensions("env", count).succeeded());
+        CurveEditorWidget widget(NodeKind::Envelope);
+        widget.prepareExpandedPanelComponent(*document.graph().findNode("env"), { 0.f, 0.f, 900.f, 500.f });
+        const auto parameters = widget.selectedVertexParameters();
+        REQUIRE(parameters.size() == 7);
+        REQUIRE(parameters[1].id == "guide.time");
+        REQUIRE(parameters[1].enabled);
+        REQUIRE(parameters[1].guideOnly);
+        const MorphDimensions dimensions(count);
+        for (const int index : { 0, 2, 3 }) {
+            const int axis = index == 0 ? Vertex::Time : index == 2 ? Vertex::Red : Vertex::Blue;
+            REQUIRE(parameters[(size_t) index].enabled == dimensions.active(axis));
+            if (!dimensions.active(axis)) {
+                REQUIRE_FALSE(widget.setSelectedVertexParameter(parameters[(size_t) index].id, 0.3f));
+            }
+        }
+    }
 }

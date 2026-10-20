@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 
 namespace CycleV2 {
 
@@ -50,7 +51,8 @@ public:
             bool loopSelected,
             bool sustainSelected,
             float yellow = 0.f,
-            bool yellowLinked = true) const;
+            bool yellowLinked = true,
+            const std::vector<TrimeshCubePreviewVertex>& vertices = {}) const;
 
 private:
     int dimensionCount { 2 };
