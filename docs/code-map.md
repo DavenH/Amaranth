@@ -145,8 +145,8 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Rasterization or sampling | `lib/src/Curve/Rasterization/` | Compose policies/builders/samplers before adding algorithms. |
 | Mature editor interaction | `lib/src/Inter/`, `cycle/src/Inter/` | Reuse/extract Cycle 1 behavior and preserve phase costs. |
 | Cycle 2 semantic edit | `GraphCommandDispatcher.h` | UI supplies intent; dispatcher owns gesture, undo, and publication. |
-| Cycle 2 audio execution | `cycle-v2/src/Runtime/` | Separate realtime, preview, preparation, and presentation work. |
 | Synthesis discovery | `Graph/SynthesisCapabilities.h` | Export registered metadata and canonical physical conversions. |
+| Cycle 2 audio execution | `cycle-v2/src/Runtime/` | Separate realtime, preview, preparation, and presentation work. |
 | Cycle 2 node feature | matching `cycle-v2/src/Nodes/<Domain>/` | Keep model, DSP, editor, panel, and rendering responsibilities local. |
 | Canvas interaction/rendering | `cycle-v2/src/UI/NodeCanvas*.{h,cpp}` | Keep `NodeCanvas` orchestration-only; reuse scene and policy collaborators. |
 | UI regression | `docs/cycle-agent-runbook.md` | Use the smallest fixture and inspect filtered logs first. |
