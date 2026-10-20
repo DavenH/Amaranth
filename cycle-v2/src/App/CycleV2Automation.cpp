@@ -295,6 +295,10 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return recreateCanvasOpenGLContext();
         case Command::ExportGraph:
             return exportGraph(commandValue);
+        case Command::InspectSynthesisCapabilities:
+            return inspectSynthesisCapabilities(commandValue);
+        case Command::ConvertSynthesisParameter:
+            return convertSynthesisParameter(commandValue);
         case Command::OpenGraph:
             return openGraph(commandValue);
         case Command::ResizeWindow: {

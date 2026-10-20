@@ -45,6 +45,8 @@ private:
     var snapshotState() const;
     var inspectTargets(const var& commandValue) const;
     var exportGraph(const var& commandValue) const;
+    var inspectSynthesisCapabilities(const var& commandValue) const;
+    var convertSynthesisParameter(const var& commandValue) const;
     var openGraph(const var& commandValue);
     var saveGraph(const var& commandValue);
     var generatePresetPreview(const var& commandValue);

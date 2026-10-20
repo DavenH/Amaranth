@@ -139,6 +139,13 @@ enum class DefaultModulationSlot {
     Blue
 };
 
+enum class ControlTiming {
+    Unspecified,
+    Continuous,
+    NoteOnLatched,
+    StaticAuthoring
+};
+
 struct Port {
     String id;
     String label;
@@ -150,6 +157,7 @@ struct Port {
     ConnectionKind connectionKind { ConnectionKind::Signal };
     AttachmentType attachmentType { AttachmentType::None };
     DefaultModulationSlot defaultModulationSlot { DefaultModulationSlot::None };
+    ControlTiming controlTiming { ControlTiming::Unspecified };
 };
 
 struct NodeParameter {

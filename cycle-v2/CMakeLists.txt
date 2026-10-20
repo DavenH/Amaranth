@@ -108,6 +108,7 @@ set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphDelta.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/SharedAudioSamples.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeDefinition.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/SynthesisCapabilities.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraph.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraphDemo.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/NodeGraphEditing.cpp"

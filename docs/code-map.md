@@ -77,7 +77,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Graph/GraphSerializer.h` — Current graph persistence and migration-facing serialization.
 - `cycle-v2/src/Graph/GraphCompiler.h` — Compiles graph topology into executable runtime structure.
 - `cycle-v2/src/Graph/GraphValidator.h` — Coordinates graph validation; reuse focused validators beneath it.
-- `cycle-v2/src/Graph/NodeDefinition.h` — Node type metadata, ports, defaults, and authoring definitions.
+- `cycle-v2/src/Graph/NodeDefinition.h` — Node types, ports, defaults, constraints, and synthesis capability metadata.
 - `cycle-v2/src/Runtime/GraphRuntime.h` — Owns compiled runtime state and graph execution lifecycle.
 - `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Executes realtime graph audio; preserve allocation-free behavior.
 - `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Runs scoped preview/analysis products without full audio work.
@@ -146,6 +146,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Mature editor interaction | `lib/src/Inter/`, `cycle/src/Inter/` | Reuse/extract Cycle 1 behavior and preserve phase costs. |
 | Cycle 2 semantic edit | `GraphCommandDispatcher.h` | UI supplies intent; dispatcher owns gesture, undo, and publication. |
 | Cycle 2 audio execution | `cycle-v2/src/Runtime/` | Separate realtime, preview, preparation, and presentation work. |
+| Synthesis discovery | `Graph/SynthesisCapabilities.h` | Export registered metadata and canonical physical conversions. |
 | Cycle 2 node feature | matching `cycle-v2/src/Nodes/<Domain>/` | Keep model, DSP, editor, panel, and rendering responsibilities local. |
 | Canvas interaction/rendering | `cycle-v2/src/UI/NodeCanvas*.{h,cpp}` | Keep `NodeCanvas` orchestration-only; reuse scene and policy collaborators. |
 | UI regression | `docs/cycle-agent-runbook.md` | Use the smallest fixture and inspect filtered logs first. |
