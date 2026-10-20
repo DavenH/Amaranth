@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "UI/NodeCanvasAutomationInspector.h"
+#include "UI/ExplanationEditor.h"
 
 #include "UI/SignalProbeDetailView.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
@@ -606,6 +607,9 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     }
     root->setProperty("nodeGroups", nodeGroups);
     root->setProperty("nodeGroupCount", nodeGroups.size());
+    root->setProperty("presetDescription", context.document.presentation().description);
+    root->setProperty("explanationEditorOpen", !state.explanationEditor.isVoid());
+    root->setProperty("explanationEditor", state.explanationEditor);
     root->setProperty("edgeCount", (int) graph.getEdges().size());
     root->setProperty("probeCount", (int) graph.getSignalProbes().size());
     root->setProperty("guideCount", (int) graph.getGuideCurves().size());
@@ -692,6 +696,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         nodeObject->setProperty("kind", labelForNodeKind(node.kind));
         nodeObject->setProperty("title", labelForNodeKind(node.kind));
         nodeObject->setProperty("subtitle", node.subtitle);
+        nodeObject->setProperty("rationale", node.rationale);
         if (node.kind == NodeKind::Envelope) {
             nodeObject->setProperty(
                     "compactPurposeIcon",
@@ -845,6 +850,7 @@ var NodeCanvasAutomationInspector::inspectNodeControls(const String& nodeId,
         return root;
     }
 
+    root->setProperty("rationale", node->rationale);
     root->setProperty("kind", labelForNodeKind(node->kind));
     root->setProperty("expanded", state.expandedNodeId == nodeId);
 
@@ -870,6 +876,23 @@ var NodeCanvasAutomationInspector::inspectNodeControls(const String& nodeId,
 var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomationPresentation& state) const {
     auto* root = new DynamicObject();
     Array<var> targets;
+    targets.add(AutomationValueEncoder::pointerTargetToVar(
+            "workspace.presetInformation", "presetExplanation", state.presetInformationBounds));
+    for (const auto& [id, bounds] : state.explanationTargets) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id, "explanationEditor", bounds));
+    }
+    for (const auto& node : context.document.graph().getNodes()) {
+        if (context.presentation.snapshot().facts != nullptr
+                && context.document.graph().isNodeVisible(node.id)
+                && ExplanationBadge::isVisible(node, state.selectedNodeId)) {
+            const auto bounds = context.viewport.toScreen(NodeCanvasScene::presentationWorldBounds(
+                    context.document.graph(), node, context.presentation.snapshot().facts->edgeIndex()));
+            targets.add(AutomationValueEncoder::pointerTargetToVar(
+                    "explanation:" + node.id, "nodeExplanation", ExplanationBadge::boundsFor(node, bounds,
+                            context.viewport.getZoom(), context.presentation.snapshot().facts->audioScopeAnalysis()
+                                    .scopeFor(node.id) == AuthoredAudioScope::Global)));
+        }
+    }
     targets.add(
             AutomationValueEncoder::pointerTargetToVar("canvas", "canvas", context.canvas.getLocalBounds().toFloat()));
     if (state.guideDock.expanded) {

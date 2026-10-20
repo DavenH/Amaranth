@@ -39,6 +39,12 @@ public:
     juce::String toJson() const;
     bool undo();
     bool redo();
+    bool nextUndoIsExplanation() const {
+        return !undoHistory.empty() && std::holds_alternative<ExplanationEdit>(undoHistory.back().edit);
+    }
+    bool nextRedoIsExplanation() const {
+        return !redoHistory.empty() && std::holds_alternative<ExplanationEdit>(redoHistory.back().edit);
+    }
     void recordExternalChange(NodeGraph beforeGraph, GraphChangeSet change = {});
     bool canUndo() const { return !undoHistory.empty(); }
     bool canRedo() const { return !redoHistory.empty(); }
@@ -50,7 +56,7 @@ private:
     void setOutputSpyPosition(std::optional<juce::Point<float>> position);
 
     NodeGraph& graphForCommand() { return currentGraph; }
-    void recordBeforeChange(NodeGraph graph);
+    void recordBeforeChange(NodeGraph graph, bool includePresentation = false);
     void recordDelta(GraphDelta delta);
     void publishChange(GraphChangeSet change);
     void publishChangeAtState(GraphChangeSet change, uint64_t stateId);
@@ -61,8 +67,20 @@ private:
     NodeGraph currentGraph;
     PresetPresentation presetPresentation;
     juce::File currentFile;
+    struct ExplanationEdit {
+        juce::String nodeId;
+        juce::String before;
+        juce::String after;
+    };
+    void recordExplanation(ExplanationEdit edit);
+    void applyExplanation(const ExplanationEdit& edit, bool forward);
+
+    struct GraphSnapshot {
+        NodeGraph graph;
+        std::optional<PresetPresentation> presentation;
+    };
     struct HistoryEntry {
-        std::variant<NodeGraph, GraphDelta> edit;
+        std::variant<GraphSnapshot, GraphDelta, ExplanationEdit> edit;
         uint64_t beforeStateId {};
         uint64_t afterStateId {};
     };

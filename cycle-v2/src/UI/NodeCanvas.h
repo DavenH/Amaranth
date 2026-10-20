@@ -19,6 +19,7 @@
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/PresentationRefreshPolicy.h"
 #include "UI/CanvasPerformanceMetrics.h"
+#include "UI/ExplanationEditor.h"
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAuthoring.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
@@ -62,6 +63,10 @@ public:
     ~NodeCanvas() override;
 
     bool saveGraphToFile(const File& file);
+    bool setExplanation(const String& nodeId, const String& text);
+    var inspectExplanation(const String& nodeId) const;
+    bool openExplanationEditor(const String& nodeId);
+    const Node* explanationNodeAt(Point<float> position) const;
     bool loadGraphFromFile(const File& file);
     void presetLoadWorkspaceStageCompleted(
             CanvasPerformanceMetrics::PresetLoadWorkspaceStage stage);
@@ -219,6 +224,9 @@ private:
 
     OpenGLContext openGLContext;
     TooltipWindow tooltipHost { this, 500 };
+    TextButton presetInformation { "i  PRESET" };
+    Component::SafePointer<ExplanationEditor> explanationEditor;
+    String explanationEditorNodeId;
     NodeCanvasRenderer renderer;
     mutable NodeCanvasViewport viewport;
     bool documentViewportFitted {};

@@ -53,7 +53,7 @@ bool GraphDocument::loadJson(const juce::String& json, bool recordUndo) {
     }
 
     if (recordUndo) {
-        recordBeforeChange(currentGraph);
+        recordBeforeChange(currentGraph, true);
     }
     currentGraph = std::move(loaded.graph);
     presetPresentation = std::move(loaded.presentation);
@@ -89,10 +89,25 @@ bool GraphDocument::undo() {
 
     HistoryEntry entry = std::move(undoHistory.back());
     undoHistory.pop_back();
-    if (auto* graph = std::get_if<NodeGraph>(&entry.edit)) {
+    if (auto* snapshot = std::get_if<GraphSnapshot>(&entry.edit)) {
         const uint64_t targetStateId = entry.beforeStateId;
-        redoHistory.push_back({ currentGraph, entry.beforeStateId, entry.afterStateId });
-        return restoreGraph(std::move(*graph), targetStateId);
+        GraphSnapshot inverse { currentGraph, {} };
+        if (snapshot->presentation.has_value()) {
+            inverse.presentation = presetPresentation;
+            presetPresentation = std::move(*snapshot->presentation);
+        }
+        redoHistory.push_back({ std::move(inverse), entry.beforeStateId, entry.afterStateId });
+        return restoreGraph(std::move(snapshot->graph), targetStateId);
+    }
+
+    if (const auto* explanation = std::get_if<ExplanationEdit>(&entry.edit)) {
+        applyExplanation(*explanation, false);
+        const uint64_t stateId = entry.beforeStateId;
+        redoHistory.push_back(std::move(entry));
+        GraphChangeSet change;
+        change.explanationsChanged = true;
+        publishChangeAtState(change, stateId);
+        return true;
     }
 
     auto& delta = std::get<GraphDelta>(entry.edit);
@@ -111,10 +126,25 @@ bool GraphDocument::redo() {
 
     HistoryEntry entry = std::move(redoHistory.back());
     redoHistory.pop_back();
-    if (auto* graph = std::get_if<NodeGraph>(&entry.edit)) {
+    if (auto* snapshot = std::get_if<GraphSnapshot>(&entry.edit)) {
         const uint64_t targetStateId = entry.afterStateId;
-        undoHistory.push_back({ currentGraph, entry.beforeStateId, entry.afterStateId });
-        return restoreGraph(std::move(*graph), targetStateId);
+        GraphSnapshot inverse { currentGraph, {} };
+        if (snapshot->presentation.has_value()) {
+            inverse.presentation = presetPresentation;
+            presetPresentation = std::move(*snapshot->presentation);
+        }
+        undoHistory.push_back({ std::move(inverse), entry.beforeStateId, entry.afterStateId });
+        return restoreGraph(std::move(snapshot->graph), targetStateId);
+    }
+
+    if (const auto* explanation = std::get_if<ExplanationEdit>(&entry.edit)) {
+        applyExplanation(*explanation, true);
+        const uint64_t stateId = entry.afterStateId;
+        undoHistory.push_back(std::move(entry));
+        GraphChangeSet change;
+        change.explanationsChanged = true;
+        publishChangeAtState(change, stateId);
+        return true;
     }
 
     auto& delta = std::get<GraphDelta>(entry.edit);
@@ -131,9 +161,13 @@ void GraphDocument::recordExternalChange(NodeGraph beforeGraph, GraphChangeSet c
     publishChange(std::move(change));
 }
 
-void GraphDocument::recordBeforeChange(NodeGraph graph) {
+void GraphDocument::recordBeforeChange(NodeGraph graph, bool includePresentation) {
     const uint64_t newStateId = nextStateId++;
-    undoHistory.push_back({ std::move(graph), currentStateId, newStateId });
+    GraphSnapshot snapshot { std::move(graph), {} };
+    if (includePresentation) {
+        snapshot.presentation = presetPresentation;
+    }
+    undoHistory.push_back({ std::move(snapshot), currentStateId, newStateId });
     pendingStateId = newStateId;
     redoHistory.clear();
     if (undoHistory.size() > maximumHistoryDepth) {

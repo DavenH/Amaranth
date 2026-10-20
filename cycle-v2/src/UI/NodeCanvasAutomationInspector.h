@@ -76,6 +76,9 @@ struct NodeCanvasAutomationPresentation {
     std::vector<juce::String> selectedNodeIds;
     int hoveredEdgeIndex { -1 };
     juce::String sidebarTab;
+    juce::Rectangle<float> presetInformationBounds;
+    juce::var explanationEditor;
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>> explanationTargets;
 };
 
 struct NodeCanvasAutomationContext {

@@ -1,4 +1,5 @@
 #include "UI/NodeCanvasPresentation.h"
+#include "UI/ExplanationEditor.h"
 
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
@@ -145,7 +146,8 @@ void NodeCanvasPresentation::paintStatus(
         return;
     }
 
-    const Rectangle<float> textBounds = status.reduced(2.f, 1.f);
+    const Rectangle<float> textBounds = status.withTrimmedLeft(
+            (float) ExplanationBadge::presetButtonWidth + 8.f).reduced(2.f, 1.f);
     graphics.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.8f));
     graphics.drawText(text, textBounds, Justification::centredLeft);

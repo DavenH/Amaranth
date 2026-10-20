@@ -600,6 +600,9 @@ var GraphSerializer::writeJSON(
         encoded->setProperty("kind", registry.typeIdFor(node.kind));
         encoded->setProperty("definitionVersion", definition != nullptr ? definition->version : 1);
         encoded->setProperty("position", positionToJSON(node.bounds.getPosition()));
+        if (node.rationale.isNotEmpty()) {
+            encoded->setProperty("rationale", node.rationale);
+        }
         if (definition != nullptr) {
             const var portSides = nodePortSideOverrides(node, *definition);
             if (!portSides.isVoid()) {
@@ -748,6 +751,13 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
     const int savedUnisonWidthLayoutVersion =
             (int) root->getProperty("unisonWidthLayoutVersion");
 
+    const var description = root->getProperty("presetPresentation").getProperty("description", {});
+    if (!description.isVoid() && (!description.isString()
+            || description.toString().length() > maximumExplanationLength)) {
+        result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                "Preset description must be text of at most 16384 characters" });
+        return result;
+    }
     const auto presentation = PresetPresentationCodec::readJSON(
             root->getProperty("presetPresentation"));
     result.presentation = presentation.presentation;
@@ -927,6 +937,14 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             result.issues.push_back({ GraphLoadCode::InvalidSchema, "Node '" + nodeId + "' editor state must be an object" });
             continue;
         }
+        const var rationale = encoded->getProperty("rationale");
+        if (!rationale.isVoid() && (!rationale.isString()
+                || rationale.toString().length() > maximumExplanationLength)) {
+            result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                    "Node rationale must be text of at most 16384 characters" });
+            continue;
+        }
+        node.rationale = rationale.toString();
         node.editorState = editor;
         registry.normalize(node);
         result.graph.addNode(std::move(node));

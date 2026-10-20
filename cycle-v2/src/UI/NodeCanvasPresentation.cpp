@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "UI/NodeCanvasPresentation.h"
+#include "UI/ExplanationEditor.h"
 
 #include "Graph/NodeParameterMap.h"
 #include "Runtime/FingerprintBuilder.h"
@@ -707,6 +708,16 @@ void NodeCanvasPresentation::paintContent(
                 performanceObserver,
                 NodeCanvasPresentationStage::Nodes);
         paintCachedNodes(graphics, frame);
+        for (const auto& node : frame.graph.getNodes()) {
+            if (frame.graph.isNodeVisible(node.id)
+                    && ExplanationBadge::isVisible(node, frame.selectedNodeId)) {
+                const auto bounds = frame.viewport.toScreen(
+                        NodeCanvasScene::presentationWorldBounds(frame.graph, node, frame.facts.edgeIndex()));
+                ExplanationBadge::paint(graphics, ExplanationBadge::boundsFor(node, bounds, frame.viewport.getZoom(),
+                        frame.facts.audioScopeAnalysis().scopeFor(node.id) == AuthoredAudioScope::Global),
+                        node.rationale.isNotEmpty());
+            }
+        }
         paintInputQuickCreateHover(graphics, frame);
         ScopedNodeCanvasPresentationStage spyMeasurement(
                 performanceObserver,
@@ -1270,9 +1281,12 @@ void NodeCanvasPresentation::paintNode(
 
         graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
         graphics.setColour(CanvasChromePalette::text);
-        const float titleRightReservation = globalProcessing
+        const float existingReservation = globalProcessing
                 ? (reservesHeaderRight ? 65.f : 24.f)
                 : reservesHeaderRight ? 65.f : 0.f;
+        const float titleRightReservation = ExplanationBadge::isVisible(node, frame.selectedNodeId)
+                ? jmax(existingReservation, ExplanationBadge::titleReservation(node, globalProcessing))
+                : existingReservation;
         Rectangle<float> titleBounds = header.reduced(13.f * zoom, 4.f * zoom)
                 .withTrimmedRight(titleRightReservation * zoom);
         if (node.kind == NodeKind::Output) {

@@ -367,6 +367,10 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return workspaceCommands->setGuideParameter(commandValue);
         case Command::InspectNodeControls:
             return workspaceCommands->inspectNodeControls(commandValue);
+        case Command::InspectExplanation:
+        case Command::SetExplanation:
+        case Command::OpenExplanationEditor:
+            return workspaceCommands->explanation(commandValue);
         case Command::SetMorphSlider:
             return workspaceCommands->setMorphSlider(commandValue);
         case Command::SetPrimaryAxis:
