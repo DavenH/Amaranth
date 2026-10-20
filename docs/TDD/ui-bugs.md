@@ -1,5 +1,16 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved: Envelope equality depended on allocation order
+
+On 2026-10-20, strict candidate-authoring compatibility tests independently
+loaded `electric-1.cyclegraph` / `volumeEnvelope1` twice and found unequal models
+with identical loop/sustain membership. `EnvelopeMesh::equals` compared unsorted
+logical-cube-index vectors produced by pointer-ordered sets, causing spurious
+same-revision model conflicts. The canonical equality owner now sorts the index
+vectors. A direct independent-decode/membership regression and all-factory model
+comparison pass (`.context/semantic-tests-final.log` in the PR4 worktree; 34 cases,
+9061 assertions). No UI overlay or persistence-reader change was used.
+
 ## Resolved: Explanation editor test omitted GUI initialization
 
 On 2026-10-20, the combined authoring-tools test run passed its assertions but
