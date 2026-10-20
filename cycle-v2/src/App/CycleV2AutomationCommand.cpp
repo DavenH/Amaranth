@@ -29,6 +29,7 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "listPaletteItems", Command::ListPaletteItems },
             { "invokePaletteItem", Command::InvokePaletteItem },
             { "captureAudio", Command::CaptureAudio },
+            { "exportPatternSchedule", Command::ExportPatternSchedule },
             { "captureLiveAudio", Command::CaptureLiveAudio },
             { "openNodeEditor", Command::OpenNodeEditor },
             { "pinComparisonSpy", Command::PinComparisonSpy },

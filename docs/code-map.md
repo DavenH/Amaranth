@@ -98,6 +98,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodePreviewRenderer.h` — Compact node preview rendering and reusable preview resources.
 - `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy/probe overview and detail presentation.
 - `cycle-v2/src/UI/InlinePresetBrowser.h` — Preset sidebar workflow and selection behavior.
+- `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and suite export.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
 - `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.
 
@@ -134,6 +135,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `scripts/cycle_v2_architecture_audit.py` — Report CycleV2 file-size review triggers for touched production code.
 - `scripts/check_code_map.py` — Validate semantic-map paths, description lengths, and fixed size budgets.
 - `scripts/compare_cycle_audio.py` — Render declared-equivalent Cycle 1/2 presets and compare audio output.
+- `scripts/render_cycle_v2_performance_suite.py` — Render bounded MIDI suites with preset, performance, and audio fingerprints.
 - `scripts/fixtures/` — Stable automation scenarios; reuse a focused fixture before running broad smoke suites.
 
 ## Feature Routes
