@@ -80,8 +80,9 @@ fixed-pitch, monophonic evidence with confidence at least 0.8 also enables
 approximate harmonic-band fractions for harmonics 1–16 and the upper harmonics.
 Each harmonic band extends 1.5 FFT bins on either side. Fundamentals at or below
 three FFT bins lack sufficient harmonic separation and stay unpitched, with a
-resolution reason. Energy outside these
-bands is **not measured noise or HNR**. Unknown/inferred pitch, polyphonic
+resolution reason; fundamentals at or above Nyquist also stay unpitched.
+Energy outside these bands is **not measured noise or HNR**. Unknown/inferred
+pitch, polyphonic
 material, and insecure or fallback reference tracking stay unpitched; reasons,
 original labels and confidence are retained. A successful tracker alone does
 not establish monophony. Varying-pitch recordings need shorter fixed-pitch

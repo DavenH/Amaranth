@@ -36,6 +36,8 @@ def pitch_evidence(case):
         return None, "Pitch evidence is inferred, uncertain or not monophonic"
     if any(case[side]["lowConfidence"] or case[side]["trackingUsedFallback"] for side in ("a", "b")):
         return None, "Reference tracking is insecure or used fallback"
+    if midi_frequency(pitch["midiNote"]) >= case["a"]["sampleRate"] / 2:
+        return None, "Declared fundamental is at or above Nyquist; harmonic evidence unavailable"
     if midi_frequency(pitch["midiNote"]) <= 3 * case["a"]["sampleRate"] / FFT_SIZE:
         return None, "Pitch is below harmonic-band resolution: fundamental <= 3 FFT bins"
     return pitch["midiNote"], "Observed fixed-pitch monophonic evidence, confidence >= 0.8"

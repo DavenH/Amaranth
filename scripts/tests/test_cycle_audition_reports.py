@@ -188,6 +188,10 @@ class AuditionReportTest(unittest.TestCase):
         self.assertFalse(evidence["pitch"]["used"])
         self.assertIn("resolution", evidence["pitch"]["reason"])
         self.assertIn("centroidHz", evidence["intervals"][0]["raw"]["a"][0])
+        case["pitch"] = {**self.pitch, "midiNote": 127}
+        evidence, _ = analyze_case(case)
+        self.assertFalse(evidence["pitch"]["used"])
+        self.assertIn("Nyquist", evidence["pitch"]["reason"])
 
     def test_saved_suite_provenance_survives_without_live_engine_or_original_preset(self):
         path, _ = self.suite()

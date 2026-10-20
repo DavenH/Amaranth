@@ -115,8 +115,8 @@ end-to-end artifact evidence and code-map/whitespace checks below.
 
 ## Completion evidence
 
-- Production: 517 added Python lines, no production deletions; resolver 187,
-  analysis 143, report 187 lines. Three focused responsibilities remain separate.
+- Production: 519 added Python lines, no production deletions; resolver 187,
+  analysis 145, report 187 lines. Three focused responsibilities remain separate.
   No new node-kind branches, C++ ownership, app lifecycle or realtime changes.
 - Existing WAV decoding, RMS, fixed-lag alignment and spectra/FFT are imported
   unchanged from `cycle_audio_diff.py`; suite validation/hash helpers and
@@ -135,8 +135,8 @@ end-to-end artifact evidence and code-map/whitespace checks below.
   middle-transition differences despite equal endpoints, harmonic/noise
   perturbations, anti-phase stereo, default/fixed lag, one global RMS gain,
   silence, unknown/inferred/polyphonic/insecure/fallback/under-resolved pitch,
-  legal full-scale quantization, saved identity corruption, withheld exclusion,
-  output reuse and actual report-relative A/B artifacts.
+  legal full-scale quantization, above-Nyquist pitch, saved identity corruption,
+  withheld exclusion, output reuse and actual report-relative A/B artifacts.
 - End-to-end report generated from existing saved suite/reference artifacts:
   four cases, 16 A/B WAVs and eight standalone PNG/SVG plots. Exact repeated
   candidate captures and pre-change CC intervals have zero descriptor
