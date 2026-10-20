@@ -144,4 +144,24 @@ void ExplanationBadge::paint(Graphics& graphics, Rectangle<float> bounds, bool a
     graphics.drawText("i", bounds, Justification::centred);
 }
 
+PresetExplanationButton::PresetExplanationButton() : Button("Preset explanation") {
+    setTitle("Preset explanation");
+    setDescription("Read or edit this preset's explanation");
+    setWantsKeyboardFocus(true);
+    setMouseCursor(MouseCursor::PointingHandCursor);
+}
+
+void PresetExplanationButton::paintButton(Graphics& graphics, bool highlighted, bool down) {
+    const auto bounds = getLocalBounds().toFloat();
+    if (highlighted || down || hasKeyboardFocus(false)) {
+        graphics.setColour(CanvasChromePalette::hoveredControlSurface);
+        graphics.fillEllipse(bounds.reduced(2.f));
+    }
+    ExplanationBadge::paint(graphics, bounds, true);
+    if (hasKeyboardFocus(false)) {
+        graphics.setColour(CanvasChromePalette::focus);
+        graphics.drawEllipse(bounds.reduced(1.f), 1.f);
+    }
+}
+
 }

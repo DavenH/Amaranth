@@ -224,7 +224,7 @@ private:
 
     OpenGLContext openGLContext;
     TooltipWindow tooltipHost { this, 500 };
-    TextButton presetInformation { "i  PRESET" };
+    PresetExplanationButton presetInformation;
     Component::SafePointer<ExplanationEditor> explanationEditor;
     String explanationEditorNodeId;
     NodeCanvasRenderer renderer;

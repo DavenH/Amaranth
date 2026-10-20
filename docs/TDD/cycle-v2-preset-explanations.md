@@ -19,7 +19,7 @@ restoration. No duplicate preset/node notes store, DSP parameter, typed mesh
 model, or editor selection field contains this text.
 
 The canvas uses a quiet information action inside annotated or selected node headers and a preset
-information button. Both open one shared multiline text editor with Save and
+information action. Both open one shared multiline text editor with Save and
 Cancel; Escape cancels, ordinary Return inserts a newline. Generic help and
 specific authored rationale remain distinguishable. The existing canvas help,
 JUCE CallOutBox/TextEditor, NodeGroupRenameCallout palette, and document command
@@ -75,7 +75,7 @@ notes, atomic validation, save points, document replacement, local drafts,
 header geometry, and existing document/transaction behavior. Text-only history
 copies no unrelated graph, mesh or sample state with 0 and 128 unrelated nodes;
 canvas note undo/redo preserves the compiled/audio/preview revisions and counts.
-The 29-command explanation fixture passes, including real routed in-app badge
+The 31-command explanation fixture passes, including real routed in-app badge
 and Save/Cancel controls. Corrected production-size component screenshots show
 inset header information, readable generic help, and preset access outside the
 sidebar. The exact-PID native smoke also passes badge click, multiline typing,
@@ -88,7 +88,7 @@ The coordinator also encountered an independent workspace's foreground lease
 and waited without disturbing that instance.
 
 New production implementation files are 59 lines for graph commands, under
-160 for shared editing/geometry and under 100 for canvas note orchestration.
+180 for shared editing/geometry and under 100 for canvas note orchestration.
 Clang-tidy on the three new implementation files reports no user-code
 diagnostics. The semantic map and diff whitespace checks pass. The architecture
 size review below records existing large owners and the final canvas-header
@@ -99,6 +99,22 @@ canvas popup; native proof is
 The GUI fixture report is `.context/explanations-report.json`, and focused test
 proof is `.context/explanations-ctest.log`. Screenshots were inspected at the
 actual production size.
+
+The console refinement builds both exact targets and passes ten focused cases
+with 225 assertions and no JUCE assertion or leak output. It adds CRLF/hard-break,
+normal/narrow wrapping, fixed font-size, utility clearance and accessible
+information-action checks. The extended 31-command fixture passes. The final
+real OS screenshot `.context/annotation-header-refined.png` shows both an
+authored hard newline and a wrapped paragraph, with the quiet preset circle.
+The native edit/Save/undo/preset/Escape smoke also passes on the fresh exact app.
+The local native harness waits up to one second for asynchronous activation and
+avoids resetting AX main-window focus when its app is already frontmost; this
+resolved the bounded follow-up run without a product focus workaround. Evidence
+is `.context/console-refinement-build.log`, `.context/console-refinement-tests.log`
+and `.context/native-console-refinement.log`. The wrapping/cache/continuation
+policy remains in NodeCanvasChromePresentation (289 lines); dock geometry stays
+in CanvasUtilityDock, and information-action painting stays in ExplanationEditor
+(167 lines). No graph, persistence or audio ownership changes in this refinement.
 
 
 ## Implementation Shape Review
@@ -112,9 +128,22 @@ authored rationale show the action.
 The shared editor is 430 pixels wide, with a 14-pixel outer inset, a 26-pixel
 heading, an optional 38-pixel generic-help area, and 72 by 28 Save/Cancel
 buttons separated by 8 pixels. Return inserts a line break; Escape cancels;
-Command+Return saves. Full note text is available through the existing hover console, without popup tooltips.
+Command+Return saves. The console preserves authored line breaks and wraps at the existing 14-pixel
+font, without popup tooltips or horizontal shrinking. Its utility region is
+94 pixels high when space permits, sharing one layout with repaint bounds and
+remaining clear of the keyboard and minimap. Long notes show complete visible
+lines and a continuation ellipsis; the information action opens the shared
+scrollable editor for the entire note. Text layout is cached by text and width.
+The console clears its complete region on long-to-short transitions.
 
-Baseline/touched large sources: NodeCanvas 3468 -> 3505 lines, presentation
+The preset action reuses the node information-circle painter: a 28 by 28 hit
+target contains an approximately 18-pixel glyph, without a boxed label. Its
+accessibility title is Preset explanation, its description states the read/edit
+action, and keyboard focus has a visible ring. The action retains its existing
+component identity and editor route. Hovering it publishes the preset rationale
+through the same console, including when the pointer is over the child button.
+
+Baseline/touched large sources: NodeCanvas 3468 -> 3506 lines, presentation
 1511 -> 1525, serializer 1322 -> 1340, authoring 1036 -> 1043, automation
 inspector 1139 -> 1162, NodeGraph header 464 -> 468, canvas header 442 -> 450.
 Canvas remains the widget-lifecycle/input coordinator; `NodeCanvasExplanations`

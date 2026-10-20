@@ -221,14 +221,13 @@ NodeCanvas::NodeCanvas() :
     ,   addToSelectionCursor(MiscGraphics::createCursor(MiscGraphics::CrossAddCursor)) {
     settings.initialiseSettings();
     presetInformation.setComponentID("workspace.presetInformation");
-    presetInformation.setColour(TextButton::buttonColourId, CanvasChromePalette::restingControlSurface);
-    presetInformation.setColour(TextButton::textColourOffId, CanvasChromePalette::mutedText);
     presetInformation.onClick = [this] { openExplanationEditor({}); };
     presetInformation.onStateChange = [this] {
-        resolvedHoverText = presetInformation.isMouseOver()
-                ? (document.presentation().description.isNotEmpty() ? document.presentation().description
-                        : "Read or edit this preset explanation") : String();
-        requestCanvasRepaint();
+        if (presetInformation.isMouseOver()) {
+            resolvedHoverText = document.presentation().description.isNotEmpty()
+                    ? document.presentation().description : "Read or edit this preset explanation";
+        }
+        requestCanvasStatusRepaint();
     };
     addAndMakeVisible(presetInformation);
     ScalarSurfaceMaterial::setTimeSurfaceStyle(
@@ -382,7 +381,7 @@ void NodeCanvas::paint(Graphics& g) {
     const uint64_t framePreparationStartedAt = performanceMetrics.timestamp();
     const NodeCanvasPresentationFrame frame = presentationFrame();
     const Rectangle<int> status = statusRepaintBounds(
-            frame.canvasBounds, frame.keyboardExtraControllerCount);
+            frame.utilityBounds, frame.keyboardExtraControllerCount);
     if (!status.isEmpty() && status.contains(g.getClipBounds())) {
         canvasPresentation.paintStatus(g, frame);
         return;
@@ -427,7 +426,8 @@ void NodeCanvas::resized() {
     const auto status = CanvasUtilityDock::layout(
             canvasUtilityBounds(), extraMidiControllerCount()).status;
     presetInformation.setBounds(status.withSize(
-            (float) ExplanationBadge::presetButtonWidth, 26.f).toNearestInt());
+            (float) ExplanationBadge::presetButtonWidth,
+            (float) ExplanationBadge::presetButtonWidth).toNearestInt());
     if (!documentViewportFitted && !canvasContentBounds().isEmpty()) {
         fitDocumentInViewport();
         documentViewportFitted = true;
@@ -1589,7 +1589,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             lastMousePosition,
             selectedNodeId,
             editStatusMessage,
-            pointerInsideCanvas && !pointerOccluded ? resolvedHoverText : String {},
+            (pointerInsideCanvas || presetInformation.isMouseOver()) && !pointerOccluded
+                    ? resolvedHoverText : String {},
             std::move(pending),
             snapGuides,
             presentation.revision(),

@@ -4,6 +4,8 @@
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
+#include "UI/CanvasChromeMetrics.h"
+#include "UI/CanvasUtilityDock.h"
 #include "UI/ExplanationEditor.h"
 #include "UI/NodeCanvasPresentation.h"
 
@@ -233,5 +235,40 @@ TEST_CASE("Information actions stay inside headers and clear existing controls",
                         header, zoom, true)));
             }
         }
+    }
+}
+
+TEST_CASE("Explanation console preserves paragraphs and wraps at a readable size",
+        "[cycle-v2][explanations][ui][status]") {
+    const ScopedJuceInitialiser_GUI gui;
+    const String text = "Body waveform\r\nThe rounded shape supplies a restrained harmonic foundation.\n"
+            "Keep the transient bright, then let the upper harmonics settle into the sustained body.";
+    const auto normal = NodeCanvasPresentation::canvasStatusLayout(text, 390.f);
+    const auto narrow = NodeCanvasPresentation::canvasStatusLayout(text, 160.f);
+    REQUIRE(normal.getNumLines() > 3);
+    REQUIRE(narrow.getNumLines() > normal.getNumLines());
+    for (const auto* layout : { &normal, &narrow }) {
+        const auto first = layout->getLine(0).stringRange;
+        REQUIRE(text.substring(first.getStart(), first.getEnd()).trim() == "Body waveform");
+        REQUIRE(layout->getLine(layout->getNumLines() - 1).stringRange.getEnd() == text.length());
+        for (const auto& line : *layout) {
+            for (const auto* run : line.runs) {
+                REQUIRE(run->font.getHeight() == CanvasChromeMetrics::sectionTitleFontSize);
+            }
+        }
+    }
+
+    PresetExplanationButton info;
+    REQUIRE(info.getTitle() == "Preset explanation");
+    REQUIRE(info.getDescription().contains("Read or edit"));
+    REQUIRE(info.getTooltip().isEmpty());
+    REQUIRE(ExplanationBadge::presetButtonWidth == 28);
+    for (const float width : { 500.f, 1200.f }) {
+        const Rectangle<float> content(0.f, 0.f, width, 700.f);
+        const auto dock = CanvasUtilityDock::layout(content, 2);
+        REQUIRE(dock.status.getHeight() == CanvasUtilityDock::preferredStatusHeight);
+        REQUIRE_FALSE(dock.status.intersects(dock.keyboard));
+        REQUIRE_FALSE(dock.status.intersects(dock.minimap));
+        REQUIRE(content.contains(dock.status));
     }
 }

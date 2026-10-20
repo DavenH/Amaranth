@@ -34,12 +34,18 @@ private:
 
 class ExplanationBadge {
 public:
-    static constexpr int presetButtonWidth = 94;
+    static constexpr int presetButtonWidth = 28;
     static bool isVisible(const Node& node, const juce::String& selectedNodeId);
     static juce::Rectangle<float> boundsFor(const Node& node,
             juce::Rectangle<float> nodeBounds, float zoom, bool globalProcessing);
     static float titleReservation(const Node& node, bool globalProcessing);
     static void paint(juce::Graphics& graphics, juce::Rectangle<float> bounds, bool authored);
+};
+
+class PresetExplanationButton final : public juce::Button {
+public:
+    PresetExplanationButton();
+    void paintButton(juce::Graphics& graphics, bool highlighted, bool down) override;
 };
 
 }
