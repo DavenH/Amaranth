@@ -39,8 +39,7 @@ bool sameZoomValue(float first, float second) {
 namespace TrimeshPanelInvalidation {
 
 constexpr uint32_t Owner = 1u << 0;
-constexpr uint32_t Panel2DBake = 1u << 1;
-constexpr uint32_t Panel3DBake = 1u << 2;
+constexpr uint32_t Panel3DBake = 1u << 1;
 
 }
 
@@ -53,10 +52,6 @@ public:
 
 private:
     bool deleteKeyPressed() override {
-        if (auto* interactor = dynamic_cast<TrimeshInteractor2D*>(panelInteractor())) {
-            interactor->deleteSelected();
-            return true;
-        }
         if (auto* interactor = dynamic_cast<TrimeshInteractor3D*>(panelInteractor())) {
             interactor->deleteSelected();
             return true;
@@ -74,6 +69,7 @@ TrimeshPanelHosts::TrimeshPanelHosts(
     ,   panel3D         (panel3DToHost)
     ,   interactor2D    (interactor2DToHost)
     ,   interactor3D    (interactor3DToHost)
+    ,   curveHost       (panel2DToHost, *this)
     ,   invalidation    (*this) {
     panel2D.setZoomChangedCallback([this](bool sourceNeedsRefresh) {
         frequencyZoomChanged(true, sourceNeedsRefresh);
@@ -225,7 +221,6 @@ void TrimeshPanelHosts::setDelegate(TrimeshPanelHostDelegate* nextDelegate) {
 
     PanelHostCallbacks callbacks = createPanelHostCallbacks();
     panel3D.setHostCallbacks(callbacks);
-    panel2D.setHostCallbacks(callbacks);
 
 }
 
@@ -247,12 +242,6 @@ PanelHostCallbacks TrimeshPanelHosts::createPanelHostCallbacks() {
             panel3DHost->setMouseCursor(cursor);
             panel3D.getZoomPanel()->setMouseCursor(cursor);
             showNativeCursorForPanel(*panel3DHost, cursor);
-        }
-
-        if (panel == &panel2D && panel2DHost != nullptr) {
-            panel2DHost->setMouseCursor(cursor);
-            panel2D.getZoomPanel()->setMouseCursor(cursor);
-            showNativeCursorForPanel(*panel2DHost, cursor);
         }
 
         if (delegate != nullptr && (panel == &panel2D || panel == &panel3D)) {
@@ -287,20 +276,38 @@ void TrimeshPanelHosts::initialisePanel3DHost() {
 }
 
 void TrimeshPanelHosts::initialisePanel2DHost() {
-    if (panel2DHostInitialised) {
-        return;
-    }
+    curveHost.component();
+}
 
-    panel2DHost = std::make_unique<PanelHostComponent>(panel2D);
-    panel2D.setInteractorMouseListenerEnabled(false);
-    panel2D.initWithExternalComponent(panel2DHost.get());
-    {
-        const ScopedValueSetter<bool> syncing(synchronizingFrequencyZoom, true);
-        panel2D.configureViewport(frequencyLimits);
-        panel2DHostInitialised = true;
-        applyFrequencyViewportTo2D();
-    }
+void TrimeshPanelHosts::initialiseCurvePanel(Component* component) {
+    panel2D.initWithExternalComponent(component);
+    const ScopedValueSetter<bool> syncing(synchronizingFrequencyZoom, true);
+    panel2D.configureViewport(frequencyLimits);
+    panel2DHostInitialised = true;
+    applyFrequencyViewportTo2D();
     styleZoomScrollbars(*panel2D.getZoomPanel());
+}
+
+void TrimeshPanelHosts::updateCurvePanelZoom(bool) {
+    applyFrequencyViewportTo2D();
+}
+
+void TrimeshPanelHosts::repaintCurvePanel() {
+    if (delegate != nullptr) {
+        delegate->requestTrimeshPanelRepaint();
+    }
+}
+
+void TrimeshPanelHosts::setCurvePanelCursor(const MouseCursor& cursor) {
+    panel2D.getZoomPanel()->setMouseCursor(cursor);
+    if (delegate != nullptr) {
+        delegate->setTrimeshPanelCursor(TrimeshPanelHostKind::Panel2D, cursor);
+    }
+}
+
+bool TrimeshPanelHosts::deleteCurvePanelSelection() {
+    interactor2D.deleteSelected();
+    return true;
 }
 
 void TrimeshPanelHosts::initialiseSharedGlResources() {
@@ -317,34 +324,21 @@ void TrimeshPanelHosts::initialiseSharedGlResources() {
     panel3D.setPanelRenderer(panel3DRenderer.get());
     panel3DGfx->initializeTextures();
 
-    panel2DGfx = new CommonGL(&panel2D);
-    panel2DRenderer = std::make_unique<GLPanelRenderer>(panel2DGfx);
-    panel2D.setGraphicsHelper(panel2DGfx);
-    panel2D.setPanelRenderer(panel2DRenderer.get());
-    panel2DGfx->initializeTextures();
-
     panel3D.bakeTexturesNextRepaint();
     panel2D.bakeTexturesNextRepaint();
     sharedGlResourcesInitialised = true;
 }
 
 void TrimeshPanelHosts::releaseSharedGlResources() {
-    if (panel2DRenderer != nullptr) {
-        panel2DRenderer->clearResources();
-    }
+    curveHost.releaseSharedGlResources();
     if (panel3DRenderer != nullptr) {
         panel3DRenderer->clearResources();
     }
-    panel2D.setPanelRenderer(nullptr);
     panel3D.setPanelRenderer(nullptr);
-    panel2DRenderer = nullptr;
     panel3DRenderer = nullptr;
-    panel2D.setGraphicsHelper(nullptr);
     panel3D.setGraphicsHelper(nullptr);
-    panel2DGfx = nullptr;
     panel3DGfx = nullptr;
     sharedGlResourcesInitialised = false;
-    panel2DVisible = false;
     panel3DVisible = false;
 }
 
@@ -357,11 +351,15 @@ void TrimeshPanelHosts::renderPanel3D(Rectangle<float> bounds, float scaleFactor
 }
 
 void TrimeshPanelHosts::renderPanel2D(Rectangle<float> bounds, float scaleFactor) {
-    panel2DVisible = !bounds.isEmpty();
-    invalidation.notifyAvailabilityChanged();
-    initialiseSharedGlResources();
-    renderPanel(panel2D, bounds.withWidth((float) panel2DHost->getWidth())
-            .withHeight((float) panel2DHost->getHeight()), scaleFactor);
+    curveHost.render(bounds, bounds, scaleFactor);
+}
+
+bool TrimeshPanelHosts::renderPreview2D(Rectangle<float> bounds, float scaleFactor, uint64_t contentRevision) {
+    return curveHost.renderPreview(bounds, scaleFactor, true, contentRevision, 0, 0);
+}
+
+bool TrimeshPanelHosts::paintPreview2D(Graphics& graphics, Rectangle<float> bounds) const {
+    return curveHost.paintPreviewSnapshot(graphics, bounds);
 }
 
 void TrimeshPanelHosts::renderPanel(
@@ -400,9 +398,6 @@ void TrimeshPanelHosts::requestPanelInvalidation(
             || flag == PanelDirtyState::Flag::SurfaceCache
             || flag == PanelDirtyState::Flag::Resource
             || flag == PanelDirtyState::Flag::Full;
-    if (requiresBake && sourcePanel == &panel2D) {
-        categories |= TrimeshPanelInvalidation::Panel2DBake;
-    }
     if (requiresBake && sourcePanel == &panel3D) {
         categories |= TrimeshPanelInvalidation::Panel3DBake;
     }
@@ -411,9 +406,6 @@ void TrimeshPanelHosts::requestPanelInvalidation(
 
 uint32_t TrimeshPanelHosts::availableRenderInvalidations() const {
     uint32_t available = TrimeshPanelInvalidation::Owner;
-    if (sharedGlResourcesInitialised && panel2DVisible) {
-        available |= TrimeshPanelInvalidation::Panel2DBake;
-    }
     if (sharedGlResourcesInitialised && panel3DVisible) {
         available |= TrimeshPanelInvalidation::Panel3DBake;
     }
@@ -421,9 +413,6 @@ uint32_t TrimeshPanelHosts::availableRenderInvalidations() const {
 }
 
 void TrimeshPanelHosts::flushRenderInvalidations(uint32_t categories) {
-    if ((categories & TrimeshPanelInvalidation::Panel2DBake) != 0) {
-        panel2D.bakeTexturesNextRepaint();
-    }
     if ((categories & TrimeshPanelInvalidation::Panel3DBake) != 0) {
         panel3D.bakeTexturesNextRepaint();
     }

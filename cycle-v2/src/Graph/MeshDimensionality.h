@@ -17,7 +17,11 @@ public:
     }
 
     static MorphDimensions dimensions(const Node& node) {
-        return MorphDimensions(NodeParameterMap(node).intValue("dimensionCount", 0));
+        return dimensions(node.kind, NodeParameterMap(node).intValue("dimensionCount", 0));
+    }
+
+    static MorphDimensions dimensions(NodeKind kind, int count) {
+        return kind == NodeKind::TrilinearMesh ? MorphDimensions::trimesh(count) : MorphDimensions(count);
     }
 
     static int axisForPort(const String& port) {

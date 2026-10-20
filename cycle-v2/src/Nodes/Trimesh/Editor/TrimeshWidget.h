@@ -85,6 +85,8 @@ public:
             float zoom,
             const TrimeshRenderProfile& profile);
 
+    bool renderCompactPreviewOpenGL(const Node& node, juce::Rectangle<float> area, float scaleFactor);
+    uint64_t previewSnapshotRevision() const { return bridge.previewSnapshotRevision(); }
     void paintExpanded(
             juce::Graphics& g,
             const Node& node,

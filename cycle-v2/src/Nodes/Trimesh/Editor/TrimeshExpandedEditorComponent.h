@@ -120,6 +120,7 @@ private:
             "Enable or disable this Trimesh layer"
     };
     PropertySegmentedSelector dimensionSelector;
+    juce::Label dimensionLabel;
     juce::Label signalTypeLabel;
     PropertySegmentedSelector signalTypeSelector;
     juce::Label polarityLabel;

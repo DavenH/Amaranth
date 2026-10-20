@@ -8,10 +8,11 @@ namespace CycleV2 {
 TrimeshSemanticRepresentationMigrationResult MeshDimensionalityMigration::migrate(var& graph) const {
     TrimeshSemanticRepresentationMigrationResult result;
     auto* root = graph.getDynamicObject();
-    if (root == nullptr || (int) root->getProperty("formatVersion") == 8) {
+    const int version = root != nullptr ? (int) root->getProperty("formatVersion") : 9;
+    if (root == nullptr || version == 9) {
         return result;
     }
-    if ((int) root->getProperty("formatVersion") != 7) {
+    if (version != 7 && version != 8) {
         result.error = "Unsupported mesh dimensionality graph version";
         return result;
     }
@@ -29,6 +30,14 @@ TrimeshSemanticRepresentationMigrationResult MeshDimensionalityMigration::migrat
             return result;
         }
         const String kind = encoded->getProperty("kind").toString();
+        if (version == 8) {
+            // The first dimensional format used Red/Blue for Trimesh 2D.
+            // Keep that authored variation available when adopting Yellow/Red.
+            if (kind == "trilinearMesh" && parameters->getProperty("dimensionCount").toString() == "2") {
+                parameters->setProperty("dimensionCount", 3);
+            }
+            continue;
+        }
         if (kind == "trilinearMesh") {
             parameters->setProperty("dimensionCount", 3);
         } else if (kind == "envelope") {
@@ -82,7 +91,7 @@ TrimeshSemanticRepresentationMigrationResult MeshDimensionalityMigration::migrat
             }
         }
     }
-    root->setProperty("formatVersion", 8);
+    root->setProperty("formatVersion", 9);
     result.migrated = true;
     return result;
 }

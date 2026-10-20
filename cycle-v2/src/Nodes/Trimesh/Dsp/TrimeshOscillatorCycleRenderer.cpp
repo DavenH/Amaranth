@@ -33,7 +33,7 @@ bool TrimeshOscillatorCycleRenderer::prepare(
                         ? &TrimeshMeshDeltaOverlay::resolveFromContext
                         : nullptr);
         lane.rasterizer.setDimensionality(
-                configuration->dimensionCount, configuration->staticSlice.get());
+                configuration->dimensionCount, configuration->staticSlice.get(), MorphDimensions::Plane::YellowRed);
         lane.rasterizer.setCalcDepthDimensions(false);
         lane.rasterizer.setPrepareIntegrals(false);
         lane.rasterizer.setScalingMode(Rasterization::PointScalingMode::Bipolar);

@@ -3,6 +3,7 @@
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 
 #include <JuceHeader.h>
+#include <Curve/Mesh/MorphDimensions.h>
 
 #include <array>
 #include <vector>
@@ -38,19 +39,27 @@ public:
             int dimensionCount = 3);
     static void drawMorphControls(
             juce::Graphics& g, juce::Rectangle<float> area,
-            const std::array<AxisState, 3>& axes, int dimensionCount);
+            const std::array<AxisState, 3>& axes, int dimensionCount,
+            MorphDimensions::Plane plane = MorphDimensions::Plane::RedBlue,
+            const std::vector<TrimeshCubePreviewVertex>& vertices = {});
     static void drawMorphCubePreview(
             juce::Graphics& g,
             juce::Rectangle<float> area,
             const std::array<AxisState, 3>& axes,
             const std::vector<TrimeshCubePreviewVertex>& cubeVertices);
+    static void drawMorphPlanePreview(
+            juce::Graphics& graphics, juce::Rectangle<float> area,
+            const std::array<AxisState, 3>& axes, MorphDimensions dimensions,
+            const std::vector<TrimeshCubePreviewVertex>& vertices);
+    static int vertexParameterSlot(const juce::String& id, int slotCount);
     static void drawVertexParameters(
             juce::Graphics& g,
             juce::Rectangle<float> area,
             const std::vector<TrimeshVertexParameter>& parameters,
             const std::array<juce::String, 6>& guideAttachmentLabels,
             float heightScale = 1.f,
-            GuideControls guideControls = GuideControls::Visible);
+            GuideControls guideControls = GuideControls::Visible,
+            int stableSlotCount = 0);
     static void drawMorphColumnHeaders(
             juce::Graphics& g,
             juce::Rectangle<float> firstRow,

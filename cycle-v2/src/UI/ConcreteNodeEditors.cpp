@@ -180,6 +180,9 @@ public:
         const auto dimensions = MeshDimensionality::dimensions(boundNode);
         state.setProperty("dimensionCount", dimensions.axisCount());
         state.setProperty("surfaceVisible", dimensions.axisCount() > 0);
+        state.setProperty("curveMorphingLabel", "Curve morphing");
+        state.setProperty("compactPreviewMechanism", dimensions.axisCount() == 0 ? "curvePanelSnapshot" : "morphSurface");
+        state.setProperty("compactPreviewSnapshotRevision", (int64) boundWidget->previewSnapshotRevision());
         state.setProperty("enabled", parameters.boolValue("enabled", true));
         state.setProperty("range", editor->spectralRangeValue());
         state.setProperty("gain", parameters.floatValue("gain", 0.5f));

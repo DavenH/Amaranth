@@ -220,7 +220,7 @@ const RenderResult& VoiceRasterizer::renderVoiceSlice(float oscPhase) {
         return sliceResult;
     }
 
-    float voiceTime = MorphDimensions(getRequest().dimensionCount).active(Vertex::Time)
+    float voiceTime = MorphDimensions(getRequest().dimensionCount, getRequest().twoDimensionalPlane).active(Vertex::Time)
             ? jmin(1.f, getRequest().morph.time + state->advancement)
             : getRequest().morph.time.getCurrentValue();
     auto guideApplier = createGuideCurveApplier(
@@ -265,7 +265,7 @@ void VoiceRasterizer::appendVoiceCubeIntercept(
             Vertex::Time,
             chainReduction,
             getRequest().morph.withTime(voiceTime),
-            getRequest().dimensionCount);
+            getRequest().dimensionCount, getRequest().twoDimensionalPlane);
     }
 
     Vertex* a = &chainReduction.v0;

@@ -19,7 +19,8 @@ GraphEditResult GraphCommandDispatcher::setMeshDimensions(const String& nodeId, 
         result.changed = false;
         return result;
     }
-    const bool projects = (before.cornerMask() & ~MorphDimensions(count).cornerMask()) != 0;
+    const auto retained = MeshDimensionality::dimensions(node->kind, count);
+    const bool projects = (before.cornerMask() & ~retained.cornerMask()) != 0;
     std::vector<int> retainedCubeIndices;
     auto model = projects ? MeshDimensionality::projectModel(
             *node, count, MeshDimensionality::position(*node), &editingGraph(), &retainedCubeIndices) : node->model;
@@ -49,7 +50,6 @@ GraphEditResult GraphCommandDispatcher::setMeshDimensions(const String& nodeId, 
                         graph.replaceNodeEditorState(nodeId, state);
                         result.changes.editorStateChanged = true;
                     }
-                    const MorphDimensions retained(count);
                     for (const auto& assignment : graph.getGuideAssignments()) {
                         if (assignment.targetNodeId != nodeId) {
                             continue;
@@ -78,9 +78,12 @@ GraphEditResult GraphCommandDispatcher::setMeshDimensions(const String& nodeId, 
                     }
                     result.changes.guidesChanged = !result.changes.removedGuideAssignments.empty();
                 }
-                if (node->kind == NodeKind::TrilinearMesh && count < 3) {
-                    editor.setNodeParameter(graph, nodeId, "primaryAxis", "Primary Axis",
-                            count == 2 ? "red" : "yellow");
+                const String primary = NodeParameterMap(*node).stringValue("primaryAxis", "yellow");
+                if (node->kind == NodeKind::TrilinearMesh && count > 0
+                        && !retained.active(MeshDimensionality::axisForPort(primary))) {
+                    const auto axisChange = editor.setNodeParameter(
+                            graph, nodeId, "primaryAxis", "Primary Axis", "yellow");
+                    result.changes.parameterImpacts = result.changes.parameterImpacts | axisChange.changes.parameterImpacts;
                 }
                 return result;
             });

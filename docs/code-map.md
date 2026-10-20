@@ -87,7 +87,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Nodes/` — Domain node implementations; keep DSP, model, editor, panel, and rendering layers distinct.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
 - `cycle-v2/src/Graph/MeshDimensionality.h` — Shared node axis eligibility, projection, and dimensional edit semantics.
-- `cycle-v2/src/UI/Editors/MorphControlLayout.h` — Shared dimension-aware morph control geometry.
+- `cycle-v2/src/UI/Editors/` — Shared property and morph geometry, axis pills, hover callouts, and keyboard interaction.
 - `cycle-v2/src/Nodes/Curve/` — Curve node model/editor/panel adapters over shared curve behavior.
 - `cycle-v2/src/Nodes/Envelope/` — Envelope state, playback, editor, morph surfaces, and signal processing.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
@@ -129,7 +129,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `scripts/cycle_automation_support/` — Product profiles, workspace identity, registry leases, process lifecycle, and session client.
 - `scripts/fixtures/cycle1-smoke-suite.json` — Cycle 1 smoke fixture catalog and optional visual check.
 - `scripts/fixtures/cycle-v2-smoke-suite.json` — Cycle 2 smoke fixture catalog and optional visual checks.
-- `scripts/launch_cycle_app.swift` — NSWorkspace launcher that returns the new application's PID.
+- `scripts/launch_cycle_app.swift` — Exact-PID NSWorkspace launch and native window activation for parallel workspaces.
 - `scripts/capture_cycle_screenshot.swift`, `scripts/capture_cycle_window.swift` — PID-window screenshot, region crop, and video helpers.
 - `scripts/run_cycle_agent.sh`, `scripts/run_cycle_v2_agent.sh` — Product aliases for fixture runs.
 - `scripts/capture_cycle_ui.sh`, `scripts/capture_cycle_v2_ui.sh` — Product aliases for screenshots.

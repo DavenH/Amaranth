@@ -4015,6 +4015,8 @@ TEST_CASE("Trimesh morph shortcuts focus, reach poles, toggle links, and preserv
             NodeKind::TrilinearMesh,
             "mesh",
             {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Curve morphing", "3").succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
     RecordingPresentation presentation;
@@ -4135,6 +4137,8 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
 
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "env", "dimensionCount", "Curve morphing", "2").succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
     RecordingPresentation presentation;
@@ -4183,7 +4187,7 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
     REQUIRE(editor->getLocalBounds().contains(shortcutBubble->getBounds()));
     REQUIRE(shortcutBubble->getBounds().getCentreX()
             == shortcutHint->getBounds().getCentreX());
-    REQUIRE(shortcutBubble->getDescription().startsWith("R / B"));
+    REQUIRE(shortcutBubble->getDescription().startsWith("Y / R / B"));
     REQUIRE(shortcutBubble->getDescription().contains(
             "Shift + Left / Right"));
     shortcutHint->mouseExit(curvePanelMouseEvent(
@@ -4201,6 +4205,7 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
     REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::leftKey)));
     REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
             .floatValue("red", 0.5f) == Catch::Approx(0.f));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env")).intValue("dimensionCount", 0) == 2);
     REQUIRE(document.undo());
     REQUIRE(host.bind(
             document.graph().findNode("env"),

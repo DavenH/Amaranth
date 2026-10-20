@@ -206,6 +206,7 @@ set(RUNTIME_SOURCES
 set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/Rendering/EnvelopeMorphSurfacePreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MorphControlLayout.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MeshDimensionOptions.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EffectEnableButton.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MorphKeyboardShortcutHelp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertyControlLookAndFeel.cpp"
@@ -359,6 +360,7 @@ set(NODE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/OutputScaleControlRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshRenderProfile.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshMorphPlanePreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshSliceRenderer2D.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Rendering/TrimeshSurfaceRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Trimesh/Editor/TrimeshWidget.cpp"

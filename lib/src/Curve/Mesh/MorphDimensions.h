@@ -12,11 +12,19 @@ class VertCube;
 // Morph coordinates are independent of the sampled curve's phase/playback axis.
 class MorphDimensions {
 public:
-    explicit MorphDimensions(int countToUse = 3) : count(juce::jlimit(0, 3, countToUse)) {}
+    enum class Plane { RedBlue, YellowRed };
+
+    explicit MorphDimensions(int countToUse = 3, Plane planeToUse = Plane::RedBlue) :
+            count (juce::jlimit(0, 3, countToUse))
+        ,   plane (planeToUse) {}
+
+    static MorphDimensions trimesh(int count) { return MorphDimensions(count, Plane::YellowRed); }
+    static int cornerBit(int dimension);
+    Plane twoDimensionalPlane() const { return plane; }
 
     bool active(int dimension) const;
     int axisCount() const { return count; }
-    int primaryAxis() const { return count == 2 ? Vertex::Red : Vertex::Time; }
+    int primaryAxis() const { return count == 2 && plane == Plane::RedBlue ? Vertex::Red : Vertex::Time; }
     int cornerMask() const;
     int logicalCorner(int physicalCorner) const { return physicalCorner & cornerMask(); }
     MorphPosition constrain(const MorphPosition& position, const MorphPosition& fallback) const;
@@ -30,4 +38,5 @@ public:
 
 private:
     int count;
+    Plane plane;
 };

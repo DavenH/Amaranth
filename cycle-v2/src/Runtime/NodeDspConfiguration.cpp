@@ -139,7 +139,7 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         return {};
     }
     applyTrimeshParameters(*configuration, parameters);
-    configuration->scratchSourceEnabled = MorphDimensions(configuration->dimensionCount).active(Vertex::Time)
+    configuration->scratchSourceEnabled = MorphDimensions::trimesh(configuration->dimensionCount).active(Vertex::Time)
             && scratchSourceEnabled(
             graph,
             nodeId,

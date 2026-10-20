@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Nodes/Trimesh/Panel/TrimeshPanelHostDelegate.h"
+#include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 
 #include <atomic>
 #include <memory>
@@ -20,7 +21,7 @@ class TrimeshPanel3D;
 class TrimeshInteractor2D;
 class TrimeshInteractor3D;
 
-class TrimeshPanelHosts : private RenderInvalidationTarget {
+class TrimeshPanelHosts : private RenderInvalidationTarget, private CurvePanelHostDelegate {
 public:
     TrimeshPanelHosts(
             TrimeshPanel2D& panel2D,
@@ -44,6 +45,9 @@ public:
     void releaseSharedGlResources();
     void renderPanel3D(Rectangle<float> bounds, float scaleFactor);
     void renderPanel2D(Rectangle<float> bounds, float scaleFactor);
+    bool renderPreview2D(Rectangle<float> bounds, float scaleFactor, uint64_t contentRevision);
+    bool paintPreview2D(Graphics& graphics, Rectangle<float> bounds) const;
+    uint64_t previewSnapshotRevision() const { return curveHost.previewSnapshotRevision(); }
 
     bool isPanel3DHostInitialised() const { return panel3DHostInitialised; }
     bool isPanel2DHostInitialised() const { return panel2DHostInitialised; }
@@ -58,6 +62,16 @@ private:
     PanelHostCallbacks createPanelHostCallbacks();
     void initialisePanel3DHost();
     void initialisePanel2DHost();
+    void initialiseCurvePanel(Component* component) override;
+    void updateCurvePanelZoom(bool) override;
+    void prepareCurvePanel() override {}
+    void synchronizeCurvePanelSelection() override {}
+    void repaintCurvePanel() override;
+    void setCurvePanelCursor(const MouseCursor& cursor) override;
+    void beginEdit() override {}
+    void publishIntermediateRevision() override {}
+    void commitEdit() override {}
+    bool deleteCurvePanelSelection() override;
     void frequencyZoomChanged(bool from2D, bool sourceNeedsRefresh);
     bool applyFrequencyViewportTo2D();
     bool applyFrequencyViewportTo3D();
@@ -70,11 +84,9 @@ private:
     TrimeshPanel3D& panel3D;
     TrimeshInteractor2D& interactor2D;
     TrimeshInteractor3D& interactor3D;
-    std::unique_ptr<PanelHostComponent> panel2DHost;
+    CurvePanelHost curveHost;
     std::unique_ptr<PanelHostComponent> panel3DHost;
-    std::unique_ptr<GLPanelRenderer> panel2DRenderer;
     std::unique_ptr<GLPanelRenderer> panel3DRenderer;
-    CommonGL* panel2DGfx {};
     CommonGL* panel3DGfx {};
     TrimeshPanelHostDelegate* delegate {};
     RenderInvalidationAccumulator invalidation;
@@ -87,7 +99,6 @@ private:
     bool panel2DHostInitialised {};
     std::atomic<bool> sharedGlResourcesInitialised {};
     std::atomic<bool> panel3DVisible {};
-    std::atomic<bool> panel2DVisible {};
 };
 
 }

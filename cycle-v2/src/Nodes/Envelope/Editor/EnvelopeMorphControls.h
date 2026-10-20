@@ -37,7 +37,7 @@ public:
     Rectangle<float> vertexBounds(Rectangle<float> controls) const;
     Rectangle<float> vertexParameterRowBounds(
             Rectangle<float> controls,
-            int parameterIndex) const;
+            const juce::String& parameterId) const;
 
     void draw(
             Graphics& graphics,

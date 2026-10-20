@@ -175,6 +175,9 @@ private:
     }
 
     bool deleteKeyPressed() override {
+        if (delegate.deleteCurvePanelSelection()) {
+            return true;
+        }
         if (Interactor* interactor = panelInteractor()) {
             delegate.beginEdit();
             interactor->eraseSelected();

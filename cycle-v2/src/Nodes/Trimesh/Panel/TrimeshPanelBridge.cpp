@@ -444,6 +444,14 @@ void TrimeshPanelBridge::renderPanel3D(Rectangle<float> bounds, float scaleFacto
     panelHosts.renderPanel3D(bounds, scaleFactor);
 }
 
+bool TrimeshPanelBridge::renderPreview2D(Rectangle<float> bounds, float scaleFactor) {
+    return panelHosts.renderPreview2D(bounds, scaleFactor, model.getDerivedRevisions().aggregate);
+}
+
+bool TrimeshPanelBridge::paintPreview2D(Graphics& graphics, Rectangle<float> bounds) const {
+    return panelHosts.paintPreview2D(graphics, bounds);
+}
+
 void TrimeshPanelBridge::renderPanel2D(Rectangle<float> bounds, float scaleFactor) {
     panelHosts.renderPanel2D(bounds, scaleFactor);
 }

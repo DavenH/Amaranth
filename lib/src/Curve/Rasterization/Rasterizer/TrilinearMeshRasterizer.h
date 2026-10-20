@@ -173,8 +173,10 @@ namespace Rasterization {
             request.morph.blue.setValueDirect(blue);
         }
 
-        void setDimensionality(int count, const PreparedMeshSlice* prepared = nullptr) {
+        void setDimensionality(int count, const PreparedMeshSlice* prepared = nullptr,
+                MorphDimensions::Plane plane = MorphDimensions::Plane::RedBlue) {
             request.dimensionCount = count;
+            request.twoDimensionalPlane = plane;
             request.preparedSlice = prepared;
         }
 

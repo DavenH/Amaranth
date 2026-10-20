@@ -92,7 +92,7 @@ bool TrimeshNodeModel::syncFromNode(
         dimensionCount = nextDimensionCount;
         bumpMeshContentRevision();
     }
-    const MorphDimensions dimensions(dimensionCount);
+    const auto dimensions = MorphDimensions::trimesh(dimensionCount);
     const MorphPosition nextMorph {
             parameters.floatValue("yellow", 0.5f),
             parameters.floatValue("red", 0.5f),

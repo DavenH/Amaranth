@@ -16,31 +16,17 @@ namespace {
 
 const Colour kText      { 0xffe2e8ef };
 const Colour kMutedText { 0xff8793a1 };
-constexpr float kSideInset       = 9.f;
-constexpr float kMorphHeaderH    = 18.f;
-constexpr float kAxisButtonSize  = 20.f;
-constexpr float kRowButtonGap    = 6.f;
-constexpr float kVertexGap       = 10.f;
 constexpr float kColumnGap       = 12.f;
-constexpr float kMorphTopGap     = 10.f;
-constexpr float kRangeSectionGap = 10.f;
-constexpr float kRangeTopGap     = 6.f;
 constexpr float kRangeRowHeight  = 45.f;
 constexpr float kMorphColumnHeaderWidth = 24.f;
 constexpr float kAxisLabelW      = 62.f;
-constexpr float kVertexLabelW     = 42.f;
+constexpr float kVertexLabelW     = 56.f;
 constexpr float kWideVertexLabelW = 60.f;
 constexpr float kVertexGainSize  = 24.f;
 constexpr float kVertexGuideW    = 40.f;
 constexpr float kVertexCellGap   = 6.f;
-constexpr float kVertexPanelMinWidth = 224.f;
-constexpr float kVertexPanelMaxWidth = 300.f;
-constexpr float kVertexPanelWidthRatio = 0.55f;
 constexpr float kWideLayoutMinimumWidth = 480.f;
-constexpr float kWideVertexPanelHeight = 150.f;
-constexpr float kWideMorphPanelWidthRatio = 0.56f;
 constexpr float kCubeAxisExpansion = 0.09f;
-constexpr int kVertexParamCount  = 6;
 
 const float kCubeProjection[4][2] {
         { 0.525f,  0.300f },
@@ -124,89 +110,11 @@ void paintGuideGainKnob(
     g.drawLine(centre.x, centre.y, indicator.x, indicator.y, 1.4f);
 }
 
-Rectangle<float> sideInnerBounds(Rectangle<float> sideArea) {
-    return sideArea.reduced(kSideInset, 0.f);
-}
-
-bool usesWideColumnLayout(Rectangle<float> sideArea) {
-    return sideInnerBounds(sideArea).getWidth() >= kWideLayoutMinimumWidth;
-}
-
-float morphControlsHeight(bool showOutputScale) {
-    const float morphHeight = kMorphHeaderH
-            + kMorphTopGap
-            + 3.f * PropertyControlMetrics::morphRowHeight
-            + 2.f * (PropertyControlMetrics::morphRowStride
-                    - PropertyControlMetrics::morphRowHeight);
-    return showOutputScale
-            ? morphHeight + kRangeSectionGap + kMorphHeaderH + kRangeTopGap + kRangeRowHeight
-            : morphHeight;
-}
-
-float upperPanelHeight(Rectangle<float> sideArea, bool showOutputScale) {
-    const auto inner = sideInnerBounds(sideArea);
-    const float desired = jlimit(150.f, 240.f, inner.getHeight() * 0.58f);
-    const float available = inner.getHeight()
-            - kVertexGap
-            - morphControlsHeight(showOutputScale);
-    return jmax(110.f, jmin(desired, available));
-}
-
-Rectangle<float> upperPanelBounds(Rectangle<float> sideArea, bool showOutputScale) {
-    auto inner = sideInnerBounds(sideArea);
-    return inner.removeFromTop(upperPanelHeight(sideArea, showOutputScale));
-}
-
-Rectangle<float> vertexParameterAreaBounds(Rectangle<float> sideArea, bool showOutputScale) {
-    if (usesWideColumnLayout(sideArea)) {
-        auto inner = sideInnerBounds(sideArea);
-        const float availableHeight = inner.getHeight()
-                - kVertexGap
-                - morphControlsHeight(showOutputScale);
-        return inner.removeFromTop(jmin(
-                kWideVertexPanelHeight,
-                jmax(110.f, availableHeight)));
+MorphControlLayout controlLayout(Rectangle<float> area, bool showOutputScale) {
+    if (showOutputScale) {
+        area.removeFromBottom(52.f);
     }
-
-    auto upper = upperPanelBounds(sideArea, showOutputScale);
-    const float availableWidth = jmax(0.f, upper.getWidth() - kColumnGap);
-    const float desiredWidth = jlimit(
-            kVertexPanelMinWidth,
-            kVertexPanelMaxWidth,
-            availableWidth * kVertexPanelWidthRatio);
-    return upper.removeFromRight(jmin(availableWidth, desiredWidth));
-}
-
-Rectangle<float> lowerControlsBounds(Rectangle<float> sideArea, bool showOutputScale) {
-    auto lower = sideInnerBounds(sideArea);
-    const Rectangle<float> vertex = vertexParameterAreaBounds(sideArea, showOutputScale);
-    lower.removeFromTop(vertex.getHeight() + kVertexGap);
-    return lower;
-}
-
-Rectangle<float> cubeStackBounds(Rectangle<float> sideArea, bool showOutputScale) {
-    if (usesWideColumnLayout(sideArea)) {
-        auto lower = lowerControlsBounds(sideArea, showOutputScale);
-        const float morphWidth = lower.getWidth() * kWideMorphPanelWidthRatio;
-        lower.removeFromLeft(morphWidth + kColumnGap);
-        return lower;
-    }
-
-    auto upper = upperPanelBounds(sideArea, showOutputScale);
-    const Rectangle<float> vertex = vertexParameterAreaBounds(sideArea, showOutputScale);
-    upper.removeFromRight(vertex.getWidth() + kColumnGap);
-    return upper;
-}
-
-Rectangle<float> morphControlsBounds(Rectangle<float> sideArea, bool showOutputScale) {
-    if (usesWideColumnLayout(sideArea)) {
-        auto lower = lowerControlsBounds(sideArea, showOutputScale);
-        return lower.removeFromLeft(lower.getWidth() * kWideMorphPanelWidthRatio);
-    }
-
-    auto inner = sideInnerBounds(sideArea);
-    inner.removeFromTop(upperPanelHeight(sideArea, showOutputScale) + kVertexGap);
-    return inner;
+    return MorphControlLayout(area, 3, MorphDimensions::Plane::YellowRed);
 }
 
 Point<float> projectCubeUnit(float red, float blue, float time) {
@@ -222,14 +130,6 @@ Point<float> projectCubeUnit(float red, float blue, float time) {
     };
 }
 
-Point<float> scaleCubePoint(Point<float> point, Rectangle<float> target, float size) {
-    const Point<float> origin(
-            target.getCentreX() - size * 0.80f,
-            target.getCentreY() - size * 0.38f);
-
-    return origin + point * size;
-}
-
 Path cubeFacePath(const std::array<Point<float>, 8>& points, int faceIndex) {
     Path face;
     face.startNewSubPath(points[(size_t) kCubeFaces[faceIndex][0]]);
@@ -238,22 +138,6 @@ Path cubeFacePath(const std::array<Point<float>, 8>& points, int faceIndex) {
     face.lineTo(points[(size_t) kCubeFaces[faceIndex][3]]);
     face.closeSubPath();
     return face;
-}
-
-Rectangle<float> axisRowBounds(
-        Rectangle<float> sideArea,
-        int axisIndex,
-        bool showOutputScale) {
-    auto controls = morphControlsBounds(sideArea, showOutputScale);
-    controls.removeFromTop(kMorphHeaderH + kMorphTopGap);
-
-    return {
-            controls.getX(),
-            controls.getY()
-                    + (float) axisIndex * PropertyControlMetrics::morphRowStride,
-            controls.getWidth(),
-            PropertyControlMetrics::morphRowHeight
-    };
 }
 
 void drawScanLines(Graphics& g, Rectangle<float> area, Colour colour, float alpha) {
@@ -376,48 +260,6 @@ void drawAxisSlider(
     g.drawText(axis.label, axisLabelBounds(row), Justification::centredLeft);
 }
 
-void drawPrimaryAxisButtons(
-        Graphics& g,
-        Rectangle<float> sideArea,
-        const std::array<TrimeshSidePanelRenderer::AxisState, 3>& axes,
-        bool showOutputScale) {
-    for (int i = 0; i < (int) axes.size(); ++i) {
-        const auto& axis = axes[(size_t) i];
-        const Rectangle<float> button = TrimeshSidePanelRenderer::primaryAxisBounds(
-                sideArea, i, showOutputScale);
-
-        g.setColour(axis.colour.withAlpha(axis.primary ? 0.42f : 0.055f));
-        g.fillRoundedRectangle(button, CanvasChromeMetrics::controlCornerRadius);
-        g.setColour(axis.colour.withAlpha(axis.primary ? 1.f : 0.32f));
-        g.drawRoundedRectangle(
-                button,
-                CanvasChromeMetrics::controlCornerRadius,
-                axis.primary
-                        ? CanvasChromeMetrics::activeBorderWidth
-                        : CanvasChromeMetrics::restingBorderWidth);
-
-        if (axis.primary) {
-            g.setColour(axis.colour.withAlpha(0.95f));
-            g.fillRoundedRectangle(
-                    button.reduced(6.f, 6.f),
-                    CanvasChromeMetrics::microCornerRadius);
-        }
-    }
-}
-
-void drawLinkRow(
-        Graphics& g,
-        Rectangle<float> sideArea,
-        const std::array<TrimeshSidePanelRenderer::AxisState, 3>& axes,
-        bool showOutputScale) {
-    for (int i = 0; i < (int) axes.size(); ++i) {
-        const auto& axis = axes[(size_t) i];
-        const Rectangle<float> toggle = TrimeshSidePanelRenderer::linkToggleBounds(
-                sideArea, i, showOutputScale);
-
-        paintPropertyLinkToggle(g, toggle, axis.colour, axis.linked);
-    }
-}
 
 }
 
@@ -432,98 +274,28 @@ void TrimeshSidePanelRenderer::drawSidePanel(
         PortDomain outputDomain,
         float outputScale,
         int dimensionCount) {
-    if (dimensionCount < 3) {
-        auto controls = area;
-        if (showOutputScale) {
-            controls.removeFromBottom(52.f);
-        }
-        drawMorphControls(g, controls, axes, dimensionCount);
-        drawVertexParameters(g, MorphControlLayout(controls, dimensionCount).vertices(),
-                parameters, guideAttachmentLabels);
-        if (showOutputScale) {
-            OutputScaleControlRenderer::draw(g, outputScaleRowBounds(area, dimensionCount),
-                    outputScaleRailBounds(area, dimensionCount), outputDomain, outputScale);
-        }
-        return;
-    }
-    auto morphControls = morphControlsBounds(area, showOutputScale);
-
-    Rectangle<float> cube = morphCubeBounds(area, showOutputScale);
-    drawMorphCubePreview(g, cube, axes, cubeVertices);
-
-    paintPropertyGroupLabel(
-            g,
-            morphControls.removeFromTop(kMorphHeaderH),
-            "Morph position");
-
-    drawMorphColumnHeaders(
-            g,
-            axisRowBounds(area, 0, showOutputScale),
-            primaryAxisBounds(area, 0, showOutputScale),
-            linkToggleBounds(area, 0, showOutputScale));
-
-    for (int i = 0; i < (int) axes.size(); ++i) {
-        drawAxisSlider(
-                g,
-                axisRowBounds(area, i, showOutputScale),
-                morphRailBounds(area, i, showOutputScale),
-                axes[(size_t) i]);
-    }
-
-    drawPrimaryAxisButtons(g, area, axes, showOutputScale);
-    drawLinkRow(g, area, axes, showOutputScale);
-    drawVertexParameters(
-            g,
-            vertexParameterPanelBounds(area, showOutputScale),
-            parameters,
-            guideAttachmentLabels);
-
+    auto controls = area;
     if (showOutputScale) {
-        const Rectangle<float> rangeRow = outputScaleRowBounds(area);
-        const Rectangle<float> divider(
-                rangeRow.getX(),
-                rangeRow.getY() - kMorphHeaderH - kMorphTopGap,
-                rangeRow.getWidth(),
-                kMorphHeaderH);
-        g.setColour(kMutedText.withAlpha(0.32f));
-        g.fillRect(Rectangle<float>(
-                divider.getX(),
-                divider.getCentreY() - 0.5f,
-                divider.getWidth(),
-                1.f));
-        OutputScaleControlRenderer::draw(
-                g,
-                rangeRow,
-                outputScaleRailBounds(area),
-                outputDomain,
-                outputScale);
+        controls.removeFromBottom(52.f);
+    }
+    drawMorphControls(g, controls, axes, dimensionCount, MorphDimensions::Plane::YellowRed, cubeVertices);
+    drawVertexParameters(g, MorphControlLayout(controls, dimensionCount).vertices(),
+            parameters, guideAttachmentLabels, 1.f, GuideControls::Visible, 6);
+    if (showOutputScale) {
+        OutputScaleControlRenderer::draw(g, outputScaleRowBounds(area),
+                outputScaleRailBounds(area), outputDomain, outputScale);
     }
 }
 
 void TrimeshSidePanelRenderer::drawMorphControls(
         Graphics& g, Rectangle<float> area,
-        const std::array<AxisState, 3>& axes, int dimensionCount) {
-    const MorphControlLayout layout(area, dimensionCount);
-    const auto plane = layout.diagram();
+        const std::array<AxisState, 3>& axes, int dimensionCount,
+        MorphDimensions::Plane plane, const std::vector<TrimeshCubePreviewVertex>& vertices) {
+    const MorphControlLayout layout(area, dimensionCount, plane);
     if (dimensionCount == 3) {
-        drawMorphCubePreview(g, plane, axes, {});
-    } else if (!plane.isEmpty()) {
-        g.setColour(Colour(0xff1c2531));
-        g.fillRect(plane);
-        g.setColour(Colour(0xff657181));
-        g.drawRect(plane, 1.f);
-        for (int index = 1; index < 4; ++index) {
-            const float portion = index * 0.25f;
-            g.setColour(Colours::white.withAlpha(0.07f));
-            g.drawVerticalLine(roundToInt(plane.getX() + portion * plane.getWidth()),
-                    plane.getY(), plane.getBottom());
-            g.drawHorizontalLine(roundToInt(plane.getY() + portion * plane.getHeight()),
-                    plane.getX(), plane.getRight());
-        }
-        const Point<float> position(plane.getX() + axes[1].value * plane.getWidth(),
-                plane.getBottom() - axes[2].value * plane.getHeight());
-        g.setColour(Colours::white.withAlpha(0.85f));
-        g.fillEllipse(Rectangle<float>(4.f, 4.f).withCentre(position));
+        drawMorphCubePreview(g, layout.diagram(), axes, vertices);
+    } else if (dimensionCount == 2) {
+        drawMorphPlanePreview(g, layout.diagram(), axes, MorphDimensions(dimensionCount, plane), vertices);
     }
     for (int index = 0; index < 3; ++index) {
         const auto row = layout.row(index);
@@ -531,6 +303,10 @@ void TrimeshSidePanelRenderer::drawMorphControls(
             continue;
         }
         const auto& state = axes[(size_t) index];
+        const int firstAxis = dimensionCount == 2 && plane == MorphDimensions::Plane::RedBlue ? 1 : 0;
+        if (index == firstAxis) {
+            drawMorphColumnHeaders(g, row, layout.axis(index), layout.link(index));
+        }
         drawAxisSlider(g, row, layout.rail(index), state);
         paintPropertyLinkToggle(g, layout.link(index), state.colour, state.linked);
         const auto axis = layout.axis(index);
@@ -539,6 +315,8 @@ void TrimeshSidePanelRenderer::drawMorphControls(
             g.fillRoundedRectangle(axis, 3.f);
             g.setColour(state.colour.withAlpha(state.primary ? 1.f : 0.4f));
             g.drawRoundedRectangle(axis, 3.f, 1.f);
+            g.setFont(FontOptions(10.f).withStyle(state.primary ? "Bold" : "Regular"));
+            g.drawText(state.shortLabel, axis, Justification::centred);
         }
     }
 }
@@ -701,20 +479,31 @@ void TrimeshSidePanelRenderer::drawMorphCubePreview(
     g.fillEllipse(Rectangle<float>(2.f, 2.f).withCentre(morphPoint));
 }
 
+int TrimeshSidePanelRenderer::vertexParameterSlot(const String& id, int slotCount) {
+    if (id == "guide.time") {
+        return 1;
+    }
+    const String field = id.fromLastOccurrenceOf(".", false, false);
+    const int index = field == "time" ? 0 : field == "red" ? 1 : field == "blue" ? 2
+            : field == "phase" ? 3 : field == "amp" ? 4 : 5;
+    return index + (slotCount == 7 && index > 0 ? 1 : 0);
+}
+
 void TrimeshSidePanelRenderer::drawVertexParameters(
         Graphics& g,
         Rectangle<float> area,
         const std::vector<TrimeshVertexParameter>& parameters,
         const std::array<String, 6>& guideAttachmentLabels,
         float heightScale,
-        GuideControls guideControls) {
+        GuideControls guideControls,
+        int stableSlotCount) {
     if (area.getHeight() < 28.f) {
         return;
     }
 
+    const int slotCount = stableSlotCount > 0 ? stableSlotCount : (int) parameters.size();
     const int rowCount = area.getWidth() >= kWideLayoutMinimumWidth
-            ? ((int) parameters.size() + 1) / 2
-            : jmax(1, (int) parameters.size());
+            ? (slotCount + 1) / 2 : jmax(1, slotCount);
     const float desiredHeight = heightScale * (34.f + (float) rowCount * 40.f);
     area = area.withHeight(jmin(area.getHeight(), desiredHeight));
 
@@ -725,7 +514,8 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         const auto& parameter = parameters[(size_t) i];
         Graphics::ScopedSaveState rowState(g);
         g.setOpacity(parameter.enabled ? 1.f : 0.55f);
-        const auto row = vertexParameterRowBounds(area, i, heightScale, (int) parameters.size());
+        const int slot = stableSlotCount > 0 ? vertexParameterSlot(parameter.id, slotCount) : i;
+        const auto row = vertexParameterRowBounds(area, slot, heightScale, slotCount);
         const auto labelBox = vertexLabelBounds(row);
         const bool showRowGuideControls = guideControls == GuideControls::Visible
                 && showsGuideControlsForParameter(i);
@@ -800,28 +590,25 @@ void TrimeshSidePanelRenderer::drawMorphColumnHeaders(
         Rectangle<float> firstRow,
         Rectangle<float> axisButton,
         Rectangle<float> linkButton) {
-    paintPropertyGroupLabel(g, morphColumnHeaderBounds(axisButton, firstRow), "Axis");
-    paintPropertyGroupLabel(g, morphColumnHeaderBounds(linkButton, firstRow), "Link");
+    if (!axisButton.isEmpty()) {
+        paintPropertyGroupLabel(g, morphColumnHeaderBounds(axisButton, firstRow), "Axis");
+    }
+    if (!linkButton.isEmpty()) {
+        paintPropertyGroupLabel(g, morphColumnHeaderBounds(linkButton, firstRow), "Link");
+    }
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::morphCubeBounds(
         Rectangle<float> sideArea,
         bool showOutputScale) {
-    return cubeStackBounds(sideArea, showOutputScale).reduced(0.f, 0.f);
+    return controlLayout(sideArea, showOutputScale).diagram();
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::morphRailBounds(
         Rectangle<float> sideArea,
         int axisIndex,
         bool showOutputScale) {
-    auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
-    row.removeFromLeft(kAxisLabelW + 10.f);
-    row.removeFromRight(
-            PropertyControlMetrics::morphKeyboardFocusSlotWidth
-                    + kAxisButtonSize * 2.f
-                    + kRowButtonGap * 3.f
-                    + 6.f);
-    return row.withSizeKeepingCentre(jmax(36.f, row.getWidth()), 7.f);
+    return controlLayout(sideArea, showOutputScale).rail(axisIndex);
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::morphMarkerBounds(
@@ -841,32 +628,14 @@ Rectangle<float> TrimeshSidePanelRenderer::primaryAxisBounds(
         Rectangle<float> sideArea,
         int axisIndex,
         bool showOutputScale) {
-    auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
-    return {
-            row.getRight()
-                    - PropertyControlMetrics::morphKeyboardFocusSlotWidth
-                    - kAxisButtonSize * 2.f
-                    - kRowButtonGap * 2.f,
-            row.getCentreY() - kAxisButtonSize * 0.5f,
-            kAxisButtonSize,
-            kAxisButtonSize
-    };
+    return controlLayout(sideArea, showOutputScale).axis(axisIndex);
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::linkToggleBounds(
         Rectangle<float> sideArea,
         int axisIndex,
         bool showOutputScale) {
-    auto row = axisRowBounds(sideArea, axisIndex, showOutputScale);
-    return {
-            row.getRight()
-                    - PropertyControlMetrics::morphKeyboardFocusSlotWidth
-                    - kAxisButtonSize
-                    - kRowButtonGap,
-            row.getCentreY() - kAxisButtonSize * 0.5f,
-            kAxisButtonSize,
-            kAxisButtonSize
-    };
+    return controlLayout(sideArea, showOutputScale).link(axisIndex);
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::keyboardFocusBounds(
@@ -874,33 +643,17 @@ Rectangle<float> TrimeshSidePanelRenderer::keyboardFocusBounds(
         int axisIndex,
         bool showOutputScale,
         int dimensionCount) {
-    if (dimensionCount < 3) {
-        const MorphControlLayout layout(sideArea, dimensionCount);
-        return morphKeyboardFocusOutlineBounds(layout.axis(axisIndex), layout.link(axisIndex));
+    auto controls = sideArea;
+    if (showOutputScale) {
+        controls.removeFromBottom(52.f);
     }
-    return morphKeyboardFocusOutlineBounds(
-            axisRowBounds(sideArea, axisIndex, showOutputScale),
-            linkToggleBounds(sideArea, axisIndex, showOutputScale));
+    const MorphControlLayout layout(controls, dimensionCount, MorphDimensions::Plane::YellowRed);
+    return morphKeyboardFocusOutlineBounds(layout.row(axisIndex), layout.link(axisIndex));
 }
 
-Rectangle<float> TrimeshSidePanelRenderer::outputScaleRowBounds(Rectangle<float> sideArea, int dimensionCount) {
-    if (dimensionCount < 3) {
-        const float offset = dimensionCount == 0 ? 220.f : dimensionCount == 1 ? 220.f : 282.f;
-        auto row = sideArea.reduced(9.f, 0.f);
-        return row.withY(jmin(sideArea.getY() + offset, sideArea.getBottom() - kRangeRowHeight))
-                .withHeight(kRangeRowHeight);
-    }
-    const Rectangle<float> lastMorph = axisRowBounds(sideArea, 2, true);
-    const float y = lastMorph.getBottom()
-            + kRangeSectionGap
-            + kMorphHeaderH
-            + kRangeTopGap;
-    return {
-            lastMorph.getX(),
-            y,
-            lastMorph.getWidth(),
-            kRangeRowHeight
-    };
+Rectangle<float> TrimeshSidePanelRenderer::outputScaleRowBounds(Rectangle<float> sideArea, int) {
+    return sideArea.reduced(9.f, 0.f).withY(sideArea.getBottom() - kRangeRowHeight)
+            .withHeight(kRangeRowHeight);
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::outputScaleRailBounds(Rectangle<float> sideArea, int dimensionCount) {
@@ -918,7 +671,7 @@ Rectangle<float> TrimeshSidePanelRenderer::outputScaleRailBounds(Rectangle<float
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterPanelBounds(
         Rectangle<float> sideArea,
         bool showOutputScale) {
-    return vertexParameterAreaBounds(sideArea, showOutputScale);
+    return controlLayout(sideArea, showOutputScale).vertices();
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRowBounds(

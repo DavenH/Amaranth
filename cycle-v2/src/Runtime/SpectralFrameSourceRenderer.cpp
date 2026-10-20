@@ -118,7 +118,7 @@ public:
             return false;
         }
         rasterizer.setDimensionality(
-                core.configuration->dimensionCount, core.configuration->staticSlice.get());
+                core.configuration->dimensionCount, core.configuration->staticSlice.get(), MorphDimensions::Plane::YellowRed);
         rasterizer.setCalcDepthDimensions(false);
         rasterizer.setPrepareIntegrals(false);
         rasterizer.setGuideCurveProvider(core.configuration->guideCurveProvider.get());

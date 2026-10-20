@@ -10,7 +10,7 @@ import sys
 import time
 
 from cycle_automation_support.identity import workspace, valid_instance
-from cycle_automation_support.lifecycle import owned_record
+from cycle_automation_support.lifecycle import compiled_helper, owned_record
 from cycle_automation_support.profiles import PRODUCTS
 from cycle_automation_support.registry import instance_key, lease
 
@@ -77,21 +77,10 @@ class NativeEditSmoke:
     def focus_app(self):
         if self.record is None or not valid_instance(self.record):
             raise AssertionError("CycleV2 process identity is unavailable")
-        script = (
-            'tell application "System Events"\n'
-            f'  set targetProcess to first process whose unix id is {self.app_pid}\n'
-            '  set frontmost of targetProcess to true\n'
-            '  return frontmost of targetProcess\n'
-            'end tell'
-        )
-        result = subprocess.run(
-            ["osascript", "-e", script],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        assert result.stdout.strip() == "true", result.stdout
-        time.sleep(0.03)
+        subprocess.run(
+            [str(compiled_helper("launch_cycle_app.swift")), "--focus", str(self.app_pid)],
+            check=True)
+        time.sleep(0.1)
 
     def click(self, *commands):
         self.focus_app()
@@ -2263,11 +2252,8 @@ class NativeEditSmoke:
 
     def contextual_keyboard_shortcut_sequence(self):
         self.open_editor("waveMesh", trimesh=True)
-        self.command({
-            "command": "pointer",
-            "targetId": "expanded:waveMesh.trimeshMorphRail.yellow",
-            "event": "click",
-        })
+        self.primary_click(self.point(
+            self.target("expanded:waveMesh.trimeshMorphRail.yellow"), 0.5, 0.5))
 
         self.press_native_key("r")
         state = self.graph_state()
@@ -2307,11 +2293,7 @@ class NativeEditSmoke:
         assert self.graph_state()["sidebarTab"] == "Presets"
 
         self.open_editor("env")
-        self.command({
-            "command": "pointer",
-            "targetId": "expanded:env.envelopeEditor.morph.blue",
-            "event": "click",
-        })
+        self.primary_click(self.point(self.target("envelopeEditor.morph.blue"), 0.5, 0.5))
         self.press_native_key("r")
         state = self.graph_state()
         controls = state["expandedNodeControls"]["effect2D"]
@@ -2324,7 +2306,7 @@ class NativeEditSmoke:
         assert controls["focusedMorphAxis"] == "red", controls
         self.press_native_key("left")
         assert float(self.parameters(self.inspect("env"))["red"]) == 0.0
-        self.press_native_key("up", shift=True)
+        self.press_native_key("right", shift=True)
         assert abs(float(self.parameters(self.inspect("env"))["red"]) - 0.2) < 0.001
         self.press_native_key("l")
         state = self.graph_state()
@@ -2386,9 +2368,7 @@ class NativeEditSmoke:
         self.release_drag(second_destination)
 
     def run(self, sequences):
-        self.start(require_native_pointer=any(
-            sequence != "keyboard-shortcuts" for sequence in sequences
-        ))
+        self.start()
         try:
             identity, path, short_id = workspace()
             owner = {"workspace_id": identity, "workspace_path": path,

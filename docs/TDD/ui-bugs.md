@@ -702,3 +702,25 @@ frontmost OS capture then rendered both sample and Spy surfaces correctly
 (`.context/shelf-os.png`). The app-side screenshot was black in the background
 run. Current status: open as an automation timing/focus issue; no surface
 rendering change was made for the elective shelf correction.
+
+## P2: Envelope morph gestures did not publish after dimensionality was introduced (resolved)
+
+On 2026-10-20, native keyboard focus selected Red and the Left key changed the
+Envelope editor's Red value to 0, while the graph retained 0.5. The complete
+curve control publication omitted `dimensionCount`, so graph validation rejected
+it. Envelope publications now retain that setting; the editor transaction test
+checks the durable morph value, dimensionality, and Undo. Evidence:
+`.context/native-keyboard-diagnostic.log`. Current status: resolved in the
+mesh dimensionality refinement.
+
+## P3: Extended native morph screenshot scenario has intermittent drag delivery
+
+On 2026-10-20, the `with-spies` native screenshot review sometimes retained Red
+at 0.68 after a fast 12-step drag toward 0.25 in Yellow/Red mode, while remembering
+Red focus. One identical run completed the drag (0.233), Undo, mode changes and
+captures. The isolated native morph, keyboard and point-drag smokes pass, as do
+the semantic reduced-gesture fixture and editor tests. Evidence:
+`.context/native-morph-full-review.py`, `.context/morph-refinement-native-review.log`,
+and successful run identity `a10ee2c48615`. Parallel CycleV2 launches also disrupted
+some earlier attempts. Current status: open as native fixture/input timing work;
+no full native-suite reliability claim is made.

@@ -566,7 +566,7 @@ bool TrimeshControlsComponent::selectAdjacentMorphControl(int direction) {
             return true;
         }
     }
-    return false;
+    return current != axes.end();
 }
 
 bool TrimeshControlsComponent::setFocusedMorphTo(float value) {

@@ -89,6 +89,7 @@ public:
 class CurvePanelHostDelegate : public CurvePanelInteractionAdapter {
 public:
     virtual ~CurvePanelHostDelegate() = default;
+    virtual bool deleteCurvePanelSelection() { return false; }
     virtual void initialiseCurvePanel(Component* component) = 0;
     virtual void updateCurvePanelZoom(bool resetView) = 0;
     virtual void prepareCurvePanel() = 0;

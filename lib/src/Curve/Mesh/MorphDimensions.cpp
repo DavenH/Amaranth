@@ -9,13 +9,16 @@
 #include <map>
 #include <vector>
 
+int MorphDimensions::cornerBit(int dimension) {
+    return dimension == Vertex::Time ? 4 : dimension == Vertex::Red ? 2 : dimension == Vertex::Blue ? 1 : 0;
+}
+
 bool MorphDimensions::active(int dimension) const {
-    return dimension == Vertex::Time ? count == 1 || count == 3
-            : (dimension == Vertex::Red || dimension == Vertex::Blue) && (count == 2 || count == 3);
+    return (cornerMask() & cornerBit(dimension)) != 0;
 }
 
 int MorphDimensions::cornerMask() const {
-    return count == 3 ? 7 : count == 2 ? 3 : count == 1 ? 4 : 0;
+    return count == 3 ? 7 : count == 2 ? (plane == Plane::YellowRed ? 6 : 3) : count == 1 ? 4 : 0;
 }
 
 MorphPosition MorphDimensions::constrain(
@@ -52,15 +55,17 @@ void MorphDimensions::project(
             Rasterization::TrilinearMeshSlicer().slice(*cube, Vertex::Time, section, position);
             overlaps = retained.axisCount() == 0 ? section.pointOverlaps : section.lineOverlaps;
         } else if (retained.axisCount() == 2) {
+            const int dismissed = retained.active(Vertex::Time) ? Vertex::Blue : Vertex::Time;
             float minimum = 1.f;
             float maximum = 0.f;
             for (int corner = 0; corner < 8; ++corner) {
-                const float yellow = cube->getVertex(corner)->values[Vertex::Time];
-                minimum = jmin(minimum, yellow);
-                maximum = jmax(maximum, yellow);
+                const float coordinate = cube->getVertex(corner)->values[dismissed];
+                minimum = jmin(minimum, coordinate);
+                maximum = jmax(maximum, coordinate);
             }
-            overlaps = position.time >= minimum
-                    && (position.time < maximum || ((position.time == 0.f || position.time == 1.f) && position.time == maximum));
+            const float coordinate = position[dismissed];
+            overlaps = coordinate >= minimum
+                    && (coordinate < maximum || ((coordinate == 0.f || coordinate == 1.f) && coordinate == maximum));
         }
         if (!overlaps) {
             if (auto* envelope = dynamic_cast<EnvelopeMesh*>(&mesh)) {

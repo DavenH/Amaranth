@@ -70,7 +70,12 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
             delegate->setTrimeshDimensionCount(count.getIntValue());
         }
     };
+    dimensionSelector.setHoverMessageProvider([this](const String& target) {
+        return meshDimensionTooltip(NodeParameterMap(node).intValue("dimensionCount", 0), target.getIntValue());
+    });
     addAndMakeVisible(dimensionSelector);
+    stylePropertyLabel(dimensionLabel, "Curve morphing");
+    addAndMakeVisible(dimensionLabel);
     enabled.setComponentID("trimeshEditor.enabled");
     enabled.onClick = [this] {
         if (delegate != nullptr) {
@@ -223,7 +228,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
             : phaseModeLabel.isVisible()
                     ? phaseModeLabel.getX()
                     : signalTypeLabel.getX();
-    titleBounds.setRight((float) dimensionSelector.getX() - kControlGap);
+    titleBounds.setRight((float) dimensionLabel.getX() - kControlGap);
     g.drawText(labelForNodeKind(node.kind), titleBounds, Justification::centredLeft);
 
     Rectangle<float> closeButton = closeButtonBounds();
@@ -551,7 +556,9 @@ void TrimeshExpandedEditorComponent::updateControlsHost() {
 
 void TrimeshExpandedEditorComponent::updateSignalControls() {
     const auto header = embeddedEditorHeaderLayout(getLocalBounds().toFloat(), true);
-    dimensionSelector.setBounds(header.title.getX() + 116.f,
+    dimensionLabel.setBounds(Rectangle<float>(92.f, 26.f)
+            .withPosition(header.title.getX() + 116.f, header.header.getCentreY() - 13.f).toNearestInt());
+    dimensionSelector.setBounds(header.title.getX() + 208.f,
             header.header.getCentreY() - 13.f, 188.f, 26.f);
     signalTypeLabel.setBounds(signalTypeLabelBounds());
     signalTypeSelector.setBounds(signalTypeSelectorBounds());

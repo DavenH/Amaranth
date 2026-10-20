@@ -7,7 +7,8 @@ namespace CycleV2 {
 
 class MorphControlLayout {
 public:
-    MorphControlLayout(juce::Rectangle<float> bounds, int count);
+    MorphControlLayout(juce::Rectangle<float> bounds, int count,
+            MorphDimensions::Plane plane = MorphDimensions::Plane::RedBlue);
     juce::Rectangle<float> diagram() const;
     juce::Rectangle<float> row(int axisIndex) const;
     juce::Rectangle<float> rail(int axisIndex) const;
@@ -17,6 +18,7 @@ public:
 
 private:
     juce::Rectangle<float> morphColumn() const;
+    float diagramSize() const;
     juce::Rectangle<float> area;
     MorphDimensions dimensions;
 };

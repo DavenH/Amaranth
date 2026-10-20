@@ -18,7 +18,7 @@ NodeModelStatePtr MeshDimensionality::projectModel(
         model.copyFrom(*typed->envelope());
         auto guides = graph != nullptr ? GuideCurveMeshPreparation::apply(model.getMesh(),
                 *graph, node.id, GuideCurveTargetKind::EnvelopeCubeComponent) : PreparedMeshGuideAssignments {};
-        MorphDimensions::project(model.getMesh(), MorphDimensions(count), position, guides.provider.get(), retainedCubeIndices);
+        MorphDimensions::project(model.getMesh(), dimensions(node.kind, count), position, guides.provider.get(), retainedCubeIndices);
         model.synchronizeFromMesh(nullptr);
         return CurveNodeModelState::copyOf(model, position.red, position.blue,
                 revision, typed->editorJSON());
@@ -31,7 +31,7 @@ NodeModelStatePtr MeshDimensionality::projectModel(
     mesh.deepCopy(&typed->mesh());
     auto guides = graph != nullptr ? GuideCurveMeshPreparation::apply(mesh,
             *graph, node.id, GuideCurveTargetKind::TrimeshCubeComponent) : PreparedMeshGuideAssignments {};
-    MorphDimensions::project(mesh, MorphDimensions(count), position, guides.provider.get(), retainedCubeIndices);
+    MorphDimensions::project(mesh, dimensions(node.kind, count), position, guides.provider.get(), retainedCubeIndices);
     auto result = TrimeshNodeModelState::copyOf(mesh, revision);
     mesh.destroy();
     return result;

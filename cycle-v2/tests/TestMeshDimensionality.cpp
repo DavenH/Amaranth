@@ -17,6 +17,9 @@
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Trimesh/Model/TrimeshVertexEditCore.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
+#include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "UI/Editors/MeshDimensionOptions.h"
+#include "UI/Editors/MorphControlLayout.h"
 #include <Curve/Rasterization/Rasterizer/VoiceRasterizer.h>
 #include <Curve/Curve.h>
 
@@ -362,7 +365,7 @@ TEST_CASE("Reduced slicing honors cell boundaries and inactive coordinates canno
                     == slicer.slice(*mesh->getCubes().front(), axis, reduced, position, 2));
         }
     }
-    REQUIRE_FALSE(TrimeshVertexEditCore::prepareVertexValue(*mesh, 0, "vertex.time", 0.3f, 2).has_value());
+    REQUIRE_FALSE(TrimeshVertexEditCore::prepareVertexValue(*mesh, 0, "vertex.blue", 0.3f, 2).has_value());
     MorphDimensions::project(*mesh, MorphDimensions(0), { 0.4f, 0.3f, 0.8f });
     REQUIRE(mesh->getCubes().empty());
     REQUIRE(mesh->getVerts().empty());
@@ -448,12 +451,12 @@ TEST_CASE("Reduced interpolation matches mature evaluation across domains and bo
         "[cycle-v2][mesh-dimensions]") {
     for (const int count : { 1, 2 }) {
         auto mesh = TrimeshMeshFactory::createDefaultMesh("ReducedParity");
-        MorphDimensions::project(*mesh, MorphDimensions(count), { 0.3f, 0.4f, 0.5f });
+        MorphDimensions::project(*mesh, MorphDimensions::trimesh(count), { 0.3f, 0.4f, 0.5f });
         for (const auto domain : { PortDomain::TimeSignal, PortDomain::SpectralMagnitudeSignal,
                     PortDomain::SpectralPhaseSignal }) {
             for (const float position : { 0.f, 0.27f, 0.75f, 1.f }) {
                 const MorphPosition morph { position, position, position };
-                const int axis = MorphDimensions(count).primaryAxis();
+                const int axis = MorphDimensions::trimesh(count).primaryAxis();
                 TrimeshBlockwiseDsp mature;
                 TrimeshBlockwiseDsp reduced;
                 reduced.setDimensionality(count);
@@ -570,5 +573,120 @@ TEST_CASE("Logical multi-update movement stays local as unrelated geometry grows
             REQUIRE(counts.meshEditOwnerVisits == expectedVisits);
         }
         mesh->destroy();
+    }
+}
+
+TEST_CASE("Trimesh descends Yellow Red Blue to Yellow Red to Yellow without changing its primary",
+        "[cycle-v2][mesh-dimensions]") {
+    Node node = authoredMesh();
+    const auto original = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node.model);
+    NodeGraph graph;
+    graph.addNode(node);
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    for (const int count : { 2, 1, 0 }) {
+        REQUIRE(commands.setMeshDimensions("mesh", count).succeeded());
+        const auto* current = document.graph().findNode("mesh");
+        const auto dimensions = MeshDimensionality::dimensions(*current);
+        REQUIRE(dimensions.cornerMask() == (count == 2 ? 6 : count == 1 ? 4 : 0));
+        REQUIRE(NodeParameterMap(*current).stringValue("primaryAxis", {}) == "yellow");
+        if (count == 2) {
+            const auto reduced = std::dynamic_pointer_cast<const TrimeshNodeModelState>(current->model);
+            const auto authored = MeshDimensionality::position(node);
+            for (const float yellow : { 0.f, 0.4f, 1.f }) {
+                for (const float red : { 0.f, 0.6f, 1.f }) {
+                    const float expected = amplitude(original->mesh(), { yellow, red, authored.blue });
+                    for (const float blue : { 0.f, 0.7f, 1.f }) {
+                        REQUIRE(amplitude(reduced->mesh(), { yellow, red, blue }) == Catch::Approx(expected));
+                    }
+                }
+            }
+        }
+    }
+    REQUIRE(document.undo());
+    REQUIRE(document.undo());
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findNode("mesh")->model == original);
+    REQUIRE(commands.setNodeParameter("mesh", "primaryAxis", "Primary Axis", "red").succeeded());
+    REQUIRE(commands.setMeshDimensions("mesh", 2).succeeded());
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).stringValue("primaryAxis", {}) == "red");
+    REQUIRE(commands.setMeshDimensions("mesh", 1).succeeded());
+    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).stringValue("primaryAxis", {}) == "yellow");
+}
+
+TEST_CASE("Morphing options identify axes and warn only when variation is dismissed",
+        "[cycle-v2][mesh-dimensions][ui]") {
+    const auto options = meshDimensionOptions();
+    REQUIRE(options[0].ticks.empty());
+    REQUIRE(options[1].ticks.size() == 1);
+    REQUIRE(options[2].ticks.size() == 2);
+    REQUIRE(options[2].ticks[0] == Colour(0xffe0c247));
+    REQUIRE(options[2].ticks[1] == Colour(0xffd65a5a));
+    REQUIRE(options[3].ticks.size() == 3);
+    REQUIRE(meshDimensionTooltip(3, 2).contains("Blue"));
+    REQUIRE(meshDimensionTooltip(3, 2).contains("discards"));
+    REQUIRE(meshDimensionTooltip(3, 0).contains("Undo"));
+    REQUIRE_FALSE(meshDimensionTooltip(1, 2).contains("discards"));
+    REQUIRE(meshDimensionTooltip(1, 2, MorphDimensions::Plane::RedBlue).contains("discards"));
+    REQUIRE(meshDimensionOptions(MorphDimensions::Plane::RedBlue)[2].ticks[1] == Colour(0xff5f91e8));
+}
+
+TEST_CASE("Surviving Trimesh rails and parameters occupy stable slots in every mode",
+        "[cycle-v2][mesh-dimensions][ui]") {
+    const Rectangle<float> content(20.f, 40.f, 1200.f, 650.f);
+    const auto full = TrimeshWidget::expandedControlHitRegions(content, true, "gain", 3);
+    for (const int count : { 2, 1, 0 }) {
+        const auto reduced = TrimeshWidget::expandedControlHitRegions(content, true, "gain", count);
+        for (const auto& region : reduced) {
+            const auto before = std::find_if(full.begin(), full.end(), [&](const auto& candidate) {
+                return candidate.kind == region.kind && candidate.parameterId == region.parameterId
+                        && candidate.axisValue == region.axisValue;
+            });
+            REQUIRE(before != full.end());
+            REQUIRE(region.bounds == before->bounds);
+        }
+    }
+    for (const auto plane : { MorphDimensions::Plane::YellowRed, MorphDimensions::Plane::RedBlue }) {
+        const MorphControlLayout fullLayout(content, 3, plane);
+        for (const int count : { 1, 2 }) {
+            const MorphControlLayout reduced(content, count, plane);
+            for (int axis = 0; axis < 3; ++axis) {
+                if (!reduced.rail(axis).isEmpty()) {
+                    REQUIRE(reduced.rail(axis) == fullLayout.rail(axis));
+                }
+            }
+            REQUIRE(reduced.vertices() == fullLayout.vertices());
+        }
+    }
+}
+
+TEST_CASE("Format eight Red Blue Trimeshes retain their variation when adopting the Yellow Red plane",
+        "[cycle-v2][mesh-dimensions][migration]") {
+    Node node = authoredMesh();
+    auto original = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node.model);
+    Mesh geometry;
+    geometry.deepCopy(&original->mesh());
+    MorphDimensions::project(geometry, MorphDimensions(2), { 0.f, 0.5f, 0.5f });
+    node.model = TrimeshNodeModelState::copyOf(geometry, 2);
+    geometry.destroy();
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "dimensionCount") {
+            parameter.value = "2";
+        }
+    }
+    NodeGraph graph;
+    graph.addNode(node);
+    auto encoded = GraphSerializer().writeJSON(graph);
+    encoded.getDynamicObject()->setProperty("formatVersion", 8);
+    const auto loaded = GraphSerializer().readJSON(encoded);
+    REQUIRE(loaded.succeeded());
+    REQUIRE(MeshDimensionality::dimensions(*loaded.graph.findNode("mesh")).axisCount() == 3);
+    const auto migrated = std::dynamic_pointer_cast<const TrimeshNodeModelState>(loaded.graph.findNode("mesh")->model);
+    const auto expected = std::dynamic_pointer_cast<const TrimeshNodeModelState>(node.model);
+    for (const float red : { 0.f, 0.7f, 1.f }) {
+        for (const float blue : { 0.f, 0.3f, 1.f }) {
+            REQUIRE(amplitude(migrated->mesh(), { 0.4f, red, blue })
+                    == Catch::Approx(amplitude(expected->mesh(), { 0.4f, red, blue })));
+        }
     }
 }

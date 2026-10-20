@@ -485,7 +485,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                               ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
-                            integer("dimensionCount", "Dimensions", 0, 0, 3, graph | dsp | preview | presentation),
+                            integer("dimensionCount", "Curve morphing", 0, 0, 3, graph | dsp | preview | presentation),
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             number("gain", "Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
@@ -560,7 +560,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
                               ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Yellow) },
                     { output("env", "Control", PortDomain::ControlSignal) }, {
-                            integer("dimensionCount", "Dimensions", 0, 0, 3, graph | dsp | preview | presentation),
+                            integer("dimensionCount", "Curve morphing", 0, 0, 3, graph | dsp | preview | presentation),
                             number("yellow", "Yellow", 0.f, 0.f, 1.f, dsp | preview | presentation),
                             boolean("enabled", "Enabled", true, dsp | preview | presentation),
                             choice("purpose", "Purpose", "control",

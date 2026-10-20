@@ -79,7 +79,7 @@ std::optional<TrimeshVertexEditDelta> TrimeshVertexEditCore::prepareVertexValue(
         int dimensionCount) {
     const Vertex* vertex = vertexAt(mesh, vertexIndex);
     const int element = valueIndex(parameterId);
-    const MorphDimensions dimensions(dimensionCount);
+    const auto dimensions = MorphDimensions::trimesh(dimensionCount);
     const bool morphCoordinate = element == Vertex::Time || element == Vertex::Red || element == Vertex::Blue;
     if (vertex == nullptr || element < 0 || (morphCoordinate && !dimensions.active(element))) {
         return std::nullopt;
@@ -88,7 +88,7 @@ std::optional<TrimeshVertexEditDelta> TrimeshVertexEditCore::prepareVertexValue(
     TrimeshVertexEditDelta delta;
     delta.vertexIndex = vertexIndex;
     delta.valueIndex = element;
-    delta.replicatedPoles = ~MorphDimensions(dimensionCount).cornerMask() & 7;
+    delta.replicatedPoles = ~MorphDimensions::trimesh(dimensionCount).cornerMask() & 7;
     const float target = jlimit(0.f, 1.f, value);
     if (vertex->values[element] != target) {
         delta.changes.push_back({ -1, vertex->values[element], target });

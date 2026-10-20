@@ -29,9 +29,10 @@ namespace Rasterization {
                 int dimension,
                 VertCube::ReductionData& data,
                 const MorphPosition& position,
-                int dimensionCount = 3) const {
+                int dimensionCount = 3,
+                MorphDimensions::Plane plane = MorphDimensions::Plane::RedBlue) const {
             if (dimensionCount < 3) {
-                return sliceReduced(cube, dimension, data, position, dimensionCount);
+                return sliceReduced(cube, dimension, data, position, MorphDimensions(dimensionCount, plane));
             }
             data.pointOverlaps = false;
             data.lineOverlaps = false;
@@ -123,24 +124,32 @@ namespace Rasterization {
     private:
         bool sliceReduced(
                 const VertCube& cube, int axis, VertCube::ReductionData& data,
-                const MorphPosition& position, int count) const {
-            const int bit = axis == Vertex::Time ? 4 : axis == Vertex::Red ? 2 : 1;
+                const MorphPosition& position, MorphDimensions dimensions) const {
+            const int bit = MorphDimensions::cornerBit(axis);
             VecOps::copy(cube.getVertex(0)->values, data.v0.values, Vertex::numElements);
             VecOps::copy(cube.getVertex(bit)->values, data.v1.values, Vertex::numElements);
-            if (count == 2 && axis == Vertex::Time) {
-                if (!sliceFace(cube.getFace(Vertex::Time, VertCube::LowPole),
-                        Vertex::Red, Vertex::Blue, { position.red, position.blue },
+            if (dimensions.axisCount() == 2 && !dimensions.active(axis)) {
+                int first;
+                int second;
+                MorphPosition::getOtherDims(axis, first, second);
+                if (!sliceFace(cube.getFace(axis, VertCube::LowPole),
+                        first, second, { position[first], position[second] },
                         data.v00, data.v10, data.v0)) {
                     data.lineOverlaps = false;
                     data.pointOverlaps = false;
                     return false;
                 }
                 VecOps::copy(data.v0.values, data.v1.values, Vertex::numElements);
-                data.v0.values[Vertex::Time] = 0.f;
-                data.v1.values[Vertex::Time] = 1.f;
-            } else if (count == 2) {
-                const int otherAxis = axis == Vertex::Red ? Vertex::Blue : Vertex::Red;
-                const int otherBit = axis == Vertex::Red ? 1 : 2;
+                data.v0.values[axis] = 0.f;
+                data.v1.values[axis] = 1.f;
+            } else if (dimensions.axisCount() == 2) {
+                int otherAxis = Vertex::Time;
+                for (const int candidate : MorphDimensions::axes) {
+                    if (candidate != axis && dimensions.active(candidate)) {
+                        otherAxis = candidate;
+                    }
+                }
+                const int otherBit = MorphDimensions::cornerBit(otherAxis);
                 if (!containsSlicePosition(cube.getVertex(0)->values[otherAxis],
                             cube.getVertex(otherBit)->values[otherAxis], position[otherAxis])
                         || !containsSlicePosition(cube.getVertex(bit)->values[otherAxis],
@@ -181,7 +190,7 @@ namespace Rasterization {
             if (prepared != nullptr) {
                 PreparedMeshSlice::copy(*prepared, reductionData);
             } else {
-                slice(*cube, sliceDimension, reductionData, request.morph, request.dimensionCount);
+                slice(*cube, sliceDimension, reductionData, request.morph, request.dimensionCount, request.twoDimensionalPlane);
             }
             if (!reductionData.pointOverlaps) {
                 return;

@@ -274,7 +274,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
 
-        self.assertEqual(converted["formatVersion"], 8)
+        self.assertEqual(converted["formatVersion"], 9)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["dimensionCount"], 2)
         self.assertEqual(nodes["morph"]["parameters"]["envelopeYellowSource"], "unmapped")
         self.assertNotIn("legacyEnvelopeMorph", nodes)

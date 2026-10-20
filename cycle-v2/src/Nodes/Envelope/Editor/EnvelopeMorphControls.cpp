@@ -109,7 +109,7 @@ Rectangle<float> EnvelopeMorphControls::morphSliderBounds(
         Rectangle<float> controls,
         int axis) const {
     return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount)
-            .row(axis).withTrimmedRight(dimensionCount > 1 ? 56.f : 28.f);
+            .row(axis).withTrimmedRight(56.f + PropertyControlMetrics::morphKeyboardFocusSlotWidth);
 }
 
 Rectangle<float> EnvelopeMorphControls::keyboardFocusBounds(
@@ -212,11 +212,11 @@ Rectangle<float> EnvelopeMorphControls::vertexBounds(Rectangle<float> controls) 
 
 Rectangle<float> EnvelopeMorphControls::vertexParameterRowBounds(
         Rectangle<float> controls,
-        int parameterIndex) const {
+        const String& parameterId) const {
     return TrimeshSidePanelRenderer::vertexParameterRowBounds(
             vertexBounds(controls),
-            parameterIndex,
-            vertexParameterHeightScale, dimensionCount + 4);
+            TrimeshSidePanelRenderer::vertexParameterSlot(parameterId, 7),
+            vertexParameterHeightScale, 7);
 }
 
 Colour EnvelopeMorphControls::axisColour(int axis) const {

@@ -36,7 +36,7 @@ public:
             reset(fallback);
         }
 
-        const MorphDimensions dimensions(dimensionCount);
+        const auto dimensions = MorphDimensions::trimesh(dimensionCount);
         if (dimensionCount == 0) {
             return fallback;
         }
