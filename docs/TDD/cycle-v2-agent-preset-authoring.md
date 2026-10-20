@@ -31,7 +31,7 @@ single stack of branches.
 | Physical parameter values | `lib/src/Audio/CycleDsp/EffectParameterMapping.h` owns existing conversions. |
 | Graph/model edits | `GraphCommandDispatcher` owns semantic edits, transactions, undo and publication. |
 | Persistence | `GraphSerializer` owns graph records; `PresetPresentationCodec` already persists preset descriptions. |
-| Note UI | Existing canvas help/tooltip and `NodeGroupRenameCallout` supply small reusable interaction patterns. |
+| Note UI | Existing console hover text and JUCE callouts/text editors supply reading and editing patterns. |
 | Reference lifecycle | `ReferenceLibrary` and `ReferenceSampleAnalysis` own import, pitch analysis and reference state. |
 | Render execution | `OfflineGraphAudioRenderer` owns offline execution; automation already parses scheduled MIDI and seeds. |
 | Audio diagnostics | `scripts/cycle_audio_diff.py` owns existing alignment, gain, spectrum, harmonic and cyclogram comparisons. |
