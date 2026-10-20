@@ -41,7 +41,7 @@
     {
       "command": "assertState",
       "path": "timeSurfaceStyleId",
-      "equals": "blues"
+      "equals": "icy-hot-raw"
     },
     {
       "command": "invokeMenuItem",

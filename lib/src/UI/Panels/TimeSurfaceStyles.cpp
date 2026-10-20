@@ -20,12 +20,12 @@ const TimeSurfaceStyles::Entry* TimeSurfaceStyles::find(const juce::String& id) 
 
 const char* TimeSurfaceStyles::id(ScalarSurfaceTimeStyle style) {
     const auto* entry = find((int) style);
-    return entry != nullptr ? entry->id : "blues";
+    return entry != nullptr ? entry->id : id(defaultStyle);
 }
 
 ScalarSurfaceTimeStyle TimeSurfaceStyles::fromId(const juce::String& id) {
     const auto* entry = find(id);
-    return entry != nullptr ? entry->style : ScalarSurfaceTimeStyle::BlueDepth;
+    return entry != nullptr ? entry->style : defaultStyle;
 }
 
 juce::PopupMenu TimeSurfaceStyles::menu(

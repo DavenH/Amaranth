@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -204,8 +205,8 @@
                 "signalType": "spectralMagnitude",
                 "phaseMode": "absolute",
                 "polarity": "bipolar",
-                "yellow": 0.5,
-                "red": 0.5,
+                "yellow": 1.0,
+                "red": 0.234,
                 "blue": 0.5,
                 "primaryAxis": "yellow",
                 "link.yellow": true,

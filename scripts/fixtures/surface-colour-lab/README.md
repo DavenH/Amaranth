@@ -20,3 +20,9 @@ scripts/run_surface_colour_lab.sh --recipe scripts/fixtures/surface-colour-lab/p
 Cycle exposes these as Icy-hot 13 / 14. `scripts/compile_surface_programs.py`
 emits an apply_patch for the compiled linear-RGB palette data using the lab's
 OKLab evaluator. Regenerate that header if the authored palette changes.
+
+`program-21.json` preserves the user's raw cyan/purple/gold recipe verbatim,
+including its disabled detail layer. Cycle exposes it as **Icy Hot (Raw)**.
+`program-21.png` uses the same grid and rendering command as the other references.
+It matches the supplied October 19 Composite screenshot; broad colour comes
+directly from amplitude, without a detail overlay or lighting.

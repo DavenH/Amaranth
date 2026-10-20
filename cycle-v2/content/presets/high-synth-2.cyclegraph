@@ -865,7 +865,20 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": [],
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "globalInput",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "delay",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0,
+            "canvasX": 903.07025,
+            "canvasY": 1272.16663
+        }
+    ],
     "presetPresentation": {
         "version": 1,
         "tags": [ "Lead", "Bright" ],
@@ -893,7 +906,7 @@
             ],
             "controls": []
         },
-        "outputSpyX": 649.91553,
-        "outputSpyY": 1278.45422
+        "outputSpyX": 561.89124,
+        "outputSpyY": 1273.73865
     }
 }

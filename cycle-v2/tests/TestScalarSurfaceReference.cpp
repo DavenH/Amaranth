@@ -39,11 +39,12 @@ TEST_CASE("Icy-hot Spy previews match saved lab programs", "[surface-program]") 
     }
     const auto source = preview.primary;
     const auto previous = ScalarSurfaceMaterial::timeSurfaceStyle();
-    const std::array<ScalarSurfaceTimeStyle, 8> styles {
+    const std::array<ScalarSurfaceTimeStyle, 9> styles {
         ScalarSurfaceTimeStyle::IcyHot13, ScalarSurfaceTimeStyle::IcyHot14,
         ScalarSurfaceTimeStyle::Recipe15, ScalarSurfaceTimeStyle::Recipe16,
         ScalarSurfaceTimeStyle::Recipe17, ScalarSurfaceTimeStyle::Recipe18,
-        ScalarSurfaceTimeStyle::Recipe19, ScalarSurfaceTimeStyle::Bullion
+        ScalarSurfaceTimeStyle::Recipe19, ScalarSurfaceTimeStyle::Bullion,
+        ScalarSurfaceTimeStyle::IcyHotRaw
     };
     for (size_t index = 0; index < styles.size(); ++index) {
         ScalarSurfaceMaterial::setTimeSurfaceStyle(styles[index]);

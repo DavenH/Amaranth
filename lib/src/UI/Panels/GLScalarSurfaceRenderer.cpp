@@ -768,7 +768,7 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
             values[(size_t) column * rows + row] = tile[(size_t) (column % 5) * 5 + row % 5];
         }
     }
-    const std::array<ScalarSurfaceMaterial, 17> materials {
+    const std::array<ScalarSurfaceMaterial, 18> materials {
             ScalarSurfaceMaterial::greyscale(),
             ScalarSurfaceMaterial::savedProgram(15),
             ScalarSurfaceMaterial::savedProgram(16),
@@ -776,6 +776,7 @@ void GLScalarSurfaceRenderer::validateGpuParity() {
             ScalarSurfaceMaterial::savedProgram(18),
             ScalarSurfaceMaterial::savedProgram(19),
             ScalarSurfaceMaterial::savedProgram(20),
+            ScalarSurfaceMaterial::savedProgram(21),
             ScalarSurfaceMaterial::icyHotProgram(false),
             ScalarSurfaceMaterial::icyHotProgram(true),
             ScalarSurfaceMaterial::signedAmplitude(),

@@ -15,7 +15,7 @@ on menu ordering. Greyscale is exactly value -> equal sRGB channels, no effects.
 
 Preset selection belongs to document presentation, not application preferences
 or DSP state. V1 uses document settings; V2 uses PresetPresentation via its
-command boundary. Missing or unrecognized selections resolve to Blues without
+command boundary. Missing or unrecognized selections resolve to Icy Hot (Raw) without
 inheriting the last opened preset. Loading must not dirty the document.
 Selection changes are O(1), with only local cached render products invalidated.
 Filtering remains O(pixels * bounded Gaussian support), outside the audio thread,
