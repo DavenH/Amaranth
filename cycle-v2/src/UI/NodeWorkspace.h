@@ -66,6 +66,9 @@ public:
     bool openNodeEditorForAutomation(const String& nodeId);
     bool pinComparisonSpyForAutomation(const String& probeId);
     bool selectReferenceForAutomation(const String& referenceId);
+    bool importReferenceForAutomation(const File& file, String& error);
+    var inspectReferencesForAutomation() const;
+    var exportReferenceAnalysisForAutomation(bool includeGrid) const;
     bool openReferencePitchEditorForAutomation(const String& referenceId) {
         return comparisonDock.openPitchEditorForAutomation(referenceId);
     }

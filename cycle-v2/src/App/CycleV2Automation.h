@@ -54,6 +54,8 @@ private:
     var invokePaletteItem(const var& commandValue);
     var captureAudio(const var& commandValue);
     var captureLiveAudio(const var& commandValue);
+    var importReference(const var& commandValue);
+    var exportReferenceAnalysis(const var& commandValue) const;
     var sendMidi(const var& commandValue);
     var inspectPointerTargets() const;
     var inspectPointerCursor() const;

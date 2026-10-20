@@ -70,6 +70,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/CMakeLists.txt` — CycleV2 app, graph migrator, and test target source lists.
 - `cycle-v2/src/Main.cpp` — CycleV2 process entry point and top-level JUCE application composition.
 - `cycle-v2/src/App/` — Standalone engine, graph file lifecycle, library state, and automation protocol.
+- `cycle-v2/src/Reference/` — Reference library, pitch/cyclogram analysis, and numerical automation exports.
 - `cycle-v2/src/Graph/NodeGraph.h` — Durable graph data model; read through dispatcher-owned edit views in UI code.
 - `cycle-v2/src/Graph/GraphDocument.h` — Committed graph ownership, publication, and document observers.
 - `cycle-v2/src/Graph/GraphCommandDispatcher.h` — Authoritative semantic edit, gesture, undo, and commit boundary.
@@ -149,6 +150,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Cycle 2 node feature | matching `cycle-v2/src/Nodes/<Domain>/` | Keep model, DSP, editor, panel, and rendering responsibilities local. |
 | Canvas interaction/rendering | `cycle-v2/src/UI/NodeCanvas*.{h,cpp}` | Keep `NodeCanvas` orchestration-only; reuse scene and policy collaborators. |
 | UI regression | `docs/cycle-agent-runbook.md` | Use the smallest fixture and inspect filtered logs first. |
+| Labelled reference studies | `scripts/cycle_reference_study.py` | Reuse library IDs, cached analysis, and coordinated sessions. |
 | Preset/graph persistence | `GraphSerializer.h`, product `content/` | Preserve migrations and canonical on-disk formats. |
 
 ## Fast On-Demand Discovery

@@ -1,5 +1,7 @@
 #include "UI/NodeWorkspace.h"
 
+#include "Reference/ReferenceAutomation.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -374,6 +376,22 @@ bool NodeWorkspace::selectReferenceForAutomation(const String& referenceId) {
     }
     revealComparisonShelf();
     return true;
+}
+
+bool NodeWorkspace::importReferenceForAutomation(const File& file, String& error) {
+    if (!referenceLibrary.importFile(file, error)) {
+        return false;
+    }
+    revealComparisonShelf();
+    return true;
+}
+
+var NodeWorkspace::inspectReferencesForAutomation() const {
+    return ReferenceAutomation::catalogue(referenceLibrary);
+}
+
+var NodeWorkspace::exportReferenceAnalysisForAutomation(bool includeGrid) const {
+    return ReferenceAutomation::selectedAnalysis(referenceLibrary, includeGrid);
 }
 
 void NodeWorkspace::toggleComparisonShelf() {

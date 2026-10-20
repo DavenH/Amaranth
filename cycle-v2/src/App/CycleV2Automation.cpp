@@ -336,6 +336,12 @@ var CycleV2Automation::runCommand(const var& commandValue) {
                     ? okResult("selectReference", snapshotState())
                     : failedResult("selectReference", "Could not select reference: " + referenceId);
         }
+        case Command::ListReferences:
+            return okResult(command, workspace.inspectReferencesForAutomation());
+        case Command::ImportReference:
+            return importReference(commandValue);
+        case Command::ExportReferenceAnalysis:
+            return exportReferenceAnalysis(commandValue);
         case Command::OpenReferencePitchEditor: {
             const String referenceId = stringProperty(commandValue, "referenceId");
             return workspace.openReferencePitchEditorForAutomation(referenceId)
@@ -903,6 +909,29 @@ var CycleV2Automation::sendMidi(const var& commandValue) {
         return failedResult("sendMidi", "The realtime MIDI queue is full");
     }
     return okResult("sendMidi");
+}
+
+var CycleV2Automation::importReference(const var& commandValue) {
+    const auto source = resolveCommandPath(stringProperty(commandValue, "path"));
+    String error;
+    if (!workspace.importReferenceForAutomation(source, error)) {
+        return failedResult("importReference", error);
+    }
+    return okResult("importReference", workspace.exportReferenceAnalysisForAutomation(false));
+}
+
+var CycleV2Automation::exportReferenceAnalysis(const var& commandValue) const {
+    const auto data = workspace.exportReferenceAnalysisForAutomation(
+            boolProperty(commandValue, "includeGrid"));
+    if (!data.isObject()) {
+        return failedResult("exportReferenceAnalysis", "Select a reference before exporting analysis");
+    }
+    const auto path = resolveCommandPath(stringProperty(commandValue, "path"));
+    if (path != File() && (!path.getParentDirectory().createDirectory()
+            || !path.replaceWithText(JSON::toString(data) + "\n"))) {
+        return failedResult("exportReferenceAnalysis", "Could not write reference analysis");
+    }
+    return okResult("exportReferenceAnalysis", data);
 }
 
 var CycleV2Automation::requestCanvasOpenGLFrame() {
