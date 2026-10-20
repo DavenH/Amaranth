@@ -1,0 +1,18 @@
+{
+  "schema": "cycle-audition-study.v1",
+  "name": "Saved candidate attack and release comparison",
+  "rmsMatch": true,
+  "cases": [
+    {
+      "id": "soft-short",
+      "partition": "objective",
+      "a": {"performanceResults": "baseline/results.json", "caseId": "soft-short"},
+      "b": {"performanceResults": "candidate/results.json", "caseId": "soft-short"},
+      "pitch": {"midiNote": 60, "origin": "observed", "confidence": 1, "monophonic": true},
+      "intervals": [
+        {"id": "attack", "role": "attack", "startSeconds": 0, "endSeconds": 0.1},
+        {"id": "release", "role": "release", "startSeconds": 0.15, "endSeconds": 0.4}
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Cycle V2 audition reports
 
-Status: In Progress
+Status: Implemented
 
 ## Purpose and contract
 
@@ -53,7 +53,7 @@ energy is not measured noise or HNR. Descriptor differences remain separate;
 this slice has no weighted taste or optimization score.
 
 Pitch defaults to unknown. Harmonic evidence requires explicit fixed-pitch,
-observed, confident, monophonic evidence and no insecure/fallback reference
+observed, confident, monophonic evidence, sufficient FFT-bin separation, and no insecure/fallback reference
 tracking. Inferred/unknown/noise/polyphonic cases remain unpitched, with the
 reason recorded. No tracker is invented. Varying-pitch cases need narrower
 fixed-pitch intervals.
@@ -85,9 +85,9 @@ Expected production boundary: `scripts/cycle_audition_study.py` (~190 lines),
 a sample fixture, a short workflow doc and an existing code-map feature route.
 Use matplotlib for standalone plots, documented as a host-only dependency.
 
-Limits: 32 cases, 120 aggregate selected audio seconds, 4,096 descriptor windows,
-64 MiB per source WAV, PCM mono/stereo and finite samples. Decode one selected
-pair at a time with bounded caches. Work is offline, O(selected samples plus
+Limits: 32 cases, 120 aggregate selected audio seconds, 4,096 total raw/aligned descriptor windows (conservative preflight estimate),
+64 MiB per source WAV/JSON, two million frames per source WAV, PCM mono/stereo and finite samples. Decode one selected
+pair at a time with a cache of repeated interval spectra within each case. Work is offline, O(selected samples plus
 windows × FFT complexity); no interaction, publication or realtime path changes.
 Output requires a fresh directory. No temporary compatibility layer or deletion
 target exists: stable end state is a host adapter over saved immutable artifacts.
@@ -111,3 +111,40 @@ If numerical reuse would require copying an algorithm, stop for review.
 Before marking Implemented, record production sizes, reuse and absence of
 kind/DSP duplication, remaining compatibility/deletion state, focused tests,
 end-to-end artifact evidence and code-map/whitespace checks below.
+
+
+## Completion evidence
+
+- Production: 517 added Python lines, no production deletions; resolver 187,
+  analysis 143, report 187 lines. Three focused responsibilities remain separate.
+  No new node-kind branches, C++ ownership, app lifecycle or realtime changes.
+- Existing WAV decoding, RMS, fixed-lag alignment and spectra/FFT are imported
+  unchanged from `cycle_audio_diff.py`; suite validation/hash helpers and
+  reference hashing are reused. Harmonic fractions are new bounded reductions
+  over those spectra, with explicit low-frequency resolution rejection.
+- Input provenance validates saved preset snapshots/effective graphs, embedded
+  suite/reference documents, selected reference analysis and source WAV hashes.
+  Historical executable/original file paths remain metadata. Inconsistent
+  copied observation confidence/labels/crops cannot enable pitched analysis.
+- No compatibility code remains and no mature algorithm was replaced or copied.
+  Ordinary app edits/publication are unaffected; offline work scales with the
+  selected pair and explicitly bounded analysis windows. Calibration is capped
+  at eight million correlation sample pairs.
+- 53 focused Python tests passed across audition reports (14), existing audio
+  diagnostics, suites and reference studies. Signals cover attack/release,
+  middle-transition differences despite equal endpoints, harmonic/noise
+  perturbations, anti-phase stereo, default/fixed lag, one global RMS gain,
+  silence, unknown/inferred/polyphonic/insecure/fallback/under-resolved pitch,
+  legal full-scale quantization, saved identity corruption, withheld exclusion,
+  output reuse and actual report-relative A/B artifacts.
+- End-to-end report generated from existing saved suite/reference artifacts:
+  four cases, 16 A/B WAVs and eight standalone PNG/SVG plots. Exact repeated
+  candidate captures and pre-change CC intervals have zero descriptor
+  difference. Constant vs moving CC transition differs by RMS 0.00353003 and
+  centroid 147.004 Hz; transition traces retain that evidence. Growl and
+  insecure noise references appear separately as unpitched withheld cases.
+  Artifact hashes/dimensions and RMS-match equality were verified, and the CC
+  plot was inspected at production size. No new app launch or GUI lease needed.
+- Local evidence: `.context/focused-tests.log`, `.context/e2e-final/index.html`,
+  `.context/e2e-verification.json`. Code-map and whitespace checks pass. The
+  architecture audit retains its 24 existing C++ triggers; no C++ files changed.

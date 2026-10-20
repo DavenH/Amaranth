@@ -1,0 +1,2 @@
+# Host-side standalone audition plots; never an app/runtime dependency.
+matplotlib>=3.8,<4
