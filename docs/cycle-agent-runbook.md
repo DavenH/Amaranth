@@ -274,6 +274,14 @@ For Cycle 1 spectral voice preparation and phase-power regressions, run
 output, then verifies that toggling Baroque Flute's phase layer preserves
 steady-state power. The default matrix covers both 44.1 and 48 kHz.
 
+For saved Cycle V2 presets, use
+`scripts/render_cycle_v2_performance_suite.py` to render a bounded suite of
+notes, repeated notes, timed CC/pressure and shared library patterns. It delegates
+to the coordinator and existing `captureAudio`, records preset/performance/audio
+fingerprints, and verifies repeated PCM. See
+[Performance Suites](cycle-performance-suites.md) for the manifest and artifact
+contract; `--plan` validates without starting an app.
+
 ## Crash And Assertion Triage
 
 Use a minimal fixture and inspect its report, `run.json`, and scoped app logs.

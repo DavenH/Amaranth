@@ -13,6 +13,7 @@
 #include "App/CycleV2AutomationSessionTransport.h"
 #include "App/CycleV2AutomationWorkspaceCommands.h"
 #include "App/OfflineAudioCaptureAutomation.h"
+#include "App/PatternScheduleAutomation.h"
 #include "Graph/NodeDefinition.h"
 #include "UI/NodePalette.h"
 #include "UI/NodeWorkspace.h"
@@ -324,6 +325,8 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return invokePaletteItem(commandValue);
         case Command::CaptureAudio:
             return captureAudio(commandValue);
+        case Command::ExportPatternSchedule:
+            return exportPatternSchedule(commandValue);
         case Command::CaptureLiveAudio:
             return captureLiveAudio(commandValue);
         case Command::OpenNodeEditor:

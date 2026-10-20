@@ -1,0 +1,57 @@
+{
+  "schema": "cycle-performance-suite.v1",
+  "id": "instrument-response-smoke",
+  "repetitions": 2,
+  "render": {
+    "randomSeed": 1729,
+    "sampleRate": 44100,
+    "blockSize": 512,
+    "channels": 2
+  },
+  "budget": {
+    "maxRenders": 8,
+    "maxAudioSeconds": 16,
+    "maxWallSeconds": 180
+  },
+  "cases": [
+    {
+      "id": "soft-short",
+      "labels": { "articulation": "short", "dynamic": "soft" },
+      "durationMs": 450,
+      "note": 60,
+      "velocity": 0.25,
+      "noteDurationMs": 150
+    },
+    {
+      "id": "hard-48k",
+      "labels": { "articulation": "sustained", "dynamic": "hard" },
+      "render": { "sampleRate": 48000, "blockSize": 127 },
+      "durationMs": 900,
+      "note": 67,
+      "velocity": 1,
+      "noteDurationMs": 650
+    },
+    {
+      "id": "repeated-expression",
+      "labels": { "articulation": "repeated", "expression": "timed CC and pressure" },
+      "durationMs": 1400,
+      "events": [
+        { "type": "controller", "timeMs": 0, "controller": 1, "value": 0 },
+        { "type": "channelPressure", "timeMs": 0, "value": 0 },
+        { "type": "noteOn", "timeMs": 0, "note": 60, "velocity": 0.7 },
+        { "type": "controller", "timeMs": 120, "controller": 1, "value": 127 },
+        { "type": "channelPressure", "timeMs": 200, "value": 80 },
+        { "type": "noteOff", "timeMs": 350, "note": 60 },
+        { "type": "noteOn", "timeMs": 550, "note": 60, "velocity": 0.7 },
+        { "type": "controller", "timeMs": 750, "controller": 1, "value": 0 },
+        { "type": "noteOff", "timeMs": 1000, "note": 60 }
+      ]
+    },
+    {
+      "id": "library-keys",
+      "labels": { "purpose": "shared musical demonstration" },
+      "pattern": "../../cycle-v2/content/patterns/factory-basic-keys.cyclepattern",
+      "tailMs": 500
+    }
+  ]
+}

@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <map>
 
 #include "UI/PerformanceKeyboard.h"
 #include "UI/PresetMidiEditor.h"
@@ -531,35 +530,9 @@ void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
     if (!sequence.has_value()) {
         return;
     }
-    for (const auto& note : sequence->notes) {
-        playbackEvents.push_back({
-                note.startSeconds,
-                MidiMessage::noteOn(1, note.pitch, (uint8) note.velocity) });
-        playbackEvents.push_back({
-                note.startSeconds + note.durationSeconds,
-                MidiMessage::noteOff(1, note.pitch) });
-    }
-    std::map<int, std::vector<PresetMidiControl>> controlLanes;
-    for (const auto& control : sequence->controls) {
-        controlLanes[control.controller].push_back(control);
-    }
-    controlSchedulers.reserve(controlLanes.size());
-    for (auto& lane : controlLanes) {
-        PatternControlScheduler scheduler;
-        scheduler.reset(std::move(lane.second), lane.first,
-                sequence->durationSeconds);
-        controlSchedulers.push_back(std::move(scheduler));
-    }
-    std::stable_sort(playbackEvents.begin(), playbackEvents.end(),
-            [](const PlaybackEvent& first, const PlaybackEvent& second) {
-                if (first.timeSeconds != second.timeSeconds) {
-                    return first.timeSeconds < second.timeSeconds;
-                }
-                const auto priority = [](const MidiMessage& message) {
-                    return message.isNoteOff() ? 0 : (message.isNoteOn() ? 2 : 1);
-                };
-                return priority(first.message) < priority(second.message);
-            });
+    auto prepared = PatternPlaybackSchedule::prepare(*sequence);
+    playbackEvents = std::move(prepared.notes);
+    controlSchedulers = std::move(prepared.controls);
 }
 
 bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
