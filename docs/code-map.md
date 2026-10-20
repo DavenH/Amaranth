@@ -82,7 +82,6 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Runtime/GraphRuntime.h` — Owns compiled runtime state and graph execution lifecycle.
 - `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Executes realtime graph audio; preserve allocation-free behavior.
 - `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Runs scoped preview/analysis products without full audio work.
-- `cycle-v2/src/Runtime/NodeAudioProcessor.h` — Base contract for prepared node audio processors.
 - `cycle-v2/src/Runtime/NodeModuleRegistry.h` — Registration boundary for node model, DSP, preview, and view modules.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/` — Domain node implementations; keep DSP, model, editor, panel, and rendering layers distinct.
