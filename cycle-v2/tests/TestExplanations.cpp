@@ -141,6 +141,7 @@ TEST_CASE("Explanation edits and history never copy unrelated synthesis state",
 
 TEST_CASE("Explanation editor keeps drafts local and commits one complete text edit",
         "[cycle-v2][explanations][ui]") {
+    ScopedJuceInitialiser_GUI gui;
     GraphDocument document(explanationGraph());
     GraphCommandDispatcher commands(document);
     ExplanationEditor editor("Wave explanation", "Generates a waveform for the current voice.", {},

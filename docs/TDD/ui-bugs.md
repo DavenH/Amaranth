@@ -1,5 +1,16 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved: Explanation editor test omitted GUI initialization
+
+On 2026-10-20, the combined authoring-tools test run passed its assertions but
+printed Component/Timer assertions and GUI singleton leaks. The new editor
+draft test constructed JUCE components without `ScopedJuceInitialiser_GUI`.
+The test now initializes and shuts down JUCE around its component lifetime.
+The seven explanation cases now pass with no JUCE assertions or leak warnings
+(`.context/explanation-gui-lifetime-tests.log`). This was a test-harness defect;
+native app editing passed independently. Repro log:
+`.context/integration-tests.log` in the parent workspace.
+
 ## P2: Preset sidebar overlaps expanded Spy detail
 
 On 2026-10-19, open Stengah at 1400 × 950 with the Presets sidebar visible,

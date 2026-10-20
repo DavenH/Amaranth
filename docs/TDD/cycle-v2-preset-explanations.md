@@ -127,6 +127,9 @@ The stable extraction target is its existing sidebar/overlay composition, includ
 Serializer continues to own the one graph codec; no schema or persistence
 policy is duplicated. There are no new NodeKind/DSP branches or compatibility
 paths. The semantic, native and screenshot acceptance evidence is complete.
+The editor draft test owns a scoped JUCE GUI lifetime. Its final explanation
+group passes seven cases and 159 assertions with no JUCE assertions or leak
+warnings (`.context/explanation-gui-lifetime-tests.log`).
 
 Document replacement extends the existing graph snapshot history with optional
 matching `PresetPresentation`; only replacement snapshots capture it. Ordinary
