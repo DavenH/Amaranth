@@ -135,7 +135,6 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `scripts/cycle_v2_architecture_audit.py` — Report CycleV2 file-size review triggers for touched production code.
 - `scripts/check_code_map.py` — Validate semantic-map paths, description lengths, and fixed size budgets.
 - `scripts/compare_cycle_audio.py` — Render declared-equivalent Cycle 1/2 presets and compare audio output.
-- `scripts/render_cycle_v2_performance_suite.py` — Render bounded MIDI suites with preset, performance, and audio fingerprints.
 - `scripts/fixtures/` — Stable automation scenarios; reuse a focused fixture before running broad smoke suites.
 
 ## Feature Routes
@@ -148,6 +147,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Mature editor interaction | `lib/src/Inter/`, `cycle/src/Inter/` | Reuse/extract Cycle 1 behavior and preserve phase costs. |
 | Cycle 2 semantic edit | `GraphCommandDispatcher.h` | UI supplies intent; dispatcher owns gesture, undo, and publication. |
 | Cycle 2 audio execution | `cycle-v2/src/Runtime/` | Separate realtime, preview, preparation, and presentation work. |
+| Performance suites | `scripts/render_cycle_v2_performance_suite.py` | Reuse captureAudio and coordinator; keep scheduling outside DSP. |
 | Cycle 2 node feature | matching `cycle-v2/src/Nodes/<Domain>/` | Keep model, DSP, editor, panel, and rendering responsibilities local. |
 | Canvas interaction/rendering | `cycle-v2/src/UI/NodeCanvas*.{h,cpp}` | Keep `NodeCanvas` orchestration-only; reuse scene and policy collaborators. |
 | UI regression | `docs/cycle-agent-runbook.md` | Use the smallest fixture and inspect filtered logs first. |

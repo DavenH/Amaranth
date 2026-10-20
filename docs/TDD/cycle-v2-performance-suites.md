@@ -2,7 +2,8 @@
 
 ## Status
 
-In Progress. Implements roadmap PR 5 independently of annotation and capability UI.
+Implemented (2026-10-20). Implements roadmap PR 5 independently of annotation
+and capability UI.
 
 ## Contract and ownership
 
@@ -91,6 +92,34 @@ pattern work to a 89-line adapter, with no interpolation in that adapter. Shared
 preparation is 45 lines; no node-kind branch or realtime work is added. The
 keyboard-local preparation/comparator deletion target is complete.
 
-C++ build, focused pattern/keyboard tests and two real deterministic render-suite
-runs remain pending against the app. The initial implementation commit is prepared
-for root-coordinated verification using its existing build cache.
+The exact standalone app and test target build with `--parallel 10` in the root
+workspace's existing cache at implementation commit `d14c2821`. The focused
+pattern-schedule/keyboard set passes 29 cases and 677 assertions. Production C++
+adds 173 lines and removes 37; the two host modules add 402 lines. There is one
+command-kind dispatch addition and no node-kind, DSP, thread or publication branch.
+The code-map route stays within its source-entry budget.
+
+Two complete runs of the checked-in suite against `old/filter-saw.cyclegraph`
+pass all eight captures each. Per-case repetitions are interleaved, and all eight
+corresponding WAV PCM hashes also agree across runs. Both source preset bytes and
+effective graph hashes agree. Cases cover soft attack/release, a hard 48 kHz note
+with block size 127, repeated notes with timed CC/pressure, and the shared factory
+keys pattern. Its three saved control points expand to 71 controller events and
+83 total MIDI events through the mature scheduler; they are not rendered as steps.
+Every capture has nonzero measured signal. Reports are under
+`.context/pr5-performance-suites/.context/e2e-first/` and `e2e-second/` in the root
+workspace. Coordinator runs are `fe7ccd65abf9` and `e40fe424b932`.
+
+A separate four-capture `old/saxophone.cyclegraph` suite compares constant CC1 with
+a change from 0 to 127 at 350 ms in a held note. Each version repeats exactly.
+The 50–300 ms windows are byte-identical, while the 450–850 ms normalized RMS
+residual is `0.1608849671`, proving that the timed control reaches audible output.
+The report is under `.context/pr5-performance-suites/.context/sax-cc-sensitivity/`;
+the comparison summary is `.context/pr5-performance-suites/.context/performance-verification.json`.
+Its coordinator run is `c2067d158279`. All runs use the fresh exact root PID 38398;
+the root-owned instance was stopped afterward. Filtered logs contain no product
+assertion, crash or warning. No new runtime incident required a ledger entry.
+
+Limits remain explicit product boundaries: pattern planning requires the app's
+codec/scheduler before capture, a wall timeout cannot cancel an already executing
+command, and a suite measures repeatability rather than perceptual quality.

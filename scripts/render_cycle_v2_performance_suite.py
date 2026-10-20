@@ -159,7 +159,7 @@ def main():
     parser.add_argument("--preset", type=Path, required=True, help="Saved Cycle V2 graph to render")
     parser.add_argument("--output-dir", type=Path, help="New artifact directory (never overwritten)")
     parser.add_argument("--repeat", type=int, help="Override suite repetitions, 1 to 16")
-    parser.add_argument("--plan", action="store_true", help="Validate and print expanded schedule without starting the app")
+    parser.add_argument("--plan", action="store_true", help="Print validated host plan; pattern expansion requires the app")
     parser.add_argument("--no-build", action="store_true", help="Use an already built app through the coordinator")
     parser.add_argument("--in-session", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()

@@ -11,8 +11,8 @@ python3 scripts/render_cycle_v2_performance_suite.py \
 
 The runner delegates building, exact-instance selection and exclusive session
 ownership to `cycle_automation.py exec`. `--no-build` uses the coordinator's
-existing built app. GUI sessions remain sequential. `--plan` prints a validated,
-expanded schedule without launching an app or writing output. `--repeat 2`
+existing built app. GUI sessions remain sequential. `--plan` prints a validated
+host plan without launching an app or writing output. `--repeat 2`
 overrides the manifest's repetition count.
 
 For an already coordinated workflow, invoke the runner with `--in-session`
