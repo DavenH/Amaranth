@@ -47,9 +47,12 @@ schema, or UI-based synthesis algorithm.
 ### 1. Add editable preset and node explanations
 
 Deliver optional node rationale and reuse the existing preset description.
-Include an information badge, hover reading, a shared text-editing interaction,
-and direct agent read/write commands in the same PR. Keep generic type help in
-the definition registry. Empty notes need no expanded editor area.
+Include an information action within the node header, hover reading through
+the existing console, a shared text-editing interaction, and direct agent
+read/write commands in the same PR. Do not duplicate console explanations in
+hover popups or position the information control outside the node's bounds.
+Keep generic type help in the definition registry. Empty notes need no expanded
+editor area.
 
 Done when a human and an agent can create, inspect, edit, save/reload and undo
 notes. Node duplication and deletion/undo preserve sensible note ownership.
