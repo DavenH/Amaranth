@@ -58,6 +58,8 @@ def reference_inputs(report_path):
     report = json.loads(report_path.read_text())
     inputs = {}
     for observed in report["observations"]:
-        analysis = json.loads((report_path.parent / observed["analysisPath"]).read_text())
+        path = report_path.parent / observed["analysisPath"]
+        analysis = json.loads(path.read_text())
+        inputs[str(path)] = observed["analysisSha256"]
         inputs[analysis["audioPath"]] = observed["sourceAudioSha256"]
     return inputs

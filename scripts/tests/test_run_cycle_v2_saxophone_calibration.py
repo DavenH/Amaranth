@@ -233,6 +233,21 @@ class CalibrationStagesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cannot be overwritten"):
             runner.run_stage(self.plan, self.output, "audit", self.send, self.engine)
 
+    def test_analysis_changed_after_pitch_reduction_cannot_be_frozen(self):
+        def audition_then_change(destination, name, cases):
+            self.audition(destination, name, cases)
+            if name == "candidate-reference":
+                path = destination / "synthesis-analysis/0.json"
+                evidence = json.loads(path.read_text())
+                evidence["pitchFrames"][0]["frequencyHz"] = 440
+                runner.write(path, evidence)
+        with patch.object(runner, "audition", side_effect=audition_then_change):
+            result = runner.run_stage(self.plan, self.output, "objective", self.send, self.engine)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("Frozen input changed", result["error"])
+        self.assertIn("synthesis-analysis/0.json", result["error"])
+        self.assertFalse((self.output / "freeze.json").exists())
+
     def test_candidate_changed_during_audit_cannot_be_certified_unchanged(self):
         self.objective()
         def render_changed_candidate(suite, preset, destination, send, engine):
