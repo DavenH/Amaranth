@@ -297,8 +297,119 @@ sustain values below/above 0.5, or discovery explicitly exposes the exception
 and its supported representation. Track the audible regression evidence in
 [audio-bugs.md](audio-bugs.md); do not silently fit away the source tail.
 
+## M09 — Colored Guide noise with explicit correlation
+
+Status: Workflow opportunity supported by the anchor listening revision;
+per-Guide filtering is absent in the current parameter surface. Existing voice
+EQ and the shared reed/body IR can supply output-frequency shaping.
+
+Musical task: reproduce phase-local grain and breath, including stronger onset
+irregularity, without replacing it with uniform spectral-magnitude hiss.
+The user identifies `saxophone-3`'s time-domain noise as a useful precedent and
+suggests filtered Guide noise as a possible missing tool.
+
+Evidence: the factory time mesh assigns Guide 4 to a narrow component segment.
+`WaveformBakePolicy::bakeGuideCurve` substitutes the Guide between neighboring
+phase poles; pole sharpness and component gain control depth. Shared
+`GuideCurveTableDsp::sampleDownAddNoise` adds uniform seeded noise after sampling
+the prepared Guide table. Guide parameters expose noise, DC/phase offsets and
+seed, but no noise-color or correlation control. Changing a Guide's drawn
+shape therefore does not itself filter this added noise. An initial isolated
+grain/EQ trial established the mechanism. The compact reed prototype now puts
+the same Guide on both closing edges and filters the whole excitation through
+its shared body IR; the abandoned neutral-baseline branch is not its source.
+
+Owner/direction: shared Guide table/noise preparation and immutable resource
+snapshots. First distinguish correlation along waveform phase from variation
+between cycles and across note age; these have different musical consequences.
+If current component gating plus EQ cannot achieve the intended grain,
+consider explicit Guide-noise color/correlation parameters. Reuse mature
+filter kernels, seed/state owners and preparation boundaries; never allocate
+or build filter resources on the audio thread. Acceptance should compare
+source/body/onset band balance, cycle variation, seeds, pitch and frame-size
+changes, with listening examples. This is not yet a new DSP implementation.
+
+## M10 — Assign a Guide to authored components through automation
+
+Status: Confirmed automation gap; validated content import is the current
+workaround, alongside M07's complete-topology import.
+
+Musical task: attach the existing factory grain Guide to four closing-edge
+segments of the compact reed mesh. Guide property editing and assignment
+inspection exist, but the automation command surface has no addressed
+component-assignment command. Assigning the final segment indices before the
+new mesh exists correctly fails Guide validation.
+
+Current workaround: import the Guide resource without assignments, replace the
+mesh through `applyNodeEdits`, then import that exported graph with only the
+declared Guide assignments added. The graph loader and existing assignment
+validator remain authoritative; no production graph mutation is introduced.
+Future automation should delegate to the existing Guide-assignment command
+service with node/component identities, validation and undo. Acceptance:
+assign/unassign the same Guide on this mesh without JSON assembly, reject
+invalid or stale targets atomically, and preserve save/reload and audio output.
+
+## M11 — Preserve physical body-filter resonances across output sample rates
+
+Status: Confirmed preparation limitation by source inspection; the first reed
+prototype fixes playback and authored impulse data at 48 kHz. No rate-conversion
+DSP change is included in that experiment.
+
+Musical task: model a saxophone body with a short impulse response whose modal
+frequencies remain fixed in Hz while the reed source changes pitch, and retain
+those frequencies when the device sample rate changes.
+
+Evidence: IR resources retain their source sample rate, but
+`prepareImpulseResponseSource` copies direct samples or rasterizes the editable
+curve at the selected sample count. Neither path receives the output rate or
+converts source-rate coordinates. A 48 kHz kernel replayed at 44.1 kHz therefore
+changes physical modal frequency by the 44.1/48 ratio. This is separate from
+the intentionally fixed body response across played notes. The new
+`importImpulseResponse` automation command reuses canonical import and reports
+the retained-rate policy, rather than implementing a competing conversion.
+
+Owner/direction: existing IR resource/preparation/configuration boundaries in
+[IR Audio Resources](cycle-v2-ir-audio-resources.md). Establish authored curve
+time-domain semantics and reuse a mature resampler before changing preparation.
+Acceptance: direct and modelled versions of a known physical resonance retain
+its frequency and decay at 44.1/48/96 kHz, survive save/reload, and allocate no
+conversion resources on the audio thread.
+
+## M12 — Commit Guide edits before capturing the current audio plan
+
+Status: Resolved publication/lifecycle defect, verified in focused tests and the
+rebuilt owned app.
+
+Musical task: ablate factory Guide grain in the shared-body reed model and
+compare the changed sound against the same deterministic note. The exported
+resource stored noise zero, yet capture retained bit-identical noisy PCM;
+reopening and repeating the edit could also suppress configuration preparation.
+The source/capture commands and hashes are in the shared-body verification
+artifacts; the focused `[guide-reopen]` PCM regression fails before the fix.
+
+Existing owner/resolution: the presentation scheduler resets request identities
+alongside prepared-product caches after compilation, retaining gesture state
+and cancellation baselines. Committed Guide automation uses the existing
+synchronous canvas refresh boundary. Guide assignment, snapshot preparation
+and mature noise DSP are reused. No new grain renderer or render-time graph
+mutation is needed. Details and acceptance evidence are in the
+[presentation lifecycle TDD](cycle-v2-presentation-cache-lifecycle.md) and
+[audio ledger](audio-bugs.md).
+
+Acceptance: the same edit after reopening changes actual PCM, agrees with a
+freshly compiled current graph, and performs no extra topology compile for the
+Guide edit. Immediate automation capture must observe the committed value;
+active graph gestures must still commit once, undo once and cancel correctly.
+The focused reset/PCM/gesture checks pass 67 assertions in three cases and
+adjacent checks pass 502 assertions in 38 cases. The owned app's immediate and
+reopened zero-noise captures are bit-identical and differ from the noisy
+baseline; `.context/sax-reed-core/ready/verification.json` passes without the
+temporary export/reopen workaround.
+
 ## Related defects, tracked separately
 
+- Flat-curve coordinate rounding changes a sharp modelled IR slightly after
+  save/reload; the bounded test and numerical evidence are in [audio-bugs.md](audio-bugs.md).
 - Reference exports label Cycle-internal note values as MIDI; see
   [audio-bugs.md](audio-bugs.md). Do not compensate with a hidden pitch guess.
 - Tiny controller-response differences precede scheduled events in the current

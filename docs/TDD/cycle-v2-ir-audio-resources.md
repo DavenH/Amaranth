@@ -4,6 +4,41 @@
 
 Implemented (2026-08-27).
 
+Automation follow-up (2026-10-21): `importImpulseResponse` accepts `nodeId`,
+`path` and an explicit `mode` (`direct` or `modelled`). The App adapter calls
+the existing `ImpulseResponseResourcePreparation::prepare`, then publishes its
+complete edit through `GraphCommandDispatcher::setNodeAudioResource`. No second
+decoder, trim, modeller, parameter mapping or resource codec is introduced.
+Wrong node types, invalid paths/modes and active gestures reject without edits.
+The result reports the retained normalized sample count and source rate, chosen
+IR length, actual stored processing parameters and committed model/document
+revisions. The resource remains embedded and portable in either mode.
+
+The automation service owns request validation and preparation orchestration;
+the canvas only delegates and refreshes its existing presentation/editor
+collaborators after success. The existing large canvas retains this thin adapter
+to its document/dispatcher owners; IR policy stays outside it. Focused tests
+exercise real WAV import, audible kernel preparation, save/reload after deleting
+the source, one-step undo/redo, and rejection atomicity. The exact app and test
+targets build; focused IR tests pass 162 assertions in five cases. The rebuilt
+owned reed-study app imports a 48 kHz authored body response in modelled mode,
+retains 215 normalized source samples, selects a 256-sample IR and produces a
+37-vertex editable model. Source/filter captures and reload verification pass;
+the command and results are under `.context/sax-reed-core/ready/`.
+
+Graph persistence currently rounds flat-curve coordinates to five decimal
+places. This test bounds the audible kernel's reload error at 0.0002 absolute
+for its sharp impulse fixture and requires canonical serialized content to
+stabilize; undo/redo remains exact. This bounded fixture is not a guarantee for
+every long or steep IR. The separately recorded precision limitation in
+`audio-bugs.md` also affects the unsmoothed display curve.
+
+The resource's source rate is inspection metadata. Current direct and modelled
+kernel preparation does not resample to the output rate. This command reports
+that policy explicitly; a fixed-rate body-filter experiment must author/import
+at its playback rate. See modelling queue M11 for the separate rate-conversion
+gap rather than silently promising rate-independent resonances.
+
 ## Objective
 
 Make the Impulse Response editor's Load, Model, and Unload actions truthful,

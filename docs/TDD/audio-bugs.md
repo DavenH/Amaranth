@@ -1,5 +1,55 @@
 # Audio Bug Notes
 
+## P2: Repeated Guide edits after reopening can retain the preceding audio plan
+
+On 2026-10-21, the shared-body reed preset under
+`.context/sax-reed-core/shared-body/` retained bit-identical noisy PCM after
+setting `reedGrain.noise=0`, although the exported resource correctly stored
+zero. Reopening the original and repeating that edit still did not reliably
+prepare the new audio. The command/capture sequence is retained in
+`verification-commands.jsonl`; the original PCM hash begins `5d16bd5e`.
+
+The focused `[guide-reopen]` regression reproduces original graph → noise zero
+→ reopen original → noise zero using actual offline PCM. Before the fix it
+fails because the repeated edit's PCM is unchanged, with 21 of 22 assertions
+passing before the failure (`.context/guide-reopen-before.txt`). Guide component
+assignments and the canonical noise renderer are valid.
+
+Source diagnosis: full compilation cleared prepared-product cache entries but
+retained semantic source fingerprints, allowing the second identical request
+to be suppressed against a newly loaded plan. Committed Guide automation also
+scheduled an asynchronous refresh before returning, permitting capture to copy
+the prior plan. The fix resets request/product caches together at compilation
+and uses the existing synchronous refresh for committed Guide automation.
+It preserves graph-gesture ownership and cancellation baselines. Status:
+resolved; focused checks pass 67 assertions in three cases and adjacent checks
+pass 502 assertions in 38 cases. Rebuilt app verification captures identical
+zero-noise PCM immediately after the edit and after reopening/repeating it,
+while the noisy baseline differs. Evidence is
+`.context/sax-reed-core/ready/verification.json`; details are recorded in the
+[presentation lifecycle TDD](cycle-v2-presentation-cache-lifecycle.md). Queue M12
+tracks the modelling obstacle and its resolution, rather than a new noise DSP.
+
+## P3: Flat-curve persistence rounds sharp IR control coordinates
+
+On 2026-10-21, the new IR import automation test imported a normalized 48 kHz
+impulse with nonzero samples at indices 0 and 100, modelled it through the
+existing fitter, saved it and reloaded without the source file. The rendered
+128-sample kernel changes by less than 0.0002 absolute; one observed sample
+changes by about 0.000093. The unsmoothed display curve's maximum change is
+0.002058. Undo/redo of the same imported state is exact.
+
+Source diagnosis: `GraphSerializer` writes ordinary scalar model coordinates
+to five decimal places. Its shortest-round-trip float path recognizes Trimesh
+vertices but does not include flat-curve vertices. The new importer uses the
+existing curve and codec, rather than introducing this rounding behavior.
+
+Status: open, low-level numerical drift; audible impact is not established.
+Reproduce with `[ir-import-automation]` and compare the prepared kernel before
+and after serialization. Assess longer/steeper curves before choosing a
+serialization-precision change. The focused test bounds the actual kernel
+error for its fixture and retains canonical content and exact undo/redo checks.
+
 ## P2: Unipolar sustain floor attenuates a measured release below half scale
 
 On 2026-10-21, the layer-2 saxophone anchor in

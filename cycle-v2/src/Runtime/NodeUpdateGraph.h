@@ -131,6 +131,7 @@ public:
     EditIdentity commit(const String& sourceStreamId);
     void cancelGesture(const String& sourceStreamId);
     void invalidateSource(const String& sourceStreamId);
+    void invalidateSources();
 
     const UpdateAuditTrace& trace() const { return auditTrace; }
 

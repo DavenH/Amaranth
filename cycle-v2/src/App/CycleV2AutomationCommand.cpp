@@ -39,6 +39,7 @@ const std::pair<const char*, Command> commands[] {
             { "selectReference", Command::SelectReference },
             { "listReferences", Command::ListReferences },
             { "importReference", Command::ImportReference },
+            { "importImpulseResponse", Command::ImportImpulseResponse },
             { "exportReferenceAnalysis", Command::ExportReferenceAnalysis },
             { "openReferencePitchEditor", Command::OpenReferencePitchEditor },
             { "openMeshPopup", Command::OpenNodeEditor },

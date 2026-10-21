@@ -386,6 +386,8 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return workspaceCommands->setGuideParameter(commandValue);
         case Command::InspectNodeControls:
             return workspaceCommands->inspectNodeControls(commandValue);
+        case Command::ImportImpulseResponse:
+            return workspaceCommands->importImpulseResponse(commandValue);
         case Command::InspectExplanation:
         case Command::SetExplanation:
         case Command::SetGroupInformationCard:

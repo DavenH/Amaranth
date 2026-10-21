@@ -261,6 +261,14 @@ var CycleV2AutomationWorkspaceCommands::inspectNodeControls(const var& commandVa
     return okResult("inspectNodeControls", data);
 }
 
+var CycleV2AutomationWorkspaceCommands::importImpulseResponse(const var& commandValue) {
+    String error;
+    const auto data = workspace.getCanvas().importImpulseResponseForAutomation(
+            commandValue, resolvePath(stringProperty(commandValue, "path")), error);
+    return error.isEmpty() ? okResult("importImpulseResponse", data)
+            : failedResult("importImpulseResponse", error);
+}
+
 var CycleV2AutomationWorkspaceCommands::setMorphSlider(const var& commandValue) {
     const String nodeId = stringProperty(commandValue, "nodeId");
     const String axis = stringProperty(commandValue, "axis", stringProperty(commandValue, "parameterId"));

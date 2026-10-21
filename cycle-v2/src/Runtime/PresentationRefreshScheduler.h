@@ -55,7 +55,7 @@ public:
             const GraphExecutionPlan& plan,
             const CausalUpdateRequest& request,
             const NodeUpdateGraph::ProductBatchExecutor& executor);
-    void clearProductCache() { updateGraph.clearProductCache(); }
+    void resetAfterCompilation();
     const UpdateAuditTrace& trace() const { return updateGraph.trace(); }
     void recordEditorMovement(
             const GraphExecutionPlan& plan,

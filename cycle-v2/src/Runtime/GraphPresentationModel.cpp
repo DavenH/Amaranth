@@ -102,7 +102,7 @@ bool GraphPresentationModel::refresh(
                     Performance::Stage::RuntimeTrace,
                     performance.timestamp() - runtimeStartedAt);
         }
-        scheduler.clearProductCache();
+        scheduler.resetAfterCompilation();
         previewRenderer.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {

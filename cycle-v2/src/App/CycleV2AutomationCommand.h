@@ -39,6 +39,7 @@ enum class CycleV2AutomationCommand {
     SelectReference,
     ListReferences,
     ImportReference,
+    ImportImpulseResponse,
     ExportReferenceAnalysis,
     OpenReferencePitchEditor,
     AddNode,

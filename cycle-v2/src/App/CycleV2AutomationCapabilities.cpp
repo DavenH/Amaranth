@@ -59,6 +59,14 @@ var CycleV2Automation::inspectSynthesisCapabilities(const var& command) const {
     }
     fields.setProperty("lifecycleCommands", lifecycle);
     objectFor(capabilities)->setProperty("authoring", authoring);
+    var impulseImport = makeObject();
+    objectFor(impulseImport)->setProperty("command",
+            automationCommandName(CycleV2AutomationCommand::ImportImpulseResponse));
+    objectFor(impulseImport)->setProperty("requiredFields", var(StringArray { "nodeId", "path", "mode" }));
+    objectFor(impulseImport)->setProperty("modes", var(StringArray { "direct", "modelled" }));
+    objectFor(impulseImport)->setProperty("sourceNormalization", "Peak-normalized, first channel retained");
+    objectFor(impulseImport)->setProperty("sampleRatePolicy", "Source samples retained without output-rate resampling");
+    objectFor(capabilities)->setProperty("impulseResponseImport", impulseImport);
     var explanations = makeObject();
     objectFor(explanations)->setProperty("scopes", var(StringArray { "preset", "node", "group" }));
     objectFor(explanations)->setProperty("readCommand", automationCommandName(CycleV2AutomationCommand::InspectExplanation));
