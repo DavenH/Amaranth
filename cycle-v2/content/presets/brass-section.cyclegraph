@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": 1229.30139, "y": 100.78408 },
+            "position": { "x": 1190.10132, "y": 100.78408 },
             "parameters": {
                 "enabled": true,
                 "mode": "individual",
@@ -644,7 +645,7 @@
             "id": "pitchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1190.10132, "y": 299.16886 },
+            "position": { "x": 1190.10132, "y": 299.16885 },
             "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.214953274, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1105,16 +1106,16 @@
     ],
     "probes": [
         {
-            "id": "probe",
-            "sourceNodeId": "volumeMultiply",
-            "sourcePortId": "out",
-            "anchorDestNodeId": "voiceOutput",
+            "id": "probe2",
+            "sourceNodeId": "globalInput",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "reverb",
             "anchorDestPortId": "time",
-            "label": "Spy 1",
+            "label": "Spy 2",
             "tapPosition": 0.5,
-            "railOrder": 0,
-            "canvasX": 3326.97656,
-            "canvasY": 1254.83594
+            "railOrder": 1,
+            "canvasX": 642.13989,
+            "canvasY": 1289.36682
         }
     ],
     "presetPresentation": {

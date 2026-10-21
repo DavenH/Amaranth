@@ -1,12 +1,13 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 408.12439, "y": 818.0 },
+            "position": { "x": 399.19559, "y": 455.00003 },
             "parameters": {
                 "octave": -1,
                 "voiceLength": 0.632352941,
@@ -21,7 +22,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 48.12439, "y": 829.0 },
+            "position": { "x": 39.19559, "y": 466.00003 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -832,7 +833,20 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": [],
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "globalInput",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "output",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0,
+            "canvasX": 405.02298,
+            "canvasY": 981.30865
+        }
+    ],
     "presetPresentation": {
         "version": 1,
         "tags": [ "Bass" ],

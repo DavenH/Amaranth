@@ -1,12 +1,13 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 481.20001, "y": 828.0 },
+            "position": { "x": 530.15558, "y": 421.0 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.325757576,
@@ -21,7 +22,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 818.0 },
+            "position": { "x": 148.95557, "y": 411.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -458,7 +459,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 84.79999, "y": 987.99994 },
+            "position": { "x": 133.75555, "y": 581.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -693,6 +694,18 @@
             "railOrder": 0,
             "canvasX": 2438.53491,
             "canvasY": 566.19348
+        },
+        {
+            "id": "probe2",
+            "sourceNodeId": "globalInput",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "output",
+            "anchorDestPortId": "time",
+            "label": "Spy 2",
+            "tapPosition": 0.5,
+            "railOrder": 1,
+            "canvasX": 534.8374,
+            "canvasY": 1130.3396
         }
     ],
     "presetPresentation": {

@@ -380,11 +380,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 3,
+                "revision": 6,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 3,
+                    "revision": 6,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -479,11 +479,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 3,
+                "revision": 6,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 3,
+                    "revision": 6,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -565,11 +565,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 3,
+                "revision": 6,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 3,
+                    "revision": 6,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -651,11 +651,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 3,
+                "revision": 6,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 3,
+                    "revision": 6,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -1181,7 +1181,20 @@
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "phaseLayer1", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": [],
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "globalInput",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "delay",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0,
+            "canvasX": 231.91093,
+            "canvasY": 644.01434
+        }
+    ],
     "presetPresentation": {
         "version": 1,
         "tags": [ "Texture" ],
