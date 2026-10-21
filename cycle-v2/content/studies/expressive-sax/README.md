@@ -45,9 +45,9 @@ are unspecified in the available recording metadata.
 
 The manifest observes the whole recording. Comparison intervals declared by
 the plan select observations without creating new independent recordings or
-retracking their pitch. Decoder peak normalization prevents inference of the
-original absolute recording level. Reports retain raw comparison levels and
-offer a separate RMS-matched audition.
+retracking their pitch. The exported folded analysis is peak-normalized and does not retain source
+recording level. Reports retain raw WAV comparison levels and offer a separate
+RMS-matched audition, without calibrated acoustic-loudness claims.
 
 Cycle's reference pitch export uses the internal convention 81 = 440 Hz;
 audition diagnostics use standard MIDI 69 = 440 Hz. Exported note 57 therefore
