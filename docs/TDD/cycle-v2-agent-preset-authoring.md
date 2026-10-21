@@ -12,8 +12,8 @@ The first wave is merged:
 with [factory preset refinements](https://github.com/DavenH/Amaranth/pull/189).
 [Group explanations and cards](https://github.com/DavenH/Amaranth/pull/192) are
 in a draft PR, with native input verification pending an unlocked macOS session.
-[Explained exemplars](https://github.com/DavenH/Amaranth/pull/191) are implemented
-in an independent draft PR with controlled audition evidence.
+[Explained exemplars](https://github.com/DavenH/Amaranth/pull/191) are merged with
+controlled audition evidence.
 Remaining slices are proposed.
 Expand each nontrivial slice with the exact files, rough size envelope, lifecycle
 contract, and negative tests required by [the TDD policy](README.md) before
