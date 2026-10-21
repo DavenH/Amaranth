@@ -1262,7 +1262,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     NodeEditorHost host(parent, commands, presentation, resources);
     Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
 
-    REQUIRE(host.bind(&voice, { 0, 0, 440, 360 }));
+    REQUIRE(host.bind(&voice, { 0, 0, 520, 488 }));
     DynamicObject automation;
     host.appendAutomationState(automation);
     const var state = automation.getProperty("voiceContext");
@@ -1289,6 +1289,11 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     REQUIRE(state.getProperty("voiceLength", {}).getProperty("display", {}).toString() == "1 s");
     REQUIRE(state.getProperty("pitch", {}).getProperty("display", {}).toString() == "0 semis");
     REQUIRE(state.getProperty("controlInterval", {}).toString() == "16");
+    REQUIRE(state.getProperty("noteMode", {}).toString() == "polyphonic");
+    REQUIRE(state.getProperty("envelopeModulation", {}).toString() == "latched");
+    REQUIRE(state.getProperty("portamentoSeconds", {}).getProperty("display", {}).toString() == "0.06 s");
+    REQUIRE_FALSE((bool) state.getProperty("portamentoEnabled", {}));
+    REQUIRE_FALSE((bool) state.getProperty("glideTimeEnabled", {}));
     REQUIRE(!(bool) state.getProperty("pitchIndependentSpectralControl", {}));
     REQUIRE((int) state.getProperty("octave", {}).getProperty("usableTrackWidth", {}) >= 140);
     REQUIRE((int) state.getProperty("voiceLength", {}).getProperty("usableTrackWidth", {}) >= 140);
@@ -1345,6 +1350,16 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     auto* portamento = dynamic_cast<ToggleButton*>(host.component()->findChildWithID(
             "voiceContextEditor.portamento"));
     REQUIRE(portamento != nullptr);
+    REQUIRE_FALSE(portamento->isEnabled());
+    auto* noteMode = host.component()->findChildWithID("voiceContextEditor.noteMode");
+    REQUIRE(noteMode != nullptr);
+    auto* legato = dynamic_cast<TextButton*>(noteMode->findChildWithID(
+            "voiceContextEditor.noteMode.legato"));
+    REQUIRE(legato != nullptr);
+    legato->onClick();
+    REQUIRE(commands.textParameterId == "noteMode");
+    REQUIRE(commands.textValue == "legato");
+    REQUIRE(portamento->isEnabled());
     portamento->setToggleState(true, dontSendNotification);
     portamento->onClick();
     REQUIRE(commands.immediateParameterId == "portamento");
@@ -1379,6 +1394,96 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     REQUIRE(commands.immediateParameterId == "pitchIndependentSpectralControl");
     REQUIRE(commands.numericValues.back()
             == Catch::Approx(CycleDsp::voiceLengthUnitValue(2.01)).margin(0.0001));
+
+    auto* glideTime = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "voiceContextEditor.portamentoSeconds"));
+    REQUIRE(glideTime != nullptr);
+    REQUIRE(glideTime->isEnabled());
+    auto* glideValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "voiceContextEditor.portamentoSeconds.value"));
+    REQUIRE(glideValue != nullptr);
+    glideValue->setText("0.125 s", sendNotificationSync);
+    REQUIRE(commands.numericValues.back() == Catch::Approx(.125f));
+    REQUIRE(glideTime->keyPressed(KeyPress(KeyPress::rightKey, ModifierKeys::shiftModifier, 0)));
+    REQUIRE(commands.numericValues.back() == Catch::Approx(.126f));
+    const auto updates = commands.updates;
+    glideValue->setText("0.6 s", sendNotificationSync);
+    REQUIRE(commands.updates == updates);
+    glideValue->setText("0 s", sendNotificationSync);
+    REQUIRE(commands.numericValues.back() == Catch::Approx(0.f));
+    glideValue->setText("0.5 s", sendNotificationSync);
+    REQUIRE(commands.numericValues.back() == Catch::Approx(.5f));
+
+    DynamicObject updated;
+    host.appendAutomationState(updated);
+    const var glideState = updated.getProperty("voiceContext").getProperty("portamentoSeconds", {});
+    const Rectangle<float> glideTrack = rectangleProperty(glideState, "track");
+    REQUIRE(glideTrack.getX() == Catch::Approx(octaveTrack.getX()));
+    REQUIRE(glideTrack.getWidth() == Catch::Approx(octaveTrack.getWidth()));
+    REQUIRE(glideTrack.getCentreY() < synthesisBounds.getY());
+    REQUIRE(noteMode->getX() == 24 + PropertyControlMetrics::labelWidth + PropertyControlMetrics::inlineGap);
+    REQUIRE(noteMode->getRight() == host.component()->getWidth() - 24);
+}
+
+TEST_CASE("Voice Context articulation controls commit semantic policies and one glide gesture",
+        "[cycle-v2][editor][voice-context][articulation][gesture]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 520, 488 }));
+
+    const auto select = [&](const String& selectorId, const String& optionId) {
+        auto* selector = host.component()->findChildWithID(selectorId);
+        REQUIRE(selector != nullptr);
+        auto* option = dynamic_cast<TextButton*>(selector->findChildWithID(optionId));
+        REQUIRE(option != nullptr);
+        option->onClick();
+    };
+    select("voiceContextEditor.noteMode", "voiceContextEditor.noteMode.legato");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "noteMode") == "legato");
+    select("voiceContextEditor.envelopeModulation", "voiceContextEditor.envelopeModulation.live");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "envelopeModulation") == "live");
+    auto* portamento = dynamic_cast<ToggleButton*>(host.component()->findChildWithID(
+            "voiceContextEditor.portamento"));
+    REQUIRE(portamento != nullptr);
+    REQUIRE(portamento->isEnabled());
+    portamento->setToggleState(true, dontSendNotification);
+    portamento->onClick();
+    REQUIRE(NodeParameterMap(*document.graph().findNode("voice")).boolValue("portamento"));
+
+    auto* glideTime = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "voiceContextEditor.portamentoSeconds"));
+    REQUIRE(glideTime != nullptr);
+    REQUIRE(glideTime->isEnabled());
+    glideTime->onDragStart();
+    glideTime->setValue(.12, sendNotificationSync);
+    glideTime->setValue(.22, sendNotificationSync);
+    REQUIRE(NodeParameterMap(*document.graph().findNode("voice")).floatValue("portamentoSeconds")
+            == Catch::Approx(.06f));
+    REQUIRE(NodeParameterMap(*dispatcher.editingGraph().findNode("voice")).floatValue("portamentoSeconds")
+            == Catch::Approx(.22f));
+    glideTime->onDragEnd();
+    REQUIRE(NodeParameterMap(*document.graph().findNode("voice")).floatValue("portamentoSeconds")
+            == Catch::Approx(.22f));
+    REQUIRE(document.undo());
+    REQUIRE(NodeParameterMap(*document.graph().findNode("voice")).floatValue("portamentoSeconds")
+            == Catch::Approx(.06f));
+    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(presentation.gestureCommits == 1);
+
+    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 520, 488 }));
+    select("voiceContextEditor.noteMode", "voiceContextEditor.noteMode.polyphonic");
+    REQUIRE_FALSE(portamento->isEnabled());
+    REQUIRE_FALSE(glideTime->isEnabled());
+    select("voiceContextEditor.envelopeModulation", "voiceContextEditor.envelopeModulation.latched");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "envelopeModulation") == "latched");
 }
 
 TEST_CASE("Delay and Reverb own shared semantic property rows",

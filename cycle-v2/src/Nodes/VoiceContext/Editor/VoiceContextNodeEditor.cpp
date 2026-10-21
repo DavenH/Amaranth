@@ -18,8 +18,8 @@ namespace {
 constexpr int kContentInset = 24;
 constexpr int kValueWidth = 72;
 constexpr float kLandmarkEndInset = 15.f;
-constexpr int kPitchTimingRowCount = 4;
-constexpr int kSynthesisRowCount = 3;
+constexpr int kPitchTimingRowCount = 6;
+constexpr int kSynthesisRowCount = 4;
 constexpr int kGroupHeaderContentGap = 5;
 constexpr int kGroupContentHeight = 2 * PropertyControlMetrics::groupLabelHeight
         + 2 * kGroupHeaderContentGap
@@ -47,6 +47,24 @@ std::vector<PropertySegmentOption> controlIntervalOptions() {
                     "Samples between requested synthesis control updates." },
             { "1024", "1024", "voiceContextEditor.controlInterval.1024",
                     "Samples between requested synthesis control updates." }
+    };
+}
+
+std::vector<PropertySegmentOption> noteModeOptions() {
+    return {
+            { "Polyphonic", "polyphonic", "voiceContextEditor.noteMode.polyphonic",
+                    "Play independent voices for overlapping notes." },
+            { "Legato", "legato", "voiceContextEditor.noteMode.legato",
+                    "Connect overlapping notes without restarting their envelopes." }
+    };
+}
+
+std::vector<PropertySegmentOption> envelopeModulationOptions() {
+    return {
+            { "At note-on", "latched", "voiceContextEditor.envelopeModulation.latched",
+                    "Select envelope morph positions when each note starts." },
+            { "Live", "live", "voiceContextEditor.envelopeModulation.live",
+                    "Update envelope morph positions while a note is held." }
     };
 }
 
@@ -102,7 +120,8 @@ public:
         ,   presentation   (presentationToUse)
         ,   octave         (*this, commands, "octave", "Octave")
         ,   voiceLength    (*this, commands, "voiceLength", "Voice Length")
-        ,   pitch          (*this, commands, "pitch", "Pitch") {
+        ,   pitch          (*this, commands, "pitch", "Pitch")
+        ,   glideTime      (*this, commands, "portamentoSeconds", "Glide time") {
         configureHeader();
         configureSelectors();
         configureSliders();
@@ -115,6 +134,9 @@ public:
         const String controlIntervalValue = parameters.stringValue("controlInterval", "16");
         oversamplingSelector.setSelectedValue(oversamplingValue);
         controlIntervalSelector.setSelectedValue(controlIntervalValue);
+        noteModeSelector.setSelectedValue(parameters.stringValue("noteMode", "polyphonic"));
+        envelopeModulationSelector.setSelectedValue(
+                parameters.stringValue("envelopeModulation", "latched"));
         portamento.setToggleState(
                 parameters.boolValue("portamento", false),
                 dontSendNotification);
@@ -128,6 +150,8 @@ public:
                         "voiceLength",
                         CycleDsp::voiceLengthUnitValue(1.0)));
         pitch.bind(node.id, parameters.floatValue("pitch", 0.f));
+        glideTime.bind(node.id, parameters.floatValue("portamentoSeconds", 0.06f));
+        updateGlideAvailability();
     }
 
     void paint(Graphics& graphics) override {
@@ -158,12 +182,15 @@ public:
         layoutSliderRow(octave, nextRow(rows, true));
         layoutSliderRow(pitch, nextRow(rows, true));
         layoutVoiceLengthRow(nextRow(rows, true));
-        layoutToggleRow(nextRow(rows, false), portamento);
+        layoutSelectorRow(nextRow(rows, true), noteModeLabel, noteModeSelector);
+        layoutToggleRow(nextRow(rows, true), portamento);
+        layoutSliderRow(glideTime, nextRow(rows, false));
 
         rows.removeFromTop(PropertyControlMetrics::sectionGap);
         synthesisGroup.setBounds(
                 rows.removeFromTop(PropertyControlMetrics::groupLabelHeight));
         rows.removeFromTop(kGroupHeaderContentGap);
+        layoutSelectorRow(nextRow(rows, true), envelopeModulationLabel, envelopeModulationSelector);
         layoutOversamplingRow(nextRow(rows, true));
         layoutControlIntervalRow(nextRow(rows, true));
         layoutToggleRow(nextRow(rows, false), pitchIndependentSpectralControl);
@@ -184,6 +211,11 @@ public:
         state->setProperty("oversampling", oversamplingSelector.selectedValue());
         state->setProperty("controlInterval", controlIntervalSelector.selectedValue());
         state->setProperty("portamento", portamento.getToggleState());
+        state->setProperty("noteMode", noteModeSelector.selectedValue());
+        state->setProperty("envelopeModulation", envelopeModulationSelector.selectedValue());
+        state->setProperty("portamentoSeconds", propertySliderRowAutomationState(glideTime));
+        state->setProperty("portamentoEnabled", portamento.isEnabled());
+        state->setProperty("glideTimeEnabled", glideTime.slider.isEnabled());
         state->setProperty("pitchIndependentSpectralControl",
                 pitchIndependentSpectralControl.getToggleState());
         state->setProperty(
@@ -210,10 +242,18 @@ private:
     }
 
     void configureSelectors() {
+        stylePropertyLabel(noteModeLabel, "Note mode");
+        stylePropertyLabel(envelopeModulationLabel, "Envelope morph");
         stylePropertyLabel(oversamplingLabel, "Oversampling");
         stylePropertyLabel(controlIntervalLabel, "Control interval");
         oversamplingSelector.setComponentID("voiceContextEditor.oversampling");
         controlIntervalSelector.setComponentID("voiceContextEditor.controlInterval");
+        noteModeSelector.setComponentID("voiceContextEditor.noteMode");
+        envelopeModulationSelector.setComponentID("voiceContextEditor.envelopeModulation");
+        addAndMakeVisible(noteModeLabel);
+        addAndMakeVisible(envelopeModulationLabel);
+        addAndMakeVisible(noteModeSelector);
+        addAndMakeVisible(envelopeModulationSelector);
         addAndMakeVisible(oversamplingLabel);
         addAndMakeVisible(controlIntervalLabel);
         addAndMakeVisible(oversamplingSelector);
@@ -224,19 +264,38 @@ private:
         controlIntervalSelector.onChange = [this](const String& value) {
             setControlInterval(value);
         };
+        noteModeSelector.onChange = [this](const String& value) {
+            if (!commands.setNodeParameterText(node.id, "noteMode", "Note mode", value)) {
+                noteModeSelector.setSelectedValue(
+                        NodeParameterMap(node).stringValue("noteMode", "polyphonic"));
+            }
+            updateGlideAvailability();
+        };
+        envelopeModulationSelector.onChange = [this](const String& value) {
+            if (!commands.setNodeParameterText(
+                        node.id, "envelopeModulation", "Envelope morph", value)) {
+                envelopeModulationSelector.setSelectedValue(
+                        NodeParameterMap(node).stringValue("envelopeModulation", "latched"));
+            }
+        };
         configurePortamento();
         configurePitchIndependentSpectralControl();
     }
+
     void configurePortamento() {
         portamento.setButtonText("Portamento");
         portamento.setComponentID("voiceContextEditor.portamento");
-        portamento.setTooltip("Glide continuously between successive pitches.");
+        portamento.setTooltip("Enable pitch glide between overlapping notes in Legato mode.");
         portamento.onClick = [this] {
-            commands.setNodeParameterValue(
-                    node.id,
-                    "portamento",
-                    "Portamento",
-                    portamento.getToggleState() ? 1.f : 0.f);
+            if (!commands.setNodeParameterValue(
+                        node.id,
+                        "portamento",
+                        "Portamento",
+                        portamento.getToggleState() ? 1.f : 0.f)) {
+                portamento.setToggleState(
+                        NodeParameterMap(node).boolValue("portamento", false), dontSendNotification);
+            }
+            updateGlideAvailability();
         };
         addAndMakeVisible(portamento);
     }
@@ -261,6 +320,7 @@ private:
         configureOctave();
         configureVoiceLength();
         configurePitch();
+        configureGlideTime();
     }
 
     void configureOctave() {
@@ -323,6 +383,33 @@ private:
         pitch.setValueJustification(Justification::centredLeft);
     }
 
+    void configureGlideTime() {
+        glideTime.slider.setRange(0.0, 0.5, 0.001);
+        glideTime.slider.setComponentID("voiceContextEditor.portamentoSeconds");
+        glideTime.value.setComponentID("voiceContextEditor.portamentoSeconds.value");
+        glideTime.configureValuePresentation(
+                [](double value) {
+                    return String(value, 3).trimCharactersAtEnd("0").trimCharactersAtEnd(".") + " s";
+                },
+                [](const String& text) { return parsePropertyNumber(text, "s"); },
+                0.06,
+                0.01,
+                0.001,
+                "Legato pitch-glide duration. Arrow keys adjust 0.01 s; Shift adjusts 0.001 s.");
+        glideTime.slider.setLandmarks({ { 0.0, "0" }, { .1, "0.1" }, { .25, "0.25" }, { .5, "0.5" } });
+        glideTime.slider.setTrackEndInset(kLandmarkEndInset);
+        glideTime.setValueJustification(Justification::centredLeft);
+    }
+
+    void updateGlideAvailability() {
+        const bool legato = noteModeSelector.selectedValue() == "legato";
+        const bool glide = legato && portamento.getToggleState();
+        portamento.setEnabled(legato);
+        glideTime.slider.setEnabled(glide);
+        glideTime.value.setEnabled(glide);
+        glideTime.unit.setEnabled(glide);
+    }
+
     void setOversampling(const String& value) {
         if (!commands.setNodeParameterText(node.id, "oversampling", "Oversampling", value)) {
             oversamplingSelector.setSelectedValue(
@@ -340,6 +427,7 @@ private:
                     NodeParameterMap(node).stringValue("controlInterval", "16"));
         }
     }
+
     static Rectangle<int> nextRow(Rectangle<int>& rows, bool hasFollowingRow) {
         Rectangle<int> row = rows.removeFromTop(PropertyControlMetrics::rowHeight);
         if (hasFollowingRow) {
@@ -396,6 +484,11 @@ private:
     NodePropertySliderRow octave;
     NodePropertySliderRow voiceLength;
     NodePropertySliderRow pitch;
+    NodePropertySliderRow glideTime;
+    Label noteModeLabel;
+    PropertySegmentedSelector noteModeSelector { noteModeOptions() };
+    Label envelopeModulationLabel;
+    PropertySegmentedSelector envelopeModulationSelector { envelopeModulationOptions() };
     Label oversamplingLabel;
     PropertySegmentedSelector oversamplingSelector { oversamplingOptions() };
     Label controlIntervalLabel;
