@@ -19,16 +19,18 @@ classifying any additional missing mechanism as an engine feature request.
 
 ## M01 — Live envelope morph adoption during a held note
 
-Status: Confirmed timing limitation; existing design In Progress. High priority
-for the saxophone expression study. No implementation in the pilot PR.
+Status: Implemented as an opt-in Voice Context policy in the
+[core articulation follow-up](cycle-v2-expressive-saxophone-articulation.md).
+The original pilot did not implement this; ordinary presets still latch at
+note-on. The evidence below records the original obstacle.
 
 Musical task: vary vibrato depth/shape, pitch contour or scratch articulation
 after note-on, while retaining the current note and its traversal state.
 The user specifically requested recording this kind of obstacle as a feature
 request during modelling.
 
-Evidence: `SynthesisCapabilities.cpp` explicitly states that Envelope morph
-inputs latch at note-on. In `saxophone-3`, CC1 selects the volume envelope and
+Evidence at the pilot baseline: `SynthesisCapabilities.cpp` stated that Envelope
+morph inputs latch at note-on. In `saxophone-3`, CC1 selects the volume envelope and
 CC3 selects pitch/scratch envelope morphs; those routes cannot continuously
 adopt a new morph during the same note. The pilot reserves a repeated-note
 CC1 trajectory, but its audio is a performance probe, not an isolated proof of
@@ -57,6 +59,18 @@ continuity evidence at multiple rates/block partitions. Preserve the current
 latched behavior where the selected voice policy requests it. Controlling
 vibrato rate/depth may need upstream control composition as well; establish
 that mapping separately rather than claiming live adoption alone solves it.
+
+Implemented evidence (2026-10-21): Voice Context `envelopeModulation=live`
+adopts one changed preparation per envelope/block from starting controls,
+preserves normalized loop phase and freezes released geometry. Complete paired
+display/cycle preparation and generation checks retain the prior valid shape
+on failure; the cycle bank stores value-only old loop spans across delayed
+consumption. The saved expressive preset independently maps CC5 depth and CC76
+rate. Shared playback tests verify neutral pitch, approximately ±30 cents,
+0.2-second delay and 4.5/7.5 Hz endpoints. Eight live envelope voices measured
+0.157 ms maximum for seven cubes and 1.451 ms for 104 cubes at 48 kHz/256
+frames in Debug, with zero allocations/locks. This is bounded block/cycle
+adoption, not partition-independent sample timing or perceptual certification.
 
 ## M02 — Reviewable note regions from scales and continuous performances
 
@@ -116,6 +130,29 @@ search/simplification slice. Compare ablations and bounded shape reductions
 across notes, expressive combinations and trajectories after the evidence gate
 is met. Require retained behavior and explain each component's contribution;
 an isolated-note fit or a smaller file alone is insufficient.
+
+## M04 — Non-blocking capture of UI-scheduled performances
+
+Status: Source-level workflow limitation found while validating the embedded
+articulation phrase; full phrase capture uses the existing offline schedule.
+
+Musical task: capture the actual in-app demonstration while its controller
+lookahead, keyboard animation and audio-device callback continue normally.
+`CycleV2Automation::captureLiveAudio` currently calls
+`StandaloneAudioEngine::captureLiveAudio`, which synchronously waits for
+completion on the command/message thread. The keyboard's 60 Hz timer supplies
+controller lookahead in `PerformanceKeyboardPanel::updatePlayback`. Blocking
+that timer for a capture can exhaust the prepared lookahead, so this command
+cannot certify uninterrupted UI-scheduled controller trajectories. A nonzero
+captured sustain alone would not establish otherwise.
+
+Owner/direction: reuse the engine's existing live capture buffer and completion
+state, with asynchronous command completion or begin/status/fetch commands.
+Do not add another recorder, sequencer or audio-thread allocation. Acceptance:
+capture a complete saved phrase while timer/controller scheduling advances;
+preserve exact-instance provenance and expose dropouts/overruns. Until then,
+use exported `PatternPlaybackSchedule` for repeatable phrase WAVs and separate
+native Play/state checks for the app workflow.
 
 ## Related defects, tracked separately
 

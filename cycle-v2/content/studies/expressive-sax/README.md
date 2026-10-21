@@ -16,7 +16,41 @@ of the same factory structure. It compares source and synthesized pitch traces
 and raw/RMS auditions, without changing geometry or inventing source controls.
 Run its objective and audit stages with
 `scripts/run_cycle_v2_saxophone_calibration.py`; the runbook describes the local
-corpus layout. The following sections describe the original growl pilot.
+corpus layout.
+
+## Playable articulation preset
+
+Open [expressive-saxophone.cyclegraph](../../presets/expressive-saxophone.cyclegraph)
+and press Play in the keyboard to hear its embedded 28-second MIDI/controller
+phrase. It starts with isolated controls and continues with connected runs,
+held-note returns and combinations across registers. Overlapping notes share
+one legato voice per source/channel; separated notes articulate afresh.
+
+| Controller | Purpose |
+| --- | --- |
+| CC1 | Attack/release character; note-off determines short-note duration. |
+| CC2 | Brightness through the existing shared mesh morphs. |
+| CC3 | Existing timbral onset/scratch contour. |
+| CC4 | Air/rasp from component noise; some guide jitter remains at zero. |
+| CC5 | Delayed vibrato depth: neutral at zero, approximately ±30 cents at full. |
+| CC11 | Live expression gain, with a 0.35 floor for uninitialised controllers. |
+| CC76 | Vibrato rate, with 4.5 and 7.5 Hz endpoints. |
+| CC77 | 25 Hz amplitude roughness; acoustic growl remains a listening hypothesis. |
+
+The pitch envelope uses seven cubes in place of the factory's 104. The shared
+graph has 26 nodes and 57 cubes, including the added roughness envelope and
+output multiplier. Voice Context selects Live envelope morphing and Legato,
+with the existing Portamento control enabled at 0.06 seconds. The preset's
+explanation and node notes describe the design in the app.
+
+`scripts/create_cycle_v2_saxophone_articulation.py` reproduces the preset through
+semantic commands and generates independent-control captures and raw/RMS
+auditions. Its technical checks establish playable control response and
+continuity; acoustic authenticity and taste require human listening. This
+extends the core instrument without changing the frozen pilot/calibration
+evidence or reclassifying the consumed VCSL recordings as new holdouts.
+
+The remaining sections describe the original growl pilot.
 
 The plan and performance suites beside this file separate objective cases
 from reserved performance combinations before editing. Objective rendering

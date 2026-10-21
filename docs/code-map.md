@@ -148,12 +148,12 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Mature editor interaction | `lib/src/Inter/`, `cycle/src/Inter/` | Reuse/extract Cycle 1 behavior and preserve phase costs. |
 | Cycle 2 semantic edit | `GraphCommandDispatcher.h`, `scripts/create_cycle_v2_candidates.py` | `applyNodeEdits` authors atomic candidates; dispatcher owns validation, undo, and publication. |
 | Synthesis discovery | `Graph/SynthesisCapabilities.h` | Export registered metadata and canonical physical conversions. |
-| Cycle 2 audio execution | `cycle-v2/src/Runtime/` | Separate realtime, preview, preparation, and presentation work. |
+| Cycle 2 audio execution | `cycle-v2/src/Runtime/GraphAudioExecutor.h`, `cycle-v2/src/Runtime/RealtimeGraphRenderer.h`, `cycle-v2/src/Runtime/VoiceNoteState.h` | Separate graph execution, timed voice events and bounded held-note/glide policy. |
 | Performance suites | `scripts/render_cycle_v2_performance_suite.py` | Reuse captureAudio and coordinator; keep scheduling outside DSP. |
 | Cycle 2 node feature | matching `cycle-v2/src/Nodes/<Domain>/` | Keep model, DSP, editor, panel, and rendering responsibilities local. |
 | Canvas interaction/rendering | `cycle-v2/src/UI/NodeCanvas*.{h,cpp}` | Keep `NodeCanvas` orchestration-only; reuse scene and policy collaborators. |
 | UI regression | `docs/cycle-agent-runbook.md` | Use the smallest fixture and inspect filtered logs first. |
-| Explained examples / sax studies | `scripts/render_cycle_v2_exemplars.py`, `scripts/run_cycle_v2_saxophone_study.py`, `scripts/run_cycle_v2_saxophone_calibration.py` | Reuse semantic edits, suites and reports; reserve cases before refinement. |
+| Explained examples / sax studies | `scripts/render_cycle_v2_exemplars.py`, `scripts/run_cycle_v2_saxophone_study.py`, `scripts/run_cycle_v2_saxophone_calibration.py`, `scripts/create_cycle_v2_saxophone_articulation.py` | Reuse semantic edits, suites and reports; reserve cases before refinement. |
 | Audition comparisons / artifact freezes | `scripts/report_cycle_auditions.py`, `scripts/cycle_study_artifacts.py` | Reuse saved suites, provenance, diagnostics and immutable study boundaries. |
 | Labelled reference / pitch evidence | `scripts/cycle_reference_study.py`, `scripts/cycle_reference_pitch_evidence.py` | Reuse cached analysis; retain confidence and effective pitch-path provenance. |
 | Preset/graph persistence | `GraphSerializer.h`, product `content/` | Preserve migrations and canonical on-disk formats. |

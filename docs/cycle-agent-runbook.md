@@ -390,6 +390,23 @@ Source velocity and control settings remain unknown. See
 `docs/TDD/cycle-v2-saxophone-reference-calibration.md`; straighter tracked pitch
 alone does not establish timbre, taste, economy or an expressive saxophone.
 
+To author the core articulation preset and its embedded 28-second MIDI/CC phrase,
+use the canonical semantic editor and the existing performance/audition owners:
+
+```sh
+python3 scripts/create_cycle_v2_saxophone_articulation.py --no-build --output-dir .context/sax-articulation
+```
+
+Build `CycleV2` first and install `scripts/requirements-auditions.txt` in the
+invoking Python environment. Each output directory is new. The driver verifies
+shape undo/redo, save/reload, invalid sequence rejection, independent controls,
+connected notes and exact repeated captures. Its saved graph contains the
+controller lanes; load it and use the keyboard's Play button to hear the phrase.
+The report provides raw and RMS-matched comparisons plus the complete phrase.
+These are technical control demonstrations; acoustic growl and human taste
+still require listening. See `cycle-v2-expressive-saxophone-articulation.md` in
+`docs/TDD/` for the live-envelope cadence and legato contract.
+
 ## Crash And Assertion Triage
 
 Use a minimal fixture and inspect its report, `run.json`, and scoped app logs.

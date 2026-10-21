@@ -1080,3 +1080,25 @@ failure at `TestNodeCanvasAuthoring.cpp:232` is already tracked in
 capture, display-domain persistence, and output visibility tests pass.
 Status: open; reconcile these fixture and preview expectations independently
 of Spy card presentation.
+
+## P2: Expressive articulation validation exposes resampler assertions and unused-axis allocation
+
+On 2026-10-21, the new opted-in legato path retained a 2048-sample spectral
+frame across high-to-low slurs. Its large frame/period ratios violated the
+streaming Hermite resampler's small-padding assumption (`Resampling.cpp:281`),
+with 20 counted allocations including assertion reporting. Evidence:
+`.context/articulation-domain-second.log` in the articulation implementation
+worktree. The fix reuses the shared periodic Hermite sampler for this path;
+ordinary polyphonic playback keeps its original streaming behavior.
+
+The eight-voice factory benchmark then exposed a separate pre-existing
+allocation: ModulationTriple rendered its disconnected yellow axis through
+`makeOutputPayload`, creating one fallback SignalBuffer per voice/callback.
+The allocation stack is `.context/legato-allocation-trace.log`; 32 callbacks
+over eight voices counted 256 allocations. Realtime execution now retains
+empty placeholders for explicitly disconnected output views. Diagnostic and
+direct processing retain all axes. A timed connected-axis regression checks
+that skipping unused axes preserves the controller response.
+
+Status: resolved. Final clean allocation, assertion and performance verification
+is recorded in the articulation TDD, including the eight-voice factory graph.
