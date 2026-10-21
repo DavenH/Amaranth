@@ -148,6 +148,17 @@ class SaxophoneArticulationTest(unittest.TestCase):
         self.assertLess(held["startSeconds"], excursion["startSeconds"])
         self.assertLess(excursion["startSeconds"] + excursion["durationSeconds"], held["startSeconds"] + held["durationSeconds"])
 
+    def test_demo_integer_controller_variation_fits_shared_export_queue_before_expansion(self):
+        sequence = demonstration_sequence()
+        # A monotone segment cannot emit more distinct integer changes than its total variation.
+        # This bounds authored content without copying the shared five-millisecond scheduler.
+        maximum_controls = len(DEFAULT_CONTROLLERS)
+        for controller in DEFAULT_CONTROLLERS:
+            lane = [point for point in sequence["controls"] if point["controller"] == controller]
+            maximum_controls += sum(abs(second["value"] - first["value"])
+                                    for first, second in zip(lane, lane[1:]))
+        self.assertLessEqual(maximum_controls + 2 * len(sequence["notes"]), 2048)
+
     def test_unexpected_source_shapes_ids_and_revisions_fail_before_any_authoring(self):
         for mutate in (
                 lambda graph: graph["nodes"].append({"id": "growlEnvelope"}),
