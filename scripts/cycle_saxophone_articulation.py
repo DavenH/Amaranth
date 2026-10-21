@@ -76,17 +76,16 @@ def _edge(source, source_port, dest, dest_port):
             "connectionKind": "signal", "attachmentType": "none"}
 
 
-def articulation_plan(graph):
+def articulation_plan(graph, voice_duration_seconds):
     """Translate a compatible inspected factory graph into semantic command inputs."""
     nodes = graph["nodes"]
     if any(node["id"] in ("expressionControls", "growlEnvelope", "growlMultiply") for node in nodes):
         raise ValueError("Articulation node IDs already exist")
-    voice = named(nodes, "voice")
-    unit_length = voice["parameters"]["voiceLength"]
-    if type(unit_length) not in (int, float) or not math.isfinite(unit_length) or not 0 <= unit_length <= 1:
-        raise ValueError("Expected the stored normalized Voice Context duration")
-    # Canonical mapping in CycleDsp::voiceLengthSeconds; not an envelope evaluator.
-    seconds = math.exp(8 * unit_length - 3)
+    named(nodes, "voice")
+    if (type(voice_duration_seconds) not in (int, float)
+            or not math.isfinite(voice_duration_seconds) or voice_duration_seconds <= 0):
+        raise ValueError("Supply a positive physical voice duration from the canonical parameter conversion")
+    seconds = voice_duration_seconds
     volume = named(nodes, "volumeEnvelope1")
     volume_model = copy.deepcopy(volume["model"])
     volume_mesh = volume_model["state"]["mesh"]["mainMesh"]

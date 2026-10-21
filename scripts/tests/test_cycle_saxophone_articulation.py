@@ -1,6 +1,5 @@
 import copy
 import json
-import math
 from pathlib import Path
 import sys
 import unittest
@@ -15,14 +14,15 @@ class SaxophoneArticulationTest(unittest.TestCase):
     def setUp(self):
         root = Path(__file__).resolve().parents[2]
         self.graph = json.loads((root / "cycle-v2/content/presets/saxophone-3.cyclegraph").read_text())
-        self.plan = articulation_plan(self.graph)
+        self.voice_duration_seconds = 2.082
+        self.plan = articulation_plan(self.graph, self.voice_duration_seconds)
 
     def edit(self, identifier):
         return next(item for item in self.plan["edits"] if item["nodeId"] == identifier)
 
     def test_planning_leaves_source_intact_and_returns_serializable_command_inputs(self):
         before = copy.deepcopy(self.graph)
-        articulation_plan(self.graph)
+        articulation_plan(self.graph, self.voice_duration_seconds)
         self.assertEqual(before, self.graph)
         json.dumps(self.plan, allow_nan=False)
         for edit in self.plan["edits"]:
@@ -60,7 +60,7 @@ class SaxophoneArticulationTest(unittest.TestCase):
 
     def test_pitch_rate_geometry_has_shared_delay_closed_loop_and_release(self):
         mesh = self.edit("pitchEnvelope1")["model"]["state"]["mesh"]["mainMesh"]
-        seconds = math.exp(8 * named(self.graph["nodes"], "voice")["parameters"]["voiceLength"] - 3)
+        seconds = self.voice_duration_seconds
         for red, rate in ((0, 4.5), (1, 7.5)):
             poles = [vertex for vertex in mesh["vertices"]
                      if vertex["time"] == 0 and vertex["key"] == red and vertex["mod"] == 1]
@@ -78,7 +78,7 @@ class SaxophoneArticulationTest(unittest.TestCase):
         self.assertLess(len(mesh["vertices"]), 100)
         self.assertTrue(all(vertex["amp"] == 1 for vertex in mesh["vertices"] if vertex["mod"] == 0))
         self.assertEqual(min(vertex["amp"] for vertex in mesh["vertices"]), .65)
-        seconds = math.exp(8 * named(self.graph["nodes"], "voice")["parameters"]["voiceLength"] - 3)
+        seconds = self.voice_duration_seconds
         for red in (0, 1):
             poles = [vertex for vertex in mesh["vertices"]
                      if vertex["time"] == 0 and vertex["key"] == red and vertex["mod"] == 1]
@@ -151,7 +151,6 @@ class SaxophoneArticulationTest(unittest.TestCase):
     def test_unexpected_source_shapes_ids_and_revisions_fail_before_any_authoring(self):
         for mutate in (
                 lambda graph: graph["nodes"].append({"id": "growlEnvelope"}),
-                lambda graph: named(graph["nodes"], "voice")["parameters"].update(voiceLength=float("nan")),
                 lambda graph: named(graph["nodes"], "volumeEnvelope1")["model"]["state"].update(revision=0),
                 lambda graph: named(graph["nodes"], "timeLayer1")["model"]["mesh"]["cubes"][1].update(vertexIds=[]),
                 lambda graph: graph.update(guideAssignments=[]),
@@ -159,7 +158,19 @@ class SaxophoneArticulationTest(unittest.TestCase):
             graph = copy.deepcopy(self.graph)
             mutate(graph)
             with self.assertRaises(ValueError):
-                articulation_plan(graph)
+                articulation_plan(graph, self.voice_duration_seconds)
+
+    def test_physical_duration_is_required_validated_and_controls_authored_timing(self):
+        for duration in (0, -1, float("nan"), float("inf"), True, "2.082", None):
+            with self.subTest(duration=duration), self.assertRaises(ValueError):
+                articulation_plan(self.graph, duration)
+        changed = articulation_plan(self.graph, self.voice_duration_seconds * 2)
+        before = self.edit("pitchEnvelope1")["model"]["state"]["mesh"]["mainMesh"]["vertices"]
+        changed_pitch = next(edit for edit in changed["edits"] if edit["nodeId"] == "pitchEnvelope1")
+        after = changed_pitch["model"]["state"]["mesh"]["mainMesh"]["vertices"]
+        self.assertEqual([vertex["amp"] for vertex in before], [vertex["amp"] for vertex in after])
+        for original, slower in zip(before, after):
+            self.assertEqual(original["phase"], slower["phase"] * 2)
 
 
 if __name__ == "__main__":
