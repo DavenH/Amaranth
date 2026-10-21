@@ -384,8 +384,8 @@ std::vector<TrimeshVertexParameter> TrimeshWidget::selectedVertexParameters() {
         return parameters;
     }
     const auto& yellow = parameters.front();
-    parameters.insert(parameters.begin() + 1,
-            { "guide.time", "component", 0.f, 0.f, 1.f, yellow.guideGain, yellow.enabled, true });
+    parameters.insert(parameters.begin(),
+            { "guide.time", "component curve", 0.f, 0.f, 1.f, yellow.guideGain, yellow.enabled, true });
     for (auto& parameter : parameters) {
         parameter.enabled &= vertexPropertyActive(parameter.id, bridge.getModel().getDimensionCount());
     }
@@ -899,8 +899,8 @@ Rectangle<float> TrimeshWidget::vertexParameterRailBounds(Rectangle<float> param
 
 String TrimeshWidget::vertexParameterId(int parameterIndex) {
     switch (parameterIndex) {
-        case 0:     return "vertex.time";
-        case 1:     return "guide.time";
+        case 0:     return "guide.time";
+        case 1:     return "vertex.time";
         case 2:     return "vertex.red";
         case 3:     return "vertex.blue";
         case 4:     return "vertex.phase";

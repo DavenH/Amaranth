@@ -5023,11 +5023,11 @@ TEST_CASE("Trimesh keeps inactive properties disabled and its Component selector
         REQUIRE(host.bind(document.graph().findNode("mesh"), bounds.toNearestInt(), document.revision()));
         const auto parameters = widget.selectedVertexParameters();
         REQUIRE(parameters.size() == 7);
-        REQUIRE(parameters[1].id == "guide.time");
-        REQUIRE(parameters[1].enabled);
-        REQUIRE(parameters[1].guideOnly);
+        REQUIRE(parameters[0].id == "guide.time");
+        REQUIRE(parameters[0].enabled);
+        REQUIRE(parameters[0].guideOnly);
         const auto dimensions = MorphDimensions::trimesh(count);
-        REQUIRE(parameters[0].enabled == dimensions.active(Vertex::Time));
+        REQUIRE(parameters[1].enabled == dimensions.active(Vertex::Time));
         REQUIRE(parameters[2].enabled == dimensions.active(Vertex::Red));
         REQUIRE(parameters[3].enabled == dimensions.active(Vertex::Blue));
         bool foundControls = false;
@@ -5042,6 +5042,7 @@ TEST_CASE("Trimesh keeps inactive properties disabled and its Component selector
                 auto* componentGuide = child->findChildWithID("trimesh.guide.time");
                 REQUIRE(componentGuide != nullptr);
                 REQUIRE(componentGuide->isEnabled());
+                REQUIRE(componentGuide->getBottom() < target->getY());
                 if (count < 3) {
                     REQUIRE(componentGuide->getBounds() == previousComponentBounds);
                 }
@@ -5066,12 +5067,12 @@ TEST_CASE("Envelope retains disabled morph properties and an independent Compone
         widget.prepareExpandedPanelComponent(*document.graph().findNode("env"), { 0.f, 0.f, 900.f, 500.f });
         const auto parameters = widget.selectedVertexParameters();
         REQUIRE(parameters.size() == 7);
-        REQUIRE(parameters[1].id == "guide.time");
-        REQUIRE(parameters[1].enabled);
-        REQUIRE(parameters[1].guideOnly);
+        REQUIRE(parameters[0].id == "guide.time");
+        REQUIRE(parameters[0].enabled);
+        REQUIRE(parameters[0].guideOnly);
         const MorphDimensions dimensions(count);
-        for (const int index : { 0, 2, 3 }) {
-            const int axis = index == 0 ? Vertex::Time : index == 2 ? Vertex::Red : Vertex::Blue;
+        for (const int index : { 1, 2, 3 }) {
+            const int axis = index == 1 ? Vertex::Time : index == 2 ? Vertex::Red : Vertex::Blue;
             REQUIRE(parameters[(size_t) index].enabled == dimensions.active(axis));
             if (!dimensions.active(axis)) {
                 REQUIRE_FALSE(widget.setSelectedVertexParameter(parameters[(size_t) index].id, 0.3f));

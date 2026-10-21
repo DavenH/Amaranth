@@ -1,6 +1,6 @@
 # Unified Mesh Dimensionality
 
-Status: Complete — usable vertex slider travel enforced and verified at normal and compact widths.
+Status: Complete — Component leads the property stack with a shared curve-segment glyph.
 
 ## Contract
 
@@ -176,7 +176,7 @@ Follow-up proof:
 
 ## Follow-up: persistent properties and orthographic reduced diagrams
 
-Keep seven stable property slots in both editors: Yellow, Component, Red, Blue,
+Keep seven stable property slots in both editors: Component, Yellow, Red, Blue,
 Phase, Amplitude, Curve. Coordinate properties outside the active dimensions are
 visible and disabled, including their inapplicable guide controls. Component is
 an independent, always-applicable guide selector using the existing Time-slot
@@ -282,3 +282,44 @@ Completion proof:
   66 -> 80 lines owns allocation; PropertyControls header 219 -> 233 owns role
   tokens. No new interaction, transaction, DSP or invalidation responsibilities.
   The fixed-split and local-width deletion targets are complete.
+
+## Follow-up: Component first and a segment glyph
+
+Put Component curve in the first row above Yellow and the remaining vertex
+properties in both families. Retain the same seven row slots, width budgets,
+guide routing and mode stability. Render a dedicated vector glyph beside its
+label: two bright intercept dots with a blue wave-shaped segment between them,
+distinct from the existing Guide resource icon in the selector.
+
+Use the existing cached NodeIconRenderer/resource pipeline. Glyph canvas is
+32 × 20 px inside the existing row, with an 8 px label gap; SVG viewBox 48 × 30,
+endpoint centres at x=6/42 and a 2.4-unit wave stroke. No new painter or cache
+owner. The shared side-panel renderer owns row order and presentation; domain
+adapters expose Component first without changing stored Time-slot guide data.
+Delete the interposed Component slot. Verify routed selector placement,
+unchanged minimum slider travel, parseable glyph, normal/compact captures and
+native menu interaction before completing this slice.
+
+Completion proof:
+
+- Both presentation lists and the shared slot authority put Component first;
+  routed Trimesh control bounds prove its selector sits above Yellow in all
+  modes. The six coordinate/property sliders retain their 140–220 px travel.
+- The new `componentCurve.svg` uses the existing generated resource list and
+  cached NodeIconRenderer, with the shared Guide glyph kept in the menu control.
+  Parse/render coverage checks both glyphs at production sizes. Normal/compact
+  Trimesh and compact Envelope captures show readable dots, wave and label.
+- 47 focused cases / 3,331 assertions and the updated 85-command fixture pass.
+  CycleV2 and tests build with `--parallel 10`. Native clicks open both Component
+  menus at the top row; screenshots visibly show the Guide options. Automation
+  omits empty Yellow guide rectangles to avoid duplicate Time selector targets.
+  Native target inspection proves the Envelope Component selector is unique.
+- Evidence: `.context/component-curve-{tests,native}.log`,
+  `component-curve-ui-run.json`, `component-curve-{normal-3d,normal-static,compact-static,compact-envelope}.png`,
+  and `component-curve-{trimesh,envelope}-menu.png`. Static capture preparation
+  asserts its selected mode; native acceptance covers the relocated selectors.
+- Architecture/style/code-map/whitespace checks pass. EnvelopeCurvePanel
+  1324 -> 1324 and TrimeshWidget 958 -> 958 remain domain presentation adapters;
+  side-panel painter 739 -> 743 owns shared slot/icon presentation; automation
+  inspector 1160 -> 1163 filters empty geometry only. No domain, guide-mapping,
+  transaction or DSP ownership changed. The interposed slot is removed.

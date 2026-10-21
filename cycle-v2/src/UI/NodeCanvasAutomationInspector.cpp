@@ -421,6 +421,9 @@ public:
                 const auto bounds = AutomationValueEncoder::rectangleFromVar(
                         parameter->getProperty(property)).translated(
                                 panel.getX(), panel.getY());
+                if (bounds.isEmpty()) {
+                    continue;
+                }
                 targets.add(pointerTargetToVar(
                         "expanded:" + node.id + "." + suffix + "." + field,
                         "envelopeGuideControl",

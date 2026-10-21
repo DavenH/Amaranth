@@ -542,9 +542,9 @@ public:
             return cube != nullptr ? cube->guideCurveGainAt(dimension) : 0.5f;
         };
         std::vector<TrimeshVertexParameter> parameters {
+                { "guide.time", "component curve", 0.f, 0.f, 1.f, gain(Vertex::Time), true, true },
                 { "vertex.time", "yellow", vertex->values[Vertex::Time], 0.f, 1.f,
                         gain(Vertex::Time) },
-                { "guide.time", "component", 0.f, 0.f, 1.f, gain(Vertex::Time), true, true },
                 { "vertex.red", "red", vertex->values[Vertex::Red], 0.f, 1.f,
                         gain(Vertex::Red) },
                 { "vertex.blue", "blue", vertex->values[Vertex::Blue], 0.f, 1.f,

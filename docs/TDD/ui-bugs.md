@@ -745,3 +745,10 @@ the semantic reduced-gesture fixture and editor tests. Evidence:
 and successful run identity `a10ee2c48615`. Parallel CycleV2 launches also disrupted
 some earlier attempts. Current status: open as native fixture/input timing work;
 no full native-suite reliability claim is made.
+
+The Component-row review also missed one native Static-pill click: the intended
+Static screenshots still showed 3D. Its corrected capture preparation uses an
+in-app mode click and asserts `dimensionCount=0` before capture. Native acceptance
+for the relocated Component menus passes for both families. Artifacts:
+`.context/native-component-curve-review.py` and `.context/component-curve-native.log`.
+This is separate from the passing 85-command mode/row fixture.

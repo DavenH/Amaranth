@@ -66,6 +66,11 @@ the existing two-dimensional envelope presentation and interaction language,
 including its curve geometry, selection, controls, and undo. A new miniature
 curve editor inside every comparison card would be a second interaction system.
 
+In mesh editors, put Component curve above the vertex coordinate/property rows.
+Depict a component as two intercepts with a wave-shaped segment between them;
+keep the Guide resource glyph in the attachment selector. The two concepts
+should remain recognizable together.
+
 ## Make visualizations truthful and comparable
 
 - A Spy shows the observed processed signal; a Trimesh node shows authored mesh

@@ -475,12 +475,12 @@ void TrimeshSidePanelRenderer::drawMorphCubePreview(
 
 int TrimeshSidePanelRenderer::vertexParameterSlot(const String& id, int slotCount) {
     if (id == "guide.time") {
-        return 1;
+        return 0;
     }
     const String field = id.fromLastOccurrenceOf(".", false, false);
     const int index = field == "time" ? 0 : field == "red" ? 1 : field == "blue" ? 2
             : field == "phase" ? 3 : field == "amp" ? 4 : 5;
-    return index + (slotCount == 7 && index > 0 ? 1 : 0);
+    return index + (slotCount == 7 ? 1 : 0);
 }
 
 void TrimeshSidePanelRenderer::drawVertexParameters(
@@ -526,7 +526,7 @@ void TrimeshSidePanelRenderer::drawVertexParameter(
     const auto rail = vertexParameterRailBounds(row, guideControls);
 
     const auto guideBox = vertexGuideBounds(row);
-    const auto labelBox = parameter.guideOnly
+    auto labelBox = parameter.guideOnly
             ? row.withRight(guideBox.getX() - kVertexCellGap).reduced(8.f, 0.f) : vertexLabelBounds(row);
     const auto gainBox = vertexParameterGuideGainBounds(row);
     const Rectangle<float> sliderBody = guideControls == GuideControls::Visible
@@ -534,6 +534,10 @@ void TrimeshSidePanelRenderer::drawVertexParameter(
             : row;
     if (!parameter.guideOnly) {
         drawSliderRowBody(g, sliderBody);
+    } else {
+        const Rectangle<float> icon(labelBox.getX(), row.getCentreY() - 10.f, 32.f, 20.f);
+        NodeIconRenderer::paint(g, "componentCurve", icon);
+        labelBox.removeFromLeft(40.f);
     }
 
     g.setColour(kMutedText);
