@@ -350,6 +350,24 @@ fingerprints, and verifies repeated PCM. See
 [Performance Suites](cycle-performance-suites.md) for the manifest and artifact
 contract; `--plan` validates without starting an app.
 
+For the bounded expressive-saxophone pilot, use the existing suite and reference
+owners through two separate stages:
+
+```sh
+python3 scripts/run_cycle_v2_saxophone_study.py --stage objective --output-dir .context/sax-pilot
+python3 scripts/run_cycle_v2_saxophone_study.py --stage audit --output-dir .context/sax-pilot
+```
+
+Build the exact app first; `--no-build` reuses that build. Plot generation uses
+the host dependencies in `scripts/requirements-auditions.txt`. The objective
+stage saves the fixed slower-peak intervention and freezes its identities before
+the audit renders reserved performance combinations. Never reuse an objective
+output directory or change frozen inputs to continue an audit. The one growl
+recording has unverified musical labels: the report remains unpitched and does
+not validate saxophone expression across the synthetic test performances. See
+`cycle-v2/content/studies/expressive-sax/README.md` and the pilot TDD for coverage,
+control timing and the still-open acoustic/search gate.
+
 ## Crash And Assertion Triage
 
 Use a minimal fixture and inspect its report, `run.json`, and scoped app logs.

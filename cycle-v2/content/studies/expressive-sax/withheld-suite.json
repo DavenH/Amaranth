@@ -1,0 +1,201 @@
+{
+  "schema": "cycle-performance-suite.v1",
+  "id": "sax-withheld",
+  "repetitions": 2,
+  "render": {
+    "sampleRate": 44100,
+    "blockSize": 512,
+    "channels": 2,
+    "randomSeed": 1729,
+    "ratePolicy": "native"
+  },
+  "budget": {
+    "maxRenders": 8,
+    "maxAudioSeconds": 16,
+    "maxWallSeconds": 240
+  },
+  "cases": [
+    {
+      "id": "intermediate-register",
+      "durationMs": 2000,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 63
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 80
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 64,
+          "velocity": 0.8
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 1200,
+          "note": 64
+        }
+      ],
+      "labels": {
+        "purpose": "technical synthetic performance; acoustic saxophone equivalence unverified"
+      }
+    },
+    {
+      "id": "reversed-cc2",
+      "durationMs": 2000,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 127
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 57,
+          "velocity": 0.65
+        },
+        {
+          "type": "controller",
+          "timeMs": 200,
+          "controller": 2,
+          "value": 64
+        },
+        {
+          "type": "controller",
+          "timeMs": 450,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 1200,
+          "note": 57
+        }
+      ],
+      "labels": {
+        "purpose": "technical synthetic performance; acoustic saxophone equivalence unverified"
+      }
+    },
+    {
+      "id": "repeated-note-cc1-latch",
+      "durationMs": 2000,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 57,
+          "velocity": 0.65
+        },
+        {
+          "type": "controller",
+          "timeMs": 200,
+          "controller": 1,
+          "value": 127
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 450,
+          "note": 57
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 650,
+          "note": 57,
+          "velocity": 0.65
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 1200,
+          "note": 57
+        }
+      ],
+      "labels": {
+        "purpose": "technical synthetic performance; acoustic saxophone equivalence unverified",
+        "controlTiming": "CC1 changes during first note; only subsequent note adopts its envelope morph"
+      }
+    },
+    {
+      "id": "soft-intermediate",
+      "durationMs": 2000,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 48
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 32
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 62,
+          "velocity": 0.25
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 1200,
+          "note": 62
+        }
+      ],
+      "labels": {
+        "purpose": "technical synthetic performance; acoustic saxophone equivalence unverified"
+      }
+    }
+  ]
+}

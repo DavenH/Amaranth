@@ -11,9 +11,15 @@ The first wave is merged:
 [audition reports](https://github.com/DavenH/Amaranth/pull/187) are merged, along
 with [factory preset refinements](https://github.com/DavenH/Amaranth/pull/189).
 [Group explanations and cards](https://github.com/DavenH/Amaranth/pull/192) are
-implemented, with native input verification and screenshot review complete.
+merged, with native input verification and screenshot review complete.
 [Explained exemplars](https://github.com/DavenH/Amaranth/pull/191) are merged with
 controlled audition evidence.
+The bounded [saxophone pilot](cycle-v2-expressive-saxophone-pilot.md) is
+implemented. Its single recording permits exploratory comparisons; the
+expressive-reference and autonomous-search evidence gate remains open.
+Additional reference collection is the next step.
+Keep modelling obstacles and useful follow-ups in the evidence-linked
+[feature queue](cycle-v2-preset-modelling-feature-queue.md) during experiments.
 Remaining slices are proposed.
 Expand each nontrivial slice with the exact files, rough size envelope, lifecycle
 contract, and negative tests required by [the TDD policy](README.md) before

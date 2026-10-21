@@ -1,6 +1,25 @@
 # Audio Bug Notes
 
-## P3: Rendered CC1 output differences slightly precede scheduled events
+## P2: Reference analysis exports Cycle note numbers under MIDI field names
+
+On 2026-10-20, saxophone-pilot reference triage found
+`ReferenceAutomation.cpp` exports `sample.fundNote` as `effectiveMidiNote` and
+raw pitch-path values as `midiNote`. These use Cycle's convention, where
+`NumberUtils::noteToFrequency` maps note 81 to 440 Hz. The audition diagnostic
+`cycle_audio_diff.harmonic_profile` uses standard MIDI, where note 69 is 440 Hz.
+The saved sax-growl analysis reports effective note 57 and period frequencies
+near 109.878 Hz; copying that number into audition pitch would put harmonic
+bands an octave too high. This is a metadata/convention boundary, not evidence
+of failed tracking or altered synthesis.
+
+Evidence: `.context/reference-study-first/analyses/000.json`, source
+`cycle-v2/src/Reference/ReferenceAutomation.cpp`, and
+`lib/src/Util/NumberUtils.h`. Status: open; make the exported convention explicit
+and provide a canonical conversion before consumers treat these fields as
+standard MIDI. The bounded pilot keeps pitch unspecified and uses unpitched
+descriptors; tracker confidence is not substituted for an observed pitch label.
+
+## P3: Rendered controller output differences slightly precede scheduled events
 
 On 2026-10-20, the explained-exemplar suite compared held CC1=0 with a matching
 performance changing CC1 at 200/450 ms. Notes, velocity, seed and render settings
@@ -21,6 +40,17 @@ slice's DSP. Source WAVs and full-prefix diagnostics are in
 in the exemplar worktree. Both conditions use matching executable/effective-graph
 hashes. Current status: open. Response proof records a 20 ms boundary guard and
 complete raw audio; no sample-exact controller-onset claim is made.
+
+The saxophone pilot reproduces this boundary behavior for CC2 with
+`saxophone-3.cyclegraph`: four stereo PCM samples differ before the 200 ms event,
+first frame 8757 (198.571429 ms), worst error one 24-bit LSB. Its 0–180 ms prefix
+is exact, and held output versus the same-time unused-CC118 schedule is exact.
+The slower-peak candidate differs in five pre-event samples, first at
+198.752834 ms, with the same one-LSB bound and exact 180 ms/control prefixes.
+Full diagnostics remain in `.context/sax-pilot-first/results.json` and original
+captures in its `baseline-renders/` and `candidate-renders/` folders; the
+independent candidate check is `.context/sax-pilot-artifact-audit.json` in the
+implementation worktree.
 
 ## Open: Ubuntu legacy BlockConvolver Dirac test loses about 0.1% per stage
 
