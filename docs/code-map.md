@@ -153,6 +153,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Cycle 2 node feature | matching `cycle-v2/src/Nodes/<Domain>/` | Keep model, DSP, editor, panel, and rendering responsibilities local. |
 | Canvas interaction/rendering | `cycle-v2/src/UI/NodeCanvas*.{h,cpp}` | Keep `NodeCanvas` orchestration-only; reuse scene and policy collaborators. |
 | UI regression | `docs/cycle-agent-runbook.md` | Use the smallest fixture and inspect filtered logs first. |
+| Audition comparisons | `scripts/report_cycle_auditions.py` | Reuse saved suites, reference provenance and diagnostic spectra. |
 | Labelled reference studies | `scripts/cycle_reference_study.py` | Reuse library IDs, cached analysis, and coordinated sessions. |
 | Preset/graph persistence | `GraphSerializer.h`, product `content/` | Preserve migrations and canonical on-disk formats. |
 

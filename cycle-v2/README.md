@@ -177,6 +177,10 @@ not change selection. Original tracking confidence remains separate from the
 effective, possibly edited pitch path. Grid amplitudes preserve existing
 peak normalization and half-gain folding, rather than absolute recording level.
 
+Saved performance and reference artifacts can be compared with
+[audition reports](../docs/cycle-audition-reports.md), including phase traces,
+raw/RMS A/B audio and withheld cases.
+
 ## Visual References
 
 These generated UI mockups are visual references, not implementation snapshots. They capture the intended density, routing clarity, node-preview richness, and studio-canvas atmosphere.
