@@ -10,10 +10,11 @@
 #include "UI/Editors/MorphKeyboardShortcutHelp.h"
 #include "UI/Editors/MorphKeyboardShortcuts.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/Editors/PropertyHoverTracker.h"
 
 namespace CycleV2 {
 
-class TrimeshControlsComponent::ControlTarget : public Component {
+class TrimeshControlsComponent::ControlTarget : public Component, public TooltipClient {
 public:
     ControlTarget(
             TrimeshControlsComponent& targetOwner,
@@ -64,6 +65,18 @@ public:
         setName(region.kind == TrimeshExpandedHitRegionKind::OutputScale
                 ? "TrimeshOutputScaleTarget"
                 : "TrimeshControlTarget");
+    }
+
+    String getTooltip() override { return owner.tooltipFor(region); }
+
+    void mouseEnter(const MouseEvent&) override {
+        owner.showPropertyFeedback(region.parameterId);
+    }
+
+    void mouseExit(const MouseEvent&) override {
+        if (owner.dragTarget == DragTarget::None) {
+            owner.showPropertyFeedback({});
+        }
     }
 
     void mouseDown(const MouseEvent& event) override {
@@ -130,9 +143,64 @@ TrimeshControlsComponent::TrimeshControlsComponent(TrimeshWidget& targetWidget) 
             *this,
             "trimesh.morph.shortcuts",
             true);
+    propertyHover = std::make_unique<PropertyHoverTracker>(*this, [this](Point<float> position) {
+        if (dragTarget != DragTarget::None) {
+            return;
+        }
+        String feedback;
+        for (const auto& region : controlHitRegions) {
+            if (region.bounds.contains(position) && isControlEnabled(region)
+                    && (region.kind == TrimeshExpandedHitRegionKind::VertexParameter
+                            || region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain)) {
+                feedback = region.parameterId;
+                break;
+            }
+        }
+        showPropertyFeedback(feedback);
+    });
 }
 
 TrimeshControlsComponent::~TrimeshControlsComponent() = default;
+
+void TrimeshControlsComponent::showPropertyFeedback(const String& id) {
+    if (widget.propertyFeedbackId() != id) {
+        widget.setPropertyFeedback(id);
+        if (auto* parent = getParentComponent()) {
+            parent->repaint();
+        }
+    }
+}
+
+String TrimeshControlsComponent::tooltipFor(const TrimeshExpandedHitRegion& region) {
+    const bool vertex = region.kind == TrimeshExpandedHitRegionKind::VertexParameter
+            || region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
+            || region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment;
+    if (vertex && widget.selectedVertexIndexForPanel() < 0) {
+        return "Select a curve point to edit its properties.";
+    }
+    if (vertex && !TrimeshWidget::vertexPropertyActive(region.parameterId,
+            NodeParameterMap(node).intValue("dimensionCount", 0))) {
+        return "Unavailable in the current Curve morphing mode.";
+    }
+    if (region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
+            && !widget.hasGuideAttachmentForParameter(region.parameterId)) {
+        return "Attach a Guide curve to adjust its gain.";
+    }
+    if (region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment) {
+        return "Choose a Guide curve for this component.";
+    }
+    return TrimeshSidePanelRenderer::propertyTooltip(widget.selectedVertexParameters(), region.parameterId);
+}
+
+String TrimeshControlsComponent::getTooltip() {
+    const auto position = getMouseXYRelative().toFloat();
+    for (const auto& region : controlHitRegions) {
+        if (region.bounds.contains(position)) {
+            return tooltipFor(region);
+        }
+    }
+    return {};
+}
 
 void TrimeshControlsComponent::setDelegate(TrimeshControlsDelegate* nextDelegate) {
     delegate = nextDelegate;
@@ -382,6 +450,7 @@ void TrimeshControlsComponent::beginControlDrag(
         Point<float> position,
         Rectangle<int> screenArea) {
     rememberMorphFocus(region);
+    showPropertyFeedback(region.parameterId);
     float value {};
 
     switch (region.kind) {

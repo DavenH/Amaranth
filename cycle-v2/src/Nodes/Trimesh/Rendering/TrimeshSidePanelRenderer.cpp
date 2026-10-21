@@ -138,22 +138,6 @@ Path cubeFacePath(const std::array<Point<float>, 8>& points, int faceIndex) {
     return face;
 }
 
-void drawScanLines(Graphics& g, Rectangle<float> area, Colour colour, float alpha) {
-    g.setColour(colour.withAlpha(alpha));
-
-    for (float y = area.getY() + 2.f; y < area.getBottom(); y += 3.f) {
-        g.drawHorizontalLine(roundToInt(y), area.getX(), area.getRight());
-    }
-}
-
-void drawSliderRowBody(Graphics& g, Rectangle<float> body) {
-    g.setColour(Colour(0xff050607).withAlpha(0.86f));
-    g.fillRect(body);
-    drawScanLines(g, body, Colour(0xff59606a), 0.16f);
-    g.setColour(Colour(0xffd8d5ca).withAlpha(0.22f));
-    g.drawRect(body, 1.f);
-}
-
 Rectangle<float> axisLabelBounds(Rectangle<float> row) {
     return row.removeFromLeft(kAxisLabelW).reduced(8.f, 0.f);
 }
@@ -267,16 +251,18 @@ void TrimeshSidePanelRenderer::drawSidePanel(
         bool showOutputScale,
         PortDomain outputDomain,
         float outputScale,
-        int dimensionCount) {
+        int dimensionCount, const String& feedbackParameter) {
     auto controls = area;
     if (showOutputScale) {
         controls.removeFromBottom(52.f);
     }
     drawMorphControls(g, controls, axes, dimensionCount, MorphDimensions::Plane::YellowRed, cubeVertices);
     drawVertexParameters(g, MorphControlLayout(controls, dimensionCount).vertices(),
-            parameters, guideAttachmentLabels, 1.f, GuideControls::Visible, 7);
+            parameters, guideAttachmentLabels, 1.f, GuideControls::Visible, 7, feedbackParameter);
     if (showOutputScale) {
-        OutputScaleControlRenderer::draw(g, outputScaleRowBounds(area),
+        const auto outputRow = outputScaleRowBounds(area);
+        paintPropertyGroupLabel(g, outputRow.withY(outputRow.getY() - 10.f).withHeight(12.f), "Output");
+        OutputScaleControlRenderer::draw(g, outputRow,
                 outputScaleRailBounds(area), outputDomain, outputScale);
     }
 }
@@ -325,7 +311,7 @@ void TrimeshSidePanelRenderer::drawMorphCubePreview(
     }
 
     auto header = area.reduced(8.f, 5.f).removeFromTop(18.f);
-    paintPropertyGroupLabel(g, header, "Cube display");
+    paintPropertyGroupLabel(g, header, "Morph space");
 
     area = area.withTrimmedTop(22.f).reduced(3.f, 0.f);
 
@@ -428,6 +414,16 @@ void TrimeshSidePanelRenderer::drawMorphCubePreview(
         }
     }
 
+    const int labelCorners[3] { kCubeAxes[2][1], kCubeAxes[1][1], kCubeAxes[0][1] };
+    const Point<float> labelOffsets[3] { { 4.f, -6.f }, { -5.f, 2.f }, { -5.f, -14.f } };
+    for (int axis = 0; axis < 3; ++axis) {
+        const auto point = expandedPoints[(size_t) labelCorners[axis]];
+        g.setColour(axes[(size_t) axis].colour);
+        g.setFont(FontOptions(9.f));
+        g.drawText(axes[(size_t) axis].shortLabel,
+                Rectangle<float>(point.x + labelOffsets[axis].x, point.y + labelOffsets[axis].y, 10.f, 12.f), Justification::centred);
+    }
+
     const float red = jlimit(0.f, 1.f, axes[1].value);
     const float blue = jlimit(0.f, 1.f, axes[2].value);
     const float time = jlimit(0.f, 1.f, axes[0].value);
@@ -461,26 +457,20 @@ void TrimeshSidePanelRenderer::drawMorphCubePreview(
     for (int i = 0; i < 8; ++i) {
         const bool selected = hasPreviewCube && linkedHighlights[(size_t) i];
 
-        g.setColour(Colours::black);
-        g.fillEllipse(Rectangle<float>(selected ? 5.f : 4.f, selected ? 5.f : 4.f)
-                .withCentre(previewPoints[(size_t) i]));
-        g.setColour(selected ? Colours::red : Colours::white);
-        g.fillEllipse(Rectangle<float>(selected ? 2.2f : 1.5f, selected ? 2.2f : 1.5f)
-                .withCentre(previewPoints[(size_t) i]));
+        paintMorphPreviewVertex(g, previewPoints[(size_t) i], selected);
     }
 
-    g.setColour(Colours::white);
-    g.fillEllipse(Rectangle<float>(2.f, 2.f).withCentre(morphPoint));
+    paintMorphPreviewCursor(g, morphPoint);
 }
 
 int TrimeshSidePanelRenderer::vertexParameterSlot(const String& id, int slotCount) {
     if (id == "guide.time") {
-        return 0;
+        return slotCount - 1;
     }
     const String field = id.fromLastOccurrenceOf(".", false, false);
     const int index = field == "time" ? 0 : field == "red" ? 1 : field == "blue" ? 2
             : field == "phase" ? 3 : field == "amp" ? 4 : 5;
-    return index + (slotCount == 7 ? 1 : 0);
+    return index;
 }
 
 void TrimeshSidePanelRenderer::drawVertexParameters(
@@ -490,7 +480,8 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
         const std::array<String, 6>& guideAttachmentLabels,
         float heightScale,
         GuideControls guideControls,
-        int stableSlotCount) {
+        int stableSlotCount,
+        const String& feedbackParameter) {
     if (area.getHeight() < 28.f) {
         return;
     }
@@ -502,25 +493,25 @@ void TrimeshSidePanelRenderer::drawVertexParameters(
     area = area.withHeight(jmin(area.getHeight(), desiredHeight));
 
     auto header = area.reduced(8.f, 5.f).removeFromTop(18.f);
-    paintPropertyGroupLabel(g, header, "Vertex parameters");
+    const auto headingRow = vertexParameterRowBounds(area, 0, heightScale, slotCount);
+    paintPropertyGroupLabel(g, header.withRight(vertexGuideBounds(headingRow).getX() - kVertexCellGap), "Vertex");
+    g.setColour(kMutedText);
+    g.setFont(FontOptions(9.f));
+    g.drawText("Guide", vertexGuideBounds(headingRow).withY(header.getY()).withHeight(header.getHeight()), Justification::centred);
+    g.drawText("Gain", vertexParameterGuideGainBounds(headingRow).withY(header.getY()).withHeight(header.getHeight()), Justification::centred);
 
     for (int i = 0; i < (int) parameters.size(); ++i) {
         const auto& parameter = parameters[(size_t) i];
         const int slot = stableSlotCount > 0 ? vertexParameterSlot(parameter.id, slotCount) : i;
         const auto row = vertexParameterRowBounds(area, slot, heightScale, slotCount);
-        if (!parameter.enabled) {
-            g.beginTransparencyLayer(0.55f);
-        }
-        drawVertexParameter(g, row, parameter, guideAttachmentLabels, guideControls);
-        if (!parameter.enabled) {
-            g.endTransparencyLayer();
-        }
+        drawVertexParameter(g, row, parameter, guideAttachmentLabels, guideControls, feedbackParameter);
     }
 }
 
 void TrimeshSidePanelRenderer::drawVertexParameter(
         Graphics& g, Rectangle<float> row, const TrimeshVertexParameter& parameter,
-        const std::array<String, 6>& guideAttachmentLabels, GuideControls guideControls) {
+        const std::array<String, 6>& guideAttachmentLabels, GuideControls guideControls,
+        const String& feedbackParameter) {
     const bool showRowGuideControls = guideControls == GuideControls::Visible
             && showsGuideControlsForParameter(parameter.id);
     const auto rail = vertexParameterRailBounds(row, guideControls);
@@ -529,19 +520,14 @@ void TrimeshSidePanelRenderer::drawVertexParameter(
     auto labelBox = parameter.guideOnly
             ? row.withRight(guideBox.getX() - kVertexCellGap).reduced(8.f, 0.f) : vertexLabelBounds(row);
     const auto gainBox = vertexParameterGuideGainBounds(row);
-    const Rectangle<float> sliderBody = guideControls == GuideControls::Visible
-            ? row.withRight(guideBox.getX() - kVertexCellGap)
-            : row;
-    if (!parameter.guideOnly) {
-        drawSliderRowBody(g, sliderBody);
-    } else {
+    if (parameter.guideOnly) {
         const Rectangle<float> icon(labelBox.getX(), row.getCentreY() - 10.f, 32.f, 20.f);
         NodeIconRenderer::paint(g, "componentCurve", icon);
         labelBox.removeFromLeft(40.f);
     }
 
-    g.setColour(kMutedText);
-    g.setFont(FontOptions(10.5f));
+    g.setColour(parameter.enabled ? Colour(0xffb8c1cd) : Colour(0xff8793a1));
+    g.setFont(FontOptions(11.f));
     g.drawText(parameter.label.toLowerCase(), labelBox, Justification::centredLeft);
 
     const float range = parameter.maximum - parameter.minimum;
@@ -550,21 +536,31 @@ void TrimeshSidePanelRenderer::drawVertexParameter(
             : 0.f;
 
     if (!parameter.guideOnly) {
-        g.setColour(Colour(0xff15191e).withAlpha(0.88f));
-        g.fillRect(rail);
-        g.setColour(Colour(0xffb7bec7).withAlpha(0.84f));
-        g.fillRect(rail.withWidth(rail.getWidth() * normalized));
+        paintMorphSlider(g, rail, normalized, Colour(0xffb7bec7),
+                feedbackParameter == parameter.id, parameter.enabled);
     }
 
+    const String field = parameter.id.fromLastOccurrenceOf(".", false, false);
+    if (parameter.enabled && ((!parameter.guideOnly && feedbackParameter == parameter.id)
+            || (showRowGuideControls && feedbackParameter == "guideGain." + field))) {
+        const bool gain = feedbackParameter.startsWith("guideGain.");
+        const String text = gain ? String(parameter.guideGain * 100.f, 1) + "%" : String(parameter.value, 3);
+        g.setColour(kText);
+        g.setFont(FontOptions(10.5f));
+        g.drawText(text, rail.withY(row.getY()).withHeight(12.f), Justification::centredRight);
+    }
     if (!showRowGuideControls) {
         return;
     }
 
-    const String field = parameter.id.fromLastOccurrenceOf(".", false, false);
     const int guideIndex = field == "time" ? 0 : field == "red" ? 1
             : field == "blue" ? 2 : field == "phase" ? 3 : field == "amp" ? 4 : 5;
     const String guideLabel = guideAttachmentLabels[(size_t) guideIndex];
-    paintGuideGainKnob(g, gainBox, parameter.guideGain, guideLabel.isNotEmpty());
+    Graphics::ScopedSaveState guideState(g);
+    if (!parameter.enabled) {
+        g.beginTransparencyLayer(0.45f);
+    }
+    paintGuideGainKnob(g, gainBox, parameter.guideGain, parameter.enabled && guideLabel.isNotEmpty());
     g.setColour(guideLabel.isEmpty() ? Colour(0xff15191e) : Colour(0xff202833));
     g.fillRect(guideBox);
     g.setColour(guideLabel.isEmpty()
@@ -589,6 +585,9 @@ void TrimeshSidePanelRenderer::drawVertexParameter(
     chevron.lineTo(guideBox.getRight() - 5.f, guideBox.getCentreY() + 2.f);
     chevron.lineTo(guideBox.getRight() - 2.f, guideBox.getCentreY() - 2.f);
     g.strokePath(chevron, PathStrokeType(1.1f));
+    if (!parameter.enabled) {
+        g.endTransparencyLayer();
+    }
 }
 
 void TrimeshSidePanelRenderer::drawMorphColumnHeaders(
@@ -658,13 +657,13 @@ Rectangle<float> TrimeshSidePanelRenderer::keyboardFocusBounds(
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::outputScaleRowBounds(Rectangle<float> sideArea, int) {
-    return sideArea.reduced(9.f, 0.f).withY(sideArea.getBottom() - kRangeRowHeight)
-            .withHeight(kRangeRowHeight);
+    const auto column = controlLayout(sideArea, true).vertices().reduced(VertexPropertyMetrics::columnInset, 0.f);
+    return column.withY(sideArea.getBottom() - kRangeRowHeight).withHeight(kRangeRowHeight);
 }
 
 Rectangle<float> TrimeshSidePanelRenderer::outputScaleRailBounds(Rectangle<float> sideArea, int dimensionCount) {
     auto row = outputScaleRowBounds(sideArea, dimensionCount);
-    row.removeFromLeft(kAxisLabelW + 10.f);
+    row.removeFromLeft(VertexPropertyMetrics::labelWidth + VertexPropertyMetrics::cellGap);
     row.removeFromRight(8.f);
     return {
             row.getX(),
@@ -706,6 +705,26 @@ Rectangle<float> TrimeshSidePanelRenderer::vertexParameterRowBounds(
 
     rows.translate(0.f, (float) rowIndex * (rowHeight + gap));
     return rows.removeFromTop(rowHeight);
+}
+
+String TrimeshSidePanelRenderer::propertyTooltip(
+        const std::vector<TrimeshVertexParameter>& parameters, const String& id) {
+    for (const auto& parameter : parameters) {
+        const bool gain = id == "guideGain." + parameter.id.fromLastOccurrenceOf(".", false, false)
+                && showsGuideControlsForParameter(parameter.id);
+        if (parameter.id != id && !gain) {
+            continue;
+        }
+        if (!parameter.enabled) {
+            return parameter.label + ": unavailable for the current morph mode or selection.";
+        }
+        if (parameter.guideOnly && !gain) {
+            return "Choose a Guide curve for the component between intercepts.";
+        }
+        return parameter.label + (gain ? " Guide gain: " + String(parameter.guideGain * 100.f, 1) + "%"
+                : ": " + String(parameter.value, 3));
+    }
+    return {};
 }
 
 bool TrimeshSidePanelRenderer::showsGuideControlsForParameter(const String& parameterId) {

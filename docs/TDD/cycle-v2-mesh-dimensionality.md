@@ -1,6 +1,6 @@
 # Unified Mesh Dimensionality
 
-Status: Complete — Component leads the property stack with a shared curve-segment glyph.
+Status: Complete — dimensionality, migration, shared morph defaults and inspector usability follow-ups verified.
 
 ## Contract
 
@@ -176,8 +176,8 @@ Follow-up proof:
 
 ## Follow-up: persistent properties and orthographic reduced diagrams
 
-Keep seven stable property slots in both editors: Component, Yellow, Red, Blue,
-Phase, Amplitude, Curve. Coordinate properties outside the active dimensions are
+Keep seven stable property slots in both editors: Yellow, Red, Blue, Phase,
+Amplitude, Curve, Component. Coordinate properties outside the active dimensions are
 visible and disabled, including their inapplicable guide controls. Component is
 an independent, always-applicable guide selector using the existing Time-slot
 component-guide semantics. Yellow does not duplicate that selector.
@@ -323,3 +323,87 @@ Completion proof:
   side-panel painter 739 -> 743 owns shared slot/icon presentation; automation
   inspector 1160 -> 1163 filters empty geometry only. No domain, guide-mapping,
   transaction or DSP ownership changed. The interposed slot is removed.
+
+## Follow-up: complete inspector and mapping usability
+
+Component now belongs at the bottom of the seven-row vertex list, superseding
+the preceding first-row decision. Place output Gain/Range/Width
+beneath the properties in that same inspector column in every mode. Static keeps its smaller frame.
+Preserve 140–220 px vertex travel and the existing semantic gesture/undo owners.
+
+Use shared property track/indicator painting instead of scanline slider bodies.
+Keep disabled labels readable, name Guide/Gain columns, and expose exact vertex
+and guide-gain values on hover/drag. Domain adapters track presentation focus;
+the shared side-panel painter owns feedback. Reuse existing JUCE tooltip and
+property-control facilities. Morph diagrams use a common Morph space heading,
+axis letters and distinct cursor/selected endpoint marks at production size.
+
+Modulation source rows compose NodePropertySliderRow for conditional Constant/MIDI
+CC values below their selectors. Reserve compact numeric-entry and track space;
+both profiles remain independent and publish through NodeEditorCommands. Delete
+the zero-width residual layout and raw duplicate slider presentation. Clarify
+Unmapped fallback in hover help. No domain algorithms or realtime paths change.
+
+Verify ordering, inspector containment, minimum travel and mode anchors;
+conditional controls and value/CC edits in both profiles with Undo; exact hover
+and drag feedback; diagram states; normal/compact native captures and gestures;
+focused tests, app build, architecture, style, code-map and whitespace checks.
+
+Completion proof:
+
+- Component is last in both presentation lists and the shared slot authority.
+  Output Gain/Range/Width uses that inspector column, with a named Output group;
+  Static gives the former footer space back to its editable curve. Coordinate
+  slots stay stable and disabled, with 140–220 px of actual vertex travel.
+- Shared property painting replaces the scanline bodies. Guide/Gain headers,
+  readable disabled labels, exact hover/drag readouts and availability tooltips
+  clarify each control. Cube, plane and rail share endpoint/selection primitives
+  and a diamond cursor, with axis letters and the same Morph space heading.
+- Conditional source controls use the existing NodePropertySliderRow and
+  NodePropertyControlBinding transaction, keyboard and numeric-entry owners.
+  Both mapping profiles retain their own values. Each profile pair reserves
+  extra height only when either source needs it; default rows stay compact.
+  No raw slider callbacks or zero-width residual controls remain.
+- Native macOS verification passed from a fresh process at normal and compact
+  widths: all morph modes, first-hover feedback, held vertex drag, output gain,
+  Component menu and guide-gain adjustment with Undo, Envelope hover, Constant
+  drag/Undo and MIDI CC direct numeric entry/Undo. The first guide-gain Undo
+  assertion queried before UI publication; waiting for the restored state
+  passed. Evidence: `.context/inspector-usability-native.log`, run `3d68c3efa87d`,
+  and `inspector-usability-{compact-static,normal-three,normal-two,normal-one,vertex-drag,guide-gain-hover,envelope-hover,modulation-verified}.png`.
+- A fresh native hover initially exposed the OpenGL peer's missed-enter behavior.
+  PropertyHoverTracker now reconciles local pointer position using JUCE Timer
+  at 30 Hz only for showing editors in the foreground process. It supplies
+  presentation feedback; semantic control events and transaction ownership
+  remain unchanged. Each pass scans a fixed inspector list and repaints only
+  when feedback changes. Drag handlers suppress reconciliation. No mesh, graph
+  serialization, audio preparation or realtime work is introduced.
+
+- CycleV2 and tests build with `--parallel 10`. All 48 focused cases / 3,459
+  assertions pass. The 85-command morph-properties fixture passes (run
+  `ad780decb7c6`), including both families and mode stability. The new 32-command
+  conditional-modulation fixture passes (run `40e7d65f3a4f`), checking both
+  profiles, source changes, independent values and Undo. Architecture, code-map,
+  style and whitespace review pass. Logs and fixture reports are under
+  `.context/inspector-usability-*`. This focused proof does not claim resolution
+  of the broader suite's previously recorded fixture and native-timing debt.
+
+Responsibility and size review:
+
+- EnvelopeCurvePanel 1324 → 1324 remains its domain editor/model adapter; only
+  presentation order changes. Its existing collaborators retain geometry,
+  marker and gesture policy. TrimeshWidget 958 → 958 remains the model/view
+  adapter and exposes feedback only. No new domain ownership enters either.
+- EnvelopeEditorComponent 1028 → 1069 and TrimeshControlsComponent 622 → 691
+  retain focus, tooltip and routed-control composition. Shared painter and
+  hover tracker own reused mechanics; dispatcher/delegates still own edits.
+  Side-panel renderer 743 → 762 retains shared row geometry and painting.
+- NodeCanvasAutomationInspector 1163 → 1206 stays a cohesive read-only export
+  facade: the added functions translate bounds already owned by editors into
+  pointer targets. They neither calculate layout nor introduce eligibility,
+  edit or lifecycle policy. An extraction is unnecessary for these small
+  geometry translations; keep future domain decisions out of this facade.
+- ModulationNodeEditors 316 → 341 composes mature property controls rather than
+  duplicating gesture lifecycle. Shared endpoint painters and hover tracking
+  are presentation-only; all old scanline and raw conditional-slider paths
+  are deleted. The UI scope has no DSP or persistent-topology changes.

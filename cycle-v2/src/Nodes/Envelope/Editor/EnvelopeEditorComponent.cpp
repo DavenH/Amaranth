@@ -18,6 +18,7 @@
 #include "UI/Editors/MorphKeyboardShortcutHelp.h"
 #include "UI/Editors/MorphKeyboardShortcuts.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/Editors/PropertyHoverTracker.h"
 #include "UiIconData.h"
 
 namespace CycleV2 {
@@ -169,6 +170,8 @@ struct EnvelopeEditorComponent::Impl {
     float guideGainDragStartY {};
     float guideGainDragStartValue {};
     String parameterId;
+    String feedbackProperty;
+    std::unique_ptr<PropertyHoverTracker> propertyHover;
 };
 
 EnvelopeEditorComponent::EnvelopeEditorComponent(CurveEditorWidget& target) :
@@ -232,6 +235,11 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(CurveEditorWidget& target) :
         widget.resetEnvelopeVerticalRange();
         requestRepaint();
     };
+    impl->propertyHover = std::make_unique<PropertyHoverTracker>(*this, [this](Point<float> position) {
+        if (!impl->draggingParameter) {
+            updatePropertyFeedback(position);
+        }
+    });
 }
 
 EnvelopeEditorComponent::~EnvelopeEditorComponent() = default;
@@ -246,6 +254,20 @@ String EnvelopeEditorComponent::getTooltip() {
     if (!impl->sustain.isEnabled()
             && impl->sustain.getBounds().toFloat().contains(position)) {
         return impl->sustain.getTooltip();
+    }
+    const auto controls = editorControlBounds();
+    for (const auto& parameter : widget.selectedVertexParameters()) {
+        const auto row = impl->presentation.vertexParameterRowBounds(controls, parameter.id);
+        if (row.contains(position)) {
+            if (parameter.enabled && TrimeshSidePanelRenderer::showsGuideControlsForParameter(parameter.id)
+                    && TrimeshSidePanelRenderer::vertexParameterGuideBounds(row).contains(position)) {
+                return "Choose a Guide curve for " + parameter.label + ".";
+            }
+            const bool gain = TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row).contains(position)
+                    && TrimeshSidePanelRenderer::showsGuideControlsForParameter(parameter.id);
+            return TrimeshSidePanelRenderer::propertyTooltip(widget.selectedVertexParameters(),
+                    gain ? "guideGain." + parameter.id.fromLastOccurrenceOf(".", false, false) : parameter.id);
+        }
     }
     return {};
 }
@@ -427,7 +449,8 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
             widget.selectedVertexParameters(),
             guides,
             EnvelopeMorphControls::vertexParameterHeightScale,
-            TrimeshSidePanelRenderer::GuideControls::Visible, 7);
+            TrimeshSidePanelRenderer::GuideControls::Visible, 7,
+            impl->draggingParameter ? impl->parameterId : impl->feedbackProperty);
 
     if (impl->mode.purpose() == EnvelopePurpose::Pitch) {
         auto pitchLabels = editorPanelBounds().removeFromRight(48.f);
@@ -818,6 +841,7 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
         parameterRails.add(rail);
     }
     state.setProperty("vertexParameterRails", parameterRails);
+    state.setProperty("propertyFeedback", impl->draggingParameter ? impl->parameterId : impl->feedbackProperty);
 }
 
 bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
@@ -829,6 +853,15 @@ bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
                 || (impl->presentation.linkBounds(controls, axis).contains(position));
     }
 
+    interactive = updatePropertyFeedback(position) || interactive;
+    setMouseCursor(interactive ? MouseCursor::PointingHandCursor : MouseCursor::NormalCursor);
+    return interactive;
+}
+
+bool EnvelopeEditorComponent::updatePropertyFeedback(Point<float> position) {
+    const auto controls = editorControlBounds();
+    bool interactive = false;
+    String feedback;
     const auto parameters = widget.selectedVertexParameters();
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
         const auto& parameter = parameters[(size_t) index];
@@ -839,13 +872,21 @@ bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
         const auto row = impl->presentation.vertexParameterRowBounds(controls, parameter.id);
         const auto rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(
                 row);
+        if (row.contains(position)) {
+            feedback = guides && TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row).contains(position)
+                    ? "guideGain." + parameter.id.fromLastOccurrenceOf(".", false, false) : parameter.id;
+        }
+
         interactive = interactive
                 || (!parameters[(size_t) index].guideOnly
                         && rail.expanded(5.f, 8.f).contains(position))
                 || (guides && (TrimeshSidePanelRenderer::vertexParameterGuideBounds(row).contains(position)
                         || TrimeshSidePanelRenderer::vertexParameterGuideGainBounds(row).contains(position)));
     }
-    setMouseCursor(interactive ? MouseCursor::PointingHandCursor : MouseCursor::NormalCursor);
+    if (impl->feedbackProperty != feedback) {
+        impl->feedbackProperty = feedback;
+        requestRepaint();
+    }
     return interactive;
 }
 

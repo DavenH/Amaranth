@@ -266,7 +266,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
             profile.getDomain(),
             parameters.floatValue(
                     profile.getSliceStyle().isSpectral() ? "range" : "gain",
-                    0.5f), dimensions.axisCount());
+                    0.5f), dimensions.axisCount(), propertyFeedback);
 }
 
 void TrimeshWidget::renderExpandedPanelsOpenGL(
@@ -384,7 +384,7 @@ std::vector<TrimeshVertexParameter> TrimeshWidget::selectedVertexParameters() {
         return parameters;
     }
     const auto& yellow = parameters.front();
-    parameters.insert(parameters.begin(),
+    parameters.insert(parameters.end(),
             { "guide.time", "component curve", 0.f, 0.f, 1.f, yellow.guideGain, yellow.enabled, true });
     for (auto& parameter : parameters) {
         parameter.enabled &= vertexPropertyActive(parameter.id, bridge.getModel().getDimensionCount());
@@ -899,13 +899,13 @@ Rectangle<float> TrimeshWidget::vertexParameterRailBounds(Rectangle<float> param
 
 String TrimeshWidget::vertexParameterId(int parameterIndex) {
     switch (parameterIndex) {
-        case 0:     return "guide.time";
-        case 1:     return "vertex.time";
-        case 2:     return "vertex.red";
-        case 3:     return "vertex.blue";
-        case 4:     return "vertex.phase";
-        case 5:     return "vertex.amp";
-        case 6:     return "vertex.curve";
+        case 0:     return "vertex.time";
+        case 1:     return "vertex.red";
+        case 2:     return "vertex.blue";
+        case 3:     return "vertex.phase";
+        case 4:     return "vertex.amp";
+        case 5:     return "vertex.curve";
+        case 6:     return "guide.time";
         default:    return {};
     }
 }
@@ -948,7 +948,7 @@ Rectangle<float> TrimeshWidget::expandedWavePanelContentBounds(Rectangle<float> 
     if (dimensionCount == 0) {
         const auto controls = expandedSidePanelContentBounds(content, 0).withTrimmedBottom(52.f);
         const auto properties = MorphControlLayout(controls, 0).vertices();
-        return content.withRight(properties.getX() - kExpandedPanelGap).withTrimmedBottom(52.f);
+        return content.withRight(properties.getX() - kExpandedPanelGap);
     }
     content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
     content.removeFromTop(kExpandedPanelGap);

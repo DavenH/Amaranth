@@ -24,17 +24,22 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.id",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
       "equals": "guide.time"
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.enabled",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.enabled",
       "equals": true
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.guideOnly",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.guideOnly",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.enabled",
       "equals": true
     },
     {
@@ -49,12 +54,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.enabled",
-      "equals": true
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.5.id",
       "equals": "vertex.curve"
     },
     {
@@ -81,17 +81,22 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.id",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
       "equals": "guide.time"
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.enabled",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.enabled",
       "equals": true
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.guideOnly",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.guideOnly",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.enabled",
       "equals": true
     },
     {
@@ -102,16 +107,11 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.trimesh.selectedVertexParameters.2.enabled",
-      "equals": true
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.enabled",
       "equals": false
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.5.id",
       "equals": "vertex.curve"
     },
     {
@@ -138,8 +138,18 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.id",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
       "equals": "guide.time"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.guideOnly",
+      "equals": true
     },
     {
       "command": "assertState",
@@ -148,13 +158,8 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.guideOnly",
-      "equals": true
-    },
-    {
-      "command": "assertState",
       "path": "expandedNodeControls.trimesh.selectedVertexParameters.1.enabled",
-      "equals": true
+      "equals": false
     },
     {
       "command": "assertState",
@@ -163,12 +168,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.enabled",
-      "equals": false
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.5.id",
       "equals": "vertex.curve"
     },
     {
@@ -195,18 +195,23 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.id",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
       "equals": "guide.time"
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.enabled",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.enabled",
       "equals": true
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.guideOnly",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.guideOnly",
       "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.enabled",
+      "equals": false
     },
     {
       "command": "assertState",
@@ -220,12 +225,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.enabled",
-      "equals": false
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.5.id",
       "equals": "vertex.curve"
     },
     {
@@ -265,17 +265,22 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.id",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
       "equals": "guide.time"
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.enabled",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.enabled",
       "equals": true
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.guideOnly",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.guideOnly",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.enabled",
       "equals": true
     },
     {
@@ -290,12 +295,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.3.enabled",
-      "equals": true
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.5.id",
       "equals": "vertex.curve"
     },
     {
@@ -312,23 +312,28 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.id",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
       "equals": "guide.time"
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.enabled",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.enabled",
       "equals": true
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.guideOnly",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.guideOnly",
       "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.enabled",
+      "equals": false
     },
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.1.enabled",
-      "equals": false
+      "equals": true
     },
     {
       "command": "assertState",
@@ -337,12 +342,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.3.enabled",
-      "equals": true
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.5.id",
       "equals": "vertex.curve"
     },
     {
@@ -359,8 +359,18 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.id",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
       "equals": "guide.time"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.guideOnly",
+      "equals": true
     },
     {
       "command": "assertState",
@@ -369,13 +379,8 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.guideOnly",
-      "equals": true
-    },
-    {
-      "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.1.enabled",
-      "equals": true
+      "equals": false
     },
     {
       "command": "assertState",
@@ -384,12 +389,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.3.enabled",
-      "equals": false
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.5.id",
       "equals": "vertex.curve"
     },
     {
@@ -406,18 +406,23 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.id",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
       "equals": "guide.time"
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.enabled",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.enabled",
       "equals": true
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.guideOnly",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.guideOnly",
       "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.enabled",
+      "equals": false
     },
     {
       "command": "assertState",
@@ -431,12 +436,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.3.enabled",
-      "equals": false
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.5.id",
       "equals": "vertex.curve"
     },
     {

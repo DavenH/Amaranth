@@ -730,6 +730,14 @@ TEST_CASE("Mesh editors reserve usable vertex and morph slider travel before sur
                     const float travel = region.bounds.getWidth() - 10.f;
                     REQUIRE(travel >= PropertyControlMetrics::minimumUsableTrackWidth);
                     REQUIRE(travel <= 220.f);
+                } else if (region.kind == TrimeshExpandedHitRegionKind::OutputScale) {
+                    const auto amplitude = std::find_if(regions.begin(), regions.end(), [](const auto& candidate) {
+                        return candidate.parameterId == "vertex.amp";
+                    });
+                    REQUIRE(amplitude != regions.end());
+                    REQUIRE(region.bounds.getX() + 8.f == Catch::Approx(amplitude->bounds.getX() + 5.f));
+                    REQUIRE(region.bounds.getY() > amplitude->bounds.getBottom());
+                    REQUIRE(region.bounds.getWidth() - 16.f >= PropertyControlMetrics::minimumUsableTrackWidth);
                 } else if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
                     REQUIRE(region.bounds.getWidth() - 16.f >= PropertyControlMetrics::minimumUsableTrackWidth);
                 }

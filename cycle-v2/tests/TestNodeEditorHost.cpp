@@ -5023,13 +5023,13 @@ TEST_CASE("Trimesh keeps inactive properties disabled and its Component selector
         REQUIRE(host.bind(document.graph().findNode("mesh"), bounds.toNearestInt(), document.revision()));
         const auto parameters = widget.selectedVertexParameters();
         REQUIRE(parameters.size() == 7);
-        REQUIRE(parameters[0].id == "guide.time");
-        REQUIRE(parameters[0].enabled);
-        REQUIRE(parameters[0].guideOnly);
+        REQUIRE(parameters[6].id == "guide.time");
+        REQUIRE(parameters[6].enabled);
+        REQUIRE(parameters[6].guideOnly);
         const auto dimensions = MorphDimensions::trimesh(count);
-        REQUIRE(parameters[1].enabled == dimensions.active(Vertex::Time));
-        REQUIRE(parameters[2].enabled == dimensions.active(Vertex::Red));
-        REQUIRE(parameters[3].enabled == dimensions.active(Vertex::Blue));
+        REQUIRE(parameters[0].enabled == dimensions.active(Vertex::Time));
+        REQUIRE(parameters[1].enabled == dimensions.active(Vertex::Red));
+        REQUIRE(parameters[2].enabled == dimensions.active(Vertex::Blue));
         bool foundControls = false;
         for (auto* child : host.component()->getChildren()) {
             if (auto* target = child->findChildWithID("trimesh.vertex.time")) {
@@ -5042,7 +5042,15 @@ TEST_CASE("Trimesh keeps inactive properties disabled and its Component selector
                 auto* componentGuide = child->findChildWithID("trimesh.guide.time");
                 REQUIRE(componentGuide != nullptr);
                 REQUIRE(componentGuide->isEnabled());
-                REQUIRE(componentGuide->getBottom() < target->getY());
+                REQUIRE(componentGuide->getY() > child->findChildWithID("trimesh.vertex.curve")->getBottom());
+                auto* amplitude = child->findChildWithID("trimesh.vertex.amp");
+                amplitude->mouseEnter(curvePanelMouseEvent(*amplitude, { 10.f, 10.f }, {}, {}, false));
+                REQUIRE(widget.propertyFeedbackId() == "vertex.amp");
+                auto* tooltip = dynamic_cast<TooltipClient*>(amplitude);
+                REQUIRE(tooltip != nullptr);
+                REQUIRE(tooltip->getTooltip().startsWith("amp: "));
+                amplitude->mouseExit(curvePanelMouseEvent(*amplitude, {}, {}, {}, false));
+                REQUIRE(widget.propertyFeedbackId().isEmpty());
                 if (count < 3) {
                     REQUIRE(componentGuide->getBounds() == previousComponentBounds);
                 }
@@ -5067,16 +5075,69 @@ TEST_CASE("Envelope retains disabled morph properties and an independent Compone
         widget.prepareExpandedPanelComponent(*document.graph().findNode("env"), { 0.f, 0.f, 900.f, 500.f });
         const auto parameters = widget.selectedVertexParameters();
         REQUIRE(parameters.size() == 7);
-        REQUIRE(parameters[0].id == "guide.time");
-        REQUIRE(parameters[0].enabled);
-        REQUIRE(parameters[0].guideOnly);
+        REQUIRE(parameters[6].id == "guide.time");
+        REQUIRE(parameters[6].enabled);
+        REQUIRE(parameters[6].guideOnly);
         const MorphDimensions dimensions(count);
-        for (const int index : { 1, 2, 3 }) {
-            const int axis = index == 1 ? Vertex::Time : index == 2 ? Vertex::Red : Vertex::Blue;
+        for (const int index : { 0, 1, 2 }) {
+            const int axis = index == 0 ? Vertex::Time : index == 1 ? Vertex::Red : Vertex::Blue;
             REQUIRE(parameters[(size_t) index].enabled == dimensions.active(axis));
             if (!dimensions.active(axis)) {
                 REQUIRE_FALSE(widget.setSelectedVertexParameter(parameters[(size_t) index].id, 0.3f));
             }
+        }
+    }
+}
+
+TEST_CASE("Modulation profiles expose usable conditional controls and undo independent edits",
+        "[cycle-v2][property-controls][modulation][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    for (const String prefix : { "yellow", "envelopeYellow" }) {
+        for (const String source : { "constant", "midiCC" }) {
+            Component owner;
+            owner.setBounds(0, 0, 1100, 800);
+            NodeGraph graph;
+            graph.addNode(GraphNodeFactory().createNode(NodeKind::ModulationTriple, "mod", {}));
+            REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "mod", prefix + "Source", "Source", source).succeeded());
+            GraphDocument document(std::move(graph));
+            GraphCommandDispatcher dispatcher(document);
+            RecordingPresentation presentation;
+            NullResources resources;
+            NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+            NodeEditorHost host(owner, commands, presentation, resources);
+            const auto* factory = NodeEditorFactoryRegistry::instance().find(NodeKind::ModulationTriple);
+            const auto bounds = factory->layoutBounds(*document.graph().findNode("mod"), { 0.f, 0.f, 430.f, 370.f });
+            REQUIRE(bounds.getHeight() == 266.f);
+            REQUIRE(host.bind(document.graph().findNode("mod"), bounds.toNearestInt()));
+            const bool constant = source == "constant";
+            PrecisionSlider* slider = nullptr;
+            for (auto* row : host.component()->getChildren()) {
+                slider = dynamic_cast<PrecisionSlider*>(row->findChildWithID(
+                        "modulation." + prefix + (constant ? ".constant" : ".controller")));
+                if (slider != nullptr) {
+                    break;
+                }
+            }
+            REQUIRE(slider != nullptr);
+            REQUIRE(slider->isVisible());
+            REQUIRE(slider->visibleTrackBounds().getWidth() >= PropertyControlMetrics::minimumUsableTrackWidth);
+            REQUIRE(slider->getParentComponent()->getLocalBounds().contains(slider->getBounds()));
+            const String parameter = prefix + (constant ? "Constant" : "Controller");
+            const String before = parameterValueForNode(*document.graph().findNode("mod"), parameter);
+            REQUIRE(slider->keyPressed(KeyPress(KeyPress::rightKey)));
+            REQUIRE(parameterValueForNode(*document.graph().findNode("mod"), parameter) != before);
+            const String other = prefix == "yellow" ? "envelopeYellow" : "yellow";
+            REQUIRE(parameterValueForNode(*document.graph().findNode("mod"), other + "Constant") == "0.5");
+            REQUIRE(document.undo());
+            REQUIRE(parameterValueForNode(*document.graph().findNode("mod"), parameter) == before);
+            slider->onDragStart();
+            slider->setValue(constant ? 0.62 : 62.0, sendNotificationSync);
+            slider->setValue(constant ? 0.74 : 74.0, sendNotificationSync);
+            slider->onDragEnd();
+            REQUIRE(parameterValueForNode(*document.graph().findNode("mod"), parameter) != before);
+            REQUIRE(document.undo());
+            REQUIRE(parameterValueForNode(*document.graph().findNode("mod"), parameter) == before);
+            REQUIRE_FALSE(document.canUndo());
         }
     }
 }

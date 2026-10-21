@@ -275,4 +275,28 @@ LookAndFeel& propertyControlLookAndFeel() {
     return result;
 }
 
+void paintMorphPreviewVertex(Graphics& graphics, Point<float> point, bool selected) {
+    graphics.setColour(Colours::black);
+    graphics.fillEllipse(Rectangle<float>(selected ? 8.f : 6.f, selected ? 8.f : 6.f).withCentre(point));
+    graphics.setColour(selected ? Colour(0xffed7c7c) : Colours::white);
+    graphics.fillEllipse(Rectangle<float>(3.f, 3.f).withCentre(point));
+    if (selected) {
+        graphics.drawEllipse(Rectangle<float>(7.f, 7.f).withCentre(point), 1.f);
+    }
+}
+
+void paintMorphPreviewCursor(Graphics& graphics, Point<float> point) {
+    Path diamond;
+    diamond.startNewSubPath(point.x, point.y - 4.f);
+    diamond.lineTo(point.x + 4.f, point.y);
+    diamond.lineTo(point.x, point.y + 4.f);
+    diamond.lineTo(point.x - 4.f, point.y);
+    diamond.closeSubPath();
+    graphics.setColour(Colours::black);
+    graphics.fillPath(diamond);
+    graphics.setColour(Colours::white);
+    graphics.strokePath(diamond, PathStrokeType(1.f));
+}
+
+
 }

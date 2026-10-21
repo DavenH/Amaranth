@@ -39,6 +39,8 @@ void paintMorphSlider(
         juce::Colour accent,
         bool hovered = false,
         bool enabled = true);
+void paintMorphPreviewVertex(juce::Graphics& graphics, juce::Point<float> point, bool selected);
+void paintMorphPreviewCursor(juce::Graphics& graphics, juce::Point<float> point);
 juce::LookAndFeel& propertyControlLookAndFeel();
 
 }

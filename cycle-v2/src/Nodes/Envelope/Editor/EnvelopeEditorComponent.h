@@ -31,6 +31,7 @@ private:
     std::vector<NodeParameter> editorControls() const override;
     void appendEditorAutomation(DynamicObject&) const override;
     bool editorMouseMove(Point<float>) override;
+    bool updatePropertyFeedback(Point<float> position);
     bool editorMouseDown(Point<float>) override;
     bool editorMouseDrag(Point<float>) override;
     void editorMouseUp() override;

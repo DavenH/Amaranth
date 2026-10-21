@@ -81,10 +81,10 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     add(NodeKind::ImageSource, preview);
     NodeViewCapabilities modulation = preview;
     modulation.hostedEditor = true;
-    modulation.expandedEditorSize = Point<float>(260.f, 116.f);
+    modulation.expandedEditorSize = Point<float>(260.f, 166.f);
     add(NodeKind::ModulationSource, modulation);
     modulation.previewable = false;
-    modulation.expandedEditorSize = Point<float>(370.f, 230.f);
+    modulation.expandedEditorSize = Point<float>(430.f, 370.f);
     add(NodeKind::ModulationTriple, modulation);
 
     NodeViewCapabilities voice = preview;

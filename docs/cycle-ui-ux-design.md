@@ -66,10 +66,13 @@ the existing two-dimensional envelope presentation and interaction language,
 including its curve geometry, selection, controls, and undo. A new miniature
 curve editor inside every comparison card would be a second interaction system.
 
-In mesh editors, put Component curve above the vertex coordinate/property rows.
+In mesh editors, put Component curve below the vertex coordinate/property rows.
 Depict a component as two intercepts with a wave-shaped segment between them;
 keep the Guide resource glyph in the attachment selector. The two concepts
 should remain recognizable together.
+Place output gain directly beneath the property stack, retaining that anchor
+across morph modes. Label Guide and Gain columns, keep disabled labels readable,
+and show exact property values during hover and adjustment.
 
 ## Make visualizations truthful and comparable
 

@@ -42,6 +42,7 @@ public:
 };
 
 class TrimeshExpandedEditorComponent : public juce::Component,
+                                       public juce::TooltipClient,
                                        private TrimeshControlsDelegate,
                                        private TrimeshPanelHostDelegate {
 public:
@@ -65,6 +66,7 @@ public:
     const juce::String& phaseModeValue() const { return phaseModeSelector.selectedValue(); }
 
     void paint(juce::Graphics& g) override;
+    juce::String getTooltip() override { return controls.getTooltip(); }
     void resized() override;
     void mouseEnter(const juce::MouseEvent& event) override;
     void mouseMove(const juce::MouseEvent& event) override;

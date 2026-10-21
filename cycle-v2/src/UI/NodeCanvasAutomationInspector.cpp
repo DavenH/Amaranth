@@ -413,6 +413,13 @@ public:
             }
             const String field = parameter->getProperty("id").toString()
                     .fromLastOccurrenceOf(".", false, false);
+            const String parameterId = parameter->getProperty("id").toString();
+            if (parameterId != "guide.time") {
+                const auto bounds = AutomationValueEncoder::rectangleFromVar(parameter->getProperty("bounds"))
+                        .translated(panel.getX(), panel.getY());
+                targets.add(pointerTargetToVar("expanded:" + node.id + ".envelopeVertexParameter." + parameterId,
+                        "envelopeVertexControl", bounds, node.id));
+            }
             const std::array<std::pair<const char*, const char*>, 2> guideControls {{
                     { "envelopeGuide", "guideBounds" },
                     { "envelopeGuideGain", "guideGainBounds" }
@@ -430,6 +437,39 @@ public:
                         bounds,
                         node.id));
             }
+        }
+    }
+
+    static void addModulationTargets(Array<var>& targets, const Node& node,
+            Rectangle<float> panel, const NodeEditorHost& editorHost) {
+        DynamicObject state;
+        editorHost.appendAutomationState(state);
+        const bool triple = node.kind == NodeKind::ModulationTriple;
+        const auto root = state.getProperty(triple ? "modulationTriple" : "modulationSource");
+        const auto addRow = [&](const var& row, const String& prefix) {
+            const auto rowBounds = AutomationValueEncoder::rectangleFromVar(row.getProperty("rowBounds", {}));
+            for (const String kind : { "constant", "controller" }) {
+                if (!(bool) row.getProperty(kind + "Visible", false)) {
+                    continue;
+                }
+                const auto control = row.getProperty(kind + "Control", {});
+                for (const String part : { "track", "value" }) {
+                    const auto bounds = AutomationValueEncoder::rectangleFromVar(control.getProperty(part, {}))
+                            .translated(panel.getX() + rowBounds.getX(), panel.getY() + rowBounds.getY());
+                    const String suffix = part == "value" ? "Value" : "";
+                    targets.add(pointerTargetToVar("expanded:" + node.id + ".modulation." + prefix + "." + kind + suffix,
+                            "modulationProperty", bounds, node.id));
+                }
+            }
+        };
+        if (!triple) {
+            addRow(root, "source");
+            return;
+        }
+        for (const String axis : { "yellow", "red", "blue" }) {
+            addRow(root.getProperty(axis, {}), axis);
+            addRow(root.getProperty("envelope", {}).getProperty(axis, {}),
+                    "envelope" + axis.substring(0, 1).toUpperCase() + axis.substring(1));
         }
     }
 
@@ -524,6 +564,9 @@ public:
             }
         } else {
             addEffectParameterTargets(targets, node, panel, editorHost);
+            if (node.kind == NodeKind::ModulationTriple || node.kind == NodeKind::ModulationSource) {
+                addModulationTargets(targets, node, panel, editorHost);
+            }
             if (node.kind == NodeKind::Envelope) {
                 addEnvelopeTargets(targets, node, panel, editorHost);
             }

@@ -210,6 +210,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EffectEnableButton.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MorphKeyboardShortcutHelp.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertyControlLookAndFeel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertyHoverTracker.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertyControls.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/PropertySegmentedSelector.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/ProcessingScopeSelector.cpp"

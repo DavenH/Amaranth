@@ -11,6 +11,7 @@
 namespace CycleV2 {
 
 class MorphKeyboardShortcutHelp;
+class PropertyHoverTracker;
 
 class TrimeshControlsDelegate {
 public:
@@ -33,7 +34,7 @@ public:
     virtual void selectTrimeshVertex(int index) = 0;
 };
 
-class TrimeshControlsComponent : public juce::Component {
+class TrimeshControlsComponent : public juce::Component, public juce::TooltipClient {
 public:
     explicit TrimeshControlsComponent(TrimeshWidget& widget);
     ~TrimeshControlsComponent() override;
@@ -60,6 +61,7 @@ public:
     void continuePointerInteraction(juce::Point<float> position);
     void endPointerInteraction();
 
+    juce::String getTooltip() override;
     void paint(juce::Graphics& graphics) override;
     void resized() override;
     bool keyPressed(const juce::KeyPress& key) override;
@@ -75,6 +77,8 @@ private:
         VertexGuideGain
     };
 
+    void showPropertyFeedback(const juce::String& id);
+    juce::String tooltipFor(const TrimeshExpandedHitRegion& region);
     void updateHitRegions();
     int countControlRegions(TrimeshExpandedHitRegionKind kind) const;
     const TrimeshExpandedHitRegion* findControlRegion(juce::Point<float> position) const;
@@ -108,6 +112,7 @@ private:
     juce::Rectangle<float> contentBounds;
     juce::Rectangle<int> lastHitRegionContentBounds;
     std::unique_ptr<MorphKeyboardShortcutHelp> keyboardShortcutHelp;
+    std::unique_ptr<PropertyHoverTracker> propertyHover;
     std::vector<TrimeshExpandedHitRegion> controlHitRegions;
     std::vector<std::unique_ptr<ControlTarget>> controlRegions;
 

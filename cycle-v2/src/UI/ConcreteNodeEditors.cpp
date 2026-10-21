@@ -242,6 +242,7 @@ public:
             selectedParameters.add(encoded);
         }
         meshState->setProperty("selectedVertexParameters", selectedParameters);
+        meshState->setProperty("propertyFeedback", boundWidget->propertyFeedbackId());
         Array<var> vertexMarkers;
         for (const auto& marker : boundWidget->vertexMarkers()) {
             auto* encoded = new DynamicObject();

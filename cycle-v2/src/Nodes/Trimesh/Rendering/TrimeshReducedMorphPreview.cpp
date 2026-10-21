@@ -2,6 +2,7 @@
 
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
 
 namespace CycleV2 {
 
@@ -23,11 +24,10 @@ Path polygon(const std::array<Point<float>, 4>& points) {
     return path;
 }
 
-void drawPoint(Graphics& graphics, Point<float> point, bool selected) {
-    graphics.setColour(Colours::black);
-    graphics.fillEllipse(Rectangle<float>(5.f, 5.f).withCentre(point));
-    graphics.setColour(selected ? Colour(0xffed7c7c) : Colours::white);
-    graphics.fillEllipse(Rectangle<float>(2.f, 2.f).withCentre(point));
+void drawAxisLabel(Graphics& graphics, Rectangle<float> bounds, const TrimeshSidePanelRenderer::AxisState& axis) {
+    graphics.setColour(axis.colour);
+    graphics.setFont(FontOptions(9.f));
+    graphics.drawText(axis.shortLabel, bounds, Justification::centred);
 }
 
 bool highlighted(const TrimeshCubePreviewVertex& vertex, const TrimeshCubePreviewVertex* selected,
@@ -59,13 +59,14 @@ void drawLinePreview(Graphics& graphics, Rectangle<float> area, const AxisStates
     graphics.setColour(selected != nullptr && axes[0].linked ? Colour(0xffed7c7c) : Colours::white);
     graphics.drawLine(Line<float>(endpoint(0), endpoint(4)), 1.2f);
     for (const int corner : { 0, 4 }) {
-        drawPoint(graphics, endpoint(corner), vertices.size() >= 8
+        paintMorphPreviewVertex(graphics, endpoint(corner), vertices.size() >= 8
                 && highlighted(vertices[(size_t) corner], selected, axes, MorphDimensions(1)));
     }
     const auto cursor = line.getPointAlongLineProportionally(jlimit(0.f, 1.f, axes[0].value));
     graphics.setColour(Colours::white.withAlpha(0.7f));
     graphics.drawVerticalLine(roundToInt(cursor.x), cursor.y - 7.f, cursor.y + 11.f);
-    drawPoint(graphics, cursor, false);
+    paintMorphPreviewCursor(graphics, cursor);
+    drawAxisLabel(graphics, { area.getRight() + 8.f, line.getStartY() + 3.f, 10.f, 12.f }, axes[0]);
 }
 
 void drawPlanePreview(Graphics& graphics, Rectangle<float> area, const AxisStates& axes,
@@ -118,10 +119,12 @@ void drawPlanePreview(Graphics& graphics, Rectangle<float> area, const AxisState
     graphics.setColour(axes[(size_t) active[1]].colour.withAlpha(0.55f));
     graphics.drawLine(area.getX() - 10.f, cursor.y, cursor.x, cursor.y, 1.f);
     for (size_t point = 0; point < authored.size(); ++point) {
-        drawPoint(graphics, authored[point], vertices.size() >= 8
+        paintMorphPreviewVertex(graphics, authored[point], vertices.size() >= 8
                 && highlighted(vertices[(size_t) indices[point]], selected, axes, dimensions));
     }
-    drawPoint(graphics, cursor, false);
+    paintMorphPreviewCursor(graphics, cursor);
+    drawAxisLabel(graphics, { area.getRight() + 8.f, area.getBottom() + 1.f, 10.f, 12.f }, axes[(size_t) active[0]]);
+    drawAxisLabel(graphics, { area.getX() - 24.f, area.getY() - 12.f, 10.f, 12.f }, axes[(size_t) active[1]]);
 }
 
 }
@@ -133,7 +136,7 @@ void TrimeshSidePanelRenderer::drawReducedMorphPreview(
         return;
     }
     paintPropertyGroupLabel(graphics, area.reduced(8.f, 5.f).removeFromTop(18.f),
-            dimensions.axisCount() == 1 ? "Line display" : "Plane display");
+            "Morph space");
     area = area.withTrimmedTop(22.f).reduced(12.f, 10.f);
     const float side = jmin(area.getWidth(), area.getHeight());
     area = area.withSizeKeepingCentre(side, side);

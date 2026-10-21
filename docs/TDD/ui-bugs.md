@@ -12,11 +12,27 @@ The exported editor state confirms Constant 0.5 and controller 1 remain selected
 label and remaining 131 px source menu. The conditional control receives zero
 remaining width. Reflow source-specific controls below their selector using the
 shared compact property grammar and its usable-travel minimum; verify both
-profiles and all conditional source types. Status: open; discovered during
-review, with no production change in that review. Artifacts:
+profiles and all conditional source types. Status: resolved by composing
+NodePropertySliderRow below the source menu, with compact paired row heights.
+Focused tests exercise both profiles and source types, multi-update drags,
+keyboard editing and Undo; native Constant drag and CC numeric entry/Undo pass.
+Current proof: `.context/inspector-usability-tests.log` and
+`inspector-usability-native.log`. Original review artifacts:
 `.context/ux-review-modulation-conditional.png`,
 `.context/ux-review-modulation-controls.json`, and
 `.context/ux-modulation-review.log`.
+
+## Resolved: Vertex property values missed first native hover
+
+On 2026-10-20, the inspector feedback follow-up passed synthetic enter events
+but failed its first real macOS hover assertion. The OpenGL-attached peer can
+miss mouse-enter notifications, as previously observed for morph shortcut help.
+The shared PropertyHoverTracker reconciles pointer position using a 30 Hz JUCE
+Timer for visible editors in the foreground process. Trimesh and Envelope reuse
+it; drag events retain their original owners. A fresh native run confirms both
+editors display values before any property click. Artifacts:
+`.context/inspector-usability-native-hover-failure.log` and
+`.context/inspector-usability-native.log`. Status: resolved.
 
 ## P3: Native verification intermittently fails exact-PID foreground activation
 

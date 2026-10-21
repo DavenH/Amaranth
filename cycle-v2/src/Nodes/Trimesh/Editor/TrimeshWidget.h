@@ -117,6 +117,8 @@ public:
     bool hasGuideAttachmentForParameter(const juce::String& parameterId) const;
     std::vector<TrimeshVertexParameter> vertexParametersForIndex(int vertexIndex);
     std::vector<TrimeshVertexParameter> selectedVertexParameters();
+    void setPropertyFeedback(const juce::String& id) { propertyFeedback = id; }
+    const juce::String& propertyFeedbackId() const { return propertyFeedback; }
     static bool vertexPropertyActive(const juce::String& parameterId, int dimensionCount);
     int selectedVertexIndexForPanel() const;
     std::vector<TrimeshVertexMarker> vertexMarkers();
@@ -240,6 +242,7 @@ private:
 
     TrimeshPanelBridge bridge;
     CachedHeatmap compactHeatmap;
+    juce::String propertyFeedback;
     TrimeshRenderProfile displayProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     int previewMidiNote { 48 };
     int lastExpandedColumnCount { 96 };

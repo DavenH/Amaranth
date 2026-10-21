@@ -36,7 +36,8 @@ public:
             bool showOutputScale,
             PortDomain outputDomain,
             float outputScale,
-            int dimensionCount = 3);
+            int dimensionCount = 3,
+            const juce::String& feedbackParameter = {});
     static void drawMorphControls(
             juce::Graphics& g, juce::Rectangle<float> area,
             const std::array<AxisState, 3>& axes, int dimensionCount,
@@ -59,7 +60,8 @@ public:
             const std::array<juce::String, 6>& guideAttachmentLabels,
             float heightScale = 1.f,
             GuideControls guideControls = GuideControls::Visible,
-            int stableSlotCount = 0);
+            int stableSlotCount = 0,
+            const juce::String& feedbackParameter = {});
     static void drawMorphColumnHeaders(
             juce::Graphics& g,
             juce::Rectangle<float> firstRow,
@@ -102,6 +104,8 @@ public:
             int parameterIndex,
             float heightScale = 1.f,
             int parameterCount = 6);
+    static juce::String propertyTooltip(const std::vector<TrimeshVertexParameter>& parameters,
+            const juce::String& id);
     static bool showsGuideControlsForParameter(const juce::String& parameterId);
     static juce::Rectangle<float> vertexParameterRailBounds(
             juce::Rectangle<float> parameterRow,
@@ -115,7 +119,8 @@ private:
     static void drawVertexParameter(
             juce::Graphics& graphics, juce::Rectangle<float> row,
             const TrimeshVertexParameter& parameter,
-            const std::array<juce::String, 6>& guideAttachmentLabels, GuideControls guideControls);
+            const std::array<juce::String, 6>& guideAttachmentLabels, GuideControls guideControls,
+            const juce::String& feedbackParameter);
 };
 
 }
