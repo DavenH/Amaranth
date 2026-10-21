@@ -68,9 +68,10 @@ curve editor inside every comparison card would be a second interaction system.
 
 Both mesh editor families use the same body composition: morph surface above
 left, morph controls and vertex properties above right, and a full-width editable
-curve below. Static compacts to a curve beside the inspector. Envelope markers
-overlay the curve's top-right corner using the IR Modeller button chrome;
-scaling and zoom stay in a bottom toolbar. Reserve useful
+curve below. Static compacts to a curve beside the inspector. Envelope Scaling, Zoom and marker pairs
+overlay the curve's top-right corner using the shared IR Modeller button chrome,
+with markers at the right and no footer row. Use IR’s shared 24 px overlay
+button size, 4 px within-pair gap and matching glyph insets. Reserve useful
 preview scale before decorative space; selected morph corners use small solid
 accents rather than large rings.
 

@@ -275,7 +275,7 @@ LookAndFeel& propertyControlLookAndFeel() {
 
 void paintPanelOverlayButton(Graphics& graphics, Rectangle<float> bounds,
         bool hovered, bool down, bool focused, bool selected, bool enabled) {
-    bounds = bounds.reduced(0.75f);
+    bounds = bounds.reduced(CanvasChromeMetrics::panelOverlayBorderInset);
     const Colour accent { 0xff65b8ff };
     graphics.setColour(selected ? Colour(0xff243d52) : Colour(0xff0e1318).brighter(
             down ? 0.12f : hovered ? 0.06f : 0.f));

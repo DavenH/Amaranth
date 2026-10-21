@@ -1,6 +1,6 @@
 #include "Nodes/Envelope/Editor/EnvelopeAxisScaleSelector.h"
 
-#include "UI/Editors/PropertyControls.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/EnvelopeToolbarMetrics.h"
 
 namespace CycleV2 {
@@ -20,9 +20,9 @@ Rectangle<float> scaleDiagramBounds(Rectangle<float> bounds) {
             EnvelopeToolbarMetrics::diagramCanvasHeight);
 }
 
-void drawScaleDiagram(Graphics& graphics, Rectangle<float> bounds, bool logarithmic) {
+void drawScaleDiagram(Graphics& graphics, Rectangle<float> bounds, bool logarithmic, bool enabled) {
     bounds = scaleDiagramBounds(bounds);
-    graphics.setColour(kIndicator.withAlpha(0.82f));
+    graphics.setColour(kIndicator.withAlpha(enabled ? 0.82f : 0.25f));
     const float* positions = logarithmic
             ? kLogarithmicPositions
             : kLinearPositions;
@@ -59,18 +59,17 @@ public:
         return scaleDiagramBounds(getLocalBounds().toFloat());
     }
 
-    void paintButton(Graphics& graphics, bool highlighted, bool) override {
+    void paintButton(Graphics& graphics, bool highlighted, bool down) override {
+        paintPanelOverlayButton(graphics, getLocalBounds().toFloat(),
+                highlighted, down, hasKeyboardFocus(false), getToggleState(), isEnabled());
         drawScaleDiagram(
                 graphics,
                 getLocalBounds().toFloat(),
-                logarithmicMode);
+                logarithmicMode, isEnabled());
         if (getToggleState()) {
-            graphics.setColour(kIndicator.withAlpha(0.92f));
-            Rectangle<float> indicator = getLocalBounds().toFloat().removeFromBottom(2.f);
-            graphics.fillRect(indicator.reduced(4.f, 0.f));
-        } else if (highlighted) {
-            graphics.setColour(kIndicator.withAlpha(0.12f));
-            graphics.fillRect(getLocalBounds().toFloat().reduced(2.f));
+            graphics.setColour(kIndicator.withAlpha(isEnabled() ? 0.92f : 0.25f));
+            Rectangle<float> indicator = getLocalBounds().toFloat().withTrimmedBottom(3.f).removeFromBottom(2.f);
+            graphics.fillRect(indicator.reduced(8.f, 0.f));
         }
     }
 
@@ -122,19 +121,10 @@ Rectangle<float> EnvelopeAxisScaleSelector::optionDiagramBounds(
             static_cast<float>(button->getY()));
 }
 
-void EnvelopeAxisScaleSelector::paint(Graphics& graphics) {
-    const Rectangle<float> outer = getLocalBounds().toFloat().reduced(0.75f);
-    paintPropertySegmentedControl(
-            graphics,
-            outer,
-            2,
-            logarithmic ? 1 : 0);
-}
-
 void EnvelopeAxisScaleSelector::resized() {
-    const int split = getWidth() / 2;
-    linearButton->setBounds(0, 0, split, getHeight());
-    logarithmicButton->setBounds(split, 0, getWidth() - split, getHeight());
+    const int size = roundToInt(EnvelopeToolbarMetrics::controlWidth);
+    linearButton->setBounds(0, 0, size, getHeight());
+    logarithmicButton->setBounds(getWidth() - size, 0, size, getHeight());
 }
 
 }

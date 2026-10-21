@@ -42,7 +42,6 @@ public:
     }
 
     bool hasIcon() const { return icon != nullptr; }
-    void setOverlay(bool value) { overlay = value; }
 
     Rectangle<float> iconCanvasBounds() const {
         return getLocalBounds().toFloat().withSizeKeepingCentre(
@@ -52,13 +51,8 @@ public:
 
     void paintButton(Graphics& graphics, bool highlighted, bool down) override {
         const Rectangle<float> bounds = getLocalBounds().toFloat();
-        if (overlay) {
-            paintPanelOverlayButton(graphics, bounds, highlighted, down,
-                    hasKeyboardFocus(false), getToggleState(), isEnabled());
-        } else if (down || highlighted) {
-            graphics.setColour(Colours::white.withAlpha(down ? 0.12f : 0.06f));
-            graphics.fillRect(bounds.reduced(2.f));
-        }
+        paintPanelOverlayButton(graphics, bounds, highlighted, down,
+                hasKeyboardFocus(false), getToggleState(), isEnabled());
         if (icon != nullptr) {
             const float opacity = isEnabled()
                     ? getToggleState() ? 1.f : highlighted ? 0.9f : 0.72f
@@ -68,13 +62,6 @@ public:
                     iconCanvasBounds(),
                     RectanglePlacement::centred,
                     opacity);
-        }
-        if (hasKeyboardFocus(false) && !overlay) {
-            graphics.setColour(Colour(0xff65b8ff));
-            graphics.drawRoundedRectangle(
-                    bounds.reduced(1.f),
-                    CanvasChromeMetrics::controlCornerRadius,
-                    CanvasChromeMetrics::focusRingWidth);
         }
     }
 
@@ -86,7 +73,6 @@ private:
     }
 
     std::unique_ptr<Drawable> icon;
-    bool overlay {};
 };
 
 }
@@ -114,12 +100,13 @@ struct EnvelopeEditorComponent::Impl {
         owner.addAndMakeVisible(axisScale);
         owner.addAndMakeVisible(loop);
         owner.addAndMakeVisible(sustain);
-        loop.setOverlay(true);
-        sustain.setOverlay(true);
         loop.setAlwaysOnTop(true);
         sustain.setAlwaysOnTop(true);
         owner.addAndMakeVisible(fitVertical);
         owner.addAndMakeVisible(fullVertical);
+        axisScale.setAlwaysOnTop(true);
+        fitVertical.setAlwaysOnTop(true);
+        fullVertical.setAlwaysOnTop(true);
         keyboardShortcutHelp = std::make_unique<MorphKeyboardShortcutHelp>(
                 owner,
                 "envelopeEditor.morph.shortcuts",
@@ -406,17 +393,17 @@ void EnvelopeEditorComponent::updateKeyboardShortcutHint() {
 }
 
 Rectangle<float> EnvelopeEditorComponent::editorControlBounds() const {
-    const auto body = contentBounds().withTrimmedBottom(EnvelopeMorphControls::actionBarHeight());
+    const auto body = contentBounds();
     return MeshEditorLayout(body, MeshDimensionality::dimensions(node).axisCount()).controls();
 }
 
 Rectangle<float> EnvelopeEditorComponent::morphSurfaceBounds() const {
-    const auto body = contentBounds().withTrimmedBottom(EnvelopeMorphControls::actionBarHeight());
+    const auto body = contentBounds();
     return MeshEditorLayout(body, MeshDimensionality::dimensions(node).axisCount()).surface();
 }
 
 Rectangle<float> EnvelopeEditorComponent::editorPanelBounds() const {
-    const auto body = contentBounds().withTrimmedBottom(EnvelopeMorphControls::actionBarHeight());
+    const auto body = contentBounds();
     return MeshEditorLayout(body, MeshDimensionality::dimensions(node).axisCount()).curve();
 }
 
@@ -443,7 +430,6 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
                 colourForMorphDimension(static_cast<MorphDimension>(axis)),
                 impl->linked(axis), true);
     }
-    impl->presentation.drawActions(graphics, contentBounds());
 
     const String focusedAxis = focusedMorphAxis();
     if (focusedAxis.isNotEmpty()) {
@@ -499,7 +485,7 @@ void EnvelopeEditorComponent::layoutEditor() {
             .withPosition(header.title.getX() + 202.f, header.header.getCentreY() - 13.f).toNearestInt());
     impl->mode.setBounds(Rectangle<float>(
             EnvelopeToolbarMetrics::purposeSelectorWidth,
-            EnvelopeToolbarMetrics::controlHeight)
+            EnvelopeToolbarMetrics::purposeSelectorHeight)
             .withCentre({
                     header.enabled.getX()
                             - CanvasChromeMetrics::embeddedEditorActionGap
@@ -523,20 +509,15 @@ void EnvelopeEditorComponent::layoutEditor() {
     }
 
     auto markerGroup = impl->presentation.markerGroupBounds(panelBoundsForAutomation()).toNearestInt();
-    const int markerWidth = markerGroup.getWidth() / 2;
-    const int pairedActionInset = roundToInt(
-            EnvelopeToolbarMetrics::pairedActionOuterInset);
-    impl->loop.setBounds(
-            markerGroup.removeFromLeft(markerWidth).reduced(pairedActionInset, 0));
-    impl->sustain.setBounds(markerGroup.reduced(pairedActionInset, 0));
+    const int actionWidth = roundToInt(EnvelopeToolbarMetrics::controlWidth);
+    impl->loop.setBounds(markerGroup.removeFromLeft(actionWidth));
+    impl->sustain.setBounds(markerGroup.removeFromRight(actionWidth));
     impl->axisScale.setBounds(
-            impl->presentation.axisScaleBounds(contentBounds()).toNearestInt());
+            impl->presentation.axisScaleBounds(panelBoundsForAutomation()).toNearestInt());
 
-    auto rangeGroup = impl->presentation.rangeGroupBounds(contentBounds()).toNearestInt();
-    const int rangeWidth = rangeGroup.getWidth() / 2;
-    impl->fitVertical.setBounds(
-            rangeGroup.removeFromLeft(rangeWidth).reduced(pairedActionInset, 0));
-    impl->fullVertical.setBounds(rangeGroup.reduced(pairedActionInset, 0));
+    auto rangeGroup = impl->presentation.rangeGroupBounds(panelBoundsForAutomation()).toNearestInt();
+    impl->fitVertical.setBounds(rangeGroup.removeFromLeft(actionWidth));
+    impl->fullVertical.setBounds(rangeGroup.removeFromRight(actionWidth));
     updateKeyboardShortcutHint();
 }
 
@@ -751,14 +732,6 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
             "blueMorphBounds",
             editorBoundsToVar(impl->blueMorph.slider.getBounds().toFloat()));
     state.setProperty(
-            "actionRowBounds",
-            editorBoundsToVar(impl->presentation.actionRow(contentBounds())));
-    state.setProperty(
-            "actionBarBounds",
-            editorBoundsToVar(impl->presentation.actionBarBounds(contentBounds())));
-    state.setProperty("axisScaleGroupLabel", "Scaling");
-    state.setProperty("rangeGroupLabel", "Zoom");
-    state.setProperty(
             "actionIconsVector",
             impl->loop.hasIcon()
                     && impl->sustain.hasIcon()
@@ -786,9 +759,6 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty("sustainSelected", impl->sustain.getToggleState());
     state.setProperty("loopTooltip", impl->loop.getTooltip());
     state.setProperty("sustainTooltip", impl->sustain.getTooltip());
-    state.setProperty(
-            "axisScaleGroupLabelBounds",
-            editorBoundsToVar(impl->presentation.axisScaleGroupLabelBounds(contentBounds())));
     state.setProperty(
             "axisScaleBounds",
             editorBoundsToVar(impl->axisScale.getBounds().toFloat()));
@@ -825,11 +795,8 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     }
     state.setProperty("axisScaleOptions", axisScaleOptions);
     state.setProperty(
-            "rangeGroupLabelBounds",
-            editorBoundsToVar(impl->presentation.rangeGroupLabelBounds(contentBounds())));
-    state.setProperty(
             "rangeGroupBounds",
-            editorBoundsToVar(impl->presentation.rangeGroupBounds(contentBounds())));
+            editorBoundsToVar(impl->presentation.rangeGroupBounds(panelBoundsForAutomation())));
     state.setProperty(
             "fitVerticalBounds",
             editorBoundsToVar(impl->fitVertical.getBounds().toFloat()));

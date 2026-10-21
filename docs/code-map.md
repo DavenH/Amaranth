@@ -89,7 +89,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Graph/MeshDimensionality.h` — Shared node axis eligibility, projection, and dimensional edit semantics.
 - `cycle-v2/src/UI/Editors/` — Shared editor/axis geometry, property/morph controls, markers, usable travel and keyboard interaction.
 - `cycle-v2/src/Nodes/Curve/` — Curve model/editor adapters and shared panel hosts for snapshots, zoom controls and GL lifetime.
-- `cycle-v2/src/Nodes/Envelope/` — Envelope state, playback, editor and commit-cached morph surfaces using shared panel/zoom hosts.
+- `cycle-v2/src/Nodes/Envelope/` — Envelope state/playback, commit-cached surfaces, shared panel/zoom hosts and curve-overlay tools.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
 - `cycle-v2/src/UI/NodeWorkspace.h` — Top-level CycleV2 workspace composition and sidebar/canvas ownership.
 - `cycle-v2/src/UI/NodeCanvas.h` — Canvas orchestrator; delegate interaction, scene, presentation, and commands.

@@ -4,49 +4,11 @@
 
 #include "Graph/NodeGraph.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
-#include "UI/CanvasChromeMetrics.h"
-#include "UI/Editors/PropertyControlLookAndFeel.h"
-#include "UI/Editors/PropertyControls.h"
 #include "UI/EnvelopeToolbarMetrics.h"
 
 using namespace juce;
 
 namespace CycleV2 {
-
-namespace {
-
-const Colour kGroupFill { 0xff151c24 };
-const Colour kGroupBorder { 0xff536171 };
-constexpr float kActionTopInset = 4.f;
-constexpr float kActionBottomInset = 12.f;
-constexpr float kActionColumnGap = 28.f;
-constexpr float kActionColumnWidths[] {
-        EnvelopeToolbarMetrics::scalingSelectorWidth,
-        EnvelopeToolbarMetrics::pairedActionWidth
-};
-constexpr float kActionBarHeight = PropertyControlMetrics::groupLabelHeight
-        + EnvelopeToolbarMetrics::controlHeight + kActionTopInset + kActionBottomInset;
-
-void drawSegmentedGroup(
-        Graphics& graphics,
-        Rectangle<float> bounds) {
-    graphics.setColour(kGroupFill);
-    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
-    graphics.setColour(kGroupBorder.withAlpha(0.74f));
-    graphics.drawVerticalLine(
-            roundToInt(bounds.getCentreX()), bounds.getY() + 3.f, bounds.getBottom() - 3.f);
-    graphics.setColour(kGroupBorder.withAlpha(0.82f));
-    graphics.drawRoundedRectangle(
-            bounds,
-            CanvasChromeMetrics::controlCornerRadius,
-            CanvasChromeMetrics::restingBorderWidth);
-}
-
-}
-
-float EnvelopeMorphControls::actionBarHeight() {
-    return kActionBarHeight;
-}
 
 Rectangle<float> EnvelopeMorphControls::planeGroupLabelBounds(Rectangle<float> controls) const {
     const auto plane = planeBounds(controls);
@@ -90,60 +52,20 @@ Rectangle<float> EnvelopeMorphControls::keyboardFocusBounds(
     return MorphControlLayout(controls, dimensionCount).keyboardFocus(axis);
 }
 
-Rectangle<float> EnvelopeMorphControls::actionBarBounds(Rectangle<float> controls) const {
-    const float horizontalInset = controls.getX();
-    auto bar = controls.expanded(horizontalInset, 0.f);
-    return bar.removeFromBottom(kActionBarHeight);
-}
-
-Rectangle<float> EnvelopeMorphControls::actionRow(Rectangle<float> controls) const {
-    auto row = actionBarBounds(controls);
-    row.removeFromBottom(kActionBottomInset);
-    return row.removeFromBottom(EnvelopeToolbarMetrics::controlHeight);
-}
-
-Rectangle<float> EnvelopeMorphControls::actionColumnBounds(
-        Rectangle<float> controls,
-        int column) const {
-    auto area = actionRow(controls);
-    const float totalWidth = kActionColumnWidths[0]
-            + kActionColumnWidths[1]
-            + kActionColumnGap;
-    area = area.withSizeKeepingCentre(totalWidth, area.getHeight());
-    for (int index = 0; index < column; ++index) {
-        area.removeFromLeft(kActionColumnWidths[index] + kActionColumnGap);
-    }
-    return area.removeFromLeft(kActionColumnWidths[column]);
-}
-
 Rectangle<float> EnvelopeMorphControls::markerGroupBounds(Rectangle<float> panel) const {
     return Rectangle<float>(EnvelopeToolbarMetrics::pairedActionWidth, EnvelopeToolbarMetrics::controlHeight)
             .withPosition(panel.getRight() - EnvelopeToolbarMetrics::pairedActionWidth - 8.f, panel.getY() + 8.f);
 }
 
-Rectangle<float> EnvelopeMorphControls::axisScaleGroupLabelBounds(Rectangle<float> controls) const {
-    return actionGroupLabelBounds(controls, 0);
+Rectangle<float> EnvelopeMorphControls::axisScaleBounds(Rectangle<float> panel) const {
+    const auto zoom = rangeGroupBounds(panel);
+    return zoom.withWidth(EnvelopeToolbarMetrics::scalingSelectorWidth)
+            .withX(zoom.getX() - 8.f - EnvelopeToolbarMetrics::scalingSelectorWidth);
 }
 
-Rectangle<float> EnvelopeMorphControls::axisScaleBounds(Rectangle<float> controls) const {
-    return actionColumnBounds(controls, 0);
-}
-
-Rectangle<float> EnvelopeMorphControls::rangeGroupLabelBounds(Rectangle<float> controls) const {
-    return actionGroupLabelBounds(controls, 1);
-}
-
-Rectangle<float> EnvelopeMorphControls::rangeGroupBounds(Rectangle<float> controls) const {
-    return actionColumnBounds(controls, 1);
-}
-
-Rectangle<float> EnvelopeMorphControls::actionGroupLabelBounds(
-        Rectangle<float> controls,
-        int column) const {
-    auto bounds = actionColumnBounds(controls, column);
-    bounds.setY(actionBarBounds(controls).getY() + kActionTopInset);
-    bounds.setHeight((float) PropertyControlMetrics::groupLabelHeight);
-    return bounds;
+Rectangle<float> EnvelopeMorphControls::rangeGroupBounds(Rectangle<float> panel) const {
+    const auto markers = markerGroupBounds(panel);
+    return markers.translated(-markers.getWidth() - 8.f, 0.f);
 }
 
 Rectangle<float> EnvelopeMorphControls::axisGroupLabelBounds(
@@ -196,25 +118,6 @@ void EnvelopeMorphControls::draw(
     TrimeshSidePanelRenderer::drawMorphControls(graphics,
             controls, axes, dimensionCount,
             MorphDimensions::Plane::RedBlue, vertices);
-}
-
-void EnvelopeMorphControls::drawActions(Graphics& graphics, Rectangle<float> controls) const {
-    drawActionGroups(graphics, controls);
-    paintPropertyGroupLabel(graphics, axisScaleGroupLabelBounds(controls), "Scaling");
-    paintPropertyGroupLabel(graphics, rangeGroupLabelBounds(controls), "Zoom");
-}
-
-void EnvelopeMorphControls::drawActionGroups(
-        Graphics& graphics,
-        Rectangle<float> controls) const {
-    auto bar = actionBarBounds(controls);
-    graphics.setColour(Colour(0xff0f151c).withAlpha(0.72f));
-    graphics.fillRect(bar);
-    graphics.setColour(kGroupBorder.withAlpha(0.26f));
-    graphics.fillRect(bar.removeFromTop(1.f));
-    graphics.fillRect(bar.removeFromBottom(1.f));
-
-    drawSegmentedGroup(graphics, rangeGroupBounds(controls));
 }
 
 }

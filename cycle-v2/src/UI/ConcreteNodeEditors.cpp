@@ -13,7 +13,6 @@
 #include "UI/ModulationNodeEditors.h"
 #include "UI/NodeEditorHost.h"
 #include "UI/Editors/MeshEditorLayout.h"
-#include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
 
 namespace CycleV2 {
 
@@ -131,9 +130,7 @@ public:
         if (node.kind != NodeKind::Envelope || MeshDimensionality::dimensions(node).axisCount() != 0) {
             return bounds;
         }
-        const float footer = EnvelopeMorphControls::actionBarHeight();
-        const auto body = MeshEditorLayout::staticEditorBounds(bounds.withTrimmedBottom(footer));
-        return body.withHeight(body.getHeight() + footer);
+        return MeshEditorLayout::staticEditorBounds(bounds);
     }
 
     std::unique_ptr<NodeEditor> create(

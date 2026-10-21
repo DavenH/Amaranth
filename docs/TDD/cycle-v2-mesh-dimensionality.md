@@ -730,3 +730,62 @@ Completion evidence:
   and production-diff review, and whitespace checks pass. Shared overlay paint,
   deleted footer marker chrome and deleted hover-selection scan complete the
   ownership/deletion targets for this follow-up.
+
+## Follow-up: Complete the Envelope curve overlay
+
+Move the existing Scaling and Zoom controls beside the marker overlays, keeping
+markers at the right and an 8 px separation between the three pairs. Reuse the
+shared overlay chrome for every button, retain the Linear/Logarithmic selection
+underline and purpose eligibility, and preserve the existing zoom callbacks.
+The actual curve viewport remains the geometry authority.
+
+Delete the footer painter, label/group geometry, footer-height reservation and
+Static factory compensation. MeshEditorLayout receives the complete body, so the
+curve gains space and Static uses the same compact sizing rule as Trimesh.
+EnvelopeMorphControls owns only mesh presentation/overlay bounds; the selector
+owns its state and button painting, and editor/command owners remain unchanged.
+Verify all modes at normal/compact widths, native scale/zoom/marker clicks,
+selection/undo, pitch-disabled scale controls, and the reclaimed curve extent.
+
+Review: EnvelopeEditorComponent 1113 → 1080 continues to compose controls and
+translate edits through its existing delegate; no domain policy moves into the
+editor. EnvelopeMorphControls 220 → 123 loses footer paint/layout responsibilities
+and retains mesh controls plus viewport-relative overlay placement. The scale
+selector 140 → 130 retains the established diagrams/state and delegates button
+chrome to the shared painter. The footer height, heading geometry, segmented
+Zoom paint, conditional action-button paint and Static footer compensation are
+deleted. No new source boundary, realtime path or gesture complexity change.
+
+Completion evidence:
+
+- CycleV2 and tests build with --parallel 10. All 47 focused cases / 5,961
+  assertions pass, including all mode/width layouts, icon/control dimensions,
+  overlay containment and pair spacing, full curve extent, purpose eligibility,
+  guide interactions and existing Full/Fit range behavior.
+- Native run 5aec8fb7f2cb verifies both scaling choices and Undo, Loop/Sustain
+  publication and exact model Undo, Full/Fit zoom on a narrow Pitch envelope,
+  unchanged model during zoom, and disabled Pitch scaling. Full range is 1;
+  fitting the narrow fixture produces approximately 0.133 with established
+  padding. Evidence: `.context/envelope-tools-native.log`.
+- Production-size captures cover Static/1D/2D/3D at 1100 × 800 and 3D at
+  1600 × 900. Reviewed selection, disabled states, spacing and reclaimed curve
+  area: `.context/envelope-tools-{compact-static,compact-one,compact-two,
+  compact-three,normal-three,pitch-disabled}.png`.
+
+Size refinement: all six overlay buttons now match IR Modeller's 24 × 24
+controls with a 4 px gap within each pair. CanvasChromeMetrics owns the size,
+gap, border inset and 4.75 px icon inset for both editors. Envelope SVG canvases
+are 14.5 px; the procedural scale diagrams use the matching SVG live-area inset
+and preserve their 4:3 proportion. Purpose remains its existing 30 px header
+selector. The former 34 × 30 action and 42 × 30 scale targets are removed.
+
+Final size verification: the 47 focused cases / 5,961 assertions and the IR
+presentation zoom case / 30 assertions pass. Native run a224fa3e391d repeats
+all overlay clicks, Undo, Full/Fit behavior and all mode/width captures at the
+shared 24 px size, including a direct IR reference capture. All buttons retain
+their existing callbacks and purpose eligibility. Shared metrics and overlay
+paint now agree for both families. Architecture, code-map, style/size review
+and whitespace checks pass; footer and legacy-size deletion targets complete.
+The final 26-command marker, 37-command IR property and 32-command purpose
+fixtures pass at the shared size. Evidence:
+`.context/envelope-tools-{markers,ir,purpose}-run.json`.

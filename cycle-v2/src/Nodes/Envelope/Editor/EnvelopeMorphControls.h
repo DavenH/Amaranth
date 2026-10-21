@@ -13,7 +13,6 @@ class EnvelopeMorphControls {
 public:
     void setDimensionCount(int count) { dimensionCount = count; }
     int getDimensionCount() const { return dimensionCount; }
-    static float actionBarHeight();
     static constexpr float vertexParameterHeightScale = 1.f;
 
     Rectangle<float> planeGroupLabelBounds(Rectangle<float> controls) const;
@@ -23,13 +22,9 @@ public:
     Rectangle<float> morphRow(Rectangle<float> controls, int axis) const;
     Rectangle<float> morphSliderBounds(Rectangle<float> controls, int axis) const;
     Rectangle<float> keyboardFocusBounds(Rectangle<float> controls, int axis) const;
-    Rectangle<float> actionBarBounds(Rectangle<float> controls) const;
-    Rectangle<float> actionRow(Rectangle<float> controls) const;
     Rectangle<float> markerGroupBounds(Rectangle<float> panel) const;
-    Rectangle<float> axisScaleGroupLabelBounds(Rectangle<float> controls) const;
-    Rectangle<float> axisScaleBounds(Rectangle<float> controls) const;
-    Rectangle<float> rangeGroupLabelBounds(Rectangle<float> controls) const;
-    Rectangle<float> rangeGroupBounds(Rectangle<float> controls) const;
+    Rectangle<float> axisScaleBounds(Rectangle<float> panel) const;
+    Rectangle<float> rangeGroupBounds(Rectangle<float> panel) const;
     Rectangle<float> axisGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> axisBounds(Rectangle<float> controls, int axis) const;
     Rectangle<float> linkBounds(Rectangle<float> controls, int axis) const;
@@ -50,18 +45,9 @@ public:
             bool yellowLinked = true,
             const std::vector<TrimeshCubePreviewVertex>& vertices = {}) const;
 
-    void drawActions(Graphics& graphics, Rectangle<float> content) const;
-
 private:
     int dimensionCount { 2 };
-    Rectangle<float> actionColumnBounds(Rectangle<float> controls, int column) const;
-    Rectangle<float> actionGroupLabelBounds(
-            Rectangle<float> controls,
-            int column) const;
     Colour axisColour(int axis) const;
-    void drawActionGroups(
-            Graphics& graphics,
-            Rectangle<float> controls) const;
 };
 
 }

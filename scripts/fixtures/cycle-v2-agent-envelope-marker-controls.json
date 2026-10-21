@@ -32,16 +32,6 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.axisScaleGroupLabel",
-      "equals": "Scaling"
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.effect2D.rangeGroupLabel",
-      "equals": "Zoom"
-    },
-    {
-      "command": "assertState",
       "path": "expandedNodeControls.effect2D.actionIconsVector",
       "equals": true
     },
