@@ -91,7 +91,7 @@ class SaxophoneArticulationTest(unittest.TestCase):
         for vertex in actual["mesh"]["vertices"]:
             original = named(source["mesh"]["vertices"], vertex["id"])
             if vertex["id"] in range(8, 16):
-                self.assertEqual(vertex["weight"], .20 if vertex["key"] == 1 else 0)
+                self.assertEqual(vertex["weight"], 1.0 if vertex["key"] == 1 else 0)
                 vertex["weight"] = original["weight"]
         actual["revision"] = source["revision"]
         self.assertEqual(actual, source)

@@ -112,7 +112,7 @@ def articulation_plan(graph, voice_duration_seconds):
         raise ValueError("Expected the existing noisy component guide")
     for identifier in cube["vertexIds"]:
         vertex = named(time_model["mesh"]["vertices"], identifier)
-        vertex["weight"] = .20 if vertex["key"] == 1 else 0
+        vertex["weight"] = 1.0 if vertex["key"] == 1 else 0
     edits.append(_shape_edit(time_node, time_model))
     for node_id, parameters in (
             ("voice", {"envelopeModulation": "live", "noteMode": "legato", "portamento": True,
