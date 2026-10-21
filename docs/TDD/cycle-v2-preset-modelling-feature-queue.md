@@ -7,15 +7,17 @@ target. Distinguish confirmed gaps from workflow opportunities; reuse an
 existing TDD instead of creating a competing feature or policy. Do not turn a
 workaround or an unexplored control into a missing-engine claim.
 
-Current listening evidence (2026-10-21): after launching the calibration
-candidate, the user reports useful brightness expression on CC2 and little
-else. This is an informal human assessment of that candidate, not a captured
-controlled trial. Treat additional independent expressive axes as the next
-musical acceptance target. Preserve brightness while demonstrating live
-vibrato depth/rate and selectable note-on articulation, separately and in
-combination across registers. A static contour bypass or a better pitch score
-alone does not satisfy that target. Inspect existing control composition before
-classifying any additional missing mechanism as an engine feature request.
+Current listening direction (2026-10-21): the user finds substantially more
+timbral variance in the references than the expressive preset captures and
+approved individual reference fits followed by shared bridges. Convincing
+Source/Synth comparisons are the immediate acceptance target in the
+[anchor study](cycle-v2-saxophone-anchor-bridge.md). Earlier feedback identified
+useful CC2 brightness but little other expression; the subsequent controller
+and articulation work provides technical response evidence rather than acoustic
+fidelity. Retain those broader expressive goals while establishing convincing
+anchors. A better pitch score or more controller routes alone does not satisfy
+the musical target. Inspect existing control composition before classifying
+an unexplored mechanism as an engine feature request.
 
 ## M01 — Live envelope morph adoption during a held note
 
@@ -124,6 +126,14 @@ straighter tracked NV pitch at objective and reserved notes, while losing
 variation present in vibrato references. It preserves all geometry. This
 demonstrates why an ablation needs behavior-specific acceptance: a smaller
 straight-tone error alone would reward removing useful expressive capability.
+
+The first D3 anchor bridge uses fewer nodes (16), but its corresponding
+48-harmonic stereo fits contain 4,624 vertices and 928 cubes. The raw levels,
+harmonic evolution and continuous endpoint bridge now provide concrete
+behavior for a simplification study. Reduced node count does not establish
+economy, and this first regular grid is not an elegance claim. Preserve both
+source matches, intermediate control responses and the held sweep while
+testing fewer time knots, insignificant partials and shared channel structure.
 
 Owner: [Preset Authoring Roadmap](cycle-v2-agent-preset-authoring.md), constrained
 search/simplification slice. Compare ablations and bounded shape reductions
