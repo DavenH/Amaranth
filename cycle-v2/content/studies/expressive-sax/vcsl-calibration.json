@@ -1,0 +1,26 @@
+{
+  "schema": "cycle-saxophone-calibration.v1",
+  "baseline": "../../presets/saxophone-3.cyclegraph",
+  "sourceSha256": "b3b32402763646b0072a26c3ba47a69f774b8dd63bf6d5adcb140d46ff793f3a",
+  "corpusManifestSha256": "426faf7b9dc662b252c7ebbbffe1ec8c4d5a08a7ab22b94c3b3b73736ebe6d39",
+  "selectionSha256": "6269e348be1725c7a51eeeff22d01dac6e5d512c1732c027cf160db2a4022383",
+  "objectiveSuite": "vcsl-objective-suite.json",
+  "withheldSuite": "vcsl-withheld-suite.json",
+  "candidate": {
+    "id": "straight-pitch",
+    "nodeId": "pitchEnvelope1",
+    "parameterId": "enabled",
+    "value": false
+  },
+  "missingCoverage": [
+    "One inferred performer family; reserved D3 sources test interpolation, not independent-player generalization.",
+    "Filename note tokens and effective tracked frequency remain distinct; standard MIDI labels are inferred.",
+    "Source vl/var tokens are not calibrated MIDI velocity, acoustic SPL or pp/mf/ff; synth velocity .65 is a fixed hypothesis.",
+    "No observed source note-off times: reference comparisons end before the synthetic sustained note-off and do not claim release agreement.",
+    "Staccato pitch windows are short and attack-contaminated; their variance is not treated as a trustworthy straight-tone measure.",
+    "CC1/2/3 are fixed at zero; continuous expression, growl, subtone, dynamics and note-to-note transitions are unvalidated.",
+    "Disabling pitchEnvelope1 may remove desirable vibrato or character; no taste, complete timbre match or economy improvement is claimed.",
+    "Pitch frames reflect effective library tracking/path edits and retain insecurity/fallback flags; they are not untouched detector observations.",
+    "Human listening and further recordings are required; acoustic-model and autonomous-search gates remain closed pending further evidence."
+  ]
+}

@@ -1,0 +1,339 @@
+{
+  "schema": "cycle-performance-suite.v1",
+  "id": "vcsl-calibration-objective",
+  "repetitions": 2,
+  "render": {
+    "sampleRate": 48000,
+    "blockSize": 512,
+    "channels": 2,
+    "randomSeed": 1729,
+    "ratePolicy": "native"
+  },
+  "budget": {
+    "maxRenders": 16,
+    "maxAudioSeconds": 44.0,
+    "maxWallSeconds": 300
+  },
+  "cases": [
+    {
+      "id": "BrettTenor_NV_Main_C2_vl2_rr1",
+      "durationMs": 3000,
+      "labels": {
+        "sourceParent": "BrettTenor_NV_Main_C2_vl2_rr1",
+        "partition": "objective",
+        "velocity": "fixed synthetic .65; source dynamics unknown"
+      },
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 48,
+          "velocity": 0.65
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 2200,
+          "note": 48
+        }
+      ]
+    },
+    {
+      "id": "BrettTenor_NV_Main_C2_vl3_rr1",
+      "durationMs": 3000,
+      "labels": {
+        "sourceParent": "BrettTenor_NV_Main_C2_vl3_rr1",
+        "partition": "objective",
+        "velocity": "fixed synthetic .65; source dynamics unknown"
+      },
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 48,
+          "velocity": 0.65
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 2200,
+          "note": 48
+        }
+      ]
+    },
+    {
+      "id": "BrettTenor_NV_Main_C4_vl2_rr1",
+      "durationMs": 3000,
+      "labels": {
+        "sourceParent": "BrettTenor_NV_Main_C4_vl2_rr1",
+        "partition": "objective",
+        "velocity": "fixed synthetic .65; source dynamics unknown"
+      },
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 72,
+          "velocity": 0.65
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 2200,
+          "note": 72
+        }
+      ]
+    },
+    {
+      "id": "BrettTenor_NV_Main_C4_vl3_rr1",
+      "durationMs": 3000,
+      "labels": {
+        "sourceParent": "BrettTenor_NV_Main_C4_vl3_rr1",
+        "partition": "objective",
+        "velocity": "fixed synthetic .65; source dynamics unknown"
+      },
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 72,
+          "velocity": 0.65
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 2200,
+          "note": 72
+        }
+      ]
+    },
+    {
+      "id": "BrettTenor_Staccato_Main_C3_vl1_rr4",
+      "durationMs": 2000,
+      "labels": {
+        "sourceParent": "BrettTenor_Staccato_Main_C3_vl1_rr4",
+        "partition": "objective",
+        "velocity": "fixed synthetic .65; source dynamics unknown"
+      },
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 60,
+          "velocity": 0.65
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 150,
+          "note": 60
+        }
+      ]
+    },
+    {
+      "id": "BrettTenor_Staccato_Main_C3_vl2_rr4",
+      "durationMs": 2000,
+      "labels": {
+        "sourceParent": "BrettTenor_Staccato_Main_C3_vl2_rr4",
+        "partition": "objective",
+        "velocity": "fixed synthetic .65; source dynamics unknown"
+      },
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 60,
+          "velocity": 0.65
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 150,
+          "note": 60
+        }
+      ]
+    },
+    {
+      "id": "BrettTenor_Vib_Main_C2_var4",
+      "durationMs": 3000,
+      "labels": {
+        "sourceParent": "BrettTenor_Vib_Main_C2_var4",
+        "partition": "objective",
+        "velocity": "fixed synthetic .65; source dynamics unknown"
+      },
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 48,
+          "velocity": 0.65
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 2200,
+          "note": 48
+        }
+      ]
+    },
+    {
+      "id": "BrettTenor_Vib_Main_C4_var2",
+      "durationMs": 3000,
+      "labels": {
+        "sourceParent": "BrettTenor_Vib_Main_C4_var2",
+        "partition": "objective",
+        "velocity": "fixed synthetic .65; source dynamics unknown"
+      },
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 72,
+          "velocity": 0.65
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 2200,
+          "note": 72
+        }
+      ]
+    }
+  ]
+}
