@@ -3,6 +3,7 @@
 #include "App/NodeAuthoringAutomation.h"
 
 #include "App/CycleV2AutomationProtocol.h"
+#include "Graph/SynthesisCapabilities.h"
 #include "UI/NodeWorkspace.h"
 
 #include <utility>
@@ -11,6 +12,27 @@ namespace CycleV2 {
 
 using namespace juce;
 using namespace AutomationProtocol;
+
+namespace {
+
+var spectralAuthoring(const var& controls, const var& request, String& error) {
+    const auto note = request["midiNote"];
+    const auto frames = request.getProperty("cycleFrames", 2048);
+    if ((!note.isInt() && !note.isInt64()) || (int64) note < 0 || (int64) note > 127
+            || (!frames.isInt() && !frames.isInt64())
+            || (int64) frames < 2 || (int64) frames > 65536
+            || controls["model"]["schema"].toString() != "trimesh") {
+        error = "Spectral authoring requires a Trimesh, integer midiNote 0 to 127 and cycleFrames 2 to 65536";
+        return {};
+    }
+    std::vector<NodeParameter> parameters;
+    for (const auto& parameter : *controls["parameters"].getArray()) {
+        parameters.push_back({ parameter["id"].toString(), {}, parameter["value"].toString() });
+    }
+    return SynthesisCapabilities::spectralAuthoring(parameters, (int) note, (int) frames, error);
+}
+
+}
 
 CycleV2AutomationWorkspaceCommands::CycleV2AutomationWorkspaceCommands(
         NodeWorkspace& targetWorkspace,
@@ -226,6 +248,14 @@ var CycleV2AutomationWorkspaceCommands::inspectNodeControls(const var& commandVa
     var data = workspace.inspectNodeControlsForAutomation(nodeId);
     if (const auto* object = objectFor(data); object == nullptr || !(bool) object->getProperty("resolved")) {
         return failedResult("inspectNodeControls", "Unknown node: " + nodeId);
+    }
+    if (commandValue.hasProperty("midiNote")) {
+        String error;
+        const auto authoring = spectralAuthoring(data, commandValue, error);
+        if (error.isNotEmpty()) {
+            return failedResult("inspectNodeControls", error);
+        }
+        objectFor(data)->setProperty("spectralAuthoring", authoring);
     }
 
     return okResult("inspectNodeControls", data);

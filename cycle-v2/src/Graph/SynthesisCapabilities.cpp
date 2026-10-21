@@ -2,7 +2,15 @@
 #include <cmath>
 #include <utility>
 
+#include <Algo/FFT.h>
+#include <Array/ScopedAlloc.h>
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+#include <Audio/CycleDsp/SpectralLayerCore.h>
+#include <Util/LogRegionMapping.h>
+
+#include "Graph/NodeParameterMap.h"
 #include "Graph/SynthesisCapabilities.h"
+#include "Nodes/Control/ModulationSource.h"
 
 namespace CycleV2 {
 
@@ -26,6 +34,15 @@ var mappingContext(const ParameterMappingContext& context) {
     auto result = object();
     result.getDynamicObject()->setProperty("sampleRate", context.sampleRate);
     result.getDynamicObject()->setProperty("beatsPerMeasure", context.beatsPerMeasure);
+    return result;
+}
+
+var numbers(Buffer<float> values) {
+    Array<var> result;
+    result.ensureStorageAllocated(values.size());
+    for (const float value : values) {
+        result.add(value);
+    }
     return result;
 }
 
@@ -127,6 +144,7 @@ var SynthesisCapabilities::exportJSON(const ParameterMappingContext& context) {
             "Voice Context noteMode=legato preserves overlapping-note traversal per MIDI source/channel; portamento glides those transitions over portamentoSeconds. Only one Voice Context may be active in a graph.",
             "Modulation-source output depends on source selection; velocity/key are note properties, CC/pressure are live controls.",
             "Model defaults are codec examples. Authored replacement is available only when model.authoringReplacement is true; it validates structure, not musical quality.",
+            "inspectNodeControls with midiNote and optional cycleFrames (default 2048) exports spectralAuthoring for spectral Trimeshes: canonical harmonic positions, unipolar additive coefficients and bipolar phase scales. Supply the render frame size for its harmonic cap.",
             "Connection domains can specialize with graph context and signalType; exported ports are declared defaults.",
             "Unknown physical mappings, control timing and perceptual effects are unspecified; no universal brightness control is promised."
     }));
@@ -227,6 +245,61 @@ var SynthesisCapabilities::convertParameter(
     fields.setProperty("physicalValue", mapping.toPhysical(normalized.getDoubleValue(), context));
     fields.setProperty("unit", mapping.unit);
     fields.setProperty("mappingContext", mappingContext(context));
+    return result;
+}
+
+var SynthesisCapabilities::spectralAuthoring(
+        const std::vector<NodeParameter>& parameters,
+        int midiNote,
+        int cycleFrames,
+        String& error) {
+    error.clear();
+    const NodeParameterMap values(parameters);
+    const String signalType = values.stringValue("signalType", "time");
+    if ((signalType != "spectralMagnitude" && signalType != "spectralPhase")
+            || midiNote < 0 || midiNote > 127 || cycleFrames < 2 || cycleFrames > 65536
+            || (cycleFrames & (cycleFrames - 1)) != 0) {
+        error = "Requires a spectral Trimesh, MIDI note 0 to 127 and power-of-two cycleFrames 2 to 65536";
+        return {};
+    }
+
+    const LogRegionMapping mapping(midiNote + LogRegionMapping::legacyMidiNoteBias);
+    const int count = jmin(mapping.regionSize(),
+            RealFftFullPolarSpectrum::binCountForBufferSize(cycleFrames) - 1);
+    ScopedAlloc<float> positions(mapping.regionSize());
+    mapping.fillDisplayUnits(positions);
+    const float range = values.floatValue("range", 0.5f);
+    const float gain = CycleDsp::outputGain(values.floatValue("gain", 0.5f));
+    float unitMagnitude = gain;
+    CycleDsp::SpectralLayerCore::shapeMagnitudeOperand(
+            Buffer<float>(&unitMagnitude, 1), range, true, false, count);
+    ScopedAlloc<float> phaseScales(count);
+    CycleDsp::SpectralLayerCore::preparePhaseHarmonicScale(phaseScales);
+    phaseScales.mul(gain * CycleDsp::SpectralLayerCore::phaseOffsetScale(range)
+            * MathConstants<float>::twoPi);
+
+    auto result = object();
+    auto& fields = *result.getDynamicObject();
+    fields.setProperty("midiNote", midiNote);
+    fields.setProperty("frequencyHz", MidiMessage::getMidiNoteInHertz(midiNote));
+    fields.setProperty("mappingSampleRate", LogRegionMapping::defaultSampleRate);
+    fields.setProperty("cycleFrames", cycleFrames);
+    fields.setProperty("regionSize", mapping.regionSize());
+    fields.setProperty("harmonicCount", count);
+    fields.setProperty("positions", numbers(positions.withSize(count)));
+    fields.setProperty("gain", gain);
+    fields.setProperty("additiveExponent", CycleDsp::SpectralLayerCore::magnitudeDynamicRange(range));
+    fields.setProperty("additiveUnitScale", unitMagnitude);
+    fields.setProperty("additivePolarity", "unipolar");
+    fields.setProperty("requiredPolarity", "unipolar");
+    fields.setProperty("requiredPhaseMode", "absolute");
+    fields.setProperty("fftNormalization", "DivFwdByN");
+    fields.setProperty("ordinaryHarmonicPeakToMagnitude", 0.5);
+    fields.setProperty("dcMagnitude", 0.0);
+    fields.setProperty("nyquistPeakToMagnitude", 1.0);
+    fields.setProperty("phaseScales", numbers(phaseScales));
+    fields.setProperty("keyPosition", ModulationSource::normalizeKey(
+            midiNote, Constants::LowestMidiNote, Constants::HighestMidiNote));
     return result;
 }
 
