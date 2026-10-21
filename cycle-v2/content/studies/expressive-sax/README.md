@@ -4,6 +4,10 @@ This study uses the existing `saxophone-3.cyclegraph` as one shared synthesis
 structure. It tests control response and one manually declared edit. It does
 not establish acoustic saxophone fidelity, musical taste, or a complete
 expressive instrument, and does not open the roadmap's autonomous-search gate.
+Record newly encountered capability gaps in the
+[modelling feature queue](../../../../docs/TDD/cycle-v2-preset-modelling-feature-queue.md).
+Subsequent [external reference acquisition](REFERENCE-SOURCES.md) is preserved
+separately from this experiment's frozen inputs and results.
 
 The plan and performance suites beside this file separate objective cases
 from reserved performance combinations before editing. Objective rendering

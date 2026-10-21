@@ -18,6 +18,8 @@ The bounded [saxophone pilot](cycle-v2-expressive-saxophone-pilot.md) is
 implemented. Its single recording permits exploratory comparisons; the
 expressive-reference and autonomous-search evidence gate remains open.
 Additional reference collection is the next step.
+Keep modelling obstacles and useful follow-ups in the evidence-linked
+[feature queue](cycle-v2-preset-modelling-feature-queue.md) during experiments.
 Remaining slices are proposed.
 Expand each nontrivial slice with the exact files, rough size envelope, lifecycle
 contract, and negative tests required by [the TDD policy](README.md) before
