@@ -1,5 +1,27 @@
 # Audio Bug Notes
 
+## P3: Rendered CC1 output differences slightly precede scheduled events
+
+On 2026-10-20, the explained-exemplar suite compared held CC1=0 with a matching
+performance changing CC1 at 200/450 ms. Notes, velocity, seed and render settings
+match and every condition repeats exactly. At 44.1 kHz, `reed.cyclegraph` differs
+in two stereo PCM samples before 200 ms: first frame 8808 (199.727891 ms),
+worst error one 24-bit LSB (`1.1920928955078125e-7`). `warmth.cyclegraph` differs
+in 35 samples: first frame 8743 (198.253968 ms), worst error `3.421306610107422e-5`.
+Sat-bass/filter-saw prefixes are exact. All four 0–180 ms windows are exact.
+
+A two-repeat negative control replaced only the moving CC1 events with unused
+CC118, retaining initial CC1=0 and the entire schedule. It matches the held
+baseline exactly, including full 0–200 ms prefixes and motion descriptors, on
+all four presets. Thus these boundary differences accompany actual CC1 changes,
+not generic unused-event schedule splitting. Cause remains unverified; inspect
+control interpolation/oversampling separately without changing this content
+slice's DSP. Source WAVs and full-prefix diagnostics are in
+`.context/exemplars-verified/{reed,warmth}/baseline-renders` and `results.json`
+in the exemplar worktree. Both conditions use matching executable/effective-graph
+hashes. Current status: open. Response proof records a 20 ms boundary guard and
+complete raw audio; no sample-exact controller-onset claim is made.
+
 ## Open: Ubuntu legacy BlockConvolver Dirac test loses about 0.1% per stage
 
 During the 2026-10-11 Reverb kernel portability fix, the isolated

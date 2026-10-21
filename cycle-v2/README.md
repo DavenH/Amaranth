@@ -181,6 +181,9 @@ Saved performance and reference artifacts can be compared with
 [audition reports](../docs/cycle-audition-reports.md), including phase traces,
 raw/RMS A/B audio and withheld cases.
 
+Four [explained factory exemplars](../docs/cycle-explained-exemplars.md) connect
+node/preset notes to isolated edits and reproducible before/after audition reports.
+
 ## Visual References
 
 These generated UI mockups are visual references, not implementation snapshots. They capture the intended density, routing clarity, node-preview richness, and studio-canvas atmosphere.

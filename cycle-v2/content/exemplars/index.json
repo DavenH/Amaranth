@@ -1,0 +1,185 @@
+{
+  "schema": "cycle-explained-exemplars.v1",
+  "suite": "performance-suite.json",
+  "coverage": {
+    "status": "declared-test-coverage",
+    "inputMidiNotes": [
+      48,
+      60,
+      72
+    ],
+    "velocities": [
+      0.35,
+      0.7
+    ],
+    "controller": 1,
+    "controllerValues": [
+      0,
+      64,
+      127
+    ]
+  },
+  "examples": [
+    {
+      "id": "sat-bass",
+      "graph": "../presets/sat-bass.cyclegraph",
+      "synthesisSha256": "b4c1d5f0ca48f264a9569683fd058452be09c306e91d68e7153786f4a1bed324",
+      "annotationNodeIds": [
+        "voice",
+        "morph",
+        "timeLayer1",
+        "waveshaper",
+        "volumeEnvelope1",
+        "impulseResponse"
+      ],
+      "controls": [
+        {
+          "nodeId": "waveshaper",
+          "parameterId": "pre",
+          "storedRange": [
+            0.55,
+            0.72
+          ],
+          "status": "starting-hypothesis",
+          "valueSpace": "stored-normalized"
+        },
+        {
+          "nodeId": "waveshaper",
+          "parameterId": "post",
+          "storedRange": [
+            0.4,
+            0.55
+          ],
+          "status": "starting-hypothesis",
+          "valueSpace": "stored-normalized"
+        }
+      ],
+      "intervention": {
+        "kind": "transferPoint",
+        "nodeId": "waveshaper",
+        "vertexId": 5,
+        "y": 0.6
+      }
+    },
+    {
+      "id": "filter-saw",
+      "graph": "../presets/filter-saw.cyclegraph",
+      "synthesisSha256": "fcd4c6cc8e74367b929f0b2c31ab1800603793969151900792dac541a953b2ab",
+      "annotationNodeIds": [
+        "timeLayer1",
+        "magnitudeLayer1",
+        "magnitudeOp1",
+        "volumeEnvelope1",
+        "scratchEnvelope1",
+        "delay"
+      ],
+      "controls": [
+        {
+          "nodeId": "voice",
+          "parameterId": "voiceLength",
+          "storedRange": [
+            0.25,
+            0.45
+          ],
+          "status": "starting-hypothesis",
+          "valueSpace": "stored-normalized"
+        },
+        {
+          "nodeId": "magnitudeLayer1",
+          "parameterId": "range",
+          "storedRange": [
+            0.55,
+            0.75
+          ],
+          "status": "starting-hypothesis",
+          "valueSpace": "stored-normalized"
+        }
+      ],
+      "intervention": {
+        "kind": "releaseStretch",
+        "nodeId": "volumeEnvelope1",
+        "sustainCubeIndex": 1,
+        "boundary": 1,
+        "factor": 2
+      }
+    },
+    {
+      "id": "reed",
+      "graph": "../presets/reed.cyclegraph",
+      "synthesisSha256": "7258727ba9850468157a90bd1f82361a38dc9803f3edec551fc4c42e23b6fa6b",
+      "annotationNodeIds": [
+        "morph",
+        "timeLayer1",
+        "magnitudeLayer1",
+        "volumeEnvelope1",
+        "reverb"
+      ],
+      "controls": [
+        {
+          "guideId": "guide5",
+          "parameterId": "noise",
+          "storedRange": [
+            0,
+            0.15
+          ],
+          "status": "starting-hypothesis",
+          "valueSpace": "stored-normalized"
+        }
+      ],
+      "intervention": {
+        "kind": "guideNoise",
+        "guideId": "guide5",
+        "noise": 0.15
+      }
+    },
+    {
+      "id": "warmth",
+      "graph": "../presets/warmth.cyclegraph",
+      "synthesisSha256": "95a2d2bbf017a20ed76d447435d0a01c643d0ce98615c497227369b26a57b671",
+      "annotationNodeIds": [
+        "magnitudeLayer1",
+        "phaseLayer1",
+        "unison",
+        "volumeEnvelope1",
+        "delay",
+        "reverb"
+      ],
+      "controls": [
+        {
+          "nodeId": "delay",
+          "parameterId": "wet",
+          "storedRange": [
+            0.15,
+            0.4
+          ],
+          "status": "starting-hypothesis",
+          "valueSpace": "stored-normalized"
+        },
+        {
+          "nodeId": "reverb",
+          "parameterId": "wet",
+          "storedRange": [
+            0.1,
+            0.3
+          ],
+          "status": "starting-hypothesis",
+          "valueSpace": "stored-normalized"
+        }
+      ],
+      "intervention": {
+        "kind": "disableDelay",
+        "nodeId": "delay"
+      }
+    }
+  ],
+  "negativeControl": {
+    "controller": 118,
+    "eventTimesMs": [
+      200,
+      450
+    ],
+    "repetitions": 2,
+    "requiresUnusedController": true,
+    "channelMode": false
+  }
+}
