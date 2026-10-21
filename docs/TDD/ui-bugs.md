@@ -881,3 +881,12 @@ The scale fixture now settles hover with native movement before its cursor
 assertion; the complete four-purpose replay passes (220204b8f788). Actions are
 not retried. Actual screenshots confirm hand cursors for available controls and
 arrow cursors plus the explanatory tooltip for Pitch/Scratch.
+
+The 2026-10-21 Volume-only scale review reproduced a false cursor-inspection
+failure: `inspectPointerCursor` reported the cached curve/NodeCanvas component
+while the contemporaneous native screenshot showed a hand over the scale icon.
+Evidence: `.context/volume-scale-native.log` (failed attempt) and
+`.context/scale-volume-logarithmic-cursor.png`. The scale smoke now verifies
+actual native clicks and captures the native cursor for visual review rather
+than gating on that stale cached classification. Other cursor smokes retain
+their existing checks; the inspector's cached-source limitation remains open.

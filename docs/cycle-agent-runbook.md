@@ -77,8 +77,8 @@ Run `python3 scripts/test_cycle_v2_native_edit_smoke.py envelope-markers` for
 Envelope marker selection, pointer departure, Loop/Sustain publication and Undo.
 Use the `cube-faces` sequence for all three cube faces in both mesh editors,
 paired-axis movement, held coordinates, geometry preservation and Undo.
-Use `envelope-scales` for native Linear/Logarithmic clicks, enabled hand cursors,
-disabled Pitch/Scratch arrow cursors and unchanged state after disabled clicks.
+Use `envelope-scales` for native Volume Linear/Logarithmic clicks and cursor captures,
+hidden scale controls/targets in other purposes, and their return on Volume.
 
 The coordinator writes `report.json`, `app.log`, `app.log.raw`, and `run.json`
 under the run directory. It exits nonzero for failed commands unless

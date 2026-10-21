@@ -1174,36 +1174,38 @@ class NativeEditSmoke:
     def envelope_scales_sequence(self):
         self.command({"command": "openGraph",
                 "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph")})
+        self.command({"command": "resizeWindow", "width": 1100, "height": 800,
+                "waitForIdle": True, "idleDelayMs": 150})
         self.open_editor("env")
         self.command({"command": "pointer", "event": "click",
                 "targetId": "expanded:env.meshDimensions.static", "waitForIdle": True, "idleDelayMs": 150})
-        for purpose in ("volume", "control", "pitch", "scratch"):
+        for purpose in ("volume", "control", "pitch", "scratch", "volume"):
             self.command({"command": "pointer", "event": "click",
                     "targetId": "expanded:env.envelopeMode." + purpose,
                     "waitForIdle": True, "idleDelayMs": 150})
-            available = purpose in ("volume", "control")
+            visible = purpose == "volume"
+            state = self.inspect("env")
+            assert state["effect2D"]["axisScaleVisible"] == visible
+            targets = self.command({"command": "inspectPointerTargets"})["targets"]
+            target_ids = {target["id"] for target in targets}
+            for action in ("linear", "logarithmic"):
+                assert ("expanded:env.envelopeAction." + action in target_ids) == visible
+            if not visible:
+                self.move_pointer(self.point(self.target("expanded:env.panel2D"), 0.5, 0.5))
+                self.capture(f"scale-{purpose}-hidden", self.target("expanded:env"))
+                continue
             for action in ("logarithmic", "linear"):
                 self.move_pointer(self.point(self.target("expanded:env.panel2D"), 0.5, 0.5))
                 point = self.point(self.target("expanded:env.envelopeAction." + action), 0.5, 0.5)
                 self.move_pointer((point[0] - 3, point[1]))
                 self.move_pointer(point)
-                expected_cursor = "pointingHand" if available else "normal"
-                for _ in range(3):
-                    if self.command({"command": "inspectPointerCursor"})["cursor"] == expected_cursor:
-                        break
-                    self.move_pointer((point[0] + 1, point[1]))
-                    self.move_pointer(point)
-                self.cursor_until(expected_cursor)
                 self.capture(f"scale-{purpose}-{action}-cursor", self.target("expanded:env"))
-                before = self.inspect("env")
                 self.click(f"c:{point[0]},{point[1]}")
-                expected = available and action == "logarithmic"
+                expected = action == "logarithmic"
                 after = self.inspect_until("env", lambda state: state["effect2D"]["logarithmic"] == expected,
                         timeout_seconds=0.5)
                 assert after["effect2D"]["logarithmic"] == expected, (purpose, action)
-                if not available:
-                    assert after["model"]["state"] == before["model"]["state"]
-                    assert self.parameters(after) == self.parameters(before)
+                self.capture(f"scale-{purpose}-{action}-selected", self.target("expanded:env"))
 
     def envelope_markers_sequence(self):
         self.command({

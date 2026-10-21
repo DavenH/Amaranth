@@ -870,3 +870,42 @@ and morph properties 26 commands. Reports are
 `.context/morph-face-{purpose,markers,properties}-report.json`. The final build,
 27 focused cases, architecture/code-map and whitespace checks pass. Follow-up
 ownership and deletion targets above are complete.
+
+
+### Follow-up: Purpose-specific scale tools and quieter overlay selection
+
+Show Linear/Logarithmic only for Volume. Envelope's existing purpose application
+owns visibility; logarithmic playback eligibility and saved values retain their
+existing owners. Hidden controls must have no automation hit targets. Zoom and
+markers retain their positions as purposes change. The shared overlay painter
+owns one-pixel neutral borders and a muted slate selected fill for Envelope and
+IR, with a brighter neutral border for keyboard focus. Delete the redundant
+scale enablement update in document synchronization and the cyan/two-pixel
+overlay focus treatment. Verify live purpose changes and restoration to Volume,
+existing layout/scale/marker behavior, and native screenshots at both widths.
+
+Completion: CycleV2/tests build with --parallel 10; 32 focused cases / 2,458
+assertions pass, including live purpose changes, return to Volume, stable peer
+overlay placement, IR zoom and existing scale/grid behavior. Native replay
+8a9b3abae5ad verifies Volume scale clicks, hidden controls/targets for the other
+three purposes, and return to working Volume controls. Native cursor/selected
+captures show the thinner neutral border. Review 71f6a3b7ae42 covers Static and
+3D Volume/Control plus IR at 1100 × 800 and 1600 × 900. Evidence:
+`.context/volume-scale-{build,tests,native-final,review}.log`,
+`.context/volume-scale-{1100,1600}-{static,three}-{volume,control}.png`,
+`.context/scale-volume-{linear,logarithmic}-selected.png` and
+`.context/scale-{control,pitch,scratch}-hidden.png`.
+
+Size/ownership review: Envelope editor 1117 → 1118 owns purpose visibility;
+shared overlay painter 310 → 309 owns the one-pixel neutral chrome; automation
+inspector 1260 → 1264 only honors the editor's visibility. No new algorithms,
+state owners, framework utilities or realtime work. The existing complete
+expanded-target encoder extraction remains the inspector's decomposition
+boundary. Redundant enablement and cyan/two-pixel overlay focus are removed.
+Architecture, code-map and whitespace checks pass.
+
+Final fixture checks pass: Envelope purpose 32 commands and IR properties
+38 commands, including an explicit default-graph preparation before the
+37-command IR fixture. Reports: `.context/volume-scale-{purpose,ir}-report.json`.
+The first IR run inherited the purpose fixture's preset without an `ir` node;
+replaying with that explicit precondition passes. No product failure was found.

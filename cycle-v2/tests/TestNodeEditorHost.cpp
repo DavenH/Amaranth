@@ -3052,6 +3052,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
             editor->getLocalBounds().toFloat(), true).enabled);
     REQUIRE(axisScaleSelector->getNumChildComponents() == 2);
     REQUIRE_FALSE(axisScaleSelector->isEnabled());
+    REQUIRE_FALSE(axisScaleSelector->isVisible());
+    REQUIRE_FALSE((bool) state.getProperty("axisScaleVisible", true));
     REQUIRE((bool) state.getProperty("actionIconsVector", {}));
     REQUIRE_FALSE(loopMarker->isEnabled());
     REQUIRE_FALSE(sustainMarker->isEnabled());
@@ -3200,6 +3202,16 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(pitchMode->getToggleState());
     REQUIRE_FALSE(scratchMode->getToggleState());
     REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
+    for (const auto purpose : { EnvelopePurpose::Volume, EnvelopePurpose::Control,
+            EnvelopePurpose::Scratch, EnvelopePurpose::Pitch, EnvelopePurpose::Volume }) {
+        modeSelector->setPurpose(purpose, sendNotificationSync);
+        const bool visible = purpose == EnvelopePurpose::Volume;
+        REQUIRE(axisScaleSelector->isVisible() == visible);
+        const var nextState = editor->automationState();
+        REQUIRE((bool) nextState.getProperty("axisScaleVisible", !visible) == visible);
+        REQUIRE(rectangleProperty(nextState, "rangeGroupBounds") == rangeGroupBounds);
+        REQUIRE(rectangleProperty(nextState, "markerGroupBounds") == markerGroupBounds);
+    }
 }
 
 TEST_CASE("Envelope document reload frames the authored vertex bounds",

@@ -276,14 +276,13 @@ LookAndFeel& propertyControlLookAndFeel() {
 void paintPanelOverlayButton(Graphics& graphics, Rectangle<float> bounds,
         bool hovered, bool down, bool focused, bool selected, bool enabled) {
     bounds = bounds.reduced(CanvasChromeMetrics::panelOverlayBorderInset);
-    const Colour accent { 0xff65b8ff };
-    graphics.setColour(selected ? Colour(0xff243d52) : Colour(0xff0e1318).brighter(
+    graphics.setColour(selected ? Colour(0xff29323e) : Colour(0xff0e1318).brighter(
             down ? 0.12f : hovered ? 0.06f : 0.f));
     graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
-    graphics.setColour((focused || selected ? accent : Colour(0xff536171))
-            .withMultipliedAlpha(enabled ? 1.f : 0.55f));
+    const Colour border = focused ? kFill : selected ? Colour(0xff929ca8) : Colour(0xff536171);
+    graphics.setColour(border.withMultipliedAlpha(enabled ? 1.f : 0.55f));
     graphics.drawRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius,
-            focused ? CanvasChromeMetrics::focusRingWidth : CanvasChromeMetrics::restingBorderWidth);
+            CanvasChromeMetrics::restingBorderWidth);
 }
 
 void paintMorphPreviewVertex(Graphics& graphics, Point<float> point, bool selected) {

@@ -555,7 +555,6 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     updateKeyboardShortcutHint();
     const bool logarithmic = parameters.boolValue("logarithmic", false);
     impl->axisScale.setLogarithmic(logarithmic, dontSendNotification);
-    impl->axisScale.setEnabled(envelopePurposeAllowsLogarithmic(purpose));
     widget.setEnvelopeDimensions(MeshDimensionality::dimensions(node).axisCount(), impl->yellowLinked);
     widget.setEnvelopeAxisLinks(impl->redLinked, impl->blueLinked);
     widget.setEnvelopeLogarithmic(logarithmic);
@@ -579,6 +578,7 @@ void EnvelopeEditorComponent::applyEditorStateToWidget() {
             envelopePurposeAllowsLogarithmic(purpose)
                     && impl->axisScale.isLogarithmic());
     impl->axisScale.setEnabled(envelopePurposeAllowsLogarithmic(purpose));
+    impl->axisScale.setVisible(purpose == EnvelopePurpose::Volume);
     if (enteringPitch) {
         widget.fitEnvelopeVerticalRange();
     }
@@ -763,6 +763,7 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty("sustainSelected", impl->sustain.getToggleState());
     state.setProperty("loopTooltip", impl->loop.getTooltip());
     state.setProperty("sustainTooltip", impl->sustain.getTooltip());
+    state.setProperty("axisScaleVisible", impl->axisScale.isVisible());
     state.setProperty(
             "axisScaleBounds",
             editorBoundsToVar(impl->axisScale.getBounds().toFloat()));

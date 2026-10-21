@@ -395,6 +395,10 @@ public:
             { "fullVertical", "fullVerticalBounds" }
         }};
         for (const auto& [id, boundsProperty] : actions) {
+            if ((String(id) == "linear" || String(id) == "logarithmic")
+                    && !(bool) curveEditorState.getProperty("axisScaleVisible")) {
+                continue;
+            }
             const auto bounds = AutomationValueEncoder::rectangleFromVar(
                     curveEditorState.getProperty(boundsProperty)).translated(
                             panel.getX(), panel.getY());
