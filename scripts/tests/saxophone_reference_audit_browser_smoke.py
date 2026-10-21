@@ -29,6 +29,17 @@ def main():
         assert page.locator("audio").count() == 1
         assert page.locator("#audio-player").get_attribute("src") is None
         assert media_requests == [], media_requests
+        compact_rows = page.locator("#track-list .track").evaluate_all("""rows => rows.slice(0, 12).map(row => {
+            const play = row.querySelector('.play-track').getBoundingClientRect();
+            const notes = row.querySelector('td.track-details .notes-toggle').getBoundingClientRect();
+            return {id: row.dataset.trackId, tag: row.tagName, height: row.getBoundingClientRect().height,
+                    column: row.lastElementChild.classList.contains('track-details'),
+                    centerDifference: Math.abs((play.top + play.bottom - notes.top - notes.bottom) / 2)};
+        })""")
+        for row in compact_rows:
+            assert row["tag"] == "TR" and row["column"], row
+            assert row["height"] <= 48, row
+            assert row["centerDifference"] <= 1, row
         for track in playable:
             row = page.locator('.track[data-track-id="' + track["id"] + '"]')
             if track["reserved"]:
@@ -52,12 +63,22 @@ def main():
         first = page.locator(".track").first
         identifier = first.get_attribute("data-track-id")
         first.locator('.vote[data-choice="keep"]').click()
-        first.locator(".track-details summary").click()
-        first.locator("textarea").fill("Clear short attack; useful reference.")
+        first.locator(".notes-toggle").click()
+        dialog = page.locator("#recording-details")
+        assert dialog.evaluate("dialog => dialog.open")
+        dialog.locator(".audit-note textarea").fill("Clear short attack; useful reference.")
+        page.locator("#close-details").click()
+        assert not dialog.evaluate("dialog => dialog.open")
         page.reload()
         first = page.locator('.track[data-track-id="' + identifier + '"]')
         assert first.locator('.vote[data-choice="keep"]').get_attribute("aria-pressed") == "true"
-        assert first.locator("textarea").input_value() == "Clear short attack; useful reference."
+        first.locator(".notes-toggle").click()
+        assert dialog.evaluate("dialog => dialog.open")
+        assert dialog.locator(".audit-note textarea").input_value() == "Clear short attack; useful reference."
+        original = next(track for track in playable if track["id"] == identifier)
+        assert original["sha256"] in dialog.text_content()
+        page.keyboard.press("Escape")
+        assert not dialog.evaluate("dialog => dialog.open")
         first.locator(".play-track").click()
         page.locator("#next").click()
         page.wait_for_function("document.querySelector('.track.active').dataset.trackId !== " + json.dumps(identifier))
@@ -89,7 +110,7 @@ def main():
         page.screenshot(path=str(args.screenshot.with_name("saxophone-reference-audit-narrow.png")))
         assert not errors, errors
         browser.close()
-    print(f"PASS: {len(playable)} recordings played; seeking, filters, notes, export and responsive layout checked")
+    print(f"PASS: {len(playable)} recordings played; seeking, filters, compact rows, notes dialog, export and responsive layout checked")
 
 
 if __name__ == "__main__":
