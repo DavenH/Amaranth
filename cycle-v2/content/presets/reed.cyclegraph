@@ -23,6 +23,7 @@
             "kind": "modulationTriple",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 693.0 },
+            "rationale": "Playable timbre coordinates\nYellow follows voice time, red follows key scale, and blue follows mod wheel CC1. Linked meshes can evolve during a held note; envelope morph is selected at note-on.",
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -54,6 +55,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 976.992, "y": 886.0 },
+            "rationale": "Locally varied waveform\nGuide 5 is assigned to phase on cube 19. Its Noise amount varies that guide contribution around the authored curve, changing a local waveform component rather than adding a separate noise oscillator.",
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -348,6 +350,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 1591.19995, "y": 387.0 },
+            "rationale": "Additional spectral character\nAdds its magnitude contribution alongside the FFT magnitude through magnitudeOp1. This is independent of guide-5 waveform phase variation and offers another place to shape the reed-like character.",
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -800,6 +803,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1902.0, "y": 1084.0 },
+            "rationale": "Wind-style contour\nShapes the resynthesized voice before shared reverb. The note-on-selected envelope shape and note-off release provide articulation independently of the continuously changing mesh coordinates.",
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -1109,6 +1113,7 @@
             "kind": "reverb",
             "definitionVersion": 1,
             "position": { "x": 761.20001, "y": 1424.0 },
+            "rationale": "Shared acoustic space\nPlaces the voice sum in one reverberant field. A changed waveform excites this same space differently, so guide edits can also change the resulting tail.",
             "parameters": { "enabled": true, "size": 0.340000003, "damp": 0.200000003, "width": 0.444, "wet": 0.300000012, "highPass": 0.05 }
         },
         {
@@ -1413,6 +1418,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "description": "Designed for a reed-like synthetic voice with local irregularity and a playable timbre morph. This is a wind-family design, not a verified saxophone model.\nThe waveform and additive spectral layer share time, key and CC1 morph. Guide resources perturb assigned mesh components, then a per-voice volume envelope feeds shared reverb. Guide 5 controls a local waveform phase component.\nStart with input MIDI notes 48-72 at moderate velocity. Guide 5 Noise uses a stored normalized 0-1 range; 0-0.15 is a starting region. Other noisy guides remain active, so reducing this one guide does not remove all irregularity.",
         "tags": [ "Wind" ],
         "preview": {
             "mediaType": "image/jpeg",

@@ -1,0 +1,131 @@
+{
+  "schema": "cycle-performance-suite.v1",
+  "id": "explained-exemplars",
+  "repetitions": 2,
+  "render": {
+    "randomSeed": 1729
+  },
+  "budget": {
+    "maxRenders": 8,
+    "maxAudioSeconds": 30,
+    "maxWallSeconds": 240
+  },
+  "cases": [
+    {
+      "id": "low-soft",
+      "durationMs": 2200,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 48,
+          "velocity": 0.35
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 600,
+          "note": 48
+        }
+      ],
+      "labels": {
+        "purpose": "technical register/velocity/CC evidence; musical usefulness unverified"
+      }
+    },
+    {
+      "id": "middle-held",
+      "durationMs": 2200,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 60,
+          "velocity": 0.7
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 600,
+          "note": 60
+        }
+      ],
+      "labels": {
+        "purpose": "technical register/velocity/CC evidence; musical usefulness unverified"
+      }
+    },
+    {
+      "id": "high-held",
+      "durationMs": 2200,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 72,
+          "velocity": 0.7
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 600,
+          "note": 72
+        }
+      ],
+      "labels": {
+        "purpose": "technical register/velocity/CC evidence; musical usefulness unverified"
+      }
+    },
+    {
+      "id": "middle-cc1",
+      "durationMs": 2200,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 60,
+          "velocity": 0.7
+        },
+        {
+          "type": "controller",
+          "timeMs": 200,
+          "controller": 1,
+          "value": 64
+        },
+        {
+          "type": "controller",
+          "timeMs": 450,
+          "controller": 1,
+          "value": 127
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 600,
+          "note": 60
+        }
+      ],
+      "labels": {
+        "purpose": "technical register/velocity/CC evidence; musical usefulness unverified"
+      }
+    }
+  ]
+}

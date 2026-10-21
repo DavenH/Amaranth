@@ -7,6 +7,7 @@
             "kind": "voiceContext",
             "definitionVersion": 1,
             "position": { "x": 945.59998, "y": 826.0 },
+            "rationale": "Bass register and voice ownership\nSets the voice one octave below input and supplies time, key and CC morph. Each voice has its own waveform and amplitude contour; the global waveshaper processes their sum, making chord density part of the nonlinear response.",
             "parameters": {
                 "octave": -1,
                 "voiceLength": 0.374045802,
@@ -22,6 +23,7 @@
             "kind": "modulationTriple",
             "definitionVersion": 1,
             "position": { "x": 585.59998, "y": 837.0 },
+            "rationale": "Shared expression axes\nYellow follows voice time, red follows key scale, and blue follows mod wheel CC1. Linked waveform dimensions can change during a held note. Envelope shape is selected at note-on.",
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -39,6 +41,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 2210.51733, "y": 758.0 },
+            "rationale": "Waveform foundation\nSupplies the bipolar repeating waveform before amplitude shaping and voice summing. Its linked dimensions follow the shared morph. The scratch envelope attaches here to vary this waveform traversal.",
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -164,6 +167,7 @@
             "kind": "waveshaper",
             "definitionVersion": 1,
             "position": { "x": 1231.59998, "y": 1424.0 },
+            "rationale": "Driven transfer shape\nBends the summed signal through the authored curve. Pre controls drive into that curve; Post controls the following level. Moving a curve point changes the amplitude mapping and can alter both harmonic balance and output level.",
             "parameters": { "processingScope": "global", "enabled": true, "pre": 0.692, "post": 0.436, "aaFactor": "1" },
             "model": {
                 "schema": "flatCurve",
@@ -188,6 +192,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2222.3999, "y": 1084.0 },
+            "rationale": "Bass articulation\nControls each waveform voice before summing. Its release keeps note-off from cutting the voice abruptly; global coloration can continue afterwards.",
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.205607474, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -380,6 +385,7 @@
             "kind": "impulseResponse",
             "definitionVersion": 1,
             "position": { "x": 1520.59998, "y": 1424.0 },
+            "rationale": "Final shared coloration\nAdds the same impulse-response character to the waveshaped voice sum. This separates waveform and transfer shaping from the final resonant coloration.",
             "parameters": { "processingScope": "global", "enabled": true, "size": 0.142857143, "post": 0.496, "highPass": 0.0 },
             "model": {
                 "schema": "flatCurve",
@@ -538,6 +544,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "description": "Designed for compact, driven bass lines.\nA per-voice waveform and volume envelope feed one global waveshaper, followed by impulse-response coloration. Explore the linked waveform morph with CC1; envelope morph is selected at note-on.\nStart with input MIDI notes 48-60 at moderate velocity. The voice plays one octave below input. The global transfer curve processes the voice sum, so chords can respond differently from isolated notes.",
         "tags": [ "Bass" ],
         "preview": {
             "mediaType": "image/jpeg",
