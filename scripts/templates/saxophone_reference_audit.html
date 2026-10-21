@@ -37,6 +37,7 @@
   .table-scroll { overflow-x:auto; }
   table { width:100%; min-width:860px; table-layout:fixed; border-collapse:collapse; text-align:left; }
   .play-column { width:58px; }
+  .has-comparisons .play-column { width:112px; }
   .source-column { width:118px; }
   .time-column { width:66px; }
   .review-column { width:170px; }
@@ -46,7 +47,17 @@
   th:first-child,td:first-child { padding-left:0; }
   th:last-child,td:last-child { padding-right:0; }
   .track.active { background:var(--wash); }
-  .play-track { width:44px; height:30px; min-height:30px; padding:3px 0; font-size:12px; }
+  .play-track,.synth-track { width:44px; height:30px; min-height:30px; padding:3px 0; font-size:12px; }
+  .paired-playback { display:flex; gap:4px; }
+  .paired-playback button { width:48px; }
+  .paired-playback button[aria-current="true"],.bridge-clip[aria-current="true"] { border-color:var(--olive); box-shadow:inset 0 -2px var(--olive); }
+  #bridge-auditions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:0 0 16px; padding:2px 0 12px; border-bottom:1px solid var(--line); }
+  #bridge-auditions[hidden] { display:none; }
+  #bridge-title { margin:0; font-size:13px; font-weight:600; }
+  #bridge-clips { display:flex; gap:5px; flex-wrap:wrap; }
+  .bridge-clip { min-height:30px; padding:3px 9px; font-size:12px; }
+  .provenance-actions { display:flex; gap:6px; margin-top:12px; }
+  .provenance-actions button { min-height:30px; padding:3px 9px; font-size:12px; }
   .track-title-wrap { display:flex; align-items:center; gap:8px; min-width:0; }
   .track-title { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; font-weight:500; }
   .metadata { font-size:12px; color:var(--muted); }
@@ -97,6 +108,9 @@
     <div class="transport"><button id="previous" type="button" aria-label="Play previous visible recording">Previous</button><button id="next" type="button" aria-label="Play next visible recording">Next</button><button id="repeat" type="button" aria-pressed="false">Repeat</button></div>
     <audio id="audio-player" controls preload="none" controlslist="nodownload noplaybackrate" aria-label="Reference audio"></audio>
   </section>
+  <section id="bridge-auditions" aria-labelledby="bridge-title" hidden>
+    <h2 id="bridge-title">Expressive bridge</h2><div id="bridge-clips"></div>
+  </section>
   <section class="filters" aria-label="Filter recordings">
     <label class="filter">Search<input id="search" type="search" placeholder="Name, pitch, technique…" autocomplete="off"></label>
     <label class="filter">Source<select id="source-filter"><option value="">All sources</option></select></label>
@@ -126,10 +140,12 @@
   const catalog = JSON.parse(document.getElementById('catalog-data').textContent);
   const tracks = Array.isArray(catalog.tracks) ? catalog.tracks : [];
   const byId = new Map(tracks.map(track => [track.id, track]));
+  const comparisons = new Map((catalog.comparisons || []).map(item => [item.referenceId, item]));
+  const bridge = catalog.bridge || {}, bridgeClips = bridge.clips || [];
   const $ = id => document.getElementById(id);
   const audio = $('audio-player'), list = $('track-list'), details = $('recording-details');
   const storageKey = 'amaranth.saxophone-reference-audit.v1';
-  let audit = {}, currentId = null, detailId = null, visible = [], storageWorks = true;
+  let audit = {}, currentId = null, currentMode = null, detailId = null, visible = [], storageWorks = true;
   try { const saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); if (saved && typeof saved === 'object' && !Array.isArray(saved)) audit = saved; }
   catch (_) { storageWorks = false; }
   function el(tag, className, value) {
@@ -163,28 +179,47 @@
     list.querySelectorAll('.track').forEach(row => {
       const active = row.dataset.trackId === currentId;
       row.classList.toggle('active', active);
-      const button = row.querySelector('.play-track');
-      button.textContent = active && !audio.paused ? 'Pause' : 'Play';
-      button.setAttribute('aria-label', `${active && !audio.paused ? 'Pause' : 'Play'} ${byId.get(row.dataset.trackId).title}`);
-      if (active) button.setAttribute('aria-current', 'true'); else button.removeAttribute('aria-current');
+      row.querySelectorAll('.play-track,.synth-track').forEach(button => {
+        const selected = active && button.dataset.mode === currentMode;
+        const playing = selected && !audio.paused;
+        button.textContent = playing ? 'Pause' : button.dataset.label;
+        const action = playing ? 'Pause' : button.dataset.mode === 'original' ? 'Play' : 'Play ' + button.dataset.label;
+        button.setAttribute('aria-label', `${action} ${byId.get(row.dataset.trackId).title}`);
+        if (selected) button.setAttribute('aria-current', 'true'); else button.removeAttribute('aria-current');
+      });
+    });
+    $('bridge-clips').querySelectorAll('[data-clip-id]').forEach(button => {
+      const selected = button.dataset.clipId === currentId;
+      button.setAttribute('aria-label', `${selected && !audio.paused ? 'Pause' : 'Play'} ${button.textContent}`);
+      if (selected) button.setAttribute('aria-current', 'true'); else button.removeAttribute('aria-current');
     });
   }
-  async function play(track) {
-    const url = mediaURL(track);
+  async function play(track, mode = comparisons.has(track.id) ? 'source' : 'original') {
+    const pair = comparisons.get(track.id);
+    const clip = mode === 'original' || mode === 'bridge' ? track : pair?.[mode];
+    const url = clip && mediaURL(clip);
     if (!url) return;
-    if (currentId === track.id && !audio.paused) { audio.pause(); return; }
-    if (currentId !== track.id) { audio.pause(); currentId = track.id; audio.src = url; }
+    if (currentId === track.id && currentMode === mode && !audio.paused) { audio.pause(); return; }
+    if (currentId !== track.id || currentMode !== mode) { audio.pause(); currentId = track.id; currentMode = mode; audio.src = url; }
     audio.playbackRate = 1; audio.preservesPitch = true;
-    $('now-playing').textContent = track.title;
-    $('player-detail').textContent = [track.source, track.instrument, track.kind, duration(track.durationSeconds)].filter(Boolean).join(' · ');
-    try { await audio.play(); record(track.id).lastPlayedAt = new Date().toISOString(); save(); status(''); }
+    $('now-playing').textContent = track.title || track.label;
+    const label = {source:'Source excerpt', synth:'Synthesized match', rawSynth:'Synthesized match · raw level', bridge:'Bridge audition'}[mode];
+    $('player-detail').textContent = [label || track.source, label ? '' : track.instrument, label ? '' : track.kind, duration(clip.durationSeconds)].filter(Boolean).join(' · ');
+    try { await audio.play(); Object.assign(record(track.id), {lastPlayedAt:new Date().toISOString(), lastPlayedMode:mode, ...(pair ? {renderId:pair.renderId} : {})}); save(); status(''); }
     catch (_) { status('This recording could not play. Check that its local media file is present.'); }
     syncPlayback();
   }
   function makeTrack(track) {
     const row = el('tr', 'track'); row.dataset.trackId = track.id;
-    const button = el('button', 'play-track', 'Play'); button.type = 'button'; button.disabled = !mediaURL(track); button.addEventListener('click', () => play(track));
-    const playCell = el('td'); playCell.append(button);
+    const playCell = el('td');
+    const pair = comparisons.get(track.id);
+    const controls = pair ? el('div', 'paired-playback') : playCell;
+    (pair ? [['source','Source'],['synth','Synth']] : [['original','Play']]).forEach(([mode,label]) => {
+      const button = el('button', mode === 'synth' ? 'synth-track' : 'play-track', label);
+      button.type = 'button'; button.dataset.mode = mode; button.dataset.label = label;
+      button.disabled = !mediaURL(pair ? pair[mode] : track); button.addEventListener('click', () => play(track, mode)); controls.append(button);
+    });
+    if (pair) playCell.append(controls);
     const titleCell = el('td');
     const titleWrap = el('div', 'track-title-wrap');
     const title = el('span', 'track-title', track.title || track.originalFilename); titleWrap.append(title);
@@ -213,15 +248,31 @@
   }
   function showDetails(track) {
     detailId = track.id;
-    $('details-title').textContent = track.title;
+    $('details-title').textContent = track.title || track.label;
     details.querySelector('textarea').value = typeof audit[track.id]?.note === 'string' ? audit[track.id].note : '';
     const provenance = $('provenance'); provenance.replaceChildren();
     provenance.append(el('p', '', [track.source, track.instrument, track.kind].filter(Boolean).join(' · ')));
     if (track.note) provenance.append(el('p', '', track.note));
-    provenance.append(el('p', '', 'Pitch and layer labels follow the source filenames.'));
-    provenance.append(el('p', 'filename', track.originalFilename || ''));
+    if (byId.has(track.id)) provenance.append(el('p', '', 'Pitch and layer labels follow the source filenames.'));
+    if (track.originalFilename) provenance.append(el('p', 'filename', track.originalFilename));
     const link = sourceLink(track.sourceUrl); if (link) provenance.append(link);
     if (track.sha256) { const hash = el('p', 'filename', `SHA-256 ${track.sha256}`); provenance.append(hash); }
+    const pair = comparisons.get(track.id);
+    if (pair) {
+      provenance.append(el('p', '', 'Source and synth are matched note excerpts. Each starts at the beginning when switching.'));
+      if (pair.note) provenance.append(el('p', '', pair.note));
+      provenance.append(el('p', 'filename', `Render ID ${pair.renderId}`));
+      ['source','synth','rawSynth'].forEach(role => { if (pair[role]) provenance.append(el('p', 'filename', `${role}: ${pair[role].originalFilename} · SHA-256 ${pair[role].sha256}`)); });
+      const actions = el('div', 'provenance-actions');
+      [['original','Full reference'], ...(pair.rawSynth ? [['rawSynth','Raw synth level']] : [])].forEach(([mode,label]) => {
+        const button = el('button', '', label); button.type = 'button'; button.addEventListener('click', () => { details.close(); play(track, mode); }); actions.append(button);
+      });
+      provenance.append(actions);
+    }
+    if (track.id === 'bridge:design') bridgeClips.forEach(clip => {
+      provenance.append(el('p', 'filename', `${clip.label}: render ${clip.renderId} · SHA-256 ${clip.sha256}`));
+      if (clip.note) provenance.append(el('p', '', clip.note));
+    });
     details.showModal();
   }
   $('close-details').addEventListener('click', () => details.close());
@@ -255,7 +306,7 @@
   audio.addEventListener('ratechange', () => { if (audio.playbackRate !== 1) audio.playbackRate = 1; });
   audio.addEventListener('error', () => { if (currentId) status('This recording could not load. Check that its local media file is present.'); });
   $('export-audit').addEventListener('click', () => {
-    const output = {title:catalog.title, exportedAt:new Date().toISOString(), recordings:tracks.map(track => ({id:track.id, source:track.source, originalFilename:track.originalFilename, sourceUrl:track.sourceUrl, sha256:track.sha256, ...(audit[track.id] || {})}))};
+    const output = {title:catalog.title, exportedAt:new Date().toISOString(), recordings:tracks.map(track => ({id:track.id, source:track.source, originalFilename:track.originalFilename, sourceUrl:track.sourceUrl, sha256:track.sha256, ...(audit[track.id] || {})})), ...(comparisons.size ? {comparisons:catalog.comparisons} : {}), ...(bridgeClips.length ? {bridge:{...bridge, audit:audit['bridge:design'] || {}, clips:bridgeClips.map(clip => ({...clip,...(audit[clip.id] || {})}))}} : {})};
     const url = URL.createObjectURL(new Blob([JSON.stringify(output,null,2)], {type:'application/json'}));
     const link = el('a'); link.href = url; link.download = 'saxophone-reference-audit.json'; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url),1000);
     status('Audit exported.');
@@ -266,6 +317,12 @@
   $('library-note').hidden = !(reserved || unavailable);
   $('library-note').textContent = [reserved ? `${reserved} reserved references omitted from playback` : '', unavailable ? `${unavailable} unavailable locally` : ''].filter(Boolean).join(' · ');
   if (!storageWorks) status('Browser storage is unavailable. Export your audit to keep it.');
+  document.querySelector('table').classList.toggle('has-comparisons', comparisons.size > 0);
+  if (bridgeClips.length) {
+    $('bridge-auditions').hidden = false; $('bridge-title').textContent = bridge.title || 'Expressive bridge';
+    bridgeClips.forEach(clip => { const button = el('button', 'bridge-clip', clip.label); button.type = 'button'; button.dataset.clipId = clip.id; button.disabled = !mediaURL(clip); button.addEventListener('click', () => play(clip,'bridge')); $('bridge-clips').append(button); });
+    const info = el('button', 'bridge-clip', 'Notes'); info.type = 'button'; info.addEventListener('click', () => showDetails({id:'bridge:design',title:bridge.title || 'Expressive bridge',note:bridge.note || '',kind:'Bridge design'})); $('bridge-clips').append(info);
+  }
   render();
 })();
 </script>

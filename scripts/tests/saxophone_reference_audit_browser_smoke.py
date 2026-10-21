@@ -24,36 +24,95 @@ def main():
         page.goto(args.page.resolve().as_uri())
         catalog = json.loads(page.locator("#catalog-data").text_content())
         playable = [track for track in catalog["tracks"] if track["available"]]
+        comparisons = {pair["referenceId"]: pair for pair in catalog.get("comparisons", [])}
+        bridge = catalog.get("bridge", {})
+        bridge_clips = bridge.get("clips", [])
+
+        def check_audio(clip, identifier):
+            page.wait_for_function("""() => {
+                const audio = document.querySelector('audio');
+                return !audio.paused && Number.isFinite(audio.duration) && audio.currentTime > .03;
+            }""")
+            actual = page.locator("audio").evaluate("audio => ({duration:audio.duration,rate:audio.playbackRate})")
+            assert abs(actual["duration"] - clip["durationSeconds"]) < .15, (identifier, actual)
+            assert actual["rate"] == 1
+            assert page.locator("audio").evaluate(
+                "(audio, url) => audio.currentSrc === new URL(url, location.href).href", clip["url"]), identifier
+            assert page.locator("audio").count() == 1
+
         page.wait_for_function("document.querySelectorAll('.track').length > 0")
         assert page.locator(".track").count() == len(playable)
         assert page.locator("audio").count() == 1
         assert page.locator("#audio-player").get_attribute("src") is None
         assert media_requests == [], media_requests
-        compact_rows = page.locator("#track-list .track").evaluate_all("""rows => rows.slice(0, 12).map(row => {
+        compact_rows = page.locator("#track-list .track").evaluate_all("""rows => rows.map(row => {
             const play = row.querySelector('.play-track').getBoundingClientRect();
             const notes = row.querySelector('td.track-details .notes-toggle').getBoundingClientRect();
+            const synth = row.querySelector('.synth-track')?.getBoundingClientRect();
             return {id: row.dataset.trackId, tag: row.tagName, height: row.getBoundingClientRect().height,
                     column: row.lastElementChild.classList.contains('track-details'),
-                    centerDifference: Math.abs((play.top + play.bottom - notes.top - notes.bottom) / 2)};
+                    centerDifference: Math.abs((play.top + play.bottom - notes.top - notes.bottom) / 2),
+                    synthCenterDifference: synth ? Math.abs((play.top + play.bottom - synth.top - synth.bottom) / 2) : 0};
         })""")
         for row in compact_rows:
             assert row["tag"] == "TR" and row["column"], row
             assert row["height"] <= 48, row
             assert row["centerDifference"] <= 1, row
+            assert row["synthCenterDifference"] <= 1, row
         for track in playable:
             row = page.locator('.track[data-track-id="' + track["id"] + '"]')
             if track["reserved"]:
                 assert row.locator(".availability").text_content() == "Reserved reference"
+            pair = comparisons.get(track["id"])
+            clip = pair["source"] if pair else track
             row.locator(".play-track").click()
-            page.wait_for_function("!document.querySelector('audio').paused && document.querySelector('audio').currentTime > 0.03")
-            actual = page.locator("audio").evaluate("audio => ({duration:audio.duration,rate:audio.playbackRate})")
-            assert abs(actual["duration"] - track["durationSeconds"]) < .15, (track["id"], actual)
-            assert actual["rate"] == 1
+            check_audio(clip, track["id"])
             if track["source"] in ("Iowa", "Solo"):
-                target = min(20, track["durationSeconds"] / 2)
+                target = min(20, clip["durationSeconds"] / 2)
                 page.locator("audio").evaluate("(audio,time) => {audio.currentTime=time}", target)
                 page.wait_for_function("document.querySelector('audio').currentTime >= " + str(target), timeout=3000)
             page.locator("audio").evaluate("audio => audio.pause()")
+            if pair:
+                row.locator(".synth-track").click()
+                check_audio(pair["synth"], pair["renderId"])
+                assert row.locator(".synth-track").get_attribute("aria-current") == "true"
+                assert row.locator(".play-track").get_attribute("aria-current") is None
+                page.locator("audio").evaluate("audio => audio.pause()")
+                row.locator(".notes-toggle").click()
+                dialog = page.locator("#recording-details")
+                content = dialog.text_content()
+                assert pair["renderId"] in content
+                assert pair["source"]["sha256"] in content
+                assert pair["synth"]["sha256"] in content
+                if pair.get("note"):
+                    assert pair["note"] in content
+                if pair.get("rawSynth"):
+                    dialog.get_by_role("button", name="Raw synth level", exact=True).click()
+                    check_audio(pair["rawSynth"], pair["renderId"] + ":raw")
+                    page.locator("audio").evaluate("audio => audio.pause()")
+                else:
+                    page.locator("#close-details").click()
+        assert page.locator("#bridge-auditions").is_visible() == bool(bridge_clips)
+        for clip in bridge_clips:
+            button = page.locator('#bridge-clips [data-clip-id="' + clip["id"] + '"]')
+            button.click()
+            check_audio(clip, clip["renderId"])
+            assert button.get_attribute("aria-current") == "true"
+            assert page.locator('#bridge-clips [aria-current="true"]').count() == 1
+            assert page.locator('.track.active').count() == 0
+            page.locator("audio").evaluate("audio => audio.pause()")
+        if bridge_clips:
+            page.locator("#bridge-clips").get_by_role("button", name="Notes", exact=True).click()
+            dialog = page.locator("#recording-details")
+            assert dialog.evaluate("dialog => dialog.open")
+            content = dialog.text_content()
+            if bridge.get("note"):
+                assert bridge["note"] in content
+            for clip in bridge_clips:
+                assert clip["renderId"] in content
+                assert clip["sha256"] in content
+            dialog.locator(".audit-note textarea").fill("Bridge movement is continuous; compare the midpoint.")
+            page.locator("#close-details").click()
         page.locator("#source-filter").select_option("VCSL")
         assert page.locator(".track").count() == 12
         page.locator("#technique-filter").select_option("Staccato")
@@ -95,6 +154,12 @@ def main():
         assert any(track["id"] == identifier and track.get("choice") == "keep"
                    and track.get("note") == "Clear short attack; useful reference."
                    for track in exported["recordings"])
+        if comparisons:
+            assert exported["comparisons"] == catalog["comparisons"]
+        if bridge_clips:
+            assert exported["bridge"]["audit"]["note"] == "Bridge movement is continuous; compare the midpoint."
+            assert [clip["renderId"] for clip in exported["bridge"]["clips"]] == [clip["renderId"] for clip in bridge_clips]
+            assert [clip["sha256"] for clip in exported["bridge"]["clips"]] == [clip["sha256"] for clip in bridge_clips]
         page.evaluate("localStorage.clear()")
         page.reload()
         page.locator(".track .play-track").first.click()
@@ -110,7 +175,7 @@ def main():
         page.screenshot(path=str(args.screenshot.with_name("saxophone-reference-audit-narrow.png")))
         assert not errors, errors
         browser.close()
-    print(f"PASS: {len(playable)} recordings played; seeking, filters, compact rows, notes dialog, export and responsive layout checked")
+    print(f"PASS: {len(playable)} recordings, {len(comparisons)} synth comparisons and {len(bridge_clips)} bridge clips played; seeking, filters, compact rows, notes dialog, export and responsive layout checked")
 
 
 if __name__ == "__main__":

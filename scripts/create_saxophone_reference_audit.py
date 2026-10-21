@@ -129,14 +129,77 @@ def prepare_media(records, output):
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
 
 
-def build(corpus, output, include_reserved=False):
+def comparison_records(path, references):
+    """Read optional render pairs; playback copies share the reference media pipeline."""
+    if path is None:
+        return {}, []
+    path = path.resolve()
+    manifest = read(path)
+    if manifest.get("schema") != "saxophone-anchor-comparisons.v1":
+        raise ValueError("Unsupported saxophone comparison manifest")
+    known = {item["id"] for item in references}
+    paired = set()
+    media = []
+
+    def clip(item, identifier):
+        local = source_path(path.parent, item["path"])
+        with wave.open(str(local), "rb") as audio:
+            seconds = audio.getnframes() / audio.getframerate()
+        result = {"id": identifier, "available": True, "_path": local,
+            "originalFilename": local.name, "sha256": item["sha256"],
+            "durationSeconds": seconds}
+        media.append(result)
+        return result
+
+    comparisons = []
+    for item in manifest.get("comparisons", []):
+        reference = item["referenceId"]
+        if reference not in known or reference in paired:
+            raise ValueError("Unknown or duplicated comparison reference: " + reference)
+        paired.add(reference)
+        render = item["renderId"]
+        if not render:
+            raise ValueError("Comparison render ID is required")
+        pair = {"referenceId": reference, "renderId": render, "note": item.get("note", "")}
+        for role in ("source", "synth", "rawSynth"):
+            if role in item:
+                pair[role] = clip(item[role], "comparison:" + render + ":" + role)
+        if "source" not in pair or "synth" not in pair:
+            raise ValueError("Each comparison needs source and synth WAV files")
+        if abs(pair["source"]["durationSeconds"] - pair["synth"]["durationSeconds"]) > .02:
+            raise ValueError("Comparison source and synth durations differ")
+        comparisons.append(pair)
+    bridge = manifest.get("bridge", {})
+    auditions = []
+    identifiers = set()
+    for item in bridge.get("clips", []):
+        identifier = item["id"]
+        if identifier in identifiers:
+            raise ValueError("Duplicated bridge clip ID: " + identifier)
+        identifiers.add(identifier)
+        audition = clip(item, "bridge:" + identifier)
+        audition.update(label=item["label"], renderId=item["renderId"], note=item.get("note", ""))
+        auditions.append(audition)
+    return {"comparisons": comparisons, "bridge": {"title": bridge.get("title", "Expressive bridge"),
+        "note": bridge.get("note", ""), "clips": auditions}}, media
+
+
+def public_fields(value):
+    if isinstance(value, dict):
+        return {key: public_fields(item) for key, item in value.items() if not key.startswith("_")}
+    if isinstance(value, list):
+        return [public_fields(item) for item in value]
+    return value
+
+
+def build(corpus, output, include_reserved=False, comparisons=None):
     output.mkdir(parents=True, exist_ok=True)
     records = reference_records(corpus.resolve(), include_reserved)
-    prepare_media(records, output)
+    comparison_catalog, comparison_media = comparison_records(comparisons, records)
+    prepare_media(records + comparison_media, output)
     catalog = {"schema": "saxophone-reference-audit.v1", "title": "Saxophone references",
         "reservedSourcesIncluded": include_reserved,
-        "tracks": [{key: value for key, value in item.items() if not key.startswith("_")}
-                   for item in records]}
+        "tracks": public_fields(records), **public_fields(comparison_catalog)}
     serialized = json.dumps(catalog, ensure_ascii=False, allow_nan=False).replace("<", "\\u003c")
     page = TEMPLATE.read_text().replace("__SAXOPHONE_CATALOG_JSON__", serialized)
     (output / "index.html").write_text(page)
@@ -150,8 +213,10 @@ def main():
     parser.add_argument("--output-dir", type=Path, default=ROOT / ".context/saxophone-reference-audit")
     parser.add_argument("--include-reserved", action="store_true",
                         help="Include the two previously reserved Iowa takes for listening")
+    parser.add_argument("--comparisons", type=Path,
+                        help="Optional saxophone-anchor-comparisons.v1 manifest with source/synth WAV pairs")
     args = parser.parse_args()
-    catalog = build(args.corpus_root, args.output_dir.resolve(), args.include_reserved)
+    catalog = build(args.corpus_root, args.output_dir.resolve(), args.include_reserved, args.comparisons)
     print(str((args.output_dir / "index.html").resolve()))
     print(str(sum(item["available"] for item in catalog["tracks"])) + " playable recordings")
 
