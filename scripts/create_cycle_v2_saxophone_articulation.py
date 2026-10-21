@@ -181,7 +181,7 @@ def run(source, output, send, engine):
         before = invoke({"command": "snapshotState"})
         invalid = transport({"command": "setPresetSequence", "sequence": {**plan["sequence"], "durationSeconds": -1}}, require_ok=False)
         after = invoke({"command": "snapshotState"})
-        if (not invalid.get("ok") or invalid.get("result", {}).get("ok") is not False
+        if (invalid.get("ok") is not False or invalid.get("result", {}).get("ok") is not False
                 or any(before[key] != after[key] for key in
                 ("documentRevision", "documentDirty", "canUndo", "canRedo"))):
             raise RuntimeError("Invalid sequence altered graph/history")

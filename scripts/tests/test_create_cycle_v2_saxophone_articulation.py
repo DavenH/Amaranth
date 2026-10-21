@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import create_cycle_v2_saxophone_articulation as runner
@@ -180,6 +181,27 @@ class ArticulationDriverTest(unittest.TestCase):
         self.assertTrue(all(current["timeMs"] < following["timeMs"] < release["timeMs"]
                             for current, following, release in zip(notes, notes[1:], releases)))
         self.assertEqual(releases[-1]["timeMs"], 2400)
+
+    def test_canonical_sequence_rejection_keeps_persisted_state_and_allows_capture_to_proceed(self):
+        saved = json.dumps(self.graph, sort_keys=True).encode()
+        snapshot = {"documentRevision": 12, "documentDirty": False, "canUndo": False, "canRedo": False}
+        def author(source, output, invoke):
+            candidate = output / "expressive-saxophone.cyclegraph"
+            candidate.write_bytes(saved)
+            (output / "candidate-inspection.cyclegraph").write_bytes(saved)
+            return candidate, self.plan, {"physicalDuration": {"physicalValue": 2.082}}
+        def send(command, **kwargs):
+            if command["command"] == "setPresetSequence":
+                return {"ok": False, "result": {"ok": False, "type": "setPresetSequence",
+                                                  "error": "Invalid preset MIDI sequence"}}
+            if command["command"] == "exportGraph":
+                Path(command["path"]).write_bytes(saved)
+            return {"ok": True, "result": {"ok": True, "data": snapshot}}
+        with patch.object(runner, "author_candidate", author), patch.object(
+                runner, "render_suite", side_effect=RuntimeError("Capture stage reached")) as render:
+            result = runner.run(runner.BASELINE, self.output / "run", send, {})
+        self.assertEqual(result["error"], "Capture stage reached")
+        render.assert_called_once()
 
 
 if __name__ == "__main__":
