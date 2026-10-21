@@ -39,7 +39,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": -274.38916, "y": 422.12049 },
+            "position": { "x": -274.38916, "y": 422.12048 },
             "parameters": { "enabled": true, "mode": "group", "order": 3, "width": 2.52, "panSpread": 0.5, "phase": 0.348, "jitter": 0.804 },
             "model": {
                 "schema": "unisonVoices",
