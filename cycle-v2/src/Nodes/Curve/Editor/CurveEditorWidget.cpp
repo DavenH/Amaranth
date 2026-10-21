@@ -62,11 +62,31 @@ void CurveEditorWidget::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) {
     }
 }
 
-void CurveEditorWidget::paintEnvelopeMorphSurface(Graphics& graphics,
-        Rectangle<float> bounds, int axis, const MorphPosition& morph) {
+Component* CurveEditorWidget::envelopeMorphSurfaceComponent() {
     if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
-        envelope->paintMorphSurface(graphics, bounds, axis, morph);
+        return envelope->morphSurfaceComponent();
     }
+    return nullptr;
+}
+
+void CurveEditorWidget::prepareEnvelopeMorphSurface(int axis, const MorphPosition& morph) {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->prepareMorphSurface(axis, morph);
+    }
+}
+
+void CurveEditorWidget::renderEnvelopeMorphSurface(Rectangle<float> bounds, float scaleFactor) {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->renderMorphSurface(bounds, scaleFactor);
+    }
+}
+
+void CurveEditorWidget::setEditGestureActive(bool active) {
+    controller->setEditGestureActive(active);
+}
+
+Rectangle<float> CurveEditorWidget::panelContentBounds(Rectangle<float> frame) const {
+    return controller->panelContentBounds(frame);
 }
 
 void CurveEditorWidget::setEnvelopeDimensions(int count, bool yellowLinked) {

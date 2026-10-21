@@ -411,7 +411,7 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
     const auto dimensions = MeshDimensionality::dimensions(node);
     const int selectedAxis = MorphDimensions::axes[(size_t) impl->viewAxis];
     const int surfaceAxis = dimensions.active(selectedAxis) ? selectedAxis : dimensions.primaryAxis();
-    widget.paintEnvelopeMorphSurface(graphics, morphSurfaceBounds(), surfaceAxis,
+    widget.prepareEnvelopeMorphSurface(surfaceAxis,
             { (float) impl->yellowMorph.slider.getValue(),
                     (float) impl->redMorph.slider.getValue(), (float) impl->blueMorph.slider.getValue() });
     impl->presentation.draw(
@@ -456,7 +456,21 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
     }
 }
 
+void EnvelopeEditorComponent::renderOpenGL(float scaleFactor) {
+    CurveExpandedEditorComponent::renderOpenGL(scaleFactor);
+    if (MeshDimensionality::dimensions(node).axisCount() > 0) {
+        widget.renderEnvelopeMorphSurface(morphSurfaceBounds().translated((float) getX(), (float) getY()), scaleFactor);
+    }
+}
+
 void EnvelopeEditorComponent::layoutEditor() {
+    if (auto* surface = widget.envelopeMorphSurfaceComponent()) {
+        if (surface->getParentComponent() != this) {
+            addAndMakeVisible(surface);
+        }
+        surface->setBounds(morphSurfaceBounds().toNearestInt());
+        surface->setVisible(MeshDimensionality::dimensions(node).axisCount() > 0);
+    }
     const auto controls = editorControlBounds();
     const auto header = embeddedEditorHeaderLayout(getLocalBounds().toFloat(), true);
     impl->dimensionLabel.setBounds(Rectangle<float>(92.f, 26.f)
@@ -515,6 +529,10 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     const auto dimensions = MeshDimensionality::dimensions(node);
     if (!dimensions.active(MorphDimensions::axes[(size_t) impl->viewAxis])) {
         impl->viewAxis = dimensions.axisCount() == 2 ? 1 : 0;
+    }
+    if (!impl->keyboardMorphAxis.isEmpty() && !selectableMorphAxis(impl->keyboardMorphAxis)) {
+        impl->keyboardMorphAxis.clear();
+        impl->keyboardShortcutHelp->hide();
     }
     impl->presentation.setDimensionCount(parameters.intValue("dimensionCount", 0));
     impl->dimensionSelector.setSelectedValue(parameters.stringValue("dimensionCount", "0"));

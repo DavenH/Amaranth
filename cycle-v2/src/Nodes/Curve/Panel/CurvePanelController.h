@@ -51,6 +51,8 @@ public:
     virtual bool hasVisiblePreviewSnapshot() const = 0;
     virtual uint64_t previewSnapshotRevision() const = 0;
     virtual void resetDocumentPresentation() = 0;
+    virtual void setEditGestureActive(bool) {}
+    virtual Rectangle<float> panelContentBounds(Rectangle<float> bounds) const { return bounds; }
     virtual void releaseSharedGlResources() = 0;
     virtual int vertexCountForAutomation() const = 0;
     virtual var automationState() const = 0;
@@ -75,8 +77,9 @@ public:
     virtual void setLogarithmic(bool logarithmic) = 0;
     virtual void setAxisLinks(bool redLinked, bool blueLinked) = 0;
     virtual void setDimensions(int count, bool yellowLinked) = 0;
-    virtual void paintMorphSurface(Graphics& graphics, Rectangle<float> bounds,
-            int axis, const MorphPosition& morph) = 0;
+    virtual Component* morphSurfaceComponent() = 0;
+    virtual void prepareMorphSurface(int axis, const MorphPosition& morph) = 0;
+    virtual void renderMorphSurface(Rectangle<float> bounds, float scaleFactor) = 0;
     virtual void fitVerticalRange() = 0;
     virtual void resetVerticalRange() = 0;
     virtual bool hasSingleSelectedVertex() = 0;

@@ -182,6 +182,10 @@ void ZoomPanel::panelZoomChanged(bool commandDown) {
     listeners.call(&ZoomListener::doZoomExtra, commandDown);
     validateRect("panelZoomChanged-after-extra");
 
+    updateScrollbars();
+}
+
+void ZoomPanel::updateScrollbars() {
     if(context.haveHorz) {
         validateRect("panelZoomChanged-horz");
         horz.removeListener (this);

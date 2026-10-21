@@ -17,6 +17,9 @@
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Envelope/Editor/EnvelopeAxisScaleSelector.h"
 #include "Nodes/Envelope/Editor/EnvelopeEditorComponent.h"
+#include "Nodes/Envelope/Rendering/EnvelopeMorphSurfacePreview.h"
+#include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
+#include <UI/Panels/ZoomPanel.h>
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
@@ -5168,7 +5171,8 @@ TEST_CASE("Envelope uses the Trimesh composition and a full width editable curve
             const auto body = content.withTrimmedBottom(EnvelopeMorphControls::actionBarHeight());
             const MeshEditorLayout layout(body, count);
             const auto curveBounds = rectangleProperty(state, "panelBounds");
-            REQUIRE(curveBounds == layout.curve());
+            REQUIRE(rectangleProperty(state, "panelFrameBounds") == layout.curve());
+            REQUIRE(curveBounds == layout.curve().toNearestInt().toFloat().withTrimmedRight(8.f).withTrimmedBottom(8.f));
             REQUIRE(rectangleProperty(state, "controlBounds")
                     == layout.controls().withTrimmedBottom(MeshEditorLayout::controlFooterHeight));
             REQUIRE(rectangleProperty(state, "morphSurfaceBounds") == layout.surface());
@@ -5176,6 +5180,13 @@ TEST_CASE("Envelope uses the Trimesh composition and a full width editable curve
             const auto actions = rectangleProperty(state, "actionBarBounds");
             REQUIRE(actions.getY() >= curveBounds.getBottom());
             REQUIRE(actions.getCentreX() == Catch::Approx(content.getCentreX()));
+            const auto panel = state.getProperty("panelState", {});
+            const auto horizontal = panel.getProperty("zoomControls", {}).getProperty("horizontal", {});
+            REQUIRE((bool) horizontal.getProperty("visible", false));
+            REQUIRE((double) horizontal.getProperty("start", {})
+                    == Catch::Approx((double) panel.getProperty("zoom", {}).getProperty("x", {})));
+            REQUIRE((double) horizontal.getProperty("size", {})
+                    == Catch::Approx((double) panel.getProperty("zoom", {}).getProperty("w", {})));
             const auto rails = state.getProperty("vertexParameterRails", {});
             REQUIRE(rails.size() == 7);
             for (const auto& row : *rails.getArray()) {
@@ -5194,5 +5205,110 @@ TEST_CASE("Envelope uses the Trimesh composition and a full width editable curve
                 REQUIRE(bounds.getHeight() < (float) size.y * 0.65f);
             }
         }
+    }
+}
+
+TEST_CASE("Envelope surface coalesces gesture updates and restores authored scalar amplitudes",
+        "[cycle-v2][mesh-dimensions][envelope][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    TrimeshPanelEnvironment environment;
+    EnvelopeMorphSurfacePreview surface(environment, [] {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    auto* component = surface.component();
+    component->setBounds(0, 0, 400, 300);
+    const auto amplitude = [&](float value) {
+        for (auto* vertex : mesh->getVerts()) {
+            vertex->values[Vertex::Amp] = value;
+        }
+    };
+    const auto prepare = [&](uint64_t revision, bool active) {
+        surface.prepare(*mesh, nullptr, revision, { 0.5f, 0.5f, 0.5f }, Vertex::Time, 3, active);
+        return surface.automationState();
+    };
+    uint64_t revision = 1;
+    for (const float value : { 0.f, 0.2f, 0.5f, 0.8f, 1.f }) {
+        amplitude(value);
+        const auto state = prepare(revision++, false);
+        REQUIRE((float) state.getProperty("centreValue", {}) == Catch::Approx(value).margin(0.0001f));
+        REQUIRE((float) state.getProperty("minimum", {}) >= 0.f);
+        REQUIRE((float) state.getProperty("maximum", {}) <= 1.f);
+    }
+    const auto before = surface.automationState();
+    for (const float value : { 0.35f, 0.65f }) {
+        amplitude(value);
+        const auto held = prepare(revision++, true);
+        REQUIRE(held.getProperty("rebuildCount", {}) == before.getProperty("rebuildCount", {}));
+        REQUIRE(held.getProperty("centreValue", {}) == before.getProperty("centreValue", {}));
+    }
+    const auto committed = prepare(revision, false);
+    REQUIRE((int64) committed.getProperty("rebuildCount", {}) == (int64) before.getProperty("rebuildCount", {}) + 1);
+    REQUIRE((float) committed.getProperty("centreValue", {}) == Catch::Approx(0.65f).margin(0.0001f));
+    REQUIRE(prepare(revision, false).getProperty("rebuildCount", {}) == committed.getProperty("rebuildCount", {}));
+    const auto zoom = committed.getProperty("zoomControls", {});
+    REQUIRE((bool) zoom.getProperty("horizontal", {}).getProperty("visible", false));
+    REQUIRE((bool) zoom.getProperty("vertical", {}).getProperty("visible", false));
+    REQUIRE(rectangleProperty(zoom, "viewport") == Rectangle<float>(0.f, 0.f, 392.f, 292.f));
+    mesh->destroy();
+}
+
+TEST_CASE("Morph keyboard hints disappear only when their slider disappears",
+        "[cycle-v2][mesh-dimensions][editor][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    for (const auto kind : { NodeKind::Envelope, NodeKind::TrilinearMesh }) {
+        Component owner;
+        owner.setSize(1000, 820);
+        NodeGraph graph;
+        graph.addNode(GraphNodeFactory().createNode(kind, "subject", {}));
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "subject", "dimensionCount", "Dimensions", "3").succeeded());
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher commands(document);
+        RecordingPresentation presentation;
+        EnvelopeEditorResources resources;
+        TrimeshWidget mesh;
+        resources.activeTrimesh = &mesh;
+        NodeEditorCommandService service(owner, document, commands, presentation, resources);
+        NodeEditorHost host(owner, service, presentation, resources);
+        const auto bind = [&] {
+            REQUIRE(host.bind(document.graph().findNode("subject"), owner.getLocalBounds(), document.revision()));
+        };
+        bind();
+        const auto focused = [&]() {
+            if (kind == NodeKind::Envelope) {
+                return dynamic_cast<EnvelopeEditorComponent*>(host.component())->focusedMorphAxis();
+            }
+            return dynamic_cast<TrimeshExpandedEditorComponent*>(host.component())->focusedMorphAxis();
+        };
+        const auto hint = [&]() -> Component* {
+            if (kind == NodeKind::Envelope) {
+                return host.component()->findChildWithID("envelopeEditor.morph.shortcuts");
+            }
+            for (auto* child : host.component()->getChildren()) {
+                if (auto* found = child->findChildWithID("trimesh.morph.shortcuts")) {
+                    return found;
+                }
+            }
+            return nullptr;
+        };
+        REQUIRE(host.component()->keyPressed(KeyPress('r')));
+        REQUIRE(commands.setMeshDimensions("subject", 2).succeeded());
+        bind();
+        REQUIRE(focused() == "red");
+        REQUIRE(hint() != nullptr);
+        REQUIRE(hint()->isVisible());
+        REQUIRE(commands.setMeshDimensions("subject", 1).succeeded());
+        bind();
+        REQUIRE(focused().isEmpty());
+        REQUIRE_FALSE(hint()->isVisible());
+        REQUIRE(host.component()->keyPressed(KeyPress('y')));
+        REQUIRE(commands.setMeshDimensions("subject", 3).succeeded());
+        bind();
+        REQUIRE(focused() == "yellow");
+        REQUIRE(hint()->isVisible());
+        REQUIRE(commands.setMeshDimensions("subject", 0).succeeded());
+        bind();
+        REQUIRE(focused().isEmpty());
+        REQUIRE_FALSE(hint()->isVisible());
     }
 }

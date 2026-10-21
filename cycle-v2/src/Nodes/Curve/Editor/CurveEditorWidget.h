@@ -23,8 +23,11 @@ public:
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
     void setEnvelopeDimensions(int count, bool yellowLinked);
-    void paintEnvelopeMorphSurface(Graphics& graphics, Rectangle<float> bounds,
-            int axis, const MorphPosition& morph);
+    Component* envelopeMorphSurfaceComponent();
+    void prepareEnvelopeMorphSurface(int axis, const MorphPosition& morph);
+    void renderEnvelopeMorphSurface(Rectangle<float> bounds, float scaleFactor);
+    void setEditGestureActive(bool active);
+    Rectangle<float> panelContentBounds(Rectangle<float> frame) const;
     void fitEnvelopeVerticalRange();
     void resetEnvelopeVerticalRange();
     void setImpulseResponseAudioResource(const AudioSampleResource* resource);

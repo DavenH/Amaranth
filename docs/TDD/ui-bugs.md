@@ -1,5 +1,21 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Envelope surface rebuilds during dragging, uses centred colour data and omits zoom hosts
+
+On 2026-10-21, Envelope editing visibly stalled while its morph surface rebuilt
+48 cross-sections for every transient content revision in paint. Its shared E3
+rasterizer emits HalfBipolar values (authored value minus 0.5), but the preview
+passed these directly to a normalized scalar material. The curve editor mounted
+its inner input host instead of its existing ZoomPanel; the software surface had
+no zoom wrapper. Envelope also retained a keyboard morph hint after its axis
+became inactive. Status: resolved. Surface preparation now follows the existing
+editor transaction boundary; its columns use normalized amplitudes and mature
+panel/zoom hosts. Framing also refreshes scrollbar ranges without extra slicing.
+58 focused cases and native held curve/parameter/morph drags, exact one-rebuild
+commit, Undo, zoom/pan and keyboard-focus transitions pass. Evidence:
+`.context/envelope-surface-tests.log`, `envelope-surface-native.log`, native run
+3e82760a206f and the surface-interaction fixture run 66f767096447.
+
 ## P2: Static spectral Trimesh loses harmonic partials
 
 On 2026-10-21, switching a spectral Trimesh to Static removes its partial bars.

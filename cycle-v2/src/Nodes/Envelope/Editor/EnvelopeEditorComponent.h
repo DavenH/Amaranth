@@ -14,6 +14,7 @@ public:
     explicit EnvelopeEditorComponent(CurveEditorWidget& target);
     ~EnvelopeEditorComponent() override;
 
+    void renderOpenGL(float scaleFactor) override;
     String getTooltip() override;
     bool keyPressed(const juce::KeyPress& key) override;
     juce::String focusedMorphAxis() const;

@@ -1,6 +1,6 @@
 # Unified Mesh Dimensionality
 
-Status: Complete — shared mesh editor composition, restrained previews and Static spectral partials verified.
+Status: Complete — Envelope commit-cached surfaces, normalized colours, zoom hosts and conditional focus verified.
 
 ## Contract
 
@@ -492,3 +492,98 @@ The final native captures use a height that fits the physical display; an early
 Architecture, code-map, style and whitespace checks pass. This targeted native
 proof does not claim resolution of the previously recorded broader automation
 input-timing debt.
+
+## Follow-up: Envelope surface interaction parity
+
+Hold the last prepared morph surface throughout an Envelope gesture, while the
+local curve continues updating. At gesture commit, rebuild the surface once.
+Use the existing CurveExpandedEditor transaction boundary for curve, parameter
+and morph gestures; do not add another transaction owner or copy the mesh during
+movement. Surface rasterization remains EnvelopeMorphSurfaceRasterizer's shared
+Cycle 1 authority. Convert its HalfBipolar output back to normalized [0,1] with
+Buffer operations before the scalar material consumes it.
+
+Mount the existing ZoomPanel around the Envelope curve. Replace the standalone
+software-only surface painter with the mature Trimesh Panel3D/ZoomPanel hosted
+through CurvePanelHost, so both surface and curve expose established zoom bars,
+wheel mapping, shared-canvas rendering and cache lifecycle. Domain surface code
+supplies columns and commit eligibility only. Reuse scrollbar styling from the
+Trimesh host through one shared presentation authority. Delete the old image
+cache/painter and inner-host-only Envelope mount.
+
+Dimension changes clear the keyboard morph axis and hint only if that axis is
+no longer active. Preserve retained-axis focus in both families.
+
+Verify held multi-update curve/vertex/morph gestures keep the surface rebuild
+count stable, update the local slice, rebuild once on release and restore on
+Undo. Verify endpoint/midpoint normalized surface values, physical colour output,
+actual zoom bars/pan gestures, all modes and retained/dismissed focus. Review
+normal/compact native captures; run focused tests, CycleV2 build --parallel 10,
+architecture/code-map/style and whitespace checks. No audio behavior changes.
+
+Completion evidence:
+
+- CurveExpandedEditorComponent supplies its existing transaction boundaries to
+  the controller's presentation lifecycle. EnvelopeMorphSurfacePreview retains
+  prepared columns while that gesture is active; release requests a repaint
+  and prepares the final revision once. The local Envelope rasterizer and curve
+  remain live. Primary-axis cursor traversal retains its existing prepared grid.
+- The surface now composes TrimeshPanel3D, CurvePanelHost and ZoomPanel. It
+  supplies the mature E3 cross-sections as normalized scalar columns; shared
+  rendering/cache/resource owners replace its independent CPU image painter.
+  Pointer editing is disabled for this preview; established zoom/wheel behavior
+  remains available. The curve mounts its existing ZoomPanel, preserving actual
+  viewport bounds for pointer automation and eight-pixel bars outside content.
+- ZoomPanel's existing scrollbar update block is extracted into updateScrollbars.
+  Envelope framing calls it after constraining its view, synchronizing visible
+  ranges without another rasterization or zoom lifecycle. Trimesh and Envelope
+  now consume the same scrollbar style authority. Existing Trimesh render bounds
+  remain unchanged; Envelope adapters supply their actual inner viewport.
+- HalfBipolar surface output is restored with Buffer.add(0.5).clip(0,1), retaining
+  the mature rasterizer's Cycle 1 request semantics. Endpoint, midpoint and
+  intermediate constant-amplitude probes pass (0, 0.2, 0.5, 0.8, 1). No scalar
+  sample/pixel mapping or new DSP algorithm is introduced.
+- Focus tests exercise both families: Red survives 3D → 2D and disappears in
+  1D; Yellow survives re-expansion and disappears in Static. Both remembered
+  focus and visible shortcut hint follow those conditions. Envelope now clears
+  the inactive hint; Trimesh's established behavior passes unchanged.
+- All 58 focused cases / 5,488 assertions pass, including six existing Trimesh
+  viewport/trackpad cases. CycleV2 and tests build with --parallel 10. The new
+  22-command surface interaction fixture passes (66f767096447): real zoom target
+  geometry, full scalar range, wheel zoom and retained/dismissed focus. The
+  85-command mode/property fixture also passes (9932a35e503b); report:
+  `.context/envelope-surface-ui-run.json`.
+- Native macOS run 3e82760a206f passed two held curve updates, vertex-parameter
+  and orthogonal morph drags: local values/curve change, surface rebuild count
+  stays fixed until release, and commit increments it exactly once. Undo,
+  both zoom hosts, native scrollbar panning and shortcut focus transitions pass.
+  Normal/compact screenshots reviewed at production size. Evidence:
+  `.context/envelope-surface-{build,tests,native}.log`,
+  `envelope-surface-interaction-ui-run.json`, and
+  `envelope-surface-{compact-before,compact-released,compact-zoomed,compact-final,normal-final}.png`.
+
+Responsibility review:
+
+- EnvelopeCurvePanel 1324 → 1325 retains mature envelope interaction and grid
+  policy; the added call synchronizes its existing zoom owner. Envelope editor
+  1063 → 1081 composes the hosted preview and releases invalid keyboard focus;
+  domain geometry, transaction and rendering policy stay with collaborators.
+- CurvePanelController 769 → 809 remains the existing family-controller
+  composition boundary. The Envelope adapter supplies its mesh, guides and
+  commit eligibility; base controller exposes host composition and repaint
+  translation. No interpolation or transaction state machine moves into it.
+- EnvelopeMorphSurfacePreview 51 → 161 is now a column/data-and-host adapter,
+  with CurvePanelHost owning GL context resources, snapshots and invalidation,
+  TrimeshPanel3D owning scalar display, and ZoomPanel owning camera interaction.
+  It does not own document mutation or undo. The old software image/cache path
+  is removed, rather than retained alongside the mature host.
+- CurvePanelInfrastructure 496 → 555 owns the optional zoom wrapper, role-owned
+  viewport/scrollbar export and shared styling. NodeCanvasAutomationInspector
+  1206 → 1230 remains a cohesive read-only facade: it translates those exported
+  rectangles into targets, without calculating layout or adding domain policy.
+  Keep future interaction/edit policy out of this facade.
+- No audio path or realtime preparation changes. Gesture movement introduces
+  no mesh/graph copies or surface preparation; surface work remains outside
+  audio and occurs only at the existing gesture boundary. The old live-image
+  rebuild, centred scalar feed, hidden zoom wrappers and stale focus paths are
+  deleted. Architecture, code-map, style and whitespace checks pass.

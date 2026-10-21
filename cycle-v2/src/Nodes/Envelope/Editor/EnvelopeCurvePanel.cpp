@@ -905,6 +905,7 @@ protected:
         }
 
         panel->constrainZoom();
+        zoomPanel->updateScrollbars();
         updateEnvelopeBackgroundGrid();
     }
 

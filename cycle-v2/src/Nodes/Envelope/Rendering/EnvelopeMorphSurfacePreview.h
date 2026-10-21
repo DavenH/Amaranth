@@ -1,25 +1,33 @@
 #pragma once
 
-#include <Curve/Rasterization/Rasterizer/EnvelopeMorphSurfaceRasterizer.h>
-#include "Nodes/Trimesh/Rendering/TrimeshGridRenderService.h"
+#include <functional>
+#include <memory>
+
+#include "JuceHeader.h"
+#include <Obj/MorphPosition.h>
+
+class GuideCurveProvider;
+class Mesh;
 
 namespace CycleV2 {
 
+class TrimeshPanelEnvironment;
+
 class EnvelopeMorphSurfacePreview {
 public:
-    void paint(juce::Graphics& graphics, juce::Rectangle<float> bounds,
-            Mesh& mesh, GuideCurveProvider* guides, uint64_t revision,
-            const MorphPosition& morph, int axis, int dimensions);
+    EnvelopeMorphSurfacePreview(TrimeshPanelEnvironment& environment, std::function<void()> repaint);
+    ~EnvelopeMorphSurfacePreview();
+
+    juce::Component* component();
+    void prepare(Mesh& mesh, GuideCurveProvider* guides, uint64_t revision,
+            const MorphPosition& morph, int axis, int dimensions, bool gestureActive);
+    void render(juce::Rectangle<float> bounds, float scaleFactor);
+    void releaseOpenGLResources();
+    juce::var automationState() const;
 
 private:
-    Rasterization::EnvelopeMorphSurfaceRasterizer rasterizer;
-    TrimeshRenderData data;
-    juce::Image image;
-    uint64_t cachedRevision {};
-    MorphPosition cachedMorph;
-    int cachedAxis { -1 };
-    int cachedDimensions { -1 };
-    juce::Point<int> cachedSize;
+    struct Impl;
+    std::unique_ptr<Impl> impl;
 };
 
 }

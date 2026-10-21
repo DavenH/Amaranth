@@ -7,6 +7,8 @@
 #include <UI/Panels/PanelHostContext.h>
 #include <UI/Panels/PanelInputHostComponent.h>
 #include <UI/Panels/ScopedGLScissor.h>
+#include <UI/Panels/ZoomPanel.h>
+#include <UI/AmaranthLookAndFeel.h>
 
 #include "UI/NativeCursorRefresh.h"
 
@@ -66,6 +68,12 @@ void CurvePanelPreviewRenderCache::invalidate() {
 
 CurvePanelPreviewRenderCache::Diagnostics CurvePanelPreviewRenderCache::diagnostics() const {
     return { hits.load(), misses.load() };
+}
+
+void stylePanelZoomScrollbars(ZoomPanel& panel) {
+    static AmaranthLookAndFeel lookAndFeel(nullptr, false);
+    panel.getComponent(true)->setLookAndFeel(&lookAndFeel);
+    panel.getComponent(false)->setLookAndFeel(&lookAndFeel);
 }
 
 namespace CurvePanelInvalidation {
@@ -137,8 +145,12 @@ private:
         delegate.beginEdit();
     }
 
+    bool acceptsPointerDown(const MouseEvent& event) const override {
+        return delegate.allowsCurvePanelEditing() && PanelInputHostComponent::acceptsPointerDown(event);
+    }
+
     bool acceptsDoubleClick(const MouseEvent& event) const override {
-        return event.mods.isLeftButtonDown();
+        return delegate.allowsCurvePanelEditing() && event.mods.isLeftButtonDown();
     }
 
     void pointerGesturePressed() override {
@@ -213,6 +225,53 @@ Component* CurvePanelHost::component() {
 
 Component* CurvePanelHost::componentIfCreated() {
     return componentInitialised ? hostComponent.get() : nullptr;
+}
+
+Component* CurvePanelHost::zoomComponent() {
+    initialiseComponent();
+    stylePanelZoomScrollbars(*panel.getZoomPanel());
+    return panel.getZoomPanel();
+}
+
+Component* CurvePanelHost::zoomComponentIfCreated() {
+    return componentInitialised ? zoomComponent() : nullptr;
+}
+
+var CurvePanelHost::zoomControlsState() const {
+    auto* state = new DynamicObject();
+    if (!componentInitialised) {
+        return state;
+    }
+    auto* zoom = panel.getZoomPanel();
+    const bool mounted = hostComponent->getParentComponent() == zoom;
+    const auto viewport = hostComponent->getBounds();
+    auto* content = new DynamicObject();
+    content->setProperty("x", viewport.getX());
+    content->setProperty("y", viewport.getY());
+    content->setProperty("width", viewport.getWidth());
+    content->setProperty("height", viewport.getHeight());
+    state->setProperty("viewport", content);
+    for (const bool horizontal : { true, false }) {
+        auto* scrollbar = static_cast<ScrollBar*>(zoom->getComponent(horizontal));
+        auto* control = new DynamicObject();
+        const auto bounds = scrollbar->getBounds();
+        control->setProperty("visible", mounted && scrollbar->isVisible());
+        control->setProperty("x", bounds.getX());
+        control->setProperty("y", bounds.getY());
+        control->setProperty("width", bounds.getWidth());
+        control->setProperty("height", bounds.getHeight());
+        control->setProperty("start", scrollbar->getCurrentRangeStart());
+        control->setProperty("size", scrollbar->getCurrentRangeSize());
+        state->setProperty(horizontal ? "horizontal" : "vertical", control);
+    }
+    return state;
+}
+
+Rectangle<float> CurvePanelHost::contentBounds(Rectangle<float> frame) const {
+    if (componentInitialised && hostComponent->getParentComponent() == panel.getZoomPanel()) {
+        return hostComponent->getBounds().toFloat().translated(frame.getX(), frame.getY());
+    }
+    return frame;
 }
 
 void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float scaleFactor) {

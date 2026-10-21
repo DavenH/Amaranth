@@ -5,7 +5,6 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanel2D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
 
-#include <UI/AmaranthLookAndFeel.h>
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/GLPanelRenderer.h>
 #include <UI/Panels/PanelInputHostComponent.h>
@@ -19,16 +18,6 @@
 namespace CycleV2 {
 
 namespace {
-
-AmaranthLookAndFeel& trimeshScrollbarLookAndFeel() {
-    static AmaranthLookAndFeel lookAndFeel(nullptr, false);
-    return lookAndFeel;
-}
-
-void styleZoomScrollbars(ZoomPanel& zoomPanel) {
-    zoomPanel.getComponent(true)->setLookAndFeel(&trimeshScrollbarLookAndFeel());
-    zoomPanel.getComponent(false)->setLookAndFeel(&trimeshScrollbarLookAndFeel());
-}
 
 bool sameZoomValue(float first, float second) {
     return std::abs(first - second) <= 1.0e-6f;
@@ -271,7 +260,7 @@ void TrimeshPanelHosts::initialisePanel3DHost() {
         panel3DHostInitialised = true;
         applyFrequencyViewportTo3D();
     }
-    styleZoomScrollbars(*panel3D.getZoomPanel());
+    stylePanelZoomScrollbars(*panel3D.getZoomPanel());
     interactor3D.updateIntercepts();
 }
 
@@ -285,7 +274,7 @@ void TrimeshPanelHosts::initialiseCurvePanel(Component* component) {
     panel2D.configureViewport(frequencyLimits);
     panel2DHostInitialised = true;
     applyFrequencyViewportTo2D();
-    styleZoomScrollbars(*panel2D.getZoomPanel());
+    stylePanelZoomScrollbars(*panel2D.getZoomPanel());
 }
 
 void TrimeshPanelHosts::updateCurvePanelZoom(bool) {

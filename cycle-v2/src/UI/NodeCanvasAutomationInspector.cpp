@@ -401,6 +401,30 @@ public:
         }
         addEnvelopeModeTargets(targets, node, panel, *curveEditorState);
         addEnvelopeActionTargets(targets, node, panel, *curveEditorState);
+        const auto addZoomTargets = [&](const var& zoom, const var& frame, const String& family) {
+            const auto origin = AutomationValueEncoder::rectangleFromVar(frame).getPosition() + panel.getPosition();
+            for (const String axis : { "horizontal", "vertical" }) {
+                const auto control = zoom.getProperty(axis, {});
+                if ((bool) control.getProperty("visible", false)) {
+                    const auto bounds = AutomationValueEncoder::rectangleFromVar(control).translated(origin.x, origin.y);
+                    targets.add(pointerTargetToVar("expanded:" + node.id + ".envelopeZoom." + family + "." + axis,
+                            "envelopeZoom", bounds, node.id));
+                }
+            }
+            if (family == "surface") {
+                const auto bounds = AutomationValueEncoder::rectangleFromVar(zoom.getProperty("viewport", {}))
+                        .translated(origin.x, origin.y);
+                targets.add(pointerTargetToVar("expanded:" + node.id + ".envelopeSurface",
+                        "envelopeSurface", bounds, node.id));
+            }
+        };
+        const auto panelState = curveEditorState->getProperty("panelState");
+        addZoomTargets(panelState.getProperty("zoomControls", {}), curveEditorState->getProperty("panelFrameBounds"), "curve");
+        if ((int) curveEditorState->getProperty("dimensionCount") > 0) {
+            addZoomTargets(panelState.getProperty("morphSurface", {}).getProperty("zoomControls", {}),
+                    curveEditorState->getProperty("morphSurfaceBounds"), "surface");
+        }
+
         const auto* parameterRails = curveEditorState->getProperty(
                 "vertexParameterRails").getArray();
         if (parameterRails == nullptr) {

@@ -28,11 +28,15 @@ public:
 
     Component* panelHostComponent() override {
         initialiseDefaultModel();
-        return host->component();
+        return usesZoomHost() ? host->zoomComponent() : host->component();
     }
 
     Component* panelHostComponentIfCreated() override {
-        return host->componentIfCreated();
+        return usesZoomHost() ? host->zoomComponentIfCreated() : host->componentIfCreated();
+    }
+
+    Rectangle<float> panelContentBounds(Rectangle<float> bounds) const override {
+        return host->contentBounds(bounds);
     }
 
     void setDelegate(CurvePanelControllerDelegate* nextDelegate) override {
@@ -59,7 +63,7 @@ public:
             Rectangle<float> bounds,
             Rectangle<float> clipBounds,
             float scaleFactor) override {
-        host->render(bounds, clipBounds, scaleFactor);
+        host->render(usesZoomHost() ? host->contentBounds(bounds) : bounds, clipBounds, scaleFactor);
     }
 
     bool renderPreview(
@@ -109,6 +113,7 @@ public:
         var state = panel != nullptr ? panel->automationState() : var(new DynamicObject());
         if (auto* object = state.getDynamicObject()) {
             object->setProperty("modelRevision", (int64) publicationRevision);
+            object->setProperty("zoomControls", host->zoomControlsState());
             object->setProperty("domainModel", domainModelName());
             object->setProperty("curveResizeCursor", host->usesCursor(MouseCursor::UpDownResizeCursor));
             object->setProperty(
@@ -192,6 +197,13 @@ protected:
     virtual const Mesh& modelMesh() const = 0;
     virtual String domainModelName() const = 0;
     virtual bool preservesInteractivePreviewZoom() const { return false; }
+    virtual bool usesZoomHost() const { return false; }
+
+    void requestRepaint() {
+        if (controllerDelegate != nullptr) {
+            controllerDelegate->repaintCurvePanelController();
+        }
+    }
 
     bool notifyMeshEdited() {
         if (controllerDelegate == nullptr || !registerMeshEdit()) {
@@ -557,7 +569,8 @@ private:
 class EnvelopePanelController final : public CurvePanelControllerBase,
                                       public EnvelopeCurvePanelController {
 public:
-    EnvelopePanelController() {
+    EnvelopePanelController() :
+            morphSurface(environment.services(), [this] { requestRepaint(); }) {
         panel = createEnvelopeCurvePanel(
                 &environment.services().getRepo(), environment.services(), adapter.mesh());
         initialiseHost();
@@ -634,10 +647,34 @@ public:
         envelopePanel().setEnvelopeLogarithmic(logarithmic);
     }
 
-    void paintMorphSurface(Graphics& graphics, Rectangle<float> bounds,
-            int axis, const MorphPosition& morph) override {
-        morphSurface.paint(graphics, bounds, adapter.mesh(), guideCurveProvider.get(),
-                contentRevision(), morph, axis, adapter.dimensionCount());
+    Component* morphSurfaceComponent() override { return morphSurface.component(); }
+
+    void prepareMorphSurface(int axis, const MorphPosition& morph) override {
+        morphSurface.prepare(adapter.mesh(), guideCurveProvider.get(), contentRevision(),
+                morph, axis, adapter.dimensionCount(), surfaceGestureActive);
+    }
+
+    void renderMorphSurface(Rectangle<float> bounds, float scaleFactor) override {
+        morphSurface.render(bounds, scaleFactor);
+    }
+
+    void setEditGestureActive(bool active) override {
+        surfaceGestureActive = active;
+        if (!active) {
+            requestRepaint();
+        }
+    }
+
+    var automationState() const override {
+        var state = CurvePanelControllerBase::automationState();
+        state.getDynamicObject()->setProperty("morphSurface", morphSurface.automationState());
+        state.getDynamicObject()->setProperty("surfaceGestureActive", surfaceGestureActive);
+        return state;
+    }
+
+    void releaseSharedGlResources() override {
+        morphSurface.releaseOpenGLResources();
+        CurvePanelControllerBase::releaseSharedGlResources();
     }
 
     void setDimensions(int count, bool yellowLinked) override {
@@ -691,7 +728,10 @@ public:
     }
 
 private:
+    bool usesZoomHost() const override { return true; }
+
     EnvelopeMorphSurfacePreview morphSurface;
+    bool surfaceGestureActive {};
     bool yellowLinked { true };
     bool frameOnNextNodeSync { true };
     String guideNodeId;
