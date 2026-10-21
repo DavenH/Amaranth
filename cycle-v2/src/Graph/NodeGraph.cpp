@@ -9,6 +9,7 @@
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 
 #include <algorithm>
+#include <cmath>
 #include <unordered_set>
 
 namespace CycleV2 {
@@ -25,6 +26,12 @@ void eraseIf(Container& container, Predicate predicate) {
             container.end());
 }
 
+}
+
+bool isValidInformationCardOffset(double x, double y) {
+    return std::isfinite(x) && std::isfinite(y)
+            && std::abs(x) <= maximumInformationCardOffset
+            && std::abs(y) <= maximumInformationCardOffset;
 }
 
 void NodeGraph::addNode(Node nodeToAdd) {
@@ -46,11 +53,21 @@ const std::vector<NodeGroup>& NodeGraph::getNodeGroups() const {
 }
 
 const NodeGroup* NodeGraph::findNodeGroup(const String& groupId) const {
-    const auto& groups = getNodeGroups();
-    const auto found = std::find_if(groups.begin(), groups.end(), [&](const NodeGroup& group) {
-        return group.id == groupId;
-    });
-    return found != groups.end() ? &*found : nullptr;
+    if (overlayBase != nullptr) {
+        return overlayBase->findNodeGroup(groupId);
+    }
+    const auto found = groupIdIndex.find(groupId);
+    return found != groupIdIndex.end() && found->second < nodeGroups.size()
+            ? &nodeGroups[found->second] : nullptr;
+}
+
+NodeGroup* NodeGraph::findNodeGroupForEditing(const String& groupId) {
+    if (overlayBase != nullptr) {
+        return nullptr;
+    }
+    const auto found = groupIdIndex.find(groupId);
+    return found != groupIdIndex.end() && found->second < nodeGroups.size()
+            ? &nodeGroups[found->second] : nullptr;
 }
 
 const NodeGroup* NodeGraph::groupForNode(const String& nodeId) const {
@@ -68,8 +85,11 @@ bool NodeGraph::isNodeVisible(const String& nodeId) const {
 }
 
 void NodeGraph::rebuildNodeGroupIndex() {
+    InteractionComplexityDiagnostics::recordGroupIndexRebuild();
     nodeGroupIndex.clear();
+    groupIdIndex.clear();
     for (size_t index = 0; index < nodeGroups.size(); ++index) {
+        groupIdIndex[nodeGroups[index].id] = index;
         for (const auto& nodeId : nodeGroups[index].nodeIds) {
             nodeGroupIndex[nodeId] = index;
         }
@@ -90,6 +110,7 @@ bool NodeGraph::addNodeGroup(NodeGroup group) {
         }
     }
     nodeGroups.push_back(std::move(group));
+    groupIdIndex[nodeGroups.back().id] = nodeGroups.size() - 1;
     for (const auto& nodeId : nodeGroups.back().nodeIds) {
         nodeGroupIndex[nodeId] = nodeGroups.size() - 1;
     }

@@ -220,6 +220,9 @@ struct NodeAudioResourceSummary {
 };
 
 constexpr int maximumExplanationLength = 16384;
+constexpr float maximumInformationCardOffset = 100000.f;
+
+bool isValidInformationCardOffset(double x, double y);
 
 struct Node {
     String id;
@@ -240,6 +243,8 @@ struct NodeGroup {
     String title;
     std::vector<String> nodeIds;
     bool collapsed {};
+    String rationale;
+    std::optional<juce::Point<float>> informationCardOffset;
 };
 
 struct Edge {
@@ -419,6 +424,7 @@ private:
     };
 
     Node* findNodeForEditing(const String& nodeId);
+    NodeGroup* findNodeGroupForEditing(const String& groupId);
     NodeParameter* findNodeParameterForEditing(
             const String& nodeId,
             const String& parameterId);
@@ -451,6 +457,7 @@ private:
     std::vector<NodeAudioResourceBinding> audioResourceBindings;
     std::unordered_map<String, size_t, StringHash> nodeIndex;
     std::unordered_map<String, size_t, StringHash> nodeGroupIndex;
+    std::unordered_map<String, size_t, StringHash> groupIdIndex;
     std::vector<String> morphNodeIds;
     std::unordered_map<
             String,

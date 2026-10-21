@@ -2,12 +2,32 @@
 
 namespace CycleV2 {
 
+juce::String* GraphDocument::explanationTextForEditing(const ExplanationTarget& target) {
+    switch (target.scope) {
+        case ExplanationScope::Preset:
+            return target.id.isEmpty() ? &presetPresentation.description : nullptr;
+        case ExplanationScope::Node:
+            if (Node* node = currentGraph.findNodeForEditing(target.id)) {
+                return &node->rationale;
+            }
+            break;
+        case ExplanationScope::Group:
+            if (NodeGroup* group = currentGraph.findNodeGroupForEditing(target.id)) {
+                return &group->rationale;
+            }
+            break;
+    }
+    return nullptr;
+}
+
 void GraphDocument::applyExplanation(const ExplanationEdit& edit, bool forward) {
-    const juce::String& text = forward ? edit.after : edit.before;
-    if (edit.nodeId.isEmpty()) {
-        presetPresentation.description = text;
-    } else if (Node* node = currentGraph.findNodeForEditing(edit.nodeId)) {
-        node->rationale = text;
+    if (const auto* text = std::get_if<ExplanationTextEdit>(&edit.value)) {
+        if (juce::String* current = explanationTextForEditing(edit.target)) {
+            *current = forward ? text->after : text->before;
+        }
+    } else if (NodeGroup* group = currentGraph.findNodeGroupForEditing(edit.target.id)) {
+        const auto& placement = std::get<InformationCardPlacementEdit>(edit.value);
+        group->informationCardOffset = forward ? placement.after : placement.before;
     }
 }
 
@@ -24,32 +44,46 @@ void GraphDocument::recordExplanation(ExplanationEdit edit) {
     publishChangeAtState(std::move(change), newStateId);
 }
 
-GraphEditResult GraphCommandDispatcher::setNodeRationale(
-        const juce::String& nodeId,
-        const juce::String& text) {
+GraphEditResult GraphCommandDispatcher::setExplanationText(
+        const ExplanationTarget& target, const juce::String& text) {
     GraphEditResult result;
-    result.nodeId = nodeId;
+    result.nodeId = target.id;
     result.changed = false;
-    const Node* node = document.graph().findNode(nodeId);
-    if (node == nullptr) {
-        result.code = GraphEditCode::MissingNode;
+    juce::String* current = document.explanationTextForEditing(target);
+    if (current == nullptr) {
+        result.code = target.scope == ExplanationScope::Node
+                ? GraphEditCode::MissingNode : GraphEditCode::ValidationRejected;
     } else if (hasTransientEdit() || compoundActive || text.length() > maximumExplanationLength) {
         result.code = GraphEditCode::ValidationRejected;
-    } else if (node->rationale != text) {
-        document.recordExplanation({ nodeId, node->rationale, text });
+    } else if (*current != text) {
+        document.recordExplanation({ target, GraphDocument::ExplanationTextEdit { *current, text } });
         result.changed = true;
         result.changes.explanationsChanged = true;
     }
     return result;
 }
 
+GraphEditResult GraphCommandDispatcher::setNodeRationale(
+        const juce::String& nodeId, const juce::String& text) {
+    return setExplanationText({ ExplanationScope::Node, nodeId }, text);
+}
+
 GraphEditResult GraphCommandDispatcher::setPresetDescription(const juce::String& text) {
+    return setExplanationText({ ExplanationScope::Preset, {} }, text);
+}
+
+GraphEditResult GraphCommandDispatcher::setGroupInformationCard(
+        const juce::String& groupId, std::optional<juce::Point<float>> offset) {
     GraphEditResult result;
+    result.nodeId = groupId;
     result.changed = false;
-    if (hasTransientEdit() || compoundActive || text.length() > maximumExplanationLength) {
+    const NodeGroup* group = document.graph().findNodeGroup(groupId);
+    if (group == nullptr || hasTransientEdit() || compoundActive
+            || (offset.has_value() && !isValidInformationCardOffset(offset->x, offset->y))) {
         result.code = GraphEditCode::ValidationRejected;
-    } else if (document.presentation().description != text) {
-        document.recordExplanation({ {}, document.presentation().description, text });
+    } else if (group->informationCardOffset != offset) {
+        document.recordExplanation({ { ExplanationScope::Group, groupId },
+                GraphDocument::InformationCardPlacementEdit { group->informationCardOffset, offset } });
         result.changed = true;
         result.changes.explanationsChanged = true;
     }
