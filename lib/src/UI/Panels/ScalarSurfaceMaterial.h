@@ -27,7 +27,8 @@ enum class ScalarSurfaceRelief {
     Program17,
     Program18,
     Program19,
-    Program20
+    Program20,
+    Program21
 };
 
 enum class ScalarSurfaceTimeStyle {
@@ -45,7 +46,8 @@ enum class ScalarSurfaceTimeStyle {
     Recipe17 = 10,
     Recipe18 = 11,
     Recipe19 = 12,
-    Bullion = 13
+    Bullion = 13,
+    IcyHotRaw = 14
 };
 
 enum class ScalarSurfaceDetailColour {

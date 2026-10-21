@@ -4,6 +4,7 @@
 
 #include "Graph/GraphEdgeIndex.h"
 #include "UI/GraphEndpointNodeRenderer.h"
+#include "UI/ExplanationEditor.h"
 #include "UI/NodeCanvasScene.h"
 
 namespace CycleV2 {
@@ -64,7 +65,8 @@ float displayedLabelWidth(
         juce::Rectangle<float> expanded,
         float zoom) {
     const float available = juce::jmin(expanded.getWidth(), kCardWidth * zoom)
-            - kLabelLeftPadding - kToggleGap - kToggleTargetSize - 8.f;
+            - kLabelLeftPadding - kToggleGap - kToggleTargetSize - 8.f
+            - (group.rationale.isNotEmpty() ? 26.f : 0.f);
     return juce::jmax(0.f,
             juce::jmin(groupLabelFont().getStringWidthFloat(group.title.toUpperCase()),
                     available));
@@ -92,6 +94,10 @@ void paintGroupChrome(
     graphics.drawRect(bounds.reduced(0.5f), 0.8f);
 }
 
+juce::Rectangle<float> informationBoundsForToggle(juce::Rectangle<float> toggle) {
+    return { toggle.getRight() + 2.f, toggle.getY(), 24.f, 24.f };
+}
+
 void paintGroupControls(
         juce::Graphics& graphics,
         const NodeGroup& group,
@@ -107,6 +113,9 @@ void paintGroupControls(
     graphics.drawLine(centre.x - 4.f, centre.y, centre.x + 4.f, centre.y, 1.2f);
     if (group.collapsed) {
         graphics.drawLine(centre.x, centre.y - 4.f, centre.x, centre.y + 4.f, 1.2f);
+    }
+    if (group.rationale.isNotEmpty()) {
+        ExplanationBadge::paint(graphics, informationBoundsForToggle(toggle), true);
     }
 }
 
@@ -227,6 +236,16 @@ juce::Rectangle<float> NodeGroupPresentation::labelBounds(
             toggle.getX() - frame.getX() - kLabelLeftPadding - kToggleGap,
             29.f
     };
+}
+
+juce::Rectangle<float> NodeGroupPresentation::informationBounds(
+        const NodeGraph& graph, const NodeGroup& group,
+        const NodeCanvasViewport& viewport, const GraphEdgeIndex& edgeIndex) {
+    if (group.rationale.isEmpty()) {
+        return {};
+    }
+    const auto toggle = toggleBounds(graph, group, viewport, edgeIndex);
+    return informationBoundsForToggle(toggle);
 }
 
 juce::Rectangle<float> NodeGroupPresentation::expandedBackdropBounds(

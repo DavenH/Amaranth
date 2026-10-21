@@ -1,0 +1,13 @@
+{
+  "commands": [
+    { "command": "exportGraph" },
+    { "command": "inspectSynthesisCapabilities", "sampleRate": 96000, "beatsPerMeasure": 7 },
+    { "command": "inspectSynthesisCapabilities", "path": "../../.context/synthesis-capabilities.json" },
+    { "command": "convertSynthesisParameter", "typeId": "equalizer", "parameterId": "band3Frequency", "direction": "toStored", "value": 2500 },
+    { "command": "convertSynthesisParameter", "typeId": "waveshaper", "parameterId": "pre", "value": 0.75 },
+    { "command": "convertSynthesisParameter", "typeId": "delay", "parameterId": "time", "value": 0.5, "beatsPerMeasure": 7 },
+    { "command": "convertSynthesisParameter", "typeId": "impulseResponse", "parameterId": "size", "value": 0.51 },
+    { "command": "exportGraph" }
+  ],
+  "quit": true
+}

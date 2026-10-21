@@ -2,10 +2,10 @@
 
 namespace CycleV2 {
 
-std::optional<CycleV2AutomationCommand> automationCommandForName(
-        const juce::String& name) {
-    using Command = CycleV2AutomationCommand;
-    const std::pair<const char*, Command> commands[] {
+namespace {
+
+using Command = CycleV2AutomationCommand;
+const std::pair<const char*, Command> commands[] {
             { "snapshotState", Command::SnapshotState },
             { "inspectTargets", Command::InspectTargets },
             { "inspectPointerTargets", Command::InspectPointerTargets },
@@ -19,6 +19,8 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "requestCanvasOpenGLFrame", Command::RequestCanvasOpenGLFrame },
             { "recreateCanvasOpenGLContext", Command::RecreateCanvasOpenGLContext },
             { "exportGraph", Command::ExportGraph },
+            { "inspectSynthesisCapabilities", Command::InspectSynthesisCapabilities },
+            { "convertSynthesisParameter", Command::ConvertSynthesisParameter },
             { "openGraph", Command::OpenGraph },
             { "resizeWindow", Command::ResizeWindow },
             { "saveGraph", Command::SaveGraph },
@@ -29,10 +31,14 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "listPaletteItems", Command::ListPaletteItems },
             { "invokePaletteItem", Command::InvokePaletteItem },
             { "captureAudio", Command::CaptureAudio },
+            { "exportPatternSchedule", Command::ExportPatternSchedule },
             { "captureLiveAudio", Command::CaptureLiveAudio },
             { "openNodeEditor", Command::OpenNodeEditor },
             { "pinComparisonSpy", Command::PinComparisonSpy },
             { "selectReference", Command::SelectReference },
+            { "listReferences", Command::ListReferences },
+            { "importReference", Command::ImportReference },
+            { "exportReferenceAnalysis", Command::ExportReferenceAnalysis },
             { "openReferencePitchEditor", Command::OpenReferencePitchEditor },
             { "openMeshPopup", Command::OpenNodeEditor },
             { "addNode", Command::AddNode },
@@ -48,9 +54,15 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "loadGuideHeatmap", Command::LoadGuideHeatmap },
             { "clearGuideHeatmap", Command::ClearGuideHeatmap },
             { "undo", Command::Undo },
+            { "redo", Command::Redo },
+            { "applyNodeEdits", Command::ApplyNodeEdits },
             { "setNodeParameter", Command::SetNodeParameter },
             { "setGuideParameter", Command::SetGuideParameter },
             { "inspectNodeControls", Command::InspectNodeControls },
+            { "inspectExplanation", Command::InspectExplanation },
+            { "setExplanation", Command::SetExplanation },
+            { "setGroupInformationCard", Command::SetGroupInformationCard },
+            { "openExplanationEditor", Command::OpenExplanationEditor },
             { "setMorphSlider", Command::SetMorphSlider },
             { "setPrimaryAxis", Command::SetPrimaryAxis },
             { "toggleLink", Command::ToggleLink },
@@ -65,7 +77,21 @@ std::optional<CycleV2AutomationCommand> automationCommandForName(
             { "waitForIdle", Command::WaitForIdle },
             { "ping", Command::Ping },
             { "quit", Command::Quit }
-    };
+};
+
+}
+
+juce::String automationCommandName(CycleV2AutomationCommand value) {
+    for (const auto& command : commands) {
+        if (command.second == value) {
+            return command.first;
+        }
+    }
+    return {};
+}
+
+std::optional<CycleV2AutomationCommand> automationCommandForName(
+        const juce::String& name) {
     for (const auto& command : commands) {
         if (name == command.first) {
             return command.second;

@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "input": "peak",
+  "space": "oklab",
+  "aspect": 1.64,
+  "layers": [
+    {
+      "name": "Base",
+      "enabled": true,
+      "filter": "raw",
+      "sigma": 2,
+      "outer": 8,
+      "axis": "both",
+      "gain": 1.3,
+      "offset": 0,
+      "opacity": 1,
+      "blend": "normal",
+      "mask": "none",
+      "mask_gain": 12,
+      "stops": [
+        [
+          0,
+          "#b9f6ff"
+        ],
+        [
+          0.12,
+          "#719dbb"
+        ],
+        [
+          0.25,
+          "#006c95"
+        ],
+        [
+          0.35,
+          "#413482"
+        ],
+        [
+          0.44,
+          "#1e1f39"
+        ],
+        [
+          0.5,
+          "#212121"
+        ],
+        [
+          0.56,
+          "#37290a"
+        ],
+        [
+          0.65,
+          "#653c01"
+        ],
+        [
+          0.75,
+          "#91511f"
+        ],
+        [
+          0.88,
+          "#ab8c1d"
+        ],
+        [
+          1,
+          "#ecf4b8"
+        ]
+      ]
+    },
+    {
+      "name": "Detail",
+      "enabled": false,
+      "filter": "highpass",
+      "sigma": 1.25,
+      "outer": 0.5,
+      "axis": "y",
+      "gain": 100,
+      "offset": -0.07,
+      "opacity": 0.35,
+      "blend": "multiply",
+      "mask": "energy",
+      "mask_gain": 42,
+      "stops": [
+        [
+          0,
+          "#08051d"
+        ],
+        [
+          0.25,
+          "#57106e"
+        ],
+        [
+          0.5,
+          "#bb3754"
+        ],
+        [
+          0.75,
+          "#f98d35"
+        ],
+        [
+          1,
+          "#fcf9b7"
+        ]
+      ]
+    }
+  ]
+}

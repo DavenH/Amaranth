@@ -45,6 +45,8 @@ private:
     var snapshotState() const;
     var inspectTargets(const var& commandValue) const;
     var exportGraph(const var& commandValue) const;
+    var inspectSynthesisCapabilities(const var& commandValue) const;
+    var convertSynthesisParameter(const var& commandValue) const;
     var openGraph(const var& commandValue);
     var saveGraph(const var& commandValue);
     var generatePresetPreview(const var& commandValue);
@@ -54,6 +56,8 @@ private:
     var invokePaletteItem(const var& commandValue);
     var captureAudio(const var& commandValue);
     var captureLiveAudio(const var& commandValue);
+    var importReference(const var& commandValue);
+    var exportReferenceAnalysis(const var& commandValue) const;
     var sendMidi(const var& commandValue);
     var inspectPointerTargets() const;
     var inspectPointerCursor() const;

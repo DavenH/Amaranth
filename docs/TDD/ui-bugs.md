@@ -121,6 +121,98 @@ retain exact-PID ownership and foreground leases. Artifacts:
 `.context/vertex-travel-native-focus-failure.log` and
 `.context/vertex-travel-native.log`.
 
+## P3: Collapsed-group cable takes an excessive detour above upper-row nodes
+
+On 2026-10-20, the native group-card acceptance screenshot showed a large purple
+arch across the upper canvas for `fft.phase -> phaseOp1.left`. Reproduce by
+opening `cycle-v2/content/presets/old/accoustic.cyclegraph`, grouping `voice`,
+`morph` and `fft` without moving them, then collapsing the group at fit zoom
+(recorded viewport 1728 × 962, zoom approximately 0.4742). The cable starts at
+the compact group boundary and bows above the magnitude previews before entering
+the phase Add node. Expected: readable obstacle avoidance near the obstructing
+nodes, without such a large excursion into otherwise clear canvas.
+
+Evidence from the completed native run: `.context/group-information-native.png`,
+`.context/cable-routing-triage.json`, and the preserved expanded graph
+`.context/pr3-capabilities/.context/native-group-saved.cyclegraph` (collapse its
+existing group). The graph still has 24 nodes and 22 edges with successful
+compilation and no validation/compile issues. No new GUI run was performed for
+this logging-only triage.
+
+Source-based hypothesis: `NodeCanvasScene::routeObstructedCables` detects the
+direct curve crossing `timeLayer1`, then `corridorTop` includes every visible
+node overlapping the entire horizontal span, including the much higher
+`magnitudeLayer1`. `cableDetourPath` consequently creates an oversized cubic.
+This is consistent with the existing limited row-routing heuristic in
+`cycle-v2-cable-routing.md`; it is not yet an isolated root-cause proof or
+evidence that the information-card change introduced the behavior. Status:
+open; compare expanded/collapsed routes and constrain the detour to relevant
+obstacles while preserving shared painting/hit-test geometry.
+
+## Resolved: Information-card text lost style and clipped its last line
+
+On 2026-10-20, the group-card app-render regression showed default black text
+because font/colour were applied to an empty JUCE AttributedString before text
+was appended. A long note also exposed a partial final line and malformed raw
+UTF-8 continuation glyphs in the card and existing console. The card now appends
+text with its 14-pixel font/palette colour, clips at complete TextLayout line
+bounds, and constructs the continuation through JUCE Unicode conversion; the
+console uses the same conversion. Glyph-style/eight-line geometry regressions
+pass in the 21-case annotation group (588 assertions). Final app-render proof is
+`.context/group-information-{normal,long,narrow}.png` in the group-cards worktree.
+Native delivery remains separately pending the locked Mac session; no native
+claim is inferred from these app renders.
+
+## Resolved: Shipped graph fixtures drifted from canonical serialization
+
+On 2026-10-20, the merged authoring-tools run stopped in "Every shipped graph
+is canonical JSON and compiles" at `african-horn.cyclegraph`: one canvas Y
+coordinate spelled `422.12049` canonicalized to `422.12048` after float decoding.
+The subsequent fixture audit found missing `unisonWidthLayoutVersion` markers
+in `alto-sax`, `baroque-flute`, and resources `default`, `fft-sawtooth`,
+`with-spies`; the three resources also omitted their existing default
+`phaseMode: absolute` fields. Four small `baroque-flute` phase literals needed
+canonical scientific notation without changing their numeric values.
+Minimal content-only repairs preserve every previously decoded graph/model
+value and file layout. The existing GraphMigrator loads and validates all seven
+fixtures and emits byte-identical output on the next pass. No test or synthesis
+behavior was changed. Evidence: `.context/canonical-content-check/repaired-results.json`
+in the exemplar worktree; original test log `.context/merged-next-wave-tests.log`
+in the group worktree. Current status: resolved.
+
+## Resolved: Envelope equality depended on allocation order
+
+On 2026-10-20, strict candidate-authoring compatibility tests independently
+loaded `electric-1.cyclegraph` / `volumeEnvelope1` twice and found unequal models
+with identical loop/sustain membership. `EnvelopeMesh::equals` compared unsorted
+logical-cube-index vectors produced by pointer-ordered sets, causing spurious
+same-revision model conflicts. The canonical equality owner now sorts the index
+vectors. A direct independent-decode/membership regression and all-factory model
+comparison pass (`.context/semantic-tests-final.log` in the PR4 worktree; 35 cases,
+9078 assertions). No UI overlay or persistence-reader change was used.
+
+## Resolved: Explanation editor test omitted GUI initialization
+
+On 2026-10-20, the combined authoring-tools test run passed its assertions but
+printed Component/Timer assertions and GUI singleton leaks. The new editor
+draft test constructed JUCE components without `ScopedJuceInitialiser_GUI`.
+The test now initializes and shuts down JUCE around its component lifetime.
+The seven explanation cases now pass with no JUCE assertions or leak warnings
+(`.context/explanation-gui-lifetime-tests.log`). This was a test-harness defect;
+native app editing passed independently. Repro log:
+`.context/integration-tests.log` in the parent workspace.
+
+## P2: Preset sidebar overlaps expanded Spy detail
+
+On 2026-10-19, open Stengah at 1400 × 950 with the Presets sidebar visible,
+then double-click `spy:probe`. The sidebar paints over the left portion of
+the expanded heatmap (sidebar ends at x=289; the heatmap starts behind it).
+The detail itself renders correctly. Reproduced while verifying raw surface
+recipe 21; no Spy layout code changed. App-side capture:
+`.context/icy-hot-raw-canvas.png`; passing fixture/report:
+`scripts/fixtures/cycle-v2-agent-raw-surface.json`, `.context/icy-hot-raw-report.json`.
+Status: open; detail/sidebar overlay visibility needs coordinated ownership.
+
 ## Resolved: Morph shortcut help required clicks before hover
 
 On 2026-10-19, the morph shortcut card failed on a fresh native hover and began

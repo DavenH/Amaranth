@@ -95,6 +95,23 @@ var positionToJSON(Point<float> position) {
     return var(result.release());
 }
 
+bool informationCardOffsetFromJSON(const var& value, Point<float>& offset) {
+    const auto* object = value.getDynamicObject();
+    if (object == nullptr) {
+        return false;
+    }
+    const var x = object->getProperty("x");
+    const var y = object->getProperty("y");
+    const auto isNumber = [](const var& coordinate) {
+        return coordinate.isDouble() || coordinate.isInt() || coordinate.isInt64();
+    };
+    if (!isNumber(x) || !isNumber(y) || !isValidInformationCardOffset((double) x, (double) y)) {
+        return false;
+    }
+    offset = { (float) (double) x, (float) (double) y };
+    return true;
+}
+
 var rectangleToJSON(Rectangle<float> bounds) {
     auto result = std::make_unique<DynamicObject>();
     result->setProperty("x", bounds.getX());
@@ -601,6 +618,9 @@ var GraphSerializer::writeJSON(
         encoded->setProperty("kind", registry.typeIdFor(node.kind));
         encoded->setProperty("definitionVersion", definition != nullptr ? definition->version : 1);
         encoded->setProperty("position", positionToJSON(node.bounds.getPosition()));
+        if (node.rationale.isNotEmpty()) {
+            encoded->setProperty("rationale", node.rationale);
+        }
         if (definition != nullptr) {
             const var portSides = nodePortSideOverrides(node, *definition);
             if (!portSides.isVoid()) {
@@ -652,6 +672,12 @@ var GraphSerializer::writeJSON(
             encoded->setProperty("id", group.id);
             encoded->setProperty("title", group.title);
             encoded->setProperty("collapsed", group.collapsed);
+            if (group.rationale.isNotEmpty()) {
+                encoded->setProperty("rationale", group.rationale);
+            }
+            if (group.informationCardOffset.has_value()) {
+                encoded->setProperty("informationCardOffset", positionToJSON(*group.informationCardOffset));
+            }
             Array<var> members;
             for (const auto& nodeId : group.nodeIds) {
                 members.add(nodeId);
@@ -754,6 +780,13 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
     const int savedUnisonWidthLayoutVersion =
             (int) root->getProperty("unisonWidthLayoutVersion");
 
+    const var description = root->getProperty("presetPresentation").getProperty("description", {});
+    if (!description.isVoid() && (!description.isString()
+            || description.toString().length() > maximumExplanationLength)) {
+        result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                "Preset description must be text of at most 16384 characters" });
+        return result;
+    }
     const auto presentation = PresetPresentationCodec::readJSON(
             root->getProperty("presetPresentation"));
     result.presentation = presentation.presentation;
@@ -933,6 +966,14 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
             result.issues.push_back({ GraphLoadCode::InvalidSchema, "Node '" + nodeId + "' editor state must be an object" });
             continue;
         }
+        const var rationale = encoded->getProperty("rationale");
+        if (!rationale.isVoid() && (!rationale.isString()
+                || rationale.toString().length() > maximumExplanationLength)) {
+            result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                    "Node rationale must be text of at most 16384 characters" });
+            continue;
+        }
+        node.rationale = rationale.toString();
         node.editorState = editor;
         registry.normalize(node);
         result.graph.addNode(std::move(node));
@@ -960,6 +1001,23 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
                 group.nodeIds.push_back(member.toString());
             }
             group.collapsed = (bool) encoded->getProperty("collapsed");
+            const var rationale = encoded->getProperty("rationale");
+            if (encoded->hasProperty("rationale") && (!rationale.isString()
+                    || rationale.toString().length() > maximumExplanationLength)) {
+                result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                        "Group rationale must be text of at most 16384 characters" });
+                continue;
+            }
+            group.rationale = rationale.toString();
+            if (encoded->hasProperty("informationCardOffset")) {
+                Point<float> offset;
+                if (!informationCardOffsetFromJSON(encoded->getProperty("informationCardOffset"), offset)) {
+                    result.issues.push_back({ GraphLoadCode::InvalidSchema,
+                            "Group information card offset must contain finite x/y within 100000 world units" });
+                    continue;
+                }
+                group.informationCardOffset = offset;
+            }
             if (!result.graph.addNodeGroup(std::move(group))) {
                 result.issues.push_back({ GraphLoadCode::InvalidGraph,
                         "Node group has duplicate or missing members" });

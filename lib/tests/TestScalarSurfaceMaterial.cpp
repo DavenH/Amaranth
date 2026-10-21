@@ -6,6 +6,7 @@
 
 #include "UI/Panels/ScalarSurfaceMaterial.h"
 #include "UI/Panels/GLScalarSurfaceRenderer.h"
+#include "UI/Panels/TimeSurfaceStyles.h"
 #include "Array/Buffer.h"
 
 namespace {
@@ -205,7 +206,9 @@ TEST_CASE("Time surface style selection changes only the time material",
     REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(3)
             == ScalarSurfaceTimeStyle::BipolarFlat);
     REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex(99)
-            == ScalarSurfaceTimeStyle::BlueDepth);
+            == ScalarSurfaceTimeStyle::IcyHotRaw);
+    REQUIRE(TimeSurfaceStyles::fromId({}) == ScalarSurfaceTimeStyle::IcyHotRaw);
+    REQUIRE(TimeSurfaceStyles::fromId("unknown") == ScalarSurfaceTimeStyle::IcyHotRaw);
     REQUIRE(ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, bipolar)
             != ScalarSurfaceMaterialEvaluator::baseColourFor(0.75f, blue));
     REQUIRE(ScalarSurfaceMaterial::unipolarMagnitude().palette
@@ -671,7 +674,7 @@ TEST_CASE("Saved Icy-hot programs match the lab Stengah reference", "[scalar-sur
     Buffer<float>(magnitude.data(), (int) magnitude.size()).abs();
     const float peak = Buffer<float>(magnitude.data(), (int) magnitude.size()).max();
     Buffer<float>(values.data(), (int) values.size()).mul(0.5f / peak).add(0.5f);
-    for (int number = 13; number <= 20; ++number) {
+    for (int number = 13; number <= 21; ++number) {
         const auto material = ScalarSurfaceMaterial::savedProgram(number);
         const auto image = ScalarSurfaceMaterialEvaluator::createImage(
                 values.data(), (int) values.size(), columns, rows, material);
@@ -709,7 +712,7 @@ TEST_CASE("Icy-hot style changes invalidate cached scalar products", "[scalar-su
     REQUIRE_FALSE(cache.needsUpload(data));
     data.material = ScalarSurfaceMaterial::icyHotProgram(true);
     REQUIRE(cache.needsUpload(data));
-    for (int number = 15; number <= 20; ++number) {
+    for (int number = 15; number <= 21; ++number) {
         cache.markUploaded(data);
         REQUIRE_FALSE(cache.needsUpload(data));
         data.material = ScalarSurfaceMaterial::savedProgram(number);
@@ -736,6 +739,25 @@ TEST_CASE("Icy-hot constant surfaces stay uniform and preserve authored level", 
         const auto second = ScalarSurfaceMaterialEvaluator::createImage(values.data(), 64, 8, 8, material);
         REQUIRE(first.getPixelAt(4, 4) != second.getPixelAt(4, 4));
     }
+}
+
+TEST_CASE("Raw Icy Hot preserves the authored palette without spatial detail", "[surface-program]") {
+    const auto material = ScalarSurfaceMaterial::forTimeStyle(ScalarSurfaceTimeStyle::IcyHotRaw);
+    std::vector<float> values { 0.f, 0.5f, 1.f, 0.5f };
+    const auto original = values;
+    const auto image = ScalarSurfaceMaterialEvaluator::createImage(values.data(), 4, 2, 2, material);
+    REQUIRE(image.getPixelAt(0, 1) == juce::Colour(0xffb9f6ff));
+    REQUIRE(image.getPixelAt(1, 1) == juce::Colour(0xffecf4b8));
+    REQUIRE(image.getPixelAt(0, 0) == juce::Colour(0xff212121));
+    REQUIRE(image.getPixelAt(1, 0) == image.getPixelAt(0, 0));
+    REQUIRE(values == original);
+
+    values[0] = values[2] = 0.5f;
+    const auto flat = ScalarSurfaceMaterialEvaluator::createImage(values.data(), 4, 2, 2, material);
+    REQUIRE(flat.getPixelAt(0, 0) == image.getPixelAt(0, 0));
+    REQUIRE(flat.getPixelAt(1, 0) == image.getPixelAt(1, 0));
+    REQUIRE(ScalarSurfaceMaterial::timeSurfaceStyleFromIndex((int) ScalarSurfaceTimeStyle::IcyHotRaw)
+            == ScalarSurfaceTimeStyle::IcyHotRaw);
 }
 
 TEST_CASE("Greyscale is an undistorted value mapping across boundaries", "[surface-program]") {

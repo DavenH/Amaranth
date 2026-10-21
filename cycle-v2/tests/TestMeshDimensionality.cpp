@@ -414,9 +414,13 @@ TEST_CASE("Projection remaps component guides and cancellation restores geometry
     commands.cancelCompoundEdit();
     REQUIRE(document.graph().findNode("mesh")->model == node.model);
     REQUIRE(document.graph().getGuideAssignments().size() == 2);
+    REQUIRE(document.graph().getGuideAssignments().front().target.field == GuideCurveField::Time);
+    REQUIRE(document.graph().getGuideAssignments().back().target.field == GuideCurveField::Red);
     REQUIRE(commands.setMeshDimensions("mesh", 0).succeeded());
     REQUIRE(document.undo());
     REQUIRE(document.graph().getGuideAssignments().size() == 2);
+    REQUIRE(document.graph().getGuideAssignments().front().target.field == GuideCurveField::Time);
+    REQUIRE(document.graph().getGuideAssignments().back().target.field == GuideCurveField::Red);
     REQUIRE(document.graph().getGuideAssignments().front().target.cubeIndex == 1);
     REQUIRE(document.redo());
     REQUIRE(document.graph().getGuideAssignments().size() == 1);

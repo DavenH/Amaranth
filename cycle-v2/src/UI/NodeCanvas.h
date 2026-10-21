@@ -19,6 +19,7 @@
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/PresentationRefreshPolicy.h"
 #include "UI/CanvasPerformanceMetrics.h"
+#include "UI/ExplanationEditor.h"
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAuthoring.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
@@ -62,6 +63,13 @@ public:
     ~NodeCanvas() override;
 
     bool saveGraphToFile(const File& file);
+    bool setExplanation(const ExplanationTarget& target, const String& text);
+    var inspectExplanation(const ExplanationTarget& target) const;
+    bool openExplanationEditor(const ExplanationTarget& target);
+    bool setGroupInformationCard(const String& groupId, std::optional<Point<float>> offset);
+    bool setGroupInformationCardVisible(const String& groupId, bool visible);
+    const Node* explanationNodeAt(Point<float> position) const;
+    const NodeGroup* explanationGroupAt(Point<float> position) const;
     bool loadGraphFromFile(const File& file);
     void presetLoadWorkspaceStageCompleted(
             CanvasPerformanceMetrics::PresetLoadWorkspaceStage stage);
@@ -114,6 +122,9 @@ public:
     bool loadGuideHeatmapForAutomation(const String& guideId, const File& file);
     bool clearGuideHeatmapForAutomation(const String& guideId);
     bool undoForAutomation();
+    bool redoForAutomation();
+    GraphEditResult applyNodeEditsForAutomation(const NodeAuthoringEdits& edits);
+    uint64_t documentRevisionForAutomation() const { return document.revision(); }
     bool setGuideParameterForAutomation(
             const String& guideId,
             const String& parameterId,
@@ -219,6 +230,20 @@ private:
 
     OpenGLContext openGLContext;
     TooltipWindow tooltipHost { this, 500 };
+    PresetExplanationButton presetInformation;
+    Component::SafePointer<ExplanationEditor> explanationEditor;
+    ExplanationTarget explanationEditorTarget;
+    uint64_t explanationEditorRevision {};
+    mutable GroupInformationCardPresentation informationCards;
+    String focusedInformationGroup;
+    struct InformationCardDrag {
+        String groupId;
+        Point<float> startPointer;
+        Point<float> startOffset;
+        Point<float> offset;
+        uint64_t documentRevision {};
+    };
+    std::optional<InformationCardDrag> informationCardDrag;
     NodeCanvasRenderer renderer;
     mutable NodeCanvasViewport viewport;
     bool documentViewportFitted {};
@@ -333,6 +358,13 @@ private:
             int controller = 1,
             int controllerValue = 0);
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
+    bool finishExplanationEdit(const GraphEditResult& result);
+    void updateInformationCards() const;
+    std::optional<GroupInformationCardPreview> informationCardPreview() const;
+    bool informationCardMouseDown(const MouseEvent& event);
+    bool informationCardMouseDrag(const MouseEvent& event);
+    bool informationCardMouseUp();
+    bool informationCardKey(const KeyPress& key);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh(
             PresentationRefreshScope scope = PresentationRefreshScope::Downstream);

@@ -6,6 +6,7 @@
 #include "UI/Editors/MorphSpaceLayout.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
 #include "Graph/MeshDimensionality.h"
+#include "UI/ExplanationEditor.h"
 
 #include "UI/SignalProbeDetailView.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
@@ -713,6 +714,10 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("selectedEdgeIndex", state.selectedEdgeIndex);
     root->setProperty("hoveredEdgeIndex", state.hoveredEdgeIndex);
     root->setProperty("documentDirty", context.document.isDirty());
+    root->setProperty("documentRevision", (int64) context.document.revision());
+    root->setProperty("graphRevision", (int64) graph.getRevision());
+    root->setProperty("canUndo", context.document.canUndo());
+    root->setProperty("canRedo", context.document.canRedo());
     root->setProperty("documentFile", context.document.file().getFullPathName());
     root->setProperty("previewVoiceLengthSeconds", state.previewVoiceLengthSeconds);
     root->setProperty("editStatusMessage", state.editStatusMessage);
@@ -727,10 +732,24 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         encoded->setProperty("title", group.title);
         encoded->setProperty("collapsed", group.collapsed);
         encoded->setProperty("memberCount", (int) group.nodeIds.size());
+        encoded->setProperty("rationale", group.rationale);
+        encoded->setProperty("cardEnabled", group.informationCardOffset.has_value());
+        if (group.informationCardOffset.has_value()) {
+            auto* offset = new DynamicObject();
+            offset->setProperty("x", group.informationCardOffset->x);
+            offset->setProperty("y", group.informationCardOffset->y);
+            encoded->setProperty("cardOffset", offset);
+        }
         nodeGroups.add(encoded);
     }
     root->setProperty("nodeGroups", nodeGroups);
     root->setProperty("nodeGroupCount", nodeGroups.size());
+    root->setProperty("informationCardCount", (int) state.informationCards.size());
+    root->setProperty("focusedInformationGroup", state.focusedInformationGroup);
+    root->setProperty("informationCardDragging", state.informationCardDragging);
+    root->setProperty("presetDescription", context.document.presentation().description);
+    root->setProperty("explanationEditorOpen", !state.explanationEditor.isVoid());
+    root->setProperty("explanationEditor", state.explanationEditor);
     root->setProperty("edgeCount", (int) graph.getEdges().size());
     root->setProperty("probeCount", (int) graph.getSignalProbes().size());
     root->setProperty("guideCount", (int) graph.getGuideCurves().size());
@@ -817,6 +836,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         nodeObject->setProperty("kind", labelForNodeKind(node.kind));
         nodeObject->setProperty("title", labelForNodeKind(node.kind));
         nodeObject->setProperty("subtitle", node.subtitle);
+        nodeObject->setProperty("rationale", node.rationale);
         if (node.kind == NodeKind::Envelope) {
             nodeObject->setProperty(
                     "compactPurposeIcon",
@@ -964,12 +984,14 @@ var NodeCanvasAutomationInspector::inspectNodeControls(const String& nodeId,
     auto* root = new DynamicObject();
     const Node* node = context.document.graph().findNode(nodeId);
     root->setProperty("nodeId", nodeId);
+    root->setProperty("documentRevision", (int64) context.document.revision());
     root->setProperty("resolved", node != nullptr);
 
     if (node == nullptr) {
         return root;
     }
 
+    root->setProperty("rationale", node->rationale);
     root->setProperty("kind", labelForNodeKind(node->kind));
     root->setProperty("expanded", state.expandedNodeId == nodeId);
 
@@ -995,6 +1017,32 @@ var NodeCanvasAutomationInspector::inspectNodeControls(const String& nodeId,
 var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomationPresentation& state) const {
     auto* root = new DynamicObject();
     Array<var> targets;
+    targets.add(AutomationValueEncoder::pointerTargetToVar(
+            "workspace.presetInformation", "presetExplanation", state.presetInformationBounds));
+    for (const auto& [id, bounds] : state.explanationTargets) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id,
+                id.startsWith("groupInformation:") ? "groupExplanation" : "explanationEditor", bounds));
+    }
+    for (const auto& card : state.informationCards) {
+        const String id = "groupCard:" + card.groupId;
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id, "groupInformationCard", card.bounds.card));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id + ".header", "groupInformationCardHeader",
+                card.bounds.header.withTrimmedRight(card.bounds.close.getWidth())));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id + ".body", "groupInformationCardBody", card.bounds.body));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id + ".close", "groupInformationCardClose", card.bounds.close));
+    }
+    for (const auto& node : context.document.graph().getNodes()) {
+        if (context.presentation.snapshot().facts != nullptr
+                && context.document.graph().isNodeVisible(node.id)
+                && ExplanationBadge::isVisible(node, state.selectedNodeId)) {
+            const auto bounds = context.viewport.toScreen(NodeCanvasScene::presentationWorldBounds(
+                    context.document.graph(), node, context.presentation.snapshot().facts->edgeIndex()));
+            targets.add(AutomationValueEncoder::pointerTargetToVar(
+                    "explanation:" + node.id, "nodeExplanation", ExplanationBadge::boundsFor(node, bounds,
+                            context.viewport.getZoom(), context.presentation.snapshot().facts->audioScopeAnalysis()
+                                    .scopeFor(node.id) == AuthoredAudioScope::Global)));
+        }
+    }
     targets.add(
             AutomationValueEncoder::pointerTargetToVar("canvas", "canvas", context.canvas.getLocalBounds().toFloat()));
     if (state.guideDock.expanded) {

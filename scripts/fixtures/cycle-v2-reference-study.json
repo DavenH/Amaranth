@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "name": "Sax growl and a periodic calibration reference",
+  "references": [
+    {
+      "id": "growl",
+      "referenceId": "factory:sax-growl",
+      "labels": {
+        "articulation": { "value": "growl", "origin": "inferred" }
+      }
+    },
+    {
+      "id": "calibration",
+      "referenceId": "factory:sine500",
+      "labels": {
+        "frequency": { "value": 500, "unit": "Hz", "origin": "inferred" }
+      }
+    }
+  ]
+}

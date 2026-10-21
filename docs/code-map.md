@@ -28,7 +28,6 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 ## Shared Library
 
 - `lib/CMakeLists.txt` — Builds AmaranthLib and its tests; reuse its dependency and platform configuration.
-- `lib/src/Array/` — Buffers, rings, stereo storage, and vector ops; reuse in DSP and analysis hot paths.
 - `lib/src/Array/Buffer.h` — Primary numeric buffer abstraction; reuse transforms and reductions before scalar loops.
 - `lib/src/Array/VecOps.h` — Platform-vectorized primitives; reuse for bulk math and normalization.
 - `lib/src/Algo/` — Shared algorithms, FFT helpers, resampling, and pitch analysis; reuse outside product UI.
@@ -70,18 +69,18 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/CMakeLists.txt` — CycleV2 app, graph migrator, and test target source lists.
 - `cycle-v2/src/Main.cpp` — CycleV2 process entry point and top-level JUCE application composition.
 - `cycle-v2/src/App/` — Standalone engine, graph file lifecycle, library state, and automation protocol.
+- `cycle-v2/src/Reference/` — Reference library, pitch/cyclogram analysis, and numerical automation exports.
 - `cycle-v2/src/Graph/NodeGraph.h` — Durable graph data model; read through dispatcher-owned edit views in UI code.
 - `cycle-v2/src/Graph/GraphDocument.h` — Committed graph ownership, publication, and document observers.
 - `cycle-v2/src/Graph/GraphCommandDispatcher.h` — Authoritative semantic edit, gesture, undo, and commit boundary.
-- `cycle-v2/src/Graph/GraphDelta.h` — Semantic graph changes and consolidated change reporting.
+- `cycle-v2/src/Graph/GraphDelta.h` — Ordered semantic deltas for atomic graph edits, rollback, undo, and redo.
 - `cycle-v2/src/Graph/GraphSerializer.h` — Current graph persistence and migration-facing serialization.
 - `cycle-v2/src/Graph/GraphCompiler.h` — Compiles graph topology into executable runtime structure.
 - `cycle-v2/src/Graph/GraphValidator.h` — Coordinates graph validation; reuse focused validators beneath it.
-- `cycle-v2/src/Graph/NodeDefinition.h` — Node type metadata, ports, defaults, and authoring definitions.
+- `cycle-v2/src/Graph/NodeDefinition.h` — Node types, ports, defaults, constraints, and synthesis capability metadata.
 - `cycle-v2/src/Runtime/GraphRuntime.h` — Owns compiled runtime state and graph execution lifecycle.
 - `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Executes realtime graph audio; preserve allocation-free behavior.
 - `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Runs scoped preview/analysis products without full audio work.
-- `cycle-v2/src/Runtime/NodeAudioProcessor.h` — Base contract for prepared node audio processors.
 - `cycle-v2/src/Runtime/NodeModuleRegistry.h` — Registration boundary for node model, DSP, preview, and view modules.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/` — Domain node implementations; keep DSP, model, editor, panel, and rendering layers distinct.
@@ -97,9 +96,11 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodeCanvasPresentation.h` — Builds visible canvas presentation from graph/runtime facts.
 - `cycle-v2/src/UI/NodeCanvasScene.h` — Retained node scene and geometry used by hit-testing and rendering.
 - `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement adjustments.
+- `cycle-v2/src/UI/NodeCanvasExplanations.cpp` — Preset/node/group explanations, shared editor and attached card orchestration.
 - `cycle-v2/src/UI/NodePreviewRenderer.h` — Compact node preview rendering and reusable preview resources.
 - `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy/probe overview and detail presentation.
 - `cycle-v2/src/UI/InlinePresetBrowser.h` — Preset sidebar workflow and selection behavior.
+- `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and suite export.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
 - `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.
 
@@ -117,8 +118,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `docs/style-guide.md` — Authoritative C++ formatting and code-shaping conventions; do not inline into AGENTS.md.
 - `docs/juce.md` — JUCE integration rules and capability checklist; consult before generic framework code.
 - `docs/ADR/` — Accepted architectural decisions; use to understand stable direction and ownership.
-- `docs/TDD/README.md` — TDD evidence, acceptance, review, and status rules.
-- `docs/TDD/` — Feature designs and active work; verify status before treating a document as current.
+- `docs/TDD/` — Feature designs, active status and evidence/acceptance rules; start with README.md.
 - `docs/TDD/cycle-automation-coordinator.md` — Exact-instance ownership and cross-workspace GUI automation design.
 - `docs/TDD/refactors.md` — Shared refactor backlog; check before adding another architectural wish.
 - `docs/TDD/ui-bugs.md` — UI/runtime incident ledger for incidental failures and focused repro evidence.
@@ -146,11 +146,16 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Mesh geometry or traversal | `lib/src/Curve/Mesh/` | Shared mesh types own topology; do not clone logic in UI. |
 | Rasterization or sampling | `lib/src/Curve/Rasterization/` | Compose policies/builders/samplers before adding algorithms. |
 | Mature editor interaction | `lib/src/Inter/`, `cycle/src/Inter/` | Reuse/extract Cycle 1 behavior and preserve phase costs. |
-| Cycle 2 semantic edit | `GraphCommandDispatcher.h` | UI supplies intent; dispatcher owns gesture, undo, and publication. |
+| Cycle 2 semantic edit | `GraphCommandDispatcher.h`, `scripts/create_cycle_v2_candidates.py` | `applyNodeEdits` authors atomic candidates; dispatcher owns validation, undo, and publication. |
+| Synthesis discovery | `Graph/SynthesisCapabilities.h` | Export registered metadata and canonical physical conversions. |
 | Cycle 2 audio execution | `cycle-v2/src/Runtime/` | Separate realtime, preview, preparation, and presentation work. |
+| Performance suites | `scripts/render_cycle_v2_performance_suite.py` | Reuse captureAudio and coordinator; keep scheduling outside DSP. |
 | Cycle 2 node feature | matching `cycle-v2/src/Nodes/<Domain>/` | Keep model, DSP, editor, panel, and rendering responsibilities local. |
 | Canvas interaction/rendering | `cycle-v2/src/UI/NodeCanvas*.{h,cpp}` | Keep `NodeCanvas` orchestration-only; reuse scene and policy collaborators. |
 | UI regression | `docs/cycle-agent-runbook.md` | Use the smallest fixture and inspect filtered logs first. |
+| Explained examples / sax pilot | `scripts/render_cycle_v2_exemplars.py`, `scripts/run_cycle_v2_saxophone_study.py` | Reuse semantic edits, suites and reports; reserve cases before refinement. |
+| Audition comparisons | `scripts/report_cycle_auditions.py` | Reuse saved suites, reference provenance and diagnostic spectra. |
+| Labelled reference studies | `scripts/cycle_reference_study.py` | Reuse library IDs, cached analysis, and coordinated sessions. |
 | Preset/graph persistence | `GraphSerializer.h`, product `content/` | Preserve migrations and canonical on-disk formats. |
 
 ## Fast On-Demand Discovery

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "name": "Expressive saxophone pilot: single growl recording",
+  "references": [
+    {
+      "id": "growl",
+      "referenceId": "factory:sax-growl",
+      "source": "../../references/sax-growl.wav",
+      "labels": {
+        "articulation": {
+          "value": "growl",
+          "origin": "inferred"
+        }
+      }
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -884,10 +885,10 @@
                                 { "time": 0.0, "phase": 0.0, "amp": 0.50107944, "key": 0.0, "mod": 1.0, "weight": 0.8, "id": 1 },
                                 { "time": 0.0, "phase": 0.0, "amp": 0.501029, "key": 1.0, "mod": 0.0, "weight": 0.8, "id": 2 },
                                 { "time": 0.0, "phase": 0.0, "amp": 0.501029, "key": 1.0, "mod": 1.0, "weight": 0.8, "id": 3 },
-                                { "time": 1.0, "phase": 0.000068258756, "amp": 0.5039732, "key": 0.0, "mod": 0.0, "weight": 0.8, "id": 4 },
-                                { "time": 1.0, "phase": 0.000068258756, "amp": 0.5039732, "key": 0.0, "mod": 1.0, "weight": 0.8, "id": 5 },
-                                { "time": 1.0, "phase": 0.000068258756, "amp": 0.50427645, "key": 1.0, "mod": 0.0, "weight": 0.8, "id": 6 },
-                                { "time": 1.0, "phase": 0.000068258756, "amp": 0.50427645, "key": 1.0, "mod": 1.0, "weight": 0.8, "id": 7 },
+                                { "time": 1.0, "phase": 6.8258756e-05, "amp": 0.5039732, "key": 0.0, "mod": 0.0, "weight": 0.8, "id": 4 },
+                                { "time": 1.0, "phase": 6.8258756e-05, "amp": 0.5039732, "key": 0.0, "mod": 1.0, "weight": 0.8, "id": 5 },
+                                { "time": 1.0, "phase": 6.8258756e-05, "amp": 0.50427645, "key": 1.0, "mod": 0.0, "weight": 0.8, "id": 6 },
+                                { "time": 1.0, "phase": 6.8258756e-05, "amp": 0.50427645, "key": 1.0, "mod": 1.0, "weight": 0.8, "id": 7 },
                                 { "time": 0.0, "phase": 0.02833895, "amp": 0.5027121, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 8 },
                                 { "time": 0.0, "phase": 0.02833895, "amp": 0.5027121, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 9 },
                                 { "time": 0.0, "phase": 0.02833895, "amp": 0.50286126, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 10 },

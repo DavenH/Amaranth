@@ -1,12 +1,13 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 370.90067, "y": 454.99997 },
+            "position": { "x": 642.21851, "y": 318.99997 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.534653465,
@@ -21,7 +22,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": -5.88736, "y": 353.0 },
+            "position": { "x": 265.43045, "y": 217.0 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -38,7 +39,7 @@
             "id": "fft",
             "kind": "fft",
             "definitionVersion": 1,
-            "position": { "x": 1261.19995, "y": 886.0 },
+            "position": { "x": 1343.48486, "y": 886.0 },
             "parameters": { "cycleFrames": 2048, "mode": "cycle" }
         },
         {
@@ -52,7 +53,7 @@
             "id": "unison",
             "kind": "unison",
             "definitionVersion": 1,
-            "position": { "x": -5.88736, "y": 523.0 },
+            "position": { "x": 250.23044, "y": 387.0 },
             "parameters": { "enabled": true, "mode": "group", "order": 10, "width": 15.68, "panSpread": 1.0, "phase": 1.0, "jitter": 1.0 },
             "model": {
                 "schema": "unisonVoices",
@@ -67,7 +68,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 855.20001, "y": 886.0 },
+            "position": { "x": 937.48492, "y": 886.0 },
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -640,7 +641,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": -5.88736, "y": 797.0 },
+            "position": { "x": 250.23047, "y": 566.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.186915889, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -808,16 +809,16 @@
     ],
     "probes": [
         {
-            "id": "probe",
-            "sourceNodeId": "volumeMultiply",
-            "sourcePortId": "out",
-            "anchorDestNodeId": "voiceOutput",
+            "id": "probe2",
+            "sourceNodeId": "globalInput",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "delay",
             "anchorDestPortId": "time",
-            "label": "Spy 1",
+            "label": "Spy 2",
             "tapPosition": 0.5,
-            "railOrder": 0,
-            "canvasX": 2654.71045,
-            "canvasY": 614.2619
+            "railOrder": 1,
+            "canvasX": 98.78192,
+            "canvasY": 1009.16663
         }
     ],
     "presetPresentation": {

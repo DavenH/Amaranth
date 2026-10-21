@@ -80,6 +80,36 @@ underlay plus expanded Trimesh 3D/2D panel host creation, visibility, and
 bounds; with OS screenshots enabled, the smoke runner asserts luma stats for
 the diagnostics-discovered GL panel regions.
 
+## Synthesis Capability Discovery
+
+`inspectSynthesisCapabilities` returns the registered node types, declared ports,
+parameter defaults/constraints/impacts, processing scopes, and model codec
+identities with valid default examples. It requires no open editor. Add `path`
+to write the discovery JSON to a file. Model examples are not a full JSON Schema
+or an available bulk model-replacement API.
+
+```json
+{"command":"inspectSynthesisCapabilities","sampleRate":48000,"beatsPerMeasure":4}
+{"command":"convertSynthesisParameter","typeId":"equalizer","parameterId":"band3Frequency","direction":"toStored","value":2500}
+{"command":"convertSynthesisParameter","typeId":"delay","parameterId":"time","value":0.5,"beatsPerMeasure":7}
+```
+
+Conversions call the same physical mappings used by DSP/editors. `value` is
+numeric; `toPhysical` (the default direction) reads a stored value, while
+`toStored` reads a physical value. Results include the normalized stored string
+and its achieved physical value, so quantization and non-unique inverses remain
+visible. Out-of-range requests and unavailable mappings/inverses fail explicitly.
+Reverb kernel seconds and IR prefilter frequency depend on `sampleRate`; delay
+beats depend on `beatsPerMeasure`. These explicit context defaults are 44100 Hz
+and four beats per measure; they do not inspect the open document or audio device.
+Mapping examples illustrate the range; use conversion queries for exact values.
+
+Known morph-input timing distinguishes continuous Trimesh control from Envelope
+morph sampled at note-on. Continuous updates still follow the control interval.
+`staticAuthoring` means stored configuration rather than a continuous modulation
+input; it does not promise click-free realtime reconfiguration. Undeclared timing,
+physical mappings and perceptual effects remain unspecified.
+
 ## Current Editor Controls
 
 - drag empty canvas: pan
@@ -116,6 +146,43 @@ The editor should feel like a studio canvas rather than a legacy panel UI:
 - explicit scratch attachment ports so hidden Cycle 1.x scratch assignments become visible and traceable
 - rich per-node previews: trilinear mesh surfaces, 2D mesh slices, waveform/cyclogram views, spectrograms, spectral magnitude/phase graphs, envelopes, and meters
 - double-click expansion into a larger editor for the selected node
+
+## Reference Studies
+
+Reference studies can collect labelled recordings and numerical pitch/cyclogram
+analysis without file choosers:
+
+```sh
+python3 scripts/cycle_reference_study.py \
+    --study scripts/fixtures/cycle-v2-reference-study.json \
+    --output .context/reference-study --include-grid
+```
+
+Use `--validate-only` to inspect a study before launching Cycle. Study entries
+accept a library `referenceId` or a source path relative to the manifest. Labels
+declare `observed` or `inferred` origin and optional confidence; unspecified
+controls remain unknown. Rerun using the generated `report.json` as `--study`
+to reuse resolved library IDs instead of importing again. Source-only entries
+also reuse byte-identical library recordings. Choose a fresh output directory
+for each run so a failed collection cannot invalidate earlier artifacts.
+Crops select intervals
+within the existing decoded analysis; they do not retrack or create audio copies.
+The decoded analysis may cover only the initial portion of a long source,
+according to the existing `PitchedSample` loading limit.
+
+The automation commands `listReferences`, `importReference` (`path`) and
+`exportReferenceAnalysis` (optional `path`, `includeGrid`) expose the same
+reference library. Select a reference explicitly before exporting; export does
+not change selection. Original tracking confidence remains separate from the
+effective, possibly edited pitch path. Grid amplitudes preserve existing
+peak normalization and half-gain folding, rather than absolute recording level.
+
+Saved performance and reference artifacts can be compared with
+[audition reports](../docs/cycle-audition-reports.md), including phase traces,
+raw/RMS A/B audio and withheld cases.
+
+Four [explained factory exemplars](../docs/cycle-explained-exemplars.md) connect
+node/preset notes to isolated edits and reproducible before/after audition reports.
 
 ## Visual References
 

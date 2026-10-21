@@ -10,7 +10,7 @@
 
 #include "Graph/PresetPresentation.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
-#include "UI/PatternControlScheduler.h"
+#include "UI/PatternPlaybackSchedule.h"
 
 namespace CycleV2 {
 
@@ -213,11 +213,6 @@ private:
     bool scheduleControlEventsUntil(double elapsedSeconds, double startSeconds);
     bool hasSequenceNotes() const;
 
-    struct PlaybackEvent {
-        double timeSeconds {};
-        MidiMessage message;
-    };
-
     bool playing {};
     bool recording {};
     int selectedPreviewNote { 48 };
@@ -232,7 +227,7 @@ private:
     std::array<int, 128> recordedVelocities {};
     std::array<int, 128> activePlaybackNoteCounts {};
     std::optional<PresetMidiSequence> sequence;
-    std::vector<PlaybackEvent> playbackEvents;
+    std::vector<PatternPlaybackEvent> playbackEvents;
     std::vector<PatternControlScheduler> controlSchedulers;
 
     std::function<void(PresetMidiSequence)> sequenceChanged;

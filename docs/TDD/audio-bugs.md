@@ -1,5 +1,57 @@
 # Audio Bug Notes
 
+## P2: Reference analysis exports Cycle note numbers under MIDI field names
+
+On 2026-10-20, saxophone-pilot reference triage found
+`ReferenceAutomation.cpp` exports `sample.fundNote` as `effectiveMidiNote` and
+raw pitch-path values as `midiNote`. These use Cycle's convention, where
+`NumberUtils::noteToFrequency` maps note 81 to 440 Hz. The audition diagnostic
+`cycle_audio_diff.harmonic_profile` uses standard MIDI, where note 69 is 440 Hz.
+The saved sax-growl analysis reports effective note 57 and period frequencies
+near 109.878 Hz; copying that number into audition pitch would put harmonic
+bands an octave too high. This is a metadata/convention boundary, not evidence
+of failed tracking or altered synthesis.
+
+Evidence: `.context/reference-study-first/analyses/000.json`, source
+`cycle-v2/src/Reference/ReferenceAutomation.cpp`, and
+`lib/src/Util/NumberUtils.h`. Status: open; make the exported convention explicit
+and provide a canonical conversion before consumers treat these fields as
+standard MIDI. The bounded pilot keeps pitch unspecified and uses unpitched
+descriptors; tracker confidence is not substituted for an observed pitch label.
+
+## P3: Rendered controller output differences slightly precede scheduled events
+
+On 2026-10-20, the explained-exemplar suite compared held CC1=0 with a matching
+performance changing CC1 at 200/450 ms. Notes, velocity, seed and render settings
+match and every condition repeats exactly. At 44.1 kHz, `reed.cyclegraph` differs
+in two stereo PCM samples before 200 ms: first frame 8808 (199.727891 ms),
+worst error one 24-bit LSB (`1.1920928955078125e-7`). `warmth.cyclegraph` differs
+in 35 samples: first frame 8743 (198.253968 ms), worst error `3.421306610107422e-5`.
+Sat-bass/filter-saw prefixes are exact. All four 0–180 ms windows are exact.
+
+A two-repeat negative control replaced only the moving CC1 events with unused
+CC118, retaining initial CC1=0 and the entire schedule. It matches the held
+baseline exactly, including full 0–200 ms prefixes and motion descriptors, on
+all four presets. Thus these boundary differences accompany actual CC1 changes,
+not generic unused-event schedule splitting. Cause remains unverified; inspect
+control interpolation/oversampling separately without changing this content
+slice's DSP. Source WAVs and full-prefix diagnostics are in
+`.context/exemplars-verified/{reed,warmth}/baseline-renders` and `results.json`
+in the exemplar worktree. Both conditions use matching executable/effective-graph
+hashes. Current status: open. Response proof records a 20 ms boundary guard and
+complete raw audio; no sample-exact controller-onset claim is made.
+
+The saxophone pilot reproduces this boundary behavior for CC2 with
+`saxophone-3.cyclegraph`: four stereo PCM samples differ before the 200 ms event,
+first frame 8757 (198.571429 ms), worst error one 24-bit LSB. Its 0–180 ms prefix
+is exact, and held output versus the same-time unused-CC118 schedule is exact.
+The slower-peak candidate differs in five pre-event samples, first at
+198.752834 ms, with the same one-LSB bound and exact 180 ms/control prefixes.
+Full diagnostics remain in `.context/sax-pilot-first/results.json` and original
+captures in its `baseline-renders/` and `candidate-renders/` folders; the
+independent candidate check is `.context/sax-pilot-artifact-audit.json` in the
+implementation worktree.
+
 ## Open: Ubuntu legacy BlockConvolver Dirac test loses about 0.1% per stage
 
 During the 2026-10-11 Reverb kernel portability fix, the isolated

@@ -21,6 +21,7 @@ struct InteractionComplexityCounts {
     uint64_t validationNodeVisits {};
     uint64_t validationEdgeVisits {};
     uint64_t domainTransfers {};
+    uint64_t groupIndexRebuilds {};
 };
 
 class InteractionComplexityDiagnostics {
@@ -40,6 +41,7 @@ public:
         validationNodeVisits.store(0, std::memory_order_relaxed);
         validationEdgeVisits.store(0, std::memory_order_relaxed);
         domainTransfers.store(0, std::memory_order_relaxed);
+        groupIndexRebuilds.store(0, std::memory_order_relaxed);
     }
 
     static InteractionComplexityCounts counts() {
@@ -57,7 +59,8 @@ public:
                 meshEditOwnerVisits.load(std::memory_order_relaxed),
                 validationNodeVisits.load(std::memory_order_relaxed),
                 validationEdgeVisits.load(std::memory_order_relaxed),
-                domainTransfers.load(std::memory_order_relaxed)
+                domainTransfers.load(std::memory_order_relaxed),
+                groupIndexRebuilds.load(std::memory_order_relaxed)
         };
     }
 
@@ -77,6 +80,7 @@ public:
     static void recordValidationNodeVisits(size_t count) { validationNodeVisits += count; }
     static void recordValidationEdgeVisits(size_t count) { validationEdgeVisits += count; }
     static void recordDomainTransfer() { ++domainTransfers; }
+    static void recordGroupIndexRebuild() { ++groupIndexRebuilds; }
 
 private:
     static inline std::atomic<uint64_t> graphCopies {};
@@ -93,6 +97,7 @@ private:
     static inline std::atomic<uint64_t> validationNodeVisits {};
     static inline std::atomic<uint64_t> validationEdgeVisits {};
     static inline std::atomic<uint64_t> domainTransfers {};
+    static inline std::atomic<uint64_t> groupIndexRebuilds {};
 };
 
 }

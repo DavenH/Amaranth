@@ -77,6 +77,8 @@ public:
     virtual int currentVersion() const = 0;
     virtual NodeModelStatePtr createDefault() const = 0;
     virtual NodeModelStatePtr readJSON(const var& value, String& error) const = 0;
+    virtual bool supportsAuthoring() const { return false; }
+    virtual NodeModelStatePtr readAuthoringJSON(const var& value, String& error) const;
 };
 
 enum class ParameterImpact : uint32_t {
@@ -97,6 +99,23 @@ struct ParameterConstraint {
     StringArray choices;
 };
 
+struct ParameterMappingContext {
+    double sampleRate { 44100.0 };
+    int beatsPerMeasure { 4 };
+
+    bool isValid() const;
+};
+
+struct ParameterPhysicalMapping {
+    using Conversion = std::function<double(double, const ParameterMappingContext&)>;
+
+    String id;
+    String unit;
+    Conversion toPhysical;
+    Conversion toStored;
+    bool integralPhysicalValue {};
+};
+
 struct ParameterDefinition {
     String id;
     String label;
@@ -106,8 +125,11 @@ struct ParameterDefinition {
     ParameterImpact impacts { ParameterImpact::None };
     bool persisted { true };
     std::function<String(const String&)> normalizer;
+    std::optional<ParameterPhysicalMapping> physicalMapping;
+    ControlTiming controlTiming { ControlTiming::StaticAuthoring };
 
     bool accepts(const String& value) const;
+    bool acceptsAuthoringValue(const String& value) const;
     String normalized(const String& value) const;
 };
 

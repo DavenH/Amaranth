@@ -66,6 +66,9 @@ public:
     bool openNodeEditorForAutomation(const String& nodeId);
     bool pinComparisonSpyForAutomation(const String& probeId);
     bool selectReferenceForAutomation(const String& referenceId);
+    bool importReferenceForAutomation(const File& file, String& error);
+    var inspectReferencesForAutomation() const;
+    var exportReferenceAnalysisForAutomation(bool includeGrid) const;
     bool openReferencePitchEditorForAutomation(const String& referenceId) {
         return comparisonDock.openPitchEditorForAutomation(referenceId);
     }
@@ -86,6 +89,9 @@ public:
     bool loadGuideHeatmapForAutomation(const String& guideId, const File& file);
     bool clearGuideHeatmapForAutomation(const String& guideId);
     bool undoForAutomation();
+    bool redoForAutomation();
+    GraphEditResult applyNodeEditsForAutomation(const NodeAuthoringEdits& edits);
+    uint64_t documentRevisionForAutomation() const { return canvas.documentRevisionForAutomation(); }
     bool setGuideParameterForAutomation(
             const String& guideId,
             const String& parameterId,
@@ -102,6 +108,11 @@ public:
     bool setVertexParameterForAutomation(const String& nodeId, const String& parameterId, float value);
     bool getNodeParameterForAutomation(const String& nodeId, const String& parameterId, String& value) const;
     var inspectNodeControlsForAutomation(const String& nodeId) const;
+    bool setExplanationForAutomation(const ExplanationTarget& target, const String& text);
+    var inspectExplanationForAutomation(const ExplanationTarget& target) const;
+    bool openExplanationEditorForAutomation(const ExplanationTarget& target);
+    bool setGroupInformationCardForAutomation(const String& groupId, std::optional<Point<float>> offset);
+    bool setGroupInformationCardVisibleForAutomation(const String& groupId, bool visible);
     var inspectPointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
     var inspectCanvasPerformanceForAutomation() const;

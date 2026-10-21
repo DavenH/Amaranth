@@ -1,0 +1,64 @@
+{
+  "schema": "cycle-saxophone-pilot.v1",
+  "baseline": "../../presets/saxophone-3.cyclegraph",
+  "sourceSha256": "b3b32402763646b0072a26c3ba47a69f774b8dd63bf6d5adcb140d46ff793f3a",
+  "objectiveSuite": "objective-suite.json",
+  "withheldSuite": "withheld-suite.json",
+  "referenceStudy": "references.json",
+  "candidate": {
+    "id": "slower-peak",
+    "nodeId": "volumeEnvelope1",
+    "cubeIndex": 1,
+    "vertexIds": [
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "phaseFactor": 2.0
+  },
+  "controls": [
+    {
+      "controller": 1,
+      "name": "Volume articulation",
+      "timing": "note-on-latched",
+      "nodeIds": [
+        "volumeEnvelope1"
+      ]
+    },
+    {
+      "controller": 2,
+      "name": "Waveform and spectral morph",
+      "timing": "continuous",
+      "nodeIds": [
+        "timeLayer1",
+        "magnitudeLayer1"
+      ]
+    },
+    {
+      "controller": 3,
+      "name": "Pitch and scratch contour",
+      "timing": "note-on-latched",
+      "nodeIds": [
+        "pitchEnvelope1",
+        "scratchEnvelope1",
+        "scratchEnvelope2"
+      ],
+      "fixedValue": 0
+    }
+  ],
+  "missingCoverage": [
+    "One recording; no independent withheld acoustic reference exists.",
+    "Register, dynamics, pitch, attack labels and controller settings are unverified in the recording.",
+    "No observed saxophone controller trajectories or combined expression recordings are available.",
+    "CC1 and CC3 select envelopes at note-on; held-note continuous envelope adoption is unavailable.",
+    "CC3 is held at zero; growl, breath, subharmonic and independent attack controls are not validated.",
+    "Human preference, acoustic fidelity, musical usefulness and economy require listening and review.",
+    "The existing pitch envelope has 840 vertices and 104 cubes; node count alone does not establish economy.",
+    "Reserved performances assess technical combinations only; the acoustic modelling and search gate remains insufficient."
+  ]
+}

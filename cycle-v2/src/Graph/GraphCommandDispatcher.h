@@ -37,6 +37,11 @@ public:
     bool setPresetPatternId(const juce::String& id);
     bool setPresetTags(juce::StringArray tags);
     bool setPresetTitle(const juce::String& title);
+    GraphEditResult setNodeRationale(const juce::String& nodeId, const juce::String& text);
+    GraphEditResult setPresetDescription(const juce::String& text);
+    GraphEditResult setExplanationText(const ExplanationTarget& target, const juce::String& text);
+    GraphEditResult setGroupInformationCard(const juce::String& groupId,
+            std::optional<juce::Point<float>> offset);
     GraphEditResult removeNode(const juce::String& nodeId);
     GraphEditResult removeEdgeAt(size_t edgeIndex);
     GraphEditResult removeCable(const std::vector<size_t>& edgeIndices);
@@ -92,6 +97,7 @@ public:
             const juce::String& parameterId,
             const juce::String& label,
             const juce::String& value);
+    GraphEditResult applyNodeEdits(const NodeAuthoringEdits& edits);
     GraphEditResult publishCurveState(const CurveNodeStatePublication& publication);
     GraphEditResult setPreviewMorph(float red, float blue);
     GraphEditResult setMappedPreviewMorph(
@@ -172,6 +178,7 @@ private:
     bool compoundActive {};
     bool compoundChanged {};
     int compoundDepth {};
+    uint64_t compoundGraphRevision {};
     std::optional<TransientEdit> transientEdit;
 };
 

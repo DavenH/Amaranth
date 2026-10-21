@@ -59,12 +59,14 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(
     const float statusWidth = juce::jmin(
             560.f,
             juce::jmax(0.f, statusRight - statusLeft));
+    const float statusTop = sharedTopRow ? result.keyboard.getBottom() + gap
+            : contentBounds.getY() + margin;
     result.status = {
             statusLeft,
-            sharedTopRow ? result.keyboard.getBottom() + gap
-                    : contentBounds.getY() + margin,
+            statusTop,
             statusWidth,
-            30.f
+            juce::jmin(preferredStatusHeight,
+                    juce::jmax(0.f, contentBounds.getBottom() - margin - statusTop))
     };
     return result;
 }

@@ -84,6 +84,7 @@ NodeGraph& NodeGraph::operator=(const NodeGraph& other) {
     audioResourceBindings = other.audioResourceBindings;
     nodeIndex = other.nodeIndex;
     nodeGroupIndex = other.nodeGroupIndex;
+    groupIdIndex = other.groupIdIndex;
     morphNodeIds = other.morphNodeIds;
     parameterIndices = other.parameterIndices;
     guideIndex = other.guideIndex != nullptr

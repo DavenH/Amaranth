@@ -1,0 +1,271 @@
+{
+  "schema": "cycle-performance-suite.v1",
+  "id": "sax-objective",
+  "repetitions": 2,
+  "render": {
+    "sampleRate": 44100,
+    "blockSize": 512,
+    "channels": 2,
+    "randomSeed": 1729,
+    "ratePolicy": "native"
+  },
+  "budget": {
+    "maxRenders": 12,
+    "maxAudioSeconds": 24,
+    "maxWallSeconds": 240
+  },
+  "cases": [
+    {
+      "id": "anchor",
+      "durationMs": 2000,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 57,
+          "velocity": 0.65
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 1200,
+          "note": 57
+        }
+      ],
+      "labels": {
+        "purpose": "technical synthetic performance; acoustic saxophone equivalence unverified"
+      }
+    },
+    {
+      "id": "low-soft",
+      "durationMs": 2000,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 45,
+          "velocity": 0.35
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 1200,
+          "note": 45
+        }
+      ],
+      "labels": {
+        "purpose": "technical synthetic performance; acoustic saxophone equivalence unverified"
+      }
+    },
+    {
+      "id": "high-short",
+      "durationMs": 2000,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 69,
+          "velocity": 0.85
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 600,
+          "note": 69
+        }
+      ],
+      "labels": {
+        "purpose": "technical synthetic performance; acoustic saxophone equivalence unverified"
+      }
+    },
+    {
+      "id": "cc1-onset-high",
+      "durationMs": 2000,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 127
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 57,
+          "velocity": 0.65
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 1200,
+          "note": 57
+        }
+      ],
+      "labels": {
+        "purpose": "technical synthetic performance; acoustic saxophone equivalence unverified"
+      }
+    },
+    {
+      "id": "cc2-motion",
+      "durationMs": 2000,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 57,
+          "velocity": 0.65
+        },
+        {
+          "type": "controller",
+          "timeMs": 200,
+          "controller": 2,
+          "value": 64
+        },
+        {
+          "type": "controller",
+          "timeMs": 450,
+          "controller": 2,
+          "value": 127
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 1200,
+          "note": 57
+        }
+      ],
+      "labels": {
+        "purpose": "technical synthetic performance; acoustic saxophone equivalence unverified"
+      }
+    },
+    {
+      "id": "unused-cc118",
+      "durationMs": 2000,
+      "events": [
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 1,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 2,
+          "value": 0
+        },
+        {
+          "type": "controller",
+          "timeMs": 0,
+          "controller": 3,
+          "value": 0
+        },
+        {
+          "type": "noteOn",
+          "timeMs": 0,
+          "note": 57,
+          "velocity": 0.65
+        },
+        {
+          "type": "controller",
+          "timeMs": 200,
+          "controller": 118,
+          "value": 64
+        },
+        {
+          "type": "controller",
+          "timeMs": 450,
+          "controller": 118,
+          "value": 127
+        },
+        {
+          "type": "noteOff",
+          "timeMs": 1200,
+          "note": 57
+        }
+      ],
+      "labels": {
+        "purpose": "technical synthetic performance; acoustic saxophone equivalence unverified"
+      }
+    }
+  ]
+}

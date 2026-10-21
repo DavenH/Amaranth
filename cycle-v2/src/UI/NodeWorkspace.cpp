@@ -1,5 +1,7 @@
 #include "UI/NodeWorkspace.h"
 
+#include "Reference/ReferenceAutomation.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -376,6 +378,22 @@ bool NodeWorkspace::selectReferenceForAutomation(const String& referenceId) {
     return true;
 }
 
+bool NodeWorkspace::importReferenceForAutomation(const File& file, String& error) {
+    if (!referenceLibrary.importFile(file, error)) {
+        return false;
+    }
+    revealComparisonShelf();
+    return true;
+}
+
+var NodeWorkspace::inspectReferencesForAutomation() const {
+    return ReferenceAutomation::catalogue(referenceLibrary);
+}
+
+var NodeWorkspace::exportReferenceAnalysisForAutomation(bool includeGrid) const {
+    return ReferenceAutomation::selectedAnalysis(referenceLibrary, includeGrid);
+}
+
 void NodeWorkspace::toggleComparisonShelf() {
     if (!canShowComparisonShelf()) {
         return;
@@ -435,6 +453,14 @@ bool NodeWorkspace::undoForAutomation() {
     return canvas.undoForAutomation();
 }
 
+bool NodeWorkspace::redoForAutomation() {
+    return canvas.redoForAutomation();
+}
+
+GraphEditResult NodeWorkspace::applyNodeEditsForAutomation(const NodeAuthoringEdits& edits) {
+    return canvas.applyNodeEditsForAutomation(edits);
+}
+
 bool NodeWorkspace::setGuideParameterForAutomation(
         const String& guideId,
         const String& parameterId,
@@ -478,6 +504,26 @@ bool NodeWorkspace::getNodeParameterForAutomation(
         const String& parameterId,
         String& value) const {
     return canvas.getNodeParameterForAutomation(nodeId, parameterId, value);
+}
+
+bool NodeWorkspace::setExplanationForAutomation(const ExplanationTarget& target, const String& text) {
+    return canvas.setExplanation(target, text);
+}
+
+var NodeWorkspace::inspectExplanationForAutomation(const ExplanationTarget& target) const {
+    return canvas.inspectExplanation(target);
+}
+
+bool NodeWorkspace::openExplanationEditorForAutomation(const ExplanationTarget& target) {
+    return canvas.openExplanationEditor(target);
+}
+
+bool NodeWorkspace::setGroupInformationCardForAutomation(const String& id, std::optional<Point<float>> offset) {
+    return canvas.setGroupInformationCard(id, offset);
+}
+
+bool NodeWorkspace::setGroupInformationCardVisibleForAutomation(const String& id, bool visible) {
+    return canvas.setGroupInformationCardVisible(id, visible);
 }
 
 var NodeWorkspace::inspectNodeControlsForAutomation(const String& nodeId) const {

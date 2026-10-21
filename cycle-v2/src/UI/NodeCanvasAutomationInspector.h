@@ -7,6 +7,7 @@
 
 #include "Graph/GraphDocument.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "UI/GroupInformationCardPresentation.h"
 #include "UI/NodeCanvasScene.h"
 #include "UI/NodeCanvasViewport.h"
 #include "UI/NodeEditorHost.h"
@@ -52,6 +53,11 @@ struct GuideDockAutomationPresentation {
     std::vector<GuideEditorTargetAutomationPresentation> guideEditorTargets;
 };
 
+struct InformationCardAutomationPresentation {
+    juce::String groupId;
+    GroupInformationCardBounds bounds;
+};
+
 struct NodeCanvasAutomationPresentation {
     juce::String selectedNodeId;
     juce::String expandedNodeId;
@@ -76,6 +82,12 @@ struct NodeCanvasAutomationPresentation {
     std::vector<juce::String> selectedNodeIds;
     int hoveredEdgeIndex { -1 };
     juce::String sidebarTab;
+    juce::Rectangle<float> presetInformationBounds;
+    juce::var explanationEditor;
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>> explanationTargets;
+    std::vector<InformationCardAutomationPresentation> informationCards;
+    juce::String focusedInformationGroup;
+    bool informationCardDragging {};
 };
 
 struct NodeCanvasAutomationContext {

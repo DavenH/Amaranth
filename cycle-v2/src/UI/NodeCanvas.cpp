@@ -220,6 +220,16 @@ NodeCanvas::NodeCanvas() :
     ,   hitRouter(graph, palette, queries)
     ,   addToSelectionCursor(MiscGraphics::createCursor(MiscGraphics::CrossAddCursor)) {
     settings.initialiseSettings();
+    presetInformation.setComponentID("workspace.presetInformation");
+    presetInformation.onClick = [this] { openExplanationEditor({}); };
+    presetInformation.onStateChange = [this] {
+        if (presetInformation.isMouseOver()) {
+            resolvedHoverText = document.presentation().description.isNotEmpty()
+                    ? document.presentation().description : "Read or edit this preset explanation";
+        }
+        requestCanvasStatusRepaint();
+    };
+    addAndMakeVisible(presetInformation);
     ScalarSurfaceMaterial::setTimeSurfaceStyle(
             TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle));
     ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(-1);
@@ -371,7 +381,7 @@ void NodeCanvas::paint(Graphics& g) {
     const uint64_t framePreparationStartedAt = performanceMetrics.timestamp();
     const NodeCanvasPresentationFrame frame = presentationFrame();
     const Rectangle<int> status = statusRepaintBounds(
-            frame.canvasBounds, frame.keyboardExtraControllerCount);
+            frame.utilityBounds, frame.keyboardExtraControllerCount);
     if (!status.isEmpty() && status.contains(g.getClipBounds())) {
         canvasPresentation.paintStatus(g, frame);
         return;
@@ -413,6 +423,11 @@ void NodeCanvas::resized() {
     palette.setWorkspaceBounds(GuideCurveShelf::guideWorkspace(
             getLocalBounds().toFloat(), guideShelfState.minimized));
     viewport.setBounds(canvasContentBounds());
+    const auto status = CanvasUtilityDock::layout(
+            canvasUtilityBounds(), extraMidiControllerCount()).status;
+    presetInformation.setBounds(status.withSize(
+            (float) ExplanationBadge::presetButtonWidth,
+            (float) ExplanationBadge::presetButtonWidth).toNearestInt());
     if (!documentViewportFitted && !canvasContentBounds().isEmpty()) {
         fitDocumentInViewport();
         documentViewportFitted = true;
@@ -557,8 +572,22 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
         const float gain = NodeParameterMap(*outputFader).floatValue("gain", 0.5f);
         resolvedHoverText = "Master gain: " + OutputMeterPresentation::gainLabel(gain);
     }
+    const Node* explanationNode = explanationNodeAt(position);
+    const NodeGroup* explanationGroup = explanationGroupAt(position);
+    updateInformationCards();
+    const auto* informationCard = informationCards.cardAt(position, viewport, informationCardPreview());
+    if (explanationNode != nullptr) {
+        resolvedHoverText = explanationNode->rationale.isNotEmpty() ? explanationNode->rationale
+                : "Add an explanation of this component";
+    }
+    if (explanationGroup != nullptr || informationCard != nullptr) {
+        const String id = informationCard != nullptr ? informationCard->groupId : explanationGroup->id;
+        if (const NodeGroup* group = graph.findNodeGroup(id)) {
+            resolvedHoverText = group->rationale;
+        }
+    }
     switch (NodeCanvasCursorPolicy::cursorFor(
-            adjustsInlinePan || adjustsOutputGain,
+            informationCard == nullptr && (adjustsInlinePan || adjustsOutputGain),
             modifiers)) {
         case NodeCanvasCursorKind::VerticalAdjust:
             setMouseCursor(MouseCursor::UpDownResizeCursor);
@@ -567,7 +596,8 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
             setMouseCursor(addToSelectionCursor);
             break;
         case NodeCanvasCursorKind::Normal:
-            setMouseCursor(hoveredQuickCreatePortId.isNotEmpty()
+            setMouseCursor(explanationNode != nullptr || explanationGroup != nullptr
+                    || informationCard != nullptr || hoveredQuickCreatePortId.isNotEmpty()
                     ? MouseCursor::PointingHandCursor
                     : MouseCursor::NormalCursor);
             break;
@@ -614,6 +644,8 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     pointerInsideCanvas = true;
     lastMousePosition = event.position;
     interaction.reset();
+    focusedInformationGroup = {};
+    informationCardDrag.reset();
     probeCardGesture.reset();
     probeCanvasState.draggedCardWorldPositions.clear();
     probeCanvasState.draggedScreenOffset = {};
@@ -699,6 +731,17 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     }
 
     const GraphEdgeIndex& groupEdgeIndex = queries.presentationFacts().edgeIndex();
+    if (informationCardMouseDown(event)) {
+        return;
+    }
+    if (const NodeGroup* group = explanationGroupAt(event.position)) {
+        openExplanationEditor({ ExplanationScope::Group, group->id });
+        return;
+    }
+    if (const Node* node = explanationNodeAt(event.position)) {
+        openExplanationEditor({ ExplanationScope::Node, node->id });
+        return;
+    }
     const auto& scene = sceneBuilder.build(
             graph,
             viewport,
@@ -1011,6 +1054,9 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
+    if (informationCardMouseDrag(event)) {
+        return;
+    }
 
     if (probeCardGesture.has_value()) {
         const Point<float> offset = event.getOffsetFromDragStart().toFloat();
@@ -1109,6 +1155,9 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
+    if (informationCardMouseUp()) {
+        return;
+    }
     const auto commitSpyPositions = [&](
             const std::vector<std::pair<String, Point<float>>>& starts,
             Point<float> worldOffset) {
@@ -1246,11 +1295,14 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
     if (editorCoordinator.blocksCanvas(blockingEditorNode)) {
         return;
     }
+    updateInformationCards();
+    const bool overInformationCard = informationCards.cardAt(
+            event.position, viewport, informationCardPreview()) != nullptr;
     if (const Node* output = findOutputFaderAt(
             graph,
             viewport,
             queries.presentationFacts().edgeIndex(),
-            event.position)) {
+            event.position); output != nullptr && !overInformationCard) {
         const float current = NodeParameterMap(*output).floatValue("gain", 0.5f);
         const float delta = wheel.deltaY * (event.mods.isShiftDown() ? 0.025f : 0.1f);
         applyAuthoringResult(authoring.setNodeParameter(
@@ -1323,6 +1375,9 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 
     const Component* focused = Component::getCurrentlyFocusedComponent();
     const bool canvasContext = focused == nullptr || focused == this;
+    if (canvasContext && informationCardKey(key)) {
+        return true;
+    }
     if (canvasContext
             && expandedNodeId.isEmpty()
             && !guideEditorCoordinator.isOpen()
@@ -1553,6 +1608,7 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
     }
     const NodeGraph& displayedGraph = commands.editingGraph();
     const GraphPresentationSnapshot& snapshot = presentation.snapshot();
+    updateInformationCards();
 
     return {
             displayedGraph,
@@ -1565,7 +1621,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             lastMousePosition,
             selectedNodeId,
             editStatusMessage,
-            pointerInsideCanvas && !pointerOccluded ? resolvedHoverText : String {},
+            (pointerInsideCanvas || presetInformation.isMouseOver()) && !pointerOccluded
+                    ? resolvedHoverText : String {},
             std::move(pending),
             snapGuides,
             presentation.revision(),
@@ -1588,7 +1645,10 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             hoveredEdgeIndex,
             areaSelectionBounds,
             canvasUtilityBounds(),
-            extraMidiControllerCount()
+            extraMidiControllerCount(),
+            &informationCards,
+            focusedInformationGroup,
+            informationCardPreview()
     };
 }
 
@@ -1732,6 +1792,10 @@ void NodeCanvas::showNodeGroupMenu(const String& groupId, Point<float> canvasPos
     menu.addItem(1, group->collapsed ? "Expand Group" : "Collapse Group");
     menu.addItem(2, "Rename Group...");
     menu.addItem(3, "Ungroup Nodes");
+    menu.addSeparator();
+    menu.addItem(4, "Edit Explanation...");
+    menu.addItem(5, group->informationCardOffset.has_value() ? "Hide Information Card" : "Show Information Card",
+            group->informationCardOffset.has_value() || group->rationale.isNotEmpty());
     const Point<int> click = localPointToGlobal(canvasPosition.roundToInt());
     const PopupMenu::Options options = PopupMenu::Options()
             .withTargetComponent(this)
@@ -1750,6 +1814,12 @@ void NodeCanvas::showNodeGroupMenu(const String& groupId, Point<float> canvasPos
                     safeThis->promptRenameNodeGroup(groupId);
                 } else if (choice == 3) {
                     safeThis->ungroupNodes(groupId);
+                } else if (choice == 4) {
+                    safeThis->openExplanationEditor({ ExplanationScope::Group, groupId });
+                } else if (choice == 5) {
+                    if (const NodeGroup* current = safeThis->graph.findNodeGroup(groupId)) {
+                        safeThis->setGroupInformationCardVisible(groupId, !current->informationCardOffset.has_value());
+                    }
                 }
             });
 }
@@ -2079,9 +2149,7 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
     if (result.effects.repaintRequested) {
         requestCanvasRepaint();
     }
-    if (graphDocumentStateChangedCallback) {
-        graphDocumentStateChangedCallback();
-    }
+    notifyGraphDocumentStateChanged();
 
     return result.succeeded;
 }
@@ -2089,6 +2157,30 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
 NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const {
     NodeCanvasAutomationPresentation result;
     result.selectedNodeId = selectedNodeId;
+    result.presetInformationBounds = presetInformation.getBounds().toFloat();
+    updateInformationCards();
+    result.focusedInformationGroup = focusedInformationGroup;
+    result.informationCardDragging = informationCardDrag.has_value();
+    const auto& groupEdges = queries.presentationFacts().edgeIndex();
+    for (const auto& group : graph.getNodeGroups()) {
+        const auto bounds = NodeGroupPresentation::informationBounds(graph, group, viewport, groupEdges);
+        if (!bounds.isEmpty()) {
+            result.explanationTargets.emplace_back("groupInformation:" + group.id, bounds);
+        }
+    }
+    for (const auto* card : informationCards.visibleCards()) {
+        result.informationCards.push_back({ card->groupId,
+                GroupInformationCardPresentation::bounds(*card, viewport, informationCardPreview()) });
+    }
+    if (explanationEditor != nullptr) {
+        result.explanationEditor = explanationEditor->automationState();
+        for (auto* child : explanationEditor->getChildren()) {
+            if (child->getComponentID().isNotEmpty()) {
+                result.explanationTargets.emplace_back(child->getComponentID(),
+                        getLocalArea(child, child->getLocalBounds()).toFloat());
+            }
+        }
+    }
     result.selectedNodeIds = selectedNodeIds;
     result.expandedNodeId = expandedNodeId;
     if (presetSidebar != nullptr) {
@@ -2216,6 +2308,8 @@ void NodeCanvas::flushScheduledCompiledStateRefresh() {
 }
 
 void NodeCanvas::resetDocumentPresentation() {
+    focusedInformationGroup = {};
+    informationCardDrag.reset();
     probeCanvasState.selectedProbeId = {};
     probeCanvasState.selectedProbeIds.clear();
     probeCanvasState.draggedCardWorldPositions.clear();
@@ -2343,10 +2437,31 @@ bool NodeCanvas::undoForAutomation() {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
     const auto result = authoring.undo();
     applyAuthoringResult(result);
-    if (result.succeeded) {
+    if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
     }
     return result.succeeded;
+}
+
+bool NodeCanvas::redoForAutomation() {
+    auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::GraphEdit);
+    const auto result = authoring.redo();
+    applyAuthoringResult(result);
+    if (result.succeeded && !document.lastChange().explanationsChanged) {
+        rebindGuideEditor();
+    }
+    return result.succeeded;
+}
+
+GraphEditResult NodeCanvas::applyNodeEditsForAutomation(const NodeAuthoringEdits& edits) {
+    presentation.cancelPendingRefreshes();
+    const auto result = commands.applyNodeEdits(edits);
+    if (result.succeeded() && result.changed) {
+        presentation.refresh(document.graph(), document.revision(), document.lastChange());
+        applyAuthoringResult({ true, true, true, result.code, {}, { true, true } });
+        rebindGuideEditor();
+    }
+    return result;
 }
 
 bool NodeCanvas::setGuideParameterForAutomation(
@@ -2875,6 +2990,9 @@ bool NodeCanvas::saveGraphToFile(const File& file) {
 }
 
 bool NodeCanvas::loadGraphFromFile(const File& file) {
+    if (explanationEditor != nullptr) {
+        explanationEditor->dismiss();
+    }
     performanceMetrics.beginPresetLoad(file.getFileName());
     const bool loaded = applyAuthoringResult(authoring.loadGraph(file));
     if (loaded) {
@@ -2966,7 +3084,7 @@ bool NodeCanvas::loadSnapshot() {
 bool NodeCanvas::undo() {
     const auto result = authoring.undo();
     applyAuthoringResult(result);
-    if (result.succeeded) {
+    if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
     }
     return result.handled;
@@ -2975,7 +3093,7 @@ bool NodeCanvas::undo() {
 bool NodeCanvas::redo() {
     const auto result = authoring.redo();
     applyAuthoringResult(result);
-    if (result.succeeded) {
+    if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
     }
     return result.handled;
@@ -3274,6 +3392,15 @@ void NodeCanvas::refreshNodeEditorPresentation() {
 }
 
 void NodeCanvas::notifyGraphDocumentStateChanged() {
+    if (explanationEditor != nullptr && explanationEditorRevision != document.revision()) {
+        explanationEditor->dismiss();
+    }
+    if (informationCardDrag.has_value() && informationCardDrag->documentRevision != document.revision()) {
+        informationCardDrag.reset();
+    }
+    if (focusedInformationGroup.isNotEmpty() && graph.findNodeGroup(focusedInformationGroup) == nullptr) {
+        focusedInformationGroup = {};
+    }
     if (graphDocumentStateChangedCallback) {
         graphDocumentStateChangedCallback();
     }

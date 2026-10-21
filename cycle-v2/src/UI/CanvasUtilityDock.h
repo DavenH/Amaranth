@@ -22,6 +22,7 @@ public:
     static constexpr float preferredMinimapWidth = 210.f;
     static constexpr float preferredLegendWidth = 390.f;
     static constexpr float preferredLegendHeight = 30.f;
+    static constexpr float preferredStatusHeight = 94.f;
 
     static CanvasUtilityDockLayout layout(
             juce::Rectangle<float> contentBounds, int extraControllerCount = 0);

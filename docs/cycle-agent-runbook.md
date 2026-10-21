@@ -55,6 +55,74 @@ Inspect artifacts in this order:
 3. Raw log: only when the filtered log omits needed detail.
 4. LLDB transcript for breakpoint runs, or a crash report when available.
 
+## Semantic Candidate Authoring
+
+Use `inspectSynthesisCapabilities` to discover `authoring` bounds and each model's
+`authoringReplacement` support. `inspectNodeControls` returns the current typed
+model and `documentRevision` without opening an editor. Submit one synchronous
+`applyNodeEdits` request with that expected document revision and an `edits` array:
+
+```json
+{
+  "command": "applyNodeEdits",
+  "expectedDocumentRevision": 12,
+  "edits": [{
+    "nodeId": "shape",
+    "parameters": [{"id": "pre", "value": "0.65"}]
+  }]
+}
+```
+
+A replacement additionally supplies `model` using its inspected codec envelope and
+`expectedModelRevision`. Increment both outer and inner model revisions when the
+codec has an inner revision. Values are stored strings; use existing physical
+conversion discovery when authoring in physical units. A changed batch publishes
+once and uses one undo step. Rejection preserves graph/document/history state;
+active gestures and stale revisions are rejected. Model validation covers safe
+structure and factory-compatible coordinates; musical quality and gesture-specific
+collision eligibility require separate evaluation.
+
+Save a baseline with `saveGraph`, create candidates with `applyNodeEdits`, save each,
+and discard by reopening the baseline through `openGraph`. The demonstration below
+uses that lifecycle and the existing repeatable performance-suite renderer:
+
+```sh
+python3 scripts/create_cycle_v2_candidates.py --no-build \
+    --output-dir .context/semantic-candidates
+```
+
+The default example uses existing `waveshaper`, `timeLayer1` and `voice` nodes in
+`old/sat-bass.cyclegraph`; custom baselines must retain those node contracts.
+It saves two candidate presets, command evidence and suite WAV/results, checking
+undo/redo, reload, rejection isolation, distinct nonzero audio and repeatability.
+Build the exact app first; it attaches through the canonical coordinator/session.
+
+## Group Explanations And Information Cards
+
+`inspectSynthesisCapabilities.explanations` advertises the supported scopes and
+canonical commands. Use `scope: "group"` with `groupId` for group rationale;
+node targets require `nodeId`, and preset targets carry neither ID. The same
+`setExplanation` / `inspectExplanation` commands serve all three scopes.
+
+`setGroupInformationCard` takes group scope, a boolean `visible`, and an optional
+`offset: {"x": 0, "y": 260}` in world units relative to the group's member-bounds
+origin. Without an offset, Show reuses an enabled placement or derives a default.
+Hide retains the rationale. Clearing rationale retains placement but suppresses
+its view. `openExplanationEditor` opens the same local-draft editor for any scope.
+No note/card command changes the synthesis graph revision or prepares audio.
+
+Run the focused exact-instance integration check after building the app:
+
+```sh
+python3 scripts/test_cycle_v2_group_explanations.py --no-build \
+    --output-dir .context/group-explanation-check
+```
+
+It creates a group through existing canvas gestures, checks strict rejection,
+shared editing, two local card-drag previews, commit/undo/redo, collapse,
+hide/clear and reload. Its saved graph and screenshots stay in the output folder.
+Native AppKit/JUCE delivery still requires the native smoke route below.
+
 ## Native macOS Edit Smoke
 
 In-app `pointer` commands call component methods directly and do not verify
@@ -279,6 +347,32 @@ For Cycle 1 spectral voice preparation and phase-power regressions, run
 `scripts/test_cycle1_spectral_phase.py`. It checks dry Acidic and Anasound2
 output, then verifies that toggling Baroque Flute's phase layer preserves
 steady-state power. The default matrix covers both 44.1 and 48 kHz.
+
+For saved Cycle V2 presets, use
+`scripts/render_cycle_v2_performance_suite.py` to render a bounded suite of
+notes, repeated notes, timed CC/pressure and shared library patterns. It delegates
+to the coordinator and existing `captureAudio`, records preset/performance/audio
+fingerprints, and verifies repeated PCM. See
+[Performance Suites](cycle-performance-suites.md) for the manifest and artifact
+contract; `--plan` validates without starting an app.
+
+For the bounded expressive-saxophone pilot, use the existing suite and reference
+owners through two separate stages:
+
+```sh
+python3 scripts/run_cycle_v2_saxophone_study.py --stage objective --output-dir .context/sax-pilot
+python3 scripts/run_cycle_v2_saxophone_study.py --stage audit --output-dir .context/sax-pilot
+```
+
+Build the exact app first; `--no-build` reuses that build. Plot generation uses
+the host dependencies in `scripts/requirements-auditions.txt`. The objective
+stage saves the fixed slower-peak intervention and freezes its identities before
+the audit renders reserved performance combinations. Never reuse an objective
+output directory or change frozen inputs to continue an audit. The one growl
+recording has unverified musical labels: the report remains unpitched and does
+not validate saxophone expression across the synthetic test performances. See
+`cycle-v2/content/studies/expressive-sax/README.md` and the pilot TDD for coverage,
+control timing and the still-open acoustic/search gate.
 
 ## Crash And Assertion Triage
 

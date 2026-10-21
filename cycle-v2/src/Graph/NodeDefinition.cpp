@@ -1,3 +1,4 @@
+#include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Audio/CycleDsp/IrModel.h>
 #include <Audio/CycleDsp/UnisonCore.h>
@@ -6,6 +7,8 @@
 #include <algorithm>
 #include <climits>
 #include <cmath>
+#include <cstdlib>
+#include <type_traits>
 
 #include "Graph/NodeDefinition.h"
 
@@ -43,7 +46,8 @@ Port input(
         PortSide side = PortSide::Left,
         ConnectionKind connectionKind = ConnectionKind::Signal,
         AttachmentType attachmentType = AttachmentType::None,
-        DefaultModulationSlot defaultSlot = DefaultModulationSlot::None) {
+        DefaultModulationSlot defaultSlot = DefaultModulationSlot::None,
+        ControlTiming timing = ControlTiming::Unspecified) {
     return {
             std::move(id), std::move(label), domain, layout, purpose, true, side,
             purpose == PortPurpose::ScratchAttachment
@@ -52,7 +56,7 @@ Port input(
             purpose == PortPurpose::ScratchAttachment
                     ? AttachmentType::ScratchEnvelope
                     : attachmentType,
-            defaultSlot
+            defaultSlot, timing
     };
 }
 
@@ -119,6 +123,82 @@ ParameterDefinition number(
     };
 }
 
+template<typename Forward>
+ParameterDefinition physical(
+        ParameterDefinition parameter,
+        const char* id,
+        const char* unit,
+        Forward forward) {
+    parameter.physicalMapping = ParameterPhysicalMapping {
+            id, unit,
+            [forward](double value, const ParameterMappingContext&) { return forward(value); },
+            {}, std::is_integral_v<decltype(forward(0.0))>
+    };
+    return parameter;
+}
+
+template<typename Forward, typename Inverse>
+ParameterDefinition physical(
+        ParameterDefinition parameter,
+        const char* id,
+        const char* unit,
+        Forward forward,
+        Inverse inverse) {
+    parameter = physical(std::move(parameter), id, unit, forward);
+    parameter.physicalMapping->toStored =
+            [inverse](double value, const ParameterMappingContext&) { return inverse(value); };
+    return parameter;
+}
+
+ParameterDefinition timing(ParameterDefinition parameter, ControlTiming adoption) {
+    parameter.controlTiming = adoption;
+    return parameter;
+}
+
+ParameterDefinition delayTime() {
+    auto parameter = number("time", "Time", 0.5f, 0.f, 1.f, dsp | presentation);
+    parameter.physicalMapping = ParameterPhysicalMapping {
+            "delayBeats", "beats",
+            [](double value, const ParameterMappingContext& context) {
+                return CycleDsp::delayBeats((float) value, context.beatsPerMeasure);
+            },
+            [](double value, const ParameterMappingContext& context) {
+                return CycleDsp::delayUnitValueForBeats(value, context.beatsPerMeasure);
+            }
+    };
+    return parameter;
+}
+
+ParameterDefinition reverbSize() {
+    auto parameter = number("size", "Size", 0.5f, 0.f, 1.f, dsp | presentation);
+    parameter.physicalMapping = ParameterPhysicalMapping {
+            "reverbKernelSeconds", "seconds",
+            [](double value, const ParameterMappingContext& context) {
+                return CycleDsp::reverbKernelSeconds((float) value, context.sampleRate);
+            }, {}
+    };
+    return parameter;
+}
+
+ParameterDefinition impulseHighPass() {
+    auto parameter = number("highPass", "HighPass", 0.5f, 0.f, 1.f, dsp | presentation);
+    parameter.physicalMapping = ParameterPhysicalMapping {
+            "irPrefilterFrequency", "Hz",
+            [](double value, const ParameterMappingContext& context) {
+                return CycleDsp::irPrefilterFrequency(value, context.sampleRate);
+            },
+            [](double value, const ParameterMappingContext& context) {
+                return CycleDsp::irPrefilterValueForFrequency((float) value, context.sampleRate);
+            }
+    };
+    return parameter;
+}
+
+ParameterDefinition unit(ParameterDefinition parameter, const char* unitName) {
+    const auto identity = [](double value) { return value; };
+    return physical(std::move(parameter), "identity", unitName, identity, identity);
+}
+
 ParameterDefinition impulseLength() {
     auto result = number(
             "size", "Size", 0.5f, 0.f, 1.f,
@@ -128,7 +208,8 @@ ParameterDefinition impulseLength() {
         return String(CycleDsp::irImpulseLengthValue(length), 9);
     };
     result.defaultValue = result.normalized(result.defaultValue);
-    return result;
+    return physical(std::move(result), "irImpulseLength", "samples",
+            CycleDsp::irImpulseLength, CycleDsp::irImpulseLengthValue);
 }
 
 ParameterDefinition choice(
@@ -278,6 +359,33 @@ bool hasImpact(ParameterImpact impacts, ParameterImpact impact) {
     return ((uint32_t) impacts & (uint32_t) impact) != 0;
 }
 
+bool ParameterMappingContext::isValid() const {
+    return std::isfinite(sampleRate) && sampleRate > 0.0 && beatsPerMeasure > 0;
+}
+
+NodeModelStatePtr NodeModelCodec::readAuthoringJSON(const var&, String& error) const {
+    error = "This model codec does not support authored replacements";
+    return nullptr;
+}
+
+bool ParameterDefinition::acceptsAuthoringValue(const String& value) const {
+    if (type == ParameterType::Integer || type == ParameterType::Float) {
+        const String trimmed = value.trim();
+        if (!trimmed.containsOnly("0123456789+-.eE")) {
+            return false;
+        }
+        const char* start = trimmed.toRawUTF8();
+        char* end = nullptr;
+        const double parsed = std::strtod(start, &end);
+        if (start == end || *end != '\0' || !std::isfinite(parsed)
+                || (type == ParameterType::Integer
+                        && (std::floor(parsed) != parsed || parsed != trimmed.getIntValue()))) {
+            return false;
+        }
+    }
+    return accepts(value);
+}
+
 bool ParameterDefinition::accepts(const String& value) const {
     if (type == ParameterType::Boolean) {
         return isBooleanText(value);
@@ -349,10 +457,12 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     },
                     { output("context", "Context", PortDomain::DomainContext) }, {
                             integer("octave", "Octave", 0, -2, 2, dsp | presentation),
-                            number("voiceLength", "Voice Length",
+                            physical(number("voiceLength", "Voice Length",
                                     CycleDsp::voiceLengthUnitValue(1.0), 0.f, 1.f,
                                     dsp | preview | presentation),
-                            number("pitch", "Pitch", 0.f, -48.f, 48.f, dsp | presentation),
+                                    "voiceLengthSeconds", "seconds",
+                                    CycleDsp::voiceLengthSeconds, CycleDsp::voiceLengthUnitValue),
+                            unit(number("pitch", "Pitch", 0.f, -48.f, 48.f, dsp | presentation), "semitones"),
                             boolean("portamento", "Portamento", false, dsp | presentation),
                             boolean("pitchIndependentSpectralControl",
                                     "Pitch-independent spectral control", false,
@@ -477,17 +587,22 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                       input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
                       input("yellow", "Yellow Morph", PortDomain::ControlSignal,
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
-                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Yellow),
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Yellow,
+                              ControlTiming::Continuous),
                       input("red", "Red Morph", PortDomain::ControlSignal,
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
-                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Red),
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Red,
+                              ControlTiming::Continuous),
                       input("blue", "Blue Morph", PortDomain::ControlSignal,
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
-                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue) },
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue,
+                              ControlTiming::Continuous) },
                     { output("out", "Out", PortDomain::ControlSignal, ChannelLayout::LinkedStereo) }, {
                             integer("dimensionCount", "Curve morphing", 0, 0, 3, graph | dsp | preview | presentation),
                             boolean("enabled", "Enabled", true, dsp | presentation),
-                            number("gain", "Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            physical(number("gain", "Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                                    "outputGain", "linear gain",
+                                    CycleDsp::outputGain, CycleDsp::outputGainUnitValue),
                             number("range", "Range", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                             choice("signalType", "Signal Type", "time",
                                     { "time", "spectralMagnitude", "spectralPhase" },
@@ -498,9 +613,12 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             choice("polarity", "Polarity", "unipolar",
                                     { "unipolar", "bipolar" },
                                     graph | dsp | preview | presentation),
-                            number("yellow", "Yellow", 0.f, 0.f, 1.f, dsp | preview | presentation),
-                            number("red", "Red", defaultTrimeshKeyPosition(), 0.f, 1.f, dsp | preview | presentation),
-                            number("blue", "Blue", 0.f, 0.f, 1.f, dsp | preview | presentation),
+                            timing(number("yellow", "Yellow", 0.f, 0.f, 1.f, dsp | preview | presentation),
+                                    ControlTiming::Continuous),
+                            timing(number("red", "Red", defaultTrimeshKeyPosition(), 0.f, 1.f, dsp | preview | presentation),
+                                    ControlTiming::Continuous),
+                            timing(number("blue", "Blue", 0.f, 0.f, 1.f, dsp | preview | presentation),
+                                    ControlTiming::Continuous),
                             choice("primaryAxis", "Primary Axis", "yellow", { "yellow", "red", "blue" }, preview | presentation),
                             boolean("link.yellow", "Link Yellow", true, presentation),
                             boolean("link.red", "Link Red", true, presentation),
@@ -552,24 +670,30 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
             buildDefinition(definition("envelope", NodeKind::Envelope, "Envelope", "control curve", "env",
                     { input("red", "Red Morph", PortDomain::ControlSignal,
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
-                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Red),
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Red,
+                              ControlTiming::NoteOnLatched),
                       input("blue", "Blue Morph", PortDomain::ControlSignal,
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
-                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue),
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Blue,
+                              ControlTiming::NoteOnLatched),
                       input("yellow", "Yellow Morph", PortDomain::ControlSignal,
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
-                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Yellow) },
+                              ConnectionKind::Signal, AttachmentType::None, DefaultModulationSlot::Yellow,
+                              ControlTiming::NoteOnLatched) },
                     { output("env", "Control", PortDomain::ControlSignal) }, {
                             integer("dimensionCount", "Curve morphing", 0, 0, 3, graph | dsp | preview | presentation),
-                            number("yellow", "Yellow", 0.f, 0.f, 1.f, dsp | preview | presentation),
+                            timing(number("yellow", "Yellow", 0.f, 0.f, 1.f, dsp | preview | presentation),
+                                    ControlTiming::NoteOnLatched),
                             boolean("enabled", "Enabled", true, dsp | preview | presentation),
                             choice("purpose", "Purpose", "control",
                                     { "control", "volume", "pitch", "scratch" },
                                     graph | dsp | preview | presentation),
                             boolean("logarithmic", "Logarithmic", false, dsp | preview | presentation),
                             boolean("declick", "Declick", false, dsp),
-                            number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                            timing(number("red", "Red", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                                    ControlTiming::NoteOnLatched),
+                            timing(number("blue", "Blue", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                                    ControlTiming::NoteOnLatched),
                             number("level", "Level", 1.f, 0.f, 1.f, dsp)
                     }))
                     .help("Draw a curve to control how the sound changes over time.")
@@ -603,8 +727,10 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                             choice("processingScope", "Processing", "voice", { "voice", "global" }, graph | presentation),
                             boolean("enabled", "Enabled", true, dsp | presentation),
                             impulseLength(),
-                            number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
-                            number("highPass", "HighPass", 0.5f, 0.f, 1.f, dsp | presentation)
+                            physical(number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
+                                    "irPostGainDecibels", "dB", CycleDsp::irPostGainDecibels,
+                                    CycleDsp::irPostGainValueForDecibels),
+                            impulseHighPass()
                     }))
                     .help("Applies the drawn impulse response to the sound.")
                     .model(std::make_shared<CurveNodeDomainCodec>(NodeKind::ImpulseResponse))
@@ -618,8 +744,12 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             choice("processingScope", "Processing", "voice", { "voice", "global" }, graph | presentation),
                             boolean("enabled", "Enabled", true, dsp | presentation),
-                            number("pre", "Pre", 0.5f, 0.f, 1.f, dsp | presentation),
-                            number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
+                            physical(number("pre", "Pre", 0.5f, 0.f, 1.f, dsp | presentation),
+                                    "waveshaperGainDecibels", "dB",
+                                    CycleDsp::waveshaperGainDecibels, CycleDsp::waveshaperGainUnitValue),
+                            physical(number("post", "Post", 0.5f, 0.f, 1.f, dsp | presentation),
+                                    "waveshaperGainDecibels", "dB",
+                                    CycleDsp::waveshaperGainDecibels, CycleDsp::waveshaperGainUnitValue),
                             choice("aaFactor", "AA Factor", "1", { "1", "2", "4", "8" }, dsp | reset | presentation)
                     }))
                     .help("Shapes the waveform with a custom transfer curve.")
@@ -638,9 +768,9 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                                     dsp | preview | presentation),
                             integer("order", "Voices", 1, 1, CycleDsp::maximumUnisonOrder,
                                     dsp | preview | presentation),
-                            number("width", "Detune", 35.f, 0.f,
+                            unit(number("width", "Detune", 35.f, 0.f,
                                     CycleDsp::maximumUnisonDetuneCents,
-                                    dsp | preview | presentation),
+                                    dsp | preview | presentation), "cents"),
                             number("panSpread", "Pan Spread", 1.f, 0.f, 1.f,
                                     dsp | presentation),
                             number("phase", "Phase", 0.5f, 0.f, 1.f,
@@ -659,10 +789,12 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
-                            number("size", "Size", 0.5f, 0.f, 1.f, dsp | presentation),
-                            number("damp", "Damp", 0.2f, 0.f, 1.f, dsp | presentation),
+                            reverbSize(),
+                            physical(number("damp", "Damp", 0.2f, 0.f, 1.f, dsp | presentation),
+                                    "reverbDamping", "coefficient", CycleDsp::reverbDamping),
                             number("width", "Width", 1.f, 0.f, 1.f, dsp | presentation),
-                            number("wet", "Wet", 0.4f, 0.f, 1.f, dsp | presentation),
+                            physical(number("wet", "Wet", 0.4f, 0.f, 1.f, dsp | presentation),
+                                    "reverbWetLevel", "linear gain", CycleDsp::reverbWetLevel),
                             number("highPass", "High Pass", 0.05f, 0.f, 1.f, dsp | presentation)
                     }))
                     .help("Adds a sense of space and room around the sound.")
@@ -674,11 +806,13 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             boolean("enabled", "Enabled", true, dsp | presentation),
-                            number("time", "Time", 0.5f, 0.f, 1.f, dsp | presentation),
+                            delayTime(),
                             number("feedback", "Feedback", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("wet", "Wet", 0.5f, 0.f, 1.f, dsp | presentation),
                             number("spin", "Pan Amount", 0.5f, 0.f, 1.f, dsp | presentation),
-                            number("spinIters", "Pan Cycle", 0.f, 0.f, 1.f, dsp | presentation)
+                            physical(number("spinIters", "Pan Cycle", 0.f, 0.f, 1.f, dsp | presentation),
+                                    "delaySpinIterations", "iterations",
+                                    CycleDsp::delaySpinIterations, CycleDsp::delaySpinUnitValueForIterations)
                     }))
                     .help("Creates tempo-synced echoes that move across the stereo field.")
                     .globalProcessing()
@@ -690,16 +824,36 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
                             choice("processingScope", "Processing", "voice", { "voice", "global" }, graph | presentation),
                             boolean("enabled", "Enabled", true, dsp | presentation),
-                            number("band1Gain", "Band 1 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("band2Gain", "Band 2 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("band3Gain", "Band 3 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("band4Gain", "Band 4 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("band5Gain", "Band 5 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
-                            number("band1Frequency", "Band 1 Frequency", 0.0437075f, 0.f, 1.f, dsp | preview | presentation),
-                            number("band2Frequency", "Band 2 Frequency", 0.1468314f, 0.f, 1.f, dsp | preview | presentation),
-                            number("band3Frequency", "Band 3 Frequency", 0.3962904f, 0.f, 1.f, dsp | preview | presentation),
-                            number("band4Frequency", "Band 4 Frequency", 0.6619545f, 0.f, 1.f, dsp | preview | presentation),
-                            number("band5Frequency", "Band 5 Frequency", 0.8286473f, 0.f, 1.f, dsp | preview | presentation)
+                            physical(number("band1Gain", "Band 1 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                                    "equalizerGainDecibels", "dB",
+                                    CycleDsp::equalizerGainDecibels, CycleDsp::equalizerGainUnitValue),
+                            physical(number("band2Gain", "Band 2 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                                    "equalizerGainDecibels", "dB",
+                                    CycleDsp::equalizerGainDecibels, CycleDsp::equalizerGainUnitValue),
+                            physical(number("band3Gain", "Band 3 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                                    "equalizerGainDecibels", "dB",
+                                    CycleDsp::equalizerGainDecibels, CycleDsp::equalizerGainUnitValue),
+                            physical(number("band4Gain", "Band 4 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                                    "equalizerGainDecibels", "dB",
+                                    CycleDsp::equalizerGainDecibels, CycleDsp::equalizerGainUnitValue),
+                            physical(number("band5Gain", "Band 5 Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
+                                    "equalizerGainDecibels", "dB",
+                                    CycleDsp::equalizerGainDecibels, CycleDsp::equalizerGainUnitValue),
+                            physical(number("band1Frequency", "Band 1 Frequency", 0.0437075f, 0.f, 1.f, dsp | preview | presentation),
+                                    "equalizerFrequency", "Hz",
+                                    CycleDsp::equalizerFrequency, CycleDsp::equalizerFrequencyUnitValue),
+                            physical(number("band2Frequency", "Band 2 Frequency", 0.1468314f, 0.f, 1.f, dsp | preview | presentation),
+                                    "equalizerFrequency", "Hz",
+                                    CycleDsp::equalizerFrequency, CycleDsp::equalizerFrequencyUnitValue),
+                            physical(number("band3Frequency", "Band 3 Frequency", 0.3962904f, 0.f, 1.f, dsp | preview | presentation),
+                                    "equalizerFrequency", "Hz",
+                                    CycleDsp::equalizerFrequency, CycleDsp::equalizerFrequencyUnitValue),
+                            physical(number("band4Frequency", "Band 4 Frequency", 0.6619545f, 0.f, 1.f, dsp | preview | presentation),
+                                    "equalizerFrequency", "Hz",
+                                    CycleDsp::equalizerFrequency, CycleDsp::equalizerFrequencyUnitValue),
+                            physical(number("band5Frequency", "Band 5 Frequency", 0.8286473f, 0.f, 1.f, dsp | preview | presentation),
+                                    "equalizerFrequency", "Hz",
+                                    CycleDsp::equalizerFrequency, CycleDsp::equalizerFrequencyUnitValue)
                     }))
                     .help("Shapes the tone with five adjustable frequency bands.")
                     .selectableProcessing()
@@ -739,8 +893,10 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .finish(),
             buildDefinition(definition("output", NodeKind::Output, "Output", "sink", "out",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, {
-                            number("gain", "Gain", 0.5f, 0.f, 1.f,
-                                    dsp | preview | presentation)
+                            physical(number("gain", "Gain", 0.5f, 0.f, 1.f,
+                                    dsp | preview | presentation),
+                                    "outputGain", "linear gain",
+                                    CycleDsp::outputGain, CycleDsp::outputGainUnitValue)
                     }))
                     .help("Sends the finished sound to the audio output.")
                     .globalProcessing()

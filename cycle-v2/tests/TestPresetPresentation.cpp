@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "Graph/GraphCommandDispatcher.h"
@@ -224,6 +225,7 @@ TEST_CASE("Invalid preset MIDI is ignored without rejecting the graph",
 
 TEST_CASE("Time surface styles belong to each preset without changing graph or audio revisions",
         "[cycle-v2][preset][surface-program]") {
+    const String savedStyle = GENERATE("icy-hot", "icy-hot-raw");
     GraphDocument document(graphWithOutput());
     GraphCommandDispatcher commands(document);
     const auto revision = document.revision();
@@ -241,17 +243,17 @@ TEST_CASE("Time surface styles belong to each preset without changing graph or a
     REQUIRE(document.presentation().timeSurfaceStyle == "bullion");
     REQUIRE(document.loadJson(oldPreset, false));
     REQUIRE(TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle)
-            == ScalarSurfaceTimeStyle::BlueDepth);
+            == ScalarSurfaceTimeStyle::IcyHotRaw);
 
     const File temporary = File::getSpecialLocation(File::tempDirectory)
             .getNonexistentChildFile("surface-style-preset", ".cyclegraph");
-    REQUIRE(commands.setTimeSurfaceStyle("icy-hot"));
+    REQUIRE(commands.setTimeSurfaceStyle(savedStyle));
     REQUIRE(document.save(temporary));
     REQUIRE_FALSE(document.isDirty());
     REQUIRE(commands.setTimeSurfaceStyle("recipe-15"));
     REQUIRE(document.load(temporary));
     REQUIRE_FALSE(document.isDirty());
-    REQUIRE(document.presentation().timeSurfaceStyle == "icy-hot");
+    REQUIRE(document.presentation().timeSurfaceStyle == savedStyle);
     REQUIRE(commands.addNode(NodeKind::WaveSource, { 30.f, 40.f }).succeeded());
     REQUIRE(commands.setTimeSurfaceStyle("bullion"));
     REQUIRE(document.undo());

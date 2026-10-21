@@ -119,6 +119,11 @@ struct GuideCurveAssignment {
     }
 };
 
+struct IndexedGuideAssignmentState {
+    size_t index {};
+    GuideCurveAssignment assignment;
+};
+
 enum class PortSide {
     Left,
     Right,
@@ -139,6 +144,13 @@ enum class DefaultModulationSlot {
     Blue
 };
 
+enum class ControlTiming {
+    Unspecified,
+    Continuous,
+    NoteOnLatched,
+    StaticAuthoring
+};
+
 struct Port {
     String id;
     String label;
@@ -150,6 +162,7 @@ struct Port {
     ConnectionKind connectionKind { ConnectionKind::Signal };
     AttachmentType attachmentType { AttachmentType::None };
     DefaultModulationSlot defaultModulationSlot { DefaultModulationSlot::None };
+    ControlTiming controlTiming { ControlTiming::Unspecified };
 };
 
 struct NodeParameter {
@@ -206,6 +219,11 @@ struct NodeAudioResourceSummary {
     int sampleCount {};
 };
 
+constexpr int maximumExplanationLength = 16384;
+constexpr float maximumInformationCardOffset = 100000.f;
+
+bool isValidInformationCardOffset(double x, double y);
+
 struct Node {
     String id;
     NodeKind kind { NodeKind::GenericProcessor };
@@ -217,6 +235,7 @@ struct Node {
     NodeModelStatePtr model;
     var editorState;
     bool reverseInputPortOrder {};
+    String rationale;
 };
 
 struct NodeGroup {
@@ -224,6 +243,8 @@ struct NodeGroup {
     String title;
     std::vector<String> nodeIds;
     bool collapsed {};
+    String rationale;
+    std::optional<juce::Point<float>> informationCardOffset;
 };
 
 struct Edge {
@@ -355,7 +376,7 @@ public:
     int removeGuideAssignmentsOutsideCubeRange(
             const String& nodeId,
             int cubeCount,
-            std::vector<GuideCurveAssignment>* removed = nullptr);
+            std::vector<IndexedGuideAssignmentState>* removed = nullptr);
     int guideUsageCount(const String& guideId) const;
     const std::vector<String>& guideTargetNodeIds(const String& guideId) const;
     const std::vector<String>& guideIdsForTargetNode(const String& nodeId) const;
@@ -387,6 +408,7 @@ public:
     static NodeGraph createDemoGraph();
 
 private:
+    friend class GraphDocument;
     friend class GraphCommandDispatcher;
     friend class GraphDelta;
     friend class GraphEditor;
@@ -402,6 +424,7 @@ private:
     };
 
     Node* findNodeForEditing(const String& nodeId);
+    NodeGroup* findNodeGroupForEditing(const String& groupId);
     NodeParameter* findNodeParameterForEditing(
             const String& nodeId,
             const String& parameterId);
@@ -434,6 +457,7 @@ private:
     std::vector<NodeAudioResourceBinding> audioResourceBindings;
     std::unordered_map<String, size_t, StringHash> nodeIndex;
     std::unordered_map<String, size_t, StringHash> nodeGroupIndex;
+    std::unordered_map<String, size_t, StringHash> groupIdIndex;
     std::vector<String> morphNodeIds;
     std::unordered_map<
             String,

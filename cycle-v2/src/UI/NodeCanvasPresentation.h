@@ -9,6 +9,7 @@
 #include "UI/NodeCanvasPresentationPerformanceObserver.h"
 #include "UI/NodeCanvasViewport.h"
 #include "UI/NodePalette.h"
+#include "UI/GroupInformationCardPresentation.h"
 #include "UI/NodePreviewRenderer.h"
 #include "UI/GuideCurveShelf.h"
 #include "UI/GuideRelationshipPresentation.h"
@@ -65,6 +66,9 @@ struct NodeCanvasPresentationFrame {
     std::optional<Rectangle<float>> areaSelectionBounds;
     Rectangle<float> utilityBounds;
     int keyboardExtraControllerCount {};
+    const GroupInformationCardPresentation* informationCards {};
+    juce::String focusedInformationGroup;
+    std::optional<GroupInformationCardPreview> informationCardPreview;
 };
 
 struct NodePortPresentation {
@@ -96,6 +100,7 @@ public:
     static String canvasStatusText(
             const String& statusMessage,
             const String& hoverText);
+    static TextLayout canvasStatusLayout(const String& text, float width);
     static Rectangle<float> globalProcessingIndicatorBounds(
             Rectangle<float> header,
             float zoom,
@@ -163,6 +168,9 @@ private:
     float paletteCacheScale {};
     int paletteCacheActiveSection { -2 };
     int paletteCacheHoveredEntry { -2 };
+    String statusTextCache;
+    float statusTextWidthCache { -1.f };
+    TextLayout statusLayoutCache;
 };
 
 }

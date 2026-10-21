@@ -935,3 +935,25 @@ no lock focus ring. Before/after captures at identical production geometry:
 one focus flag in the existing ControlTarget (758 → 759 lines), using JUCE's
 existing focus lifecycle. Architecture, code-map, style and whitespace checks
 pass; no new source boundary or rendering/gesture algorithm.
+
+
+### PR integration with current master
+
+Merge master c0adc94c for PR #196. Preserve ordered edge/guide undo records from
+master while retaining dimensional guide remapping. Record removed component
+guides with their original indices in reverse removal order; inverse application
+removes remapped guides first and restores the originals in serialized order.
+The projection/cancellation test now verifies Time/Red ordering after both
+cancellation and Undo. Yellow joins Red/Blue in the new note-on-latched input and
+parameter capability metadata, matching the existing Envelope runtime policy;
+the capability test checks all three axes. Retain the new explanation inspector
+alongside dimensional targets. Consolidate two overlapping code-map entries to
+keep its 100-entry budget. No new algorithm or ownership boundary.
+
+Merged CycleV2 and tests build with --parallel 10. Dimensionality, face input,
+capabilities and explanation tests pass: 54 cases / 7,010 assertions. The six
+ordered graph-transaction cases pass separately. Native held cube dragging also
+passes in b2705cf265cd with both axes changing and correct lock focus. Evidence:
+`.context/pr-integration-{build,tests,routing-tests,native,architecture}.log`.
+Architecture, code-map and whitespace checks pass. The local itch preset edit
+was backed up and restored byte-for-byte, and is excluded from the PR commits.

@@ -13,6 +13,7 @@
 #include "App/CycleV2AutomationSessionTransport.h"
 #include "App/CycleV2AutomationWorkspaceCommands.h"
 #include "App/OfflineAudioCaptureAutomation.h"
+#include "App/PatternScheduleAutomation.h"
 #include "Graph/NodeDefinition.h"
 #include "UI/NodePalette.h"
 #include "UI/NodeWorkspace.h"
@@ -295,6 +296,10 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return recreateCanvasOpenGLContext();
         case Command::ExportGraph:
             return exportGraph(commandValue);
+        case Command::InspectSynthesisCapabilities:
+            return inspectSynthesisCapabilities(commandValue);
+        case Command::ConvertSynthesisParameter:
+            return convertSynthesisParameter(commandValue);
         case Command::OpenGraph:
             return openGraph(commandValue);
         case Command::ResizeWindow: {
@@ -320,6 +325,8 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return invokePaletteItem(commandValue);
         case Command::CaptureAudio:
             return captureAudio(commandValue);
+        case Command::ExportPatternSchedule:
+            return exportPatternSchedule(commandValue);
         case Command::CaptureLiveAudio:
             return captureLiveAudio(commandValue);
         case Command::OpenNodeEditor:
@@ -336,6 +343,12 @@ var CycleV2Automation::runCommand(const var& commandValue) {
                     ? okResult("selectReference", snapshotState())
                     : failedResult("selectReference", "Could not select reference: " + referenceId);
         }
+        case Command::ListReferences:
+            return okResult(command, workspace.inspectReferencesForAutomation());
+        case Command::ImportReference:
+            return importReference(commandValue);
+        case Command::ExportReferenceAnalysis:
+            return exportReferenceAnalysis(commandValue);
         case Command::OpenReferencePitchEditor: {
             const String referenceId = stringProperty(commandValue, "referenceId");
             return workspace.openReferencePitchEditorForAutomation(referenceId)
@@ -361,12 +374,21 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return workspaceCommands->clearGuideHeatmap(commandValue);
         case Command::Undo:
             return workspaceCommands->undo();
+        case Command::Redo:
+            return workspaceCommands->redo();
+        case Command::ApplyNodeEdits:
+            return workspaceCommands->applyNodeEdits(commandValue);
         case Command::SetNodeParameter:
             return workspaceCommands->setNodeParameter(commandValue);
         case Command::SetGuideParameter:
             return workspaceCommands->setGuideParameter(commandValue);
         case Command::InspectNodeControls:
             return workspaceCommands->inspectNodeControls(commandValue);
+        case Command::InspectExplanation:
+        case Command::SetExplanation:
+        case Command::SetGroupInformationCard:
+        case Command::OpenExplanationEditor:
+            return workspaceCommands->explanation(commandValue);
         case Command::SetMorphSlider:
             return workspaceCommands->setMorphSlider(commandValue);
         case Command::SetPrimaryAxis:
@@ -903,6 +925,29 @@ var CycleV2Automation::sendMidi(const var& commandValue) {
         return failedResult("sendMidi", "The realtime MIDI queue is full");
     }
     return okResult("sendMidi");
+}
+
+var CycleV2Automation::importReference(const var& commandValue) {
+    const auto source = resolveCommandPath(stringProperty(commandValue, "path"));
+    String error;
+    if (!workspace.importReferenceForAutomation(source, error)) {
+        return failedResult("importReference", error);
+    }
+    return okResult("importReference", workspace.exportReferenceAnalysisForAutomation(false));
+}
+
+var CycleV2Automation::exportReferenceAnalysis(const var& commandValue) const {
+    const auto data = workspace.exportReferenceAnalysisForAutomation(
+            boolProperty(commandValue, "includeGrid"));
+    if (!data.isObject()) {
+        return failedResult("exportReferenceAnalysis", "Select a reference before exporting analysis");
+    }
+    const auto path = resolveCommandPath(stringProperty(commandValue, "path"));
+    if (path != File() && (!path.getParentDirectory().createDirectory()
+            || !path.replaceWithText(JSON::toString(data) + "\n"))) {
+        return failedResult("exportReferenceAnalysis", "Could not write reference analysis");
+    }
+    return okResult("exportReferenceAnalysis", data);
 }
 
 var CycleV2Automation::requestCanvasOpenGLFrame() {

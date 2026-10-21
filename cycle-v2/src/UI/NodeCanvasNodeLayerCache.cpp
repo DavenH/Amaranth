@@ -49,6 +49,7 @@ bool nodesEqualForPresentation(const Node& first, const Node& second) {
     return first.id == second.id
             && first.kind == second.kind
             && first.subtitle == second.subtitle
+            && first.rationale.isNotEmpty() == second.rationale.isNotEmpty()
             && first.bounds.getWidth() == second.bounds.getWidth()
             && first.bounds.getHeight() == second.bounds.getHeight()
             && nodeParametersEqual(first.parameters, second.parameters)

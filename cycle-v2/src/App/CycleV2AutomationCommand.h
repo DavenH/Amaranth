@@ -20,6 +20,8 @@ enum class CycleV2AutomationCommand {
     RequestCanvasOpenGLFrame,
     RecreateCanvasOpenGLContext,
     ExportGraph,
+    InspectSynthesisCapabilities,
+    ConvertSynthesisParameter,
     OpenGraph,
     ResizeWindow,
     SaveGraph,
@@ -29,10 +31,14 @@ enum class CycleV2AutomationCommand {
     ListPaletteItems,
     InvokePaletteItem,
     CaptureAudio,
+    ExportPatternSchedule,
     CaptureLiveAudio,
     OpenNodeEditor,
     PinComparisonSpy,
     SelectReference,
+    ListReferences,
+    ImportReference,
+    ExportReferenceAnalysis,
     OpenReferencePitchEditor,
     AddNode,
     MoveNode,
@@ -43,9 +49,15 @@ enum class CycleV2AutomationCommand {
     LoadGuideHeatmap,
     ClearGuideHeatmap,
     Undo,
+    Redo,
+    ApplyNodeEdits,
     SetNodeParameter,
     SetGuideParameter,
     InspectNodeControls,
+    InspectExplanation,
+    SetExplanation,
+    SetGroupInformationCard,
+    OpenExplanationEditor,
     SetMorphSlider,
     SetPrimaryAxis,
     ToggleLink,
@@ -61,6 +73,8 @@ enum class CycleV2AutomationCommand {
     Ping,
     Quit
 };
+
+juce::String automationCommandName(CycleV2AutomationCommand command);
 
 std::optional<CycleV2AutomationCommand> automationCommandForName(
         const juce::String& name);

@@ -40,7 +40,7 @@ void applyEnvelopePurposeSemantics(
         if (compatible) {
             continue;
         }
-        result.changes.removedEdges.push_back(edge);
+        result.changes.removedEdges.push_back({ index - 1, edge });
         graph.removeEdgeAt(index - 1);
     }
     result.changes.topologyChanged = !result.changes.removedEdges.empty();

@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "Graph/GraphCommandDispatcher.h"
 
 #include "Graph/GraphNodeStateEditor.h"
@@ -50,7 +52,9 @@ GraphEditResult GraphCommandDispatcher::setMeshDimensions(const String& nodeId, 
                         graph.replaceNodeEditorState(nodeId, state);
                         result.changes.editorStateChanged = true;
                     }
-                    for (const auto& assignment : graph.getGuideAssignments()) {
+                    const auto& assignments = graph.getGuideAssignments();
+                    for (size_t index = 0; index < assignments.size(); ++index) {
+                        const auto& assignment = assignments[index];
                         if (assignment.targetNodeId != nodeId) {
                             continue;
                         }
@@ -62,7 +66,7 @@ GraphEditResult GraphCommandDispatcher::setMeshDimensions(const String& nodeId, 
                                 || cell == retainedCubeIndices.end();
                         const int newIndex = (int) std::distance(retainedCubeIndices.begin(), cell);
                         if (removed || newIndex != assignment.target.cubeIndex) {
-                            result.changes.removedGuideAssignments.push_back(assignment);
+                            result.changes.removedGuideAssignments.push_back({ index, assignment });
                             if (!removed) {
                                 auto remapped = assignment;
                                 remapped.target.cubeIndex = newIndex;
@@ -70,8 +74,10 @@ GraphEditResult GraphCommandDispatcher::setMeshDimensions(const String& nodeId, 
                             }
                         }
                     }
+                    std::reverse(result.changes.removedGuideAssignments.begin(),
+                            result.changes.removedGuideAssignments.end());
                     for (const auto& assignment : result.changes.removedGuideAssignments) {
-                        graph.removeGuideAssignment(nodeId, assignment.target);
+                        graph.removeGuideAssignment(nodeId, assignment.assignment.target);
                     }
                     for (const auto& assignment : result.changes.addedGuideAssignments) {
                         graph.assignGuideCurve(assignment);

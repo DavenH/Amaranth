@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <variant>
 
 #include "Graph/GraphEditTypes.h"
 
@@ -52,11 +53,6 @@ struct GuideCurveDelta {
     GuideCurveResource after;
 };
 
-struct IndexedEdgeState {
-    size_t index {};
-    Edge edge;
-};
-
 struct IndexedNodeState {
     size_t index {};
     Node node;
@@ -77,8 +73,14 @@ struct EdgeInputDelta {
     juce::String nodeId;
     juce::String portId;
     std::vector<IndexedEdgeState> before;
+};
+
+struct EdgeRoutingDelta {
+    std::vector<IndexedEdgeState> before;
     std::vector<IndexedEdgeState> after;
 };
+
+using RoutingDelta = std::variant<EdgeRoutingDelta, CableDeletionDelta>;
 
 class GraphDelta {
 public:
@@ -92,7 +94,7 @@ private:
     friend class GraphDeltaBuilder;
 
     void apply(NodeGraph& graph, bool forward) const;
-    void applyEdgeInputs(NodeGraph& graph, bool forward) const;
+    static void applyRouting(NodeGraph& graph, const RoutingDelta& delta, bool forward);
     static void applyCableDeletion(
             NodeGraph& graph,
             const CableDeletionDelta& deletion,
@@ -105,8 +107,7 @@ private:
     std::vector<NodeGroupDelta> nodeGroups;
     std::vector<SignalProbePositionDelta> probePositions;
     std::vector<GuideCurveDelta> guides;
-    std::vector<EdgeInputDelta> edgeInputs;
-    std::vector<CableDeletionDelta> cableDeletions;
+    std::vector<RoutingDelta> routing;
     GraphChangeSet changes;
 };
 
@@ -127,6 +128,7 @@ public:
             const juce::String& nodeId,
             const juce::String& portId);
     void captureCableDeletion(const NodeGraph& graph, const CableDeletionPlan& plan);
+    void finishCommand(const NodeGraph& graph, const GraphChangeSet& changes, bool changed);
 
     GraphDelta finish(const NodeGraph& graph, GraphChangeSet changes) const;
     void restore(NodeGraph& graph, GraphChangeSet changes = {}) const;
@@ -144,6 +146,7 @@ private:
     std::vector<GuideCurveDelta> guides;
     std::vector<EdgeInputDelta> edgeInputs;
     std::vector<CableDeletionDelta> cableDeletions;
+    std::vector<RoutingDelta> routing;
 };
 
 }

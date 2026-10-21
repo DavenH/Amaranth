@@ -14,6 +14,7 @@
 
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/ModelAuthoringValidation.h"
 
 namespace CycleV2 {
 
@@ -810,6 +811,15 @@ NodeModelStatePtr CurveNodeDomainCodec::readJSON(const var& value, String& error
     }
     error = "Invalid structured node model state";
     return nullptr;
+}
+
+NodeModelStatePtr CurveNodeDomainCodec::readAuthoringJSON(const var& value, String& error) const {
+    if (!ModelAuthoringValidation::envelope(value, schemaId(), currentVersion())
+            || !ModelAuthoringValidation::curve(value["state"], kind == NodeKind::Envelope)) {
+        error = "Invalid authored curve model fields, identities or topology";
+        return nullptr;
+    }
+    return readJSON(value, error);
 }
 
 NodeModelStatePtr CurveNodeDomainCodec::readFlatCurveJSON(
