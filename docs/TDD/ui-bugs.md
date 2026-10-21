@@ -1,5 +1,33 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Collapsed-group cable takes an excessive detour above upper-row nodes
+
+On 2026-10-20, the native group-card acceptance screenshot showed a large purple
+arch across the upper canvas for `fft.phase -> phaseOp1.left`. Reproduce by
+opening `cycle-v2/content/presets/old/accoustic.cyclegraph`, grouping `voice`,
+`morph` and `fft` without moving them, then collapsing the group at fit zoom
+(recorded viewport 1728 × 962, zoom approximately 0.4742). The cable starts at
+the compact group boundary and bows above the magnitude previews before entering
+the phase Add node. Expected: readable obstacle avoidance near the obstructing
+nodes, without such a large excursion into otherwise clear canvas.
+
+Evidence from the completed native run: `.context/group-information-native.png`,
+`.context/cable-routing-triage.json`, and the preserved expanded graph
+`.context/pr3-capabilities/.context/native-group-saved.cyclegraph` (collapse its
+existing group). The graph still has 24 nodes and 22 edges with successful
+compilation and no validation/compile issues. No new GUI run was performed for
+this logging-only triage.
+
+Source-based hypothesis: `NodeCanvasScene::routeObstructedCables` detects the
+direct curve crossing `timeLayer1`, then `corridorTop` includes every visible
+node overlapping the entire horizontal span, including the much higher
+`magnitudeLayer1`. `cableDetourPath` consequently creates an oversized cubic.
+This is consistent with the existing limited row-routing heuristic in
+`cycle-v2-cable-routing.md`; it is not yet an isolated root-cause proof or
+evidence that the information-card change introduced the behavior. Status:
+open; compare expanded/collapsed routes and constrain the detour to relevant
+obstacles while preserving shared painting/hit-test geometry.
+
 ## Resolved: Information-card text lost style and clipped its last line
 
 On 2026-10-20, the group-card app-render regression showed default black text
