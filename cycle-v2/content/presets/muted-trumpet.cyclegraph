@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -2260,6 +2261,18 @@
             "railOrder": 7,
             "canvasX": 3362.17139,
             "canvasY": 891.88306
+        },
+        {
+            "id": "probe7",
+            "sourceNodeId": "globalInput",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "reverb",
+            "anchorDestPortId": "time",
+            "label": "Spy 9",
+            "tapPosition": 0.5,
+            "railOrder": 8,
+            "canvasX": 1290.21765,
+            "canvasY": 1068.59424
         }
     ],
     "presetPresentation": {

@@ -7,7 +7,7 @@
             "id": "voice",
             "kind": "voiceContext",
             "definitionVersion": 1,
-            "position": { "x": 460.38489, "y": 736.0 },
+            "position": { "x": 700.07019, "y": 509.54047 },
             "parameters": {
                 "octave": 0,
                 "voiceLength": 0.366412214,
@@ -22,7 +22,7 @@
             "id": "morph",
             "kind": "modulationTriple",
             "definitionVersion": 1,
-            "position": { "x": 115.20001, "y": 702.0 },
+            "position": { "x": 354.88531, "y": 475.54047 },
             "parameters": {
                 "yellowSource": "voiceTime",
                 "yellowController": 1,
@@ -488,7 +488,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 100.0, "y": 863.0 },
+            "position": { "x": 339.6853, "y": 636.54047 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -798,7 +798,20 @@
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
-    "probes": [],
+    "probes": [
+        {
+            "id": "probe",
+            "sourceNodeId": "globalInput",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "delay",
+            "anchorDestPortId": "time",
+            "label": "Spy 1",
+            "tapPosition": 0.5,
+            "railOrder": 0,
+            "canvasX": 242.1369,
+            "canvasY": 1174.39026
+        }
+    ],
     "presetPresentation": {
         "version": 1,
         "tags": [ "Wind" ],

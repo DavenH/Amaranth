@@ -757,6 +757,18 @@
             "railOrder": 0,
             "canvasX": 2568.54736,
             "canvasY": 561.59821
+        },
+        {
+            "id": "probe2",
+            "sourceNodeId": "globalInput",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "delay",
+            "anchorDestPortId": "time",
+            "label": "Spy 2",
+            "tapPosition": 0.5,
+            "railOrder": 1,
+            "canvasX": 278.42664,
+            "canvasY": 1116.245
         }
     ],
     "presetPresentation": {

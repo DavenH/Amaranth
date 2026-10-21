@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -975,6 +976,18 @@
             "railOrder": 0,
             "canvasX": 2968.60327,
             "canvasY": 549.33862
+        },
+        {
+            "id": "probe2",
+            "sourceNodeId": "globalInput",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "delay",
+            "anchorDestPortId": "time",
+            "label": "Spy 2",
+            "tapPosition": 0.5,
+            "railOrder": 1,
+            "canvasX": 315.79126,
+            "canvasY": 1670.29834
         }
     ],
     "presetPresentation": {
