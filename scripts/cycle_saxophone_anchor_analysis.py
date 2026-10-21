@@ -39,26 +39,27 @@ def energy_envelope(channels, rate):
     return times, rms
 
 
-def spectral_trace(channels, rate, pitch_frames, harmonic_count=HARMONICS):
+def spectral_trace(channels, rate, pitch_frames, harmonic_count=HARMONICS,
+                   fft_size=FFT_SIZE, hop_seconds=HOP_SECONDS):
     """Hann spectral-band energy around supplied f0; does not estimate pitch.
 
     The complement of harmonic bands includes noise, room/release sound,
     unresolved modulation and FFT leakage. It is not a separated noise stem.
     """
-    hop = round(rate * HOP_SECONDS)
-    padded = np.pad(channels, ((0, 0), (FFT_SIZE // 2, FFT_SIZE // 2)))
-    frames = np.lib.stride_tricks.sliding_window_view(padded, FFT_SIZE, axis=1)[:, ::hop]
-    window = np.hanning(FFT_SIZE)
+    hop = round(rate * hop_seconds)
+    padded = np.pad(channels, ((0, 0), (fft_size // 2, fft_size // 2)))
+    frames = np.lib.stride_tricks.sliding_window_view(padded, fft_size, axis=1)[:, ::hop]
+    window = np.hanning(fft_size)
     transformed = np.fft.rfft(frames * window, axis=2)
-    channel_power = abs(transformed) ** 2 * 2 / (FFT_SIZE * np.sum(window ** 2))
+    channel_power = abs(transformed) ** 2 * 2 / (fft_size * np.sum(window ** 2))
     channel_power[:, :, [0, -1]] *= .5
     power = np.mean(channel_power, axis=0)
     times = np.arange(len(power)) * hop / rate
     pitch_times = np.array([frame["timeSeconds"] for frame in pitch_frames])
     pitch_frequencies = np.array([frame["frequencyHz"] for frame in pitch_frames])
     f0 = np.interp(times, pitch_times, pitch_frequencies)
-    frequencies = np.fft.rfftfreq(FFT_SIZE, 1 / rate)
-    bandwidth = 2 * rate / FFT_SIZE
+    frequencies = np.fft.rfftfreq(fft_size, 1 / rate)
+    bandwidth = 2 * rate / fft_size
     channel_harmonic_power = []
     covered = np.zeros(power.shape, dtype=bool)
     for harmonic in range(1, harmonic_count + 1):
@@ -143,6 +144,36 @@ def phase_targets(channels, rate, pitch_frames, body_end):
                          for index, channel in enumerate(channels)],
             "maxBodyDeviationDegrees": np.degrees(np.max(abs(differences), axis=0)).tolist(),
             "rmsBodyDeviationDegrees": np.degrees(np.sqrt(np.mean(differences ** 2, axis=0))).tolist()}
+
+
+def half_lattice_profile(channels, rate, pitch_frames, start, end, harmonic_count=64):
+    """Project onto the known f0/2 grid; this does not establish subharmonic pitch."""
+    half_path = [{**frame, "frequencyHz": frame["frequencyHz"] * .5} for frame in pitch_frames]
+    fits = [harmonic_phase(channel, rate, half_path, start, end, harmonic_count) for channel in channels]
+    indices = np.arange(1, harmonic_count + 1)
+    phases = np.array([np.angle(np.exp(1j * (np.array(fit["relativePhaseRadians"])
+                                             + indices * fit["fundamentalPhaseRadians"]))) for fit in fits])
+    reference = phases[0, 1]
+    return {"startSeconds": start, "endSeconds": end,
+            "leftMainCoefficientPhaseRadians": float(reference),
+            "channelPeakAmplitudes": [fit["peakAmplitudes"] for fit in fits],
+            "phaseRelativeToLeftMainRadians": np.angle(np.exp(1j * (phases - indices * reference / 2))).tolist(),
+            "channelWeightedResidualRms": [fit["weightedResidualRms"] for fit in fits],
+            "policy": "Joint Hann-weighted projection onto canonical f0/2 lattice; phase refers to left f0 component, not an independently tracked suboctave"}
+
+
+def off_harmonic_noise(trace, rate, fft_size=FFT_SIZE):
+    """Measure the spectral bed between known harmonics, retaining leakage caveats."""
+    frequencies, f0 = trace["frequencies"], trace["f0"]
+    nearest = np.rint(frequencies[None, :] / f0[:, None])
+    excluded = ((nearest >= 1) & (nearest <= HARMONICS)
+                & (abs(frequencies[None, :] - nearest * f0[:, None]) <= 2 * rate / fft_size))
+    remaining = np.where(excluded, 0, trace["power"])
+    bands = ((30, 500), (500, 1500), (1500, 4000), (4000, 10000), (10000, 20000))
+    band_power = np.array([np.sum(remaining[:, (frequencies >= low) & (frequencies < high)], axis=1)
+                           for low, high in bands]).T
+    return {"bandsHz": bands, "rms": np.sqrt(band_power),
+            "fraction": np.sum(remaining, axis=1) / np.maximum(trace["totalPower"], 1e-24)}
 
 
 def envelope_error(source_times, source_rms, render_times, render_rms, start, end, gain):

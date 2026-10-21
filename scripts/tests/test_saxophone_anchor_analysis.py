@@ -15,7 +15,7 @@ except ImportError:
 if np is not None:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     from cycle_reference_study import file_digest
-    from cycle_saxophone_anchor_analysis import (bridge_measurement, compare_render, energy_envelope, harmonic_phase,
+    from cycle_saxophone_anchor_analysis import (bridge_measurement, compare_render, energy_envelope, half_lattice_profile, harmonic_phase,
                                                 spectral_trace, summarize_interval)
 
 
@@ -56,6 +56,19 @@ class AnchorMeasurementsTest(unittest.TestCase):
         np.testing.assert_allclose(measured["relativePhaseRadians"], expected, atol=1e-8)
         fundamental = np.angle(np.exp(1j * (theta[round(.2 * rate)] + phases[0])))
         self.assertAlmostEqual(measured["fundamentalPhaseRadians"], fundamental, places=8)
+
+    def test_known_half_harmonics_are_distinct_from_main_integer_basis(self):
+        rate, frequency = 48000, 293.7
+        times = np.arange(round(.1 * rate)) / rate
+        theta = 2 * np.pi * frequency * times
+        signal = (.1 * np.cos(theta + .3) + .02 * np.cos(theta / 2 + .4)
+                  + .03 * np.cos(theta * 1.5 - .2))
+        path = [{"timeSeconds": 0, "frequencyHz": frequency},
+                {"timeSeconds": .1, "frequencyHz": frequency}]
+        measured = half_lattice_profile(signal[None, :], rate, path, 0, .05, harmonic_count=8)
+        np.testing.assert_allclose(measured["channelPeakAmplitudes"][0][:3], [.02, .1, .03], atol=1e-10)
+        self.assertAlmostEqual(measured["phaseRelativeToLeftMainRadians"][0][2], -.65, places=8)
+        self.assertLess(measured["channelWeightedResidualRms"][0], 1e-10)
 
     def test_render_comparison_uses_one_global_gain_and_reports_missing_tail(self):
         rate = 48000

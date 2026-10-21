@@ -45,7 +45,10 @@ def harmonic_model(controls, anchors, channel, phase=False):
     coordinates = controls["spectralAuthoring"]
     if coordinates["harmonicCount"] < HARMONIC_COUNT:
         raise ValueError("Spectral frame does not cover the chosen harmonic targets")
-    positions = [0, *coordinates["positions"][:HARMONIC_COUNT], 1]
+    # Stop at the next actual harmonic so the final fitted partial does not
+    # interpolate across every unused bin toward a distant display-edge zero.
+    stop_poles = int(coordinates["harmonicCount"] > HARMONIC_COUNT)
+    positions = [0, *coordinates["positions"][:HARMONIC_COUNT + stop_poles], 1]
     times = (0, VOICE_SECONDS) if phase else SPECTRAL_TIMES
     if phase:
         phases = np.array([anchor["phaseTargets"]["channels"][channel]["settled"]["relativePhaseRadians"]
@@ -58,7 +61,7 @@ def harmonic_model(controls, anchors, channel, phase=False):
         phases[1] = phases[0] + np.angle(np.exp(1j * (phases[1] - phases[0])))
         coefficients = np.array(coordinates["phaseScales"][:HARMONIC_COUNT])
         values = .5 + phases / (2 * coefficients)
-        values = np.pad(values, ((0, 0), (1, 1)), constant_values=.5)
+        values = np.pad(values, ((0, 0), (1, 1 + stop_poles)), constant_values=.5)
         amplitudes = np.repeat(values[:, None, :], len(times), axis=1)
     else:
         targets = np.array([[profile(anchor, seconds, channel) for seconds in times]
@@ -66,7 +69,7 @@ def harmonic_model(controls, anchors, channel, phase=False):
         # A real cosine's normalized positive-frequency FFT magnitude is A / 2.
         amplitudes = (targets / (2 * coordinates["additiveUnitScale"])) ** (
                 1 / coordinates["additiveExponent"])
-        amplitudes = np.pad(amplitudes, ((0, 0), (0, 0), (1, 1)))
+        amplitudes = np.pad(amplitudes, ((0, 0), (0, 0), (1, 1 + stop_poles)))
     if not np.isfinite(amplitudes).all() or np.min(amplitudes) < 0 or np.max(amplitudes) > 1:
         raise ValueError("Harmonic targets exceed the inspected model's authoring range")
     vertices, cubes = [], []

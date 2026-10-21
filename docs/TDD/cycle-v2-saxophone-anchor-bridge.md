@@ -1,9 +1,135 @@
 # Saxophone reference anchors and first bridge
 
-Status: First two anchors and shared bridge implemented; acoustic listening
-acceptance remains open. The user approved fitting convincing individual reference
-models before unifying their expression. This supersedes extending the inherited
-factory timbre with further generic controller routes as the immediate task.
+Status: Compact reed-source/body-filter prototype implemented; acoustic listening
+acceptance and the full expressive instrument remain open. The user approved the earlier two-reference fitting
+experiment, then directed a simpler synthesis model that can generalize across
+notes. Dense harmonic fits remain discovery evidence and comparison captures.
+
+## Listening revision: a compact reed pulse and shared body response
+
+The first pair follows instantaneous timbre and amplitude reasonably closely,
+but sounds sterile and misses breath/grain, a faint lower-octave impression and
+the louder attack's brief instability. The user's next direction is a small,
+editable time-domain reed source feeding a body response. More independently
+fitted harmonic poles are outside this revision.
+
+Author a few visible normalized pulse knots in one Trimesh, with two full-scale
+copies over its cycle. Voice Context runs one octave below the played note:
+identical copies restore the nominal fundamental. During onset, make the
+copies deliberately asymmetric and fade them to exact symmetry for the settled
+body. This gives the transient's odd half-harmonics a low-dimensional cause;
+it does not assert that the measured pitch has a large octave glide. Keep the
+source's amplitude normalization and the pulse's useful shape controls explicit.
+
+Put the existing factory component-guide grains directly on the reed mesh,
+with phase/timing chosen around the pulse. Use existing interpolation and guide
+machinery. Grain is part of the excitation, rather than a separate added noise
+branch or a reconstructed recording residual. CC2 should move an audible reed
+shape/pressure dimension; optional CC3 drives a meaningful instability dimension
+through a local source connection. Controller names alone do not establish
+useful expression.
+
+Feed that source into the existing per-voice Impulse Response node, using a
+fixed-Hz body kernel and canonical imported-audio resources. The body stage is
+strictly multiplicative filtering: it can emphasize or attenuate source energy,
+but cannot supply harmonics absent from the reed. Avoid an additive harmonic
+bed disguised as a body response. Keep the same compact source and body model
+across the first register trials; do not create a separate response per note.
+
+Test multiple low/middle/high notes early, alongside both reference layers,
+intermediate CC2 values and held controller sweeps. Expose failures of onset,
+noise, pitch and register behavior while the model is still small. Retain raw
+source comparisons, frozen harmonic-only captures and exact render identities;
+spectral improvement supports the work, while resemblance and taste require
+listening. Shared endpoint, reload and seeded-repeatability checks still apply.
+
+The graph should read as reed -> body IR -> breath gain -> articulation -> Voice
+Out, with gain controls below their multipliers, local instability beside the reed, shared
+Voice Context/controls above-left and separate global I/O. Reserve every actual
+card and output spy footprint. Verify the native scene for visible cards and
+short unobstructed joins. The twelve-node model includes separate CC2 gain:
+narrowing a normalized pulse reduces its energy, so pressure needs an explicit
+level mapping rather than sacrificing visible source geometry.
+
+The original sections below document the completed dense harmonic experiment
+and its frozen evidence. Its spectral authoring and stereo-routing details are
+historical, rather than requirements for the current reed/body implementation.
+
+## Compact core implementation and evidence
+
+`cycle-v2/content/presets/reed-saxophone.cyclegraph` contains one normalized
+five-point kick repeated twice, one common body IR, separate breath gain and
+volume articulation. There is no spectral mesh/IFFT or retired stereo node.
+CC2 narrows the closure and raises breath gain; CC1 changes attack speed; CC3
+retains alternating closure. The embedded thirteen-second phrase covers low,
+middle and high notes, pressure sweeps and the instability control. These
+controls demonstrate the core, not completed connected articulation or vibrato.
+
+The shared response has two damped modes, centered at 500/2200 Hz with
+bandwidths 450/1000 Hz and relative modal peaks 1/0.4. The offline recipe
+authors response data; existing IR preparation owns trimming and editable-curve
+modelling, and existing convolution owns sound generation. Semantic automation
+now imports that resource in one undoable edit. The actual imported result is
+215 retained samples, a 256-sample kernel and 37 curve vertices. Keep the
+48 kHz authoring/playback limitation explicit (queue M11).
+
+The complete preset has twelve nodes, ten edges, 160 mesh vertices/25 cubes
+and 39 curve vertices including the Guide. The preceding dense bridge had
+4,624 vertices/928 cubes. All three tested notes (standard MIDI 48/62/72) use
+the identical reed geometry and IR at CC2 32/127; there are no per-note fits.
+
+Final artifacts are under `.context/sax-reed-core/ready/`. Verification checks
+exact seeded repeats, grain ablation, repeated Guide edits after reopening,
+zero breath silence and deliberate CC3 asymmetry. With Guide noise zero, the
+settled odd/even half-frequency-grid power ratio is −98.08 dB before the IR and
+−101.53 dB after it. The filtered onset is −14.75 dB and persistent CC3 closure
+asymmetry gives −14.67 dB. Convolution therefore preserves the settled missing
+bins; transient odd energy comes from the reed. Grain changes actual PCM.
+
+The six consumed developmental references yield approximately 4.90 dB
+RMS-matched harmonic RMSE and 3.65 dB broad-band RMSE in the common body
+interval. Pressure increases both RMS and centroid at every tested pitch.
+The upper loud register remains too dark (982 Hz centroid versus 1,534 Hz in
+its source); quiet low-register color also needs refinement. Measurements are
+in `.context/sax-reed-core-analysis/ready-runtime-assessment.json`. They are
+not independent validation or perceptual acceptance.
+
+The listening page retains all 32 full originals and adds six paired first
+1.5-second excerpts. Each synth receives one declared scalar RMS match over
+0.4–1.4 seconds; raw synth excerpts and seven full raw auditions, including the
+phrase, retain actual levels. There is no time or frequency alignment. The
+original frozen harmonic captures and unsuccessful dense texture experiments
+remain under `.context/`; unused dense texture authoring code was removed.
+The original anchor fitter retains only a next-harmonic zero stop-pole fix,
+preventing its final fitted partial from extending across unused high bins.
+
+Reproduce after building the exact app:
+
+```sh
+.context/pr7-audition-reports/.context/venv/bin/python scripts/create_cycle_v2_reed_saxophone.py \
+    --no-build --output-dir .context/sax-reed-core/new-run
+.context/pr7-audition-reports/.context/venv/bin/python scripts/cycle_saxophone_reed_audit.py \
+    --results .context/sax-reed-core/new-run/results.json \
+    --profiles .context/sax-reed-core-analysis/reed-core-analysis.json \
+    --output-dir .context/sax-reed-core/new-run
+python3 scripts/create_saxophone_reference_audit.py --include-reserved \
+    --comparisons .context/sax-reed-core/new-run/comparisons.json
+```
+
+The six reference paths and identities are required local developmental input;
+the installed preset embeds its body resource and needs no source recordings.
+
+Final native checks opened the installed preset in owned PID 1653: all twelve
+nodes and the output spy are visible without overlap; main audio joins are
+horizontal and pressure enters vertically. The editor shows the two visible
+reed pulses. Native PLAY/stop exercises the embedded phrase with nonzero output
+and no dropped MIDI, then returns to zero active voices. The app remains open
+with CC2 preview at 96 and playback stopped. Screenshots and state proof are
+`ready/finalgraph.png`, `ready/reed-editor.png` and `ready/native-review-proof.json`.
+Browser checks pass all 32 references, six pairs, seven raw auditions, seeking,
+notes/export and compact responsive layout. Focused IR import, canonical
+resource-publication and analysis tests pass; build, architecture, code-map
+and diff checks pass. Listening acceptance remains open.
 
 ## Musical target
 

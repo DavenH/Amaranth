@@ -153,8 +153,8 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Cycle 2 node feature | matching `cycle-v2/src/Nodes/<Domain>/` | Keep model, DSP, editor, panel, and rendering responsibilities local. |
 | Canvas interaction/rendering | `cycle-v2/src/UI/NodeCanvas*.{h,cpp}` | Keep `NodeCanvas` orchestration-only; reuse scene and policy collaborators. |
 | UI regression | `docs/cycle-agent-runbook.md` | Use the smallest fixture and inspect filtered logs first. |
-| Explained examples / sax studies | `scripts/render_cycle_v2_exemplars.py`, `scripts/run_cycle_v2_saxophone_study.py`, `scripts/run_cycle_v2_saxophone_calibration.py`, `scripts/create_cycle_v2_saxophone_articulation.py`, `scripts/create_cycle_v2_saxophone_anchors.py` | Reuse canonical spectral coordinates, semantic edits, reference evidence and repeatable renders. |
-| Audition comparisons / reference listening | `scripts/report_cycle_auditions.py`, `scripts/create_saxophone_reference_audit.py`, `scripts/cycle_study_artifacts.py` | Reuse saved metadata, original levels, provenance and immutable study boundaries. |
+| Explained examples / sax studies | `scripts/create_cycle_v2_saxophone_articulation.py`, `scripts/create_cycle_v2_saxophone_anchors.py`, `scripts/create_cycle_v2_reed_saxophone.py` | Author expressive, measured-anchor and compact reed/body studies through canonical edits and audio capture. |
+| Audition comparisons / reference listening | `scripts/report_cycle_auditions.py`, `scripts/create_saxophone_reference_audit.py`, `scripts/cycle_saxophone_reed_audit.py`, `scripts/cycle_study_artifacts.py` | Reuse saved metadata, declared levels, provenance and immutable study boundaries. |
 | Labelled reference / pitch evidence | `scripts/cycle_reference_study.py`, `scripts/cycle_reference_pitch_evidence.py`, `scripts/cycle_saxophone_anchor_analysis.py` | Reuse cached analysis; retain confidence and effective pitch-path provenance. |
 | Preset/graph persistence | `GraphSerializer.h`, product `content/` | Preserve migrations and canonical on-disk formats. |
 
