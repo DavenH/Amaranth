@@ -1,5 +1,30 @@
 # Audio Bug Notes
 
+## P2: Unipolar sustain floor attenuates a measured release below half scale
+
+On 2026-10-21, the layer-2 saxophone anchor in
+`.context/sax-anchor-fit/iteration-07/tenor-anchor-layer-2.cyclegraph` matches
+the reference body but its captured output drops roughly 6–8 dB immediately
+after the selected 6.75-second note-off. The reference has a gradual tail.
+The paired layer-3 anchor retains its release at 5.82 seconds. Raw audio and
+comparison plots are in the same iteration directory.
+
+Source review explains the difference: the layer-2 volume envelope has sustain
+amplitude 0.22281961; shared `EnvelopeSustainPointPolicy` inserts a point just
+after sustain with amplitude at least 0.5. Unipolar `EnvelopeReleasePolicy`
+starts at that inserted point, and `EnvelopePlaybackEngine::beginRelease`
+scales the following tail by sustain level divided by its sampled release
+level. The predicted later-tail factor is 0.44563922 (−7.0203 dB). Layer 3's
+sustain amplitude 0.7656227 exceeds the floor, so its scale remains one.
+The inserted point may preserve the very first release sample while the later
+authored tail acquires the lower scale.
+
+Status: open; this is a suspicious interaction with an existing shared/legacy
+guard, not a proposed policy removal. Reproduce with a focused envelope
+contract before changing playback or compatibility. The content workaround
+factors each anchor's gain so its sustain exceeds half scale, then recaptures
+the endpoints/bridge. Queue item M08 records discovery and invariance criteria.
+
 ## P2: Long reference imports omit the tail without an explicit truncation flag
 
 On 2026-10-21, preparation of the downloaded saxophone references found

@@ -154,6 +154,139 @@ preserve exact-instance provenance and expose dropouts/overruns. Until then,
 use exported `PatternPlaybackSchedule` for repeatable phrase WAVs and separate
 native Play/state checks for the app workflow.
 
+## M05 — Canonical spectral coordinates and authoring coefficients
+
+Status: Implemented and verified for the anchor/bridge fitter. The exact app
+build passed and the focused spectral-authoring test passed 201 assertions.
+
+Musical task: turn measured harmonic amplitudes and phases into corresponding
+mesh poles at one pitch, then retain harmonic identity while testing a nearby
+pitch and a shared expression bridge.
+
+Evidence: scalar physical-parameter conversion and mesh replacement existed,
+but inspection did not expose harmonic display coordinates or additive/phase
+operand scaling. The runtime samples `LogRegionMapping(midiNote + 12)` at a
+fixed 44.1 kHz mapping, applies a graph-dependent additive magnitude transfer,
+and scales phase by harmonic index. Treating mesh amplitude as an FFT magnitude
+or interpolating arbitrary frequency positions produces an incorrect fit.
+
+Owner/resolution: `SynthesisCapabilities::spectralAuthoring`, reached through
+`inspectNodeControls` with a standard `midiNote` and explicit render
+`cycleFrames`, delegates to existing mapping, FFT and spectral-layer owners.
+It exports positions, harmonic cap, key position, unipolar additive unit
+scale/exponent and bipolar phase scales, including node gain/range. Host fitting
+uses these observations instead of duplicating DSP mapping algorithms.
+
+Acceptance: exported MIDI-62 coordinates and coefficients agree with canonical
+cores; authored target magnitudes survive the actual transfer; a smaller FFT
+caps the returned harmonics while retaining their coordinates; invalid notes
+and unsupported frame sizes fail explicitly. No runtime state or policy changes.
+
+## M06 — Semantic cable-panning authoring from automation
+
+Status: A semantic cable-panning command is a workflow opportunity. The initial missing-node
+interpretation is withdrawn: panning belongs to cables, and the user explicitly
+requires avoiding retired Stereo Split/Join nodes.
+
+Musical task: retain each reference channel's harmonic model using hard-panned
+IFFT branches summed through the ordinary time-domain Add operation.
+
+Evidence: iteration 01's `addNode` request for `spectralLayer` fails, but this
+type is the internal transport for cable panning, rather than a missing
+standalone synthesis node. `NodeCanvasAuthoring::insertPanIntoEdge` creates
+that internal node and splices it into an existing cable through graph
+commands and one compound undo. Scene presentation collapses its two durable
+edges into a single cable with an inline headset. `removePanFromCable` reverses
+the operation. Existing generic parameter commands can set an installed pan's
+`pan` value; automation does not expose cable insertion/removal semantically.
+
+Owner/direction: expose a cable-panning command through the existing authoring
+service, retaining its splice, validation and undo behavior. Capability
+discovery should distinguish cable transport and retired serialization types
+from ordinary creatable nodes. Do not add `spectralLayer` to generic node
+creation or restore Split/Join as the remedy. Acceptance: agents can add,
+adjust and remove panning on an addressed compatible cable, with undo/reload
+and the existing inline presentation; incompatible cables reject atomically.
+
+## M07 — Construct a complete valid topology through semantic automation
+
+Status: Confirmed incremental-construction deadlock; complete content import
+avoids blocking the current fit.
+
+Musical task: build two spectral IFFT branches, hard-pan their output cables,
+sum them, apply the shared volume envelope and terminate at Voice Output using
+semantic commands.
+
+Evidence: iteration 04 rejects `multiply.out -> voiceOutput.time`. Iteration 05
+retries every remaining connection, including explicitly typed magnitude/phase
+mesh inputs and Voice Context attachments; none is accepted. Only
+`globalInput.time -> output.time` succeeds. Commands, failures and the configured
+disconnected nodes are retained under `.context/sax-anchor-fit/iteration-05/`,
+including `incomplete-graph.cyclegraph` and `results.json`.
+
+Source diagnosis: `GraphAudioValidationFacts` collapses all unconsumed linked
+stereo voice outputs into one `AmbiguousVoiceOutput` issue: `Voice audio path
+does not terminate at Voice Output`. `GraphValidator::acceptsProposedIssues`
+requires a strictly smaller issue count while any issues remain. Each partial
+voice connection leaves that same aggregate issue before and after, so even a
+valid connection fails until several edges exist together. The global edge
+succeeds because it removes global reachability issues. This is an authoring
+transaction limitation rather than a domain or synthesis limitation; changing
+connection order does not resolve this graph's remaining aggregate constraint.
+
+Current workaround: export the canonically configured nodes, declare all
+topology edges in a new content fixture, open it through the existing graph
+loader/validator, then apply fitted models through `applyNodeEdits`. Preserve
+the rejected experiments. Current routing declares the existing hidden
+`spectralLayer` cable-pan transport on each IFFT-to-Add cable; it uses no
+Stereo Split/Join nodes. No production UI or engine graph mutation is added.
+
+Owner/direction: graph command transactions and automation result encoding.
+Provide a complete semantic topology edit whose full candidate is validated
+before commit, using existing graph validation/undo/publication owners. Keep
+rejection atomic and expose structured validation causes through automation
+instead of only `Could not connect`. Acceptance: this two-branch topology is
+constructible without manual JSON assembly; invalid final graphs still fail
+without document changes, and successful construction supports undo/reload.
+
+## M08 — Gain factoring changes release shape below the sustain floor
+
+Status: Confirmed unexpected interaction with the shared legacy sustain-floor
+policy; engine changes are outside the anchor-fit slice.
+
+Musical task: factor measured note amplitude into a volume envelope and a
+normalized harmonic model without changing the resulting attack/body/tail.
+
+Evidence: iteration 07's layer-2 anchor matches the body but drops roughly
+6–8 dB just after the selected 6.75-second note-off, while the source tail
+decays gradually. Its authored sustain amplitude is 0.22281961. Layer 3's
+0.7656227 sustain has no comparable mismatch at its selected 5.82-second
+note-off. Presets, source identities and raw captures remain under
+`.context/sax-anchor-fit/iteration-07/`.
+
+Source diagnosis: `EnvelopeSustainPointPolicy` inserts a post-sustain point at
+`sustain.x + 0.0001`, raising its amplitude to at least 0.5 for every non-bipolar
+envelope. `EnvelopeReleasePolicy` begins unipolar release at `sustainIndex + 1`;
+the playback engine normalizes the remaining release against that inserted
+point. Layer 2 therefore scales its later authored tail by
+`0.22281961 / 0.5 = 0.44563922`, or −7.0203 dB. Layer 3's inserted point retains
+its original amplitude, producing unity release scale. This is shared mature
+behavior, not a new saxophone-specific rule or a measured acoustic technique.
+
+Current authoring workaround: normalize each anchor envelope by its own peak
+RMS and transfer that peak gain into the corresponding harmonic magnitudes.
+The endpoint product is retained while both sustain amplitudes exceed 0.5;
+recapture endpoints and test the resulting shared bridge. A workaround does
+not establish gain-factorization invariance in the engine.
+
+Owner/direction: shared envelope materialization, sustain insertion and release
+playback, with a concise discovery description for agents. Preserve intended
+legacy behavior before proposing a policy change. Acceptance: equivalently
+factored amplitude envelopes reproduce the same physical release across
+sustain values below/above 0.5, or discovery explicitly exposes the exception
+and its supported representation. Track the audible regression evidence in
+[audio-bugs.md](audio-bugs.md); do not silently fit away the source tail.
+
 ## Related defects, tracked separately
 
 - Reference exports label Cycle-internal note values as MIDI; see

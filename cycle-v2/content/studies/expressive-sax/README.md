@@ -18,6 +18,60 @@ Run its objective and audit stages with
 `scripts/run_cycle_v2_saxophone_calibration.py`; the runbook describes the local
 corpus layout.
 
+## Reference anchors and first bridge
+
+The first anchor pair fits the VCSL tenor Non-Vibrato D3 layer-2 and layer-3
+recordings. These source layer labels are not calibrated dynamics. Both are
+developmental inputs now; the calibration's earlier reserved partition remains
+historical. Sounding pitch is approximately 293.66 Hz, standard MIDI 62.
+
+Open [tenor-anchor-layer-2.cyclegraph](../../presets/tenor-anchor-layer-2.cyclegraph)
+or [tenor-anchor-layer-3.cyclegraph](../../presets/tenor-anchor-layer-3.cyclegraph)
+for a fixed reference model. Their embedded note plays the fitted full contour;
+CC2 is inactive. Open [tenor-anchor-bridge.cyclegraph](../../presets/tenor-anchor-bridge.cyclegraph)
+for the shared CC2 interpolation and press Play for its 13-second MIDI/controller
+phrase. The graph uses independent channel harmonic shapes, cable panning, an
+ordinary Add and a shared live volume envelope. It contains no Split/Join nodes
+or sample playback assets.
+
+Both raw full-note levels match within 0.14 dB, and settled harmonic-envelope
+errors are substantially lower than the earlier expressive preset. This first
+fit retains 48 harmonics per channel, nine magnitude time knots and static
+settled phases. Geometry simplification, fine pitch fluctuations, breath/noise
+and broader register fidelity remain open. See the
+[anchor TDD](../../../../docs/TDD/cycle-v2-saxophone-anchor-bridge.md) for metrics
+and limits; acoustic resemblance and taste still need listening acceptance.
+
+With the pinned VCSL downloads in the documented local corpus, collect the two
+originals through the canonical reference library. Use a fresh output directory
+for each collection and fit. Build CycleV2 before passing `--no-build`. Python
+measurement/authoring requires `scripts/requirements-auditions.txt`.
+
+```sh
+python3 scripts/cycle_reference_study.py --no-build \
+  --study cycle-v2/content/studies/expressive-sax/anchor-references.json \
+  --output .context/sax-anchor-source-analysis
+python3 scripts/cycle_saxophone_anchor_analysis.py --plot \
+  --analysis-report .context/sax-anchor-source-analysis/report.json
+python3 scripts/create_cycle_v2_saxophone_anchors.py --no-build \
+  --analysis .context/sax-anchor-analysis/anchor-analysis.json \
+  --output-dir .context/sax-anchor-fit/run
+python3 scripts/create_saxophone_reference_audit.py --include-reserved \
+  --comparisons .context/sax-anchor-fit/run/comparisons.json
+open .context/saxophone-reference-audit/index.html
+```
+
+The listening page keeps every original and adds Source/Synth buttons on the
+two fitted rows. Search `D3` and select source `VCSL` to find them. The bridge
+strip auditions endpoints, intermediate settings, a held sweep, nearby notes
+and the embedded phrase. Notes retain hashes, timing/level policy and known
+residuals; browser annotations and exports preserve their existing format.
+The fit runner records engine/input/script identities, atomic model undo/redo,
+reload, raw source/baseline comparisons and a repeated nine-case bridge suite.
+Expected-frequency bands on nearby notes are diagnostic, not independent pitch
+or acoustic validation. It writes local presets; installing a selected result
+in the factory directory is a separate content step.
+
 ## Playable articulation preset
 
 Open [expressive-saxophone.cyclegraph](../../presets/expressive-saxophone.cyclegraph)
