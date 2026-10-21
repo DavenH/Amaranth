@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
     "formatVersion": 7,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -27,6 +28,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "time",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.317,
                 "red": 0.108,
@@ -174,6 +176,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralMagnitude",
+                "phaseMode": "absolute",
                 "polarity": "unipolar",
                 "yellow": 0.5,
                 "red": 0.411,
@@ -324,6 +327,7 @@
                 "gain": 0.5,
                 "range": 0.5,
                 "signalType": "spectralPhase",
+                "phaseMode": "absolute",
                 "polarity": "bipolar",
                 "yellow": 0.495,
                 "red": 0.0,
