@@ -506,16 +506,24 @@ bool NodeWorkspace::getNodeParameterForAutomation(
     return canvas.getNodeParameterForAutomation(nodeId, parameterId, value);
 }
 
-bool NodeWorkspace::setExplanationForAutomation(const String& nodeId, const String& text) {
-    return canvas.setExplanation(nodeId, text);
+bool NodeWorkspace::setExplanationForAutomation(const ExplanationTarget& target, const String& text) {
+    return canvas.setExplanation(target, text);
 }
 
-var NodeWorkspace::inspectExplanationForAutomation(const String& nodeId) const {
-    return canvas.inspectExplanation(nodeId);
+var NodeWorkspace::inspectExplanationForAutomation(const ExplanationTarget& target) const {
+    return canvas.inspectExplanation(target);
 }
 
-bool NodeWorkspace::openExplanationEditorForAutomation(const String& nodeId) {
-    return canvas.openExplanationEditor(nodeId);
+bool NodeWorkspace::openExplanationEditorForAutomation(const ExplanationTarget& target) {
+    return canvas.openExplanationEditor(target);
+}
+
+bool NodeWorkspace::setGroupInformationCardForAutomation(const String& id, std::optional<Point<float>> offset) {
+    return canvas.setGroupInformationCard(id, offset);
+}
+
+bool NodeWorkspace::setGroupInformationCardVisibleForAutomation(const String& id, bool visible) {
+    return canvas.setGroupInformationCardVisible(id, visible);
 }
 
 var NodeWorkspace::inspectNodeControlsForAutomation(const String& nodeId) const {

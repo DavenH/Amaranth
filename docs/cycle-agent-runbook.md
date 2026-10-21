@@ -97,6 +97,32 @@ It saves two candidate presets, command evidence and suite WAV/results, checking
 undo/redo, reload, rejection isolation, distinct nonzero audio and repeatability.
 Build the exact app first; it attaches through the canonical coordinator/session.
 
+## Group Explanations And Information Cards
+
+`inspectSynthesisCapabilities.explanations` advertises the supported scopes and
+canonical commands. Use `scope: "group"` with `groupId` for group rationale;
+node targets require `nodeId`, and preset targets carry neither ID. The same
+`setExplanation` / `inspectExplanation` commands serve all three scopes.
+
+`setGroupInformationCard` takes group scope, a boolean `visible`, and an optional
+`offset: {"x": 0, "y": 260}` in world units relative to the group's member-bounds
+origin. Without an offset, Show reuses an enabled placement or derives a default.
+Hide retains the rationale. Clearing rationale retains placement but suppresses
+its view. `openExplanationEditor` opens the same local-draft editor for any scope.
+No note/card command changes the synthesis graph revision or prepares audio.
+
+Run the focused exact-instance integration check after building the app:
+
+```sh
+python3 scripts/test_cycle_v2_group_explanations.py --no-build \
+    --output-dir .context/group-explanation-check
+```
+
+It creates a group through existing canvas gestures, checks strict rejection,
+shared editing, two local card-drag previews, commit/undo/redo, collapse,
+hide/clear and reload. Its saved graph and screenshots stay in the output folder.
+Native AppKit/JUCE delivery still requires the native smoke route below.
+
 ## Native macOS Edit Smoke
 
 In-app `pointer` commands call component methods directly and do not verify

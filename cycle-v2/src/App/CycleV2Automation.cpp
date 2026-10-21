@@ -386,6 +386,7 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return workspaceCommands->inspectNodeControls(commandValue);
         case Command::InspectExplanation:
         case Command::SetExplanation:
+        case Command::SetGroupInformationCard:
         case Command::OpenExplanationEditor:
             return workspaceCommands->explanation(commandValue);
         case Command::SetMorphSlider:

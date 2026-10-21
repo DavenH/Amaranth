@@ -2,7 +2,9 @@
 
 ## Status
 
-In Progress. Roadmap PR 2, based on merged master `984d1ff9`.
+In Progress. Roadmap PR 2. Implementation, focused tests and app-render review
+are complete; native AppKit/JUCE input acceptance is pending an unlocked Mac
+session. The branch started from merged master `984d1ff9`.
 
 ## Product contract
 
@@ -146,4 +148,76 @@ map budget. Run code-map, architecture, style and whitespace checks.
 
 ## Evidence
 
-Pending implementation and coordinated baseline capture.
+The exact standalone app and tests build with `standalone-debug` and
+`BUILD_TESTING=ON`. The final annotation/card group passes 21 cases and 588
+assertions; the ten existing group cases pass 128 assertions. Logs are
+`.context/group-information-tests.log`,
+`.context/group-information-existing-group-tests.log` and
+`.context/group-information-final-build.log` in the implementation worktree.
+The initial tests-preset app link omitted JUCE's application entry point; the
+standalone configuration above fixes that local harness mistake.
+
+The final exact-instance integration check passes 70 commands, including strict
+rejection with byte-identical graph/document/history state, shared group editor,
+two local placement previews followed by one commit/undo/redo, collapse,
+clear/hide and save/reload. Notes/card changes leave synthesis graph revision
+and causal preparation/publication events unchanged. Its canonical source is
+`scripts/test_cycle_v2_group_explanations.py`; evidence is
+`.context/group-information-final/{commands.jsonl,results.json}`. Core tests also
+cover explicit invalid scopes, no-op redo preservation, optional old fields,
+3-to-2 retention, 2-to-1 pruning/undo, ungroup/undo, inline-pan cable pruning,
+indexed group lookup/copy/overlay behavior, and zero unrelated work at 0/128
+unrelated nodes with mesh/audio resources. Native undo/redo skips guide-editor
+rebinding for annotation-only edits, as automation already did.
+
+App-rendered screenshots were inspected at 1728 × 962 and 1100 × 742. The
+normal-zoom view uses a scratch layout authored solely through existing
+`moveNode`/`saveGraph`/`openGraph` commands; factory graphs are untouched. Its zoom
+is 1.0014. `.context/group-information-normal.png` shows a roughly 300 × 88 card,
+14-pixel body, 26-unit header and balanced 10-unit insets. Collapsed, eight-line
+long-note continuation and compact-window states are
+`.context/group-information-normal-collapsed.png`,
+`.context/group-information-long.png` and `.context/group-information-narrow.png`.
+These are component/app renders, not OS-window/native-delivery proof. Whole-patch
+expanded/collapsed renders also live under `.context/group-information-final/`.
+
+Screenshot review caught and corrected the initial empty-AttributedString style
+loss; a first-run font/colour assertion protects the fix. Long cards use complete
+JUCE TextLayout line bounds for the eight-line cap and a Unicode continuation
+mark. The shared console continuation uses the same canonical JUCE Unicode
+construction, correcting the raw UTF-8 literal exposed by the long-note capture. Shared paint/hit/automation geometry protects header/body/close separation,
+reverse overlap order, stable world anchoring across collapse/zoom, movement and
+cached text layout after unrelated node movement.
+
+Native evidence remains outstanding. The exact-PID native harness stopped before
+sending any pointer/key input when its activation guard found front PID 392
+(loginwindow); `ioreg` confirmed `CGSSessionScreenIsLocked=Yes`. Its log is
+`.context/native-group-final.log`. After unlock, run the host integration check once to seed the focused group,
+then rerun the local
+`.context/native-group-explanations.py` via the exact coordinator with
+`--foreground` to verify native multiline draft/Save, undo/redo, two held-drag
+updates/commit, Escape, focused-card versus ordinary-node Delete, same-ID reload
+focus clearing, stale-editor dismissal, collapse and group movement. Do not mark
+this TDD complete from routed in-app gestures alone.
+
+## Size and responsibility review
+
+The Graph/history slice changes roughly 160 production lines plus focused tests.
+`GroupInformationCardPresentation` stays around 200 header/implementation lines;
+`NodeCanvasExplanations` is 212 lines. Their combined size exceeds the initial
+220–320 line estimate because the bounded cache, glyph layout, editor targeting,
+local gesture and focus lifecycle are all included. They retain separate
+presentation and orchestration ownership; no attachment framework, document
+snapshot, group-drag state machine or DSP policy was introduced.
+
+Existing size-triggered owners remain routing boundaries: `NodeCanvas` delegates
+card geometry/paint/cache and semantic edits, `NodeCanvas.h` owns the existing
+canvas widgets/gesture lifetime, `GraphSerializer` owns the one optional-field
+codec, `NodeCanvasAutomationInspector` exports the shared bounds, and
+`NodeWorkspace` forwards commands. The stable future extraction target for the
+large canvas/header remains sidebar/overlay composition. There are no new
+architecture-audit triggers, source-map entries or node kinds. The map still has
+100 entries. Architecture audit, code-map checker and whitespace/style diff
+review pass. The standalone test fixture now explicitly validates its
+spectralMagnitude signal routing before save/reload; its initial invalid
+geometry-only fixture was a test setup defect.

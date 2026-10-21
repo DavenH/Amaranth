@@ -745,6 +745,10 @@ void NodeCanvasPresentation::paintContent(
         GuideRelationshipPresentation::paintHighlights(graphics, frame);
     }
     paintAreaSelection(graphics, frame);
+    if (frame.informationCards != nullptr) {
+        frame.informationCards->paint(graphics, frame.viewport,
+                frame.focusedInformationGroup, frame.informationCardPreview);
+    }
     if (frame.canvasOcclusion.isEmpty()) {
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,

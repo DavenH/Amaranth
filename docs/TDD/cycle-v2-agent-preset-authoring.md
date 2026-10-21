@@ -8,8 +8,11 @@ The first wave is merged:
 [performance suites](https://github.com/DavenH/Amaranth/pull/184), and
 [reference studies](https://github.com/DavenH/Amaranth/pull/186).
 [Semantic candidate authoring](https://github.com/DavenH/Amaranth/pull/188) and
-[audition reports](https://github.com/DavenH/Amaranth/pull/187) are implemented in
-independent draft PRs. Remaining slices are proposed.
+[audition reports](https://github.com/DavenH/Amaranth/pull/187) are merged, along
+with [factory preset refinements](https://github.com/DavenH/Amaranth/pull/189).
+[Group explanations and cards](cycle-v2-group-explanations-cards.md) are in
+progress; annotated exemplars (slice 8) are being developed independently.
+Remaining slices are proposed.
 Expand each nontrivial slice with the exact files, rough size envelope, lifecycle
 contract, and negative tests required by [the TDD policy](README.md) before
 implementing it. Dependencies below describe required behavior, not a mandatory

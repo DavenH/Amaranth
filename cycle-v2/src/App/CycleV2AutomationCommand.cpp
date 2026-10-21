@@ -61,6 +61,7 @@ const std::pair<const char*, Command> commands[] {
             { "inspectNodeControls", Command::InspectNodeControls },
             { "inspectExplanation", Command::InspectExplanation },
             { "setExplanation", Command::SetExplanation },
+            { "setGroupInformationCard", Command::SetGroupInformationCard },
             { "openExplanationEditor", Command::OpenExplanationEditor },
             { "setMorphSlider", Command::SetMorphSlider },
             { "setPrimaryAxis", Command::SetPrimaryAxis },

@@ -63,10 +63,13 @@ public:
     ~NodeCanvas() override;
 
     bool saveGraphToFile(const File& file);
-    bool setExplanation(const String& nodeId, const String& text);
-    var inspectExplanation(const String& nodeId) const;
-    bool openExplanationEditor(const String& nodeId);
+    bool setExplanation(const ExplanationTarget& target, const String& text);
+    var inspectExplanation(const ExplanationTarget& target) const;
+    bool openExplanationEditor(const ExplanationTarget& target);
+    bool setGroupInformationCard(const String& groupId, std::optional<Point<float>> offset);
+    bool setGroupInformationCardVisible(const String& groupId, bool visible);
     const Node* explanationNodeAt(Point<float> position) const;
+    const NodeGroup* explanationGroupAt(Point<float> position) const;
     bool loadGraphFromFile(const File& file);
     void presetLoadWorkspaceStageCompleted(
             CanvasPerformanceMetrics::PresetLoadWorkspaceStage stage);
@@ -229,7 +232,18 @@ private:
     TooltipWindow tooltipHost { this, 500 };
     PresetExplanationButton presetInformation;
     Component::SafePointer<ExplanationEditor> explanationEditor;
-    String explanationEditorNodeId;
+    ExplanationTarget explanationEditorTarget;
+    uint64_t explanationEditorRevision {};
+    mutable GroupInformationCardPresentation informationCards;
+    String focusedInformationGroup;
+    struct InformationCardDrag {
+        String groupId;
+        Point<float> startPointer;
+        Point<float> startOffset;
+        Point<float> offset;
+        uint64_t documentRevision {};
+    };
+    std::optional<InformationCardDrag> informationCardDrag;
     NodeCanvasRenderer renderer;
     mutable NodeCanvasViewport viewport;
     bool documentViewportFitted {};
@@ -344,6 +358,13 @@ private:
             int controller = 1,
             int controllerValue = 0);
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
+    bool finishExplanationEdit(const GraphEditResult& result);
+    void updateInformationCards() const;
+    std::optional<GroupInformationCardPreview> informationCardPreview() const;
+    bool informationCardMouseDown(const MouseEvent& event);
+    bool informationCardMouseDrag(const MouseEvent& event);
+    bool informationCardMouseUp();
+    bool informationCardKey(const KeyPress& key);
     NodeCanvasAutomationPresentation automationPresentationState() const;
     void scheduleCompiledStateRefresh(
             PresentationRefreshScope scope = PresentationRefreshScope::Downstream);
