@@ -3089,8 +3089,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
         REQUIRE(group.getY() == Catch::Approx(panelBounds.getY() + 8.f));
         REQUIRE(group.getHeight() == Catch::Approx(24.f));
     }
-    REQUIRE(rangeGroupBounds.getX() - axisScaleBounds.getRight() == Catch::Approx(8.f));
-    REQUIRE(markerGroupBounds.getX() - rangeGroupBounds.getRight() == Catch::Approx(8.f));
+    REQUIRE(rangeGroupBounds.getX() - axisScaleBounds.getRight() == Catch::Approx(16.f));
+    REQUIRE(markerGroupBounds.getX() - rangeGroupBounds.getRight() == Catch::Approx(16.f));
     REQUIRE(rangeGroupBounds.contains(fitBounds));
     REQUIRE(rangeGroupBounds.contains(fullBounds));
     const auto requireActionIconMetrics = [&state](
@@ -5156,8 +5156,8 @@ TEST_CASE("Envelope uses the Trimesh composition and a full width editable curve
             const auto zoom = rectangleProperty(state, "rangeGroupBounds");
             REQUIRE(curveBounds.contains(scale));
             REQUIRE(curveBounds.contains(zoom));
-            REQUIRE(zoom.getX() - scale.getRight() == Catch::Approx(8.f));
-            REQUIRE(loop.getX() - zoom.getRight() == Catch::Approx(8.f));
+            REQUIRE(zoom.getX() - scale.getRight() == Catch::Approx(16.f));
+            REQUIRE(loop.getX() - zoom.getRight() == Catch::Approx(16.f));
             REQUIRE(zoom.getY() == Catch::Approx(loop.getY()));
             REQUIRE(scale.getY() == Catch::Approx(loop.getY()));
             const auto panel = state.getProperty("panelState", {});

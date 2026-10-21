@@ -71,7 +71,8 @@ left, morph controls and vertex properties above right, and a full-width editabl
 curve below. Static compacts to a curve beside the inspector. Envelope Scaling, Zoom and marker pairs
 overlay the curve's top-right corner using the shared IR Modeller button chrome,
 with markers at the right and no footer row. Use IR’s shared 24 px overlay
-button size, 4 px within-pair gap and matching glyph insets. Reserve useful
+button size, 4 px within-pair gap and matching glyph insets. Separate the three
+pairs by 16 px so their distinct purposes remain visible. Reserve useful
 preview scale before decorative space; selected morph corners use small solid
 accents rather than large rings.
 

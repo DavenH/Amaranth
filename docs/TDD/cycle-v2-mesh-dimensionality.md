@@ -734,7 +734,7 @@ Completion evidence:
 ## Follow-up: Complete the Envelope curve overlay
 
 Move the existing Scaling and Zoom controls beside the marker overlays, keeping
-markers at the right and an 8 px separation between the three pairs. Reuse the
+markers at the right and a 16 px separation between the three pairs. Reuse the
 shared overlay chrome for every button, retain the Linear/Logarithmic selection
 underline and purpose eligibility, and preserve the existing zoom callbacks.
 The actual curve viewport remains the geometry authority.
@@ -789,3 +789,13 @@ and whitespace checks pass; footer and legacy-size deletion targets complete.
 The final 26-command marker, 37-command IR property and 32-command purpose
 fixtures pass at the shared size. Evidence:
 `.context/envelope-tools-{markers,ir,purpose}-run.json`.
+
+Overlay spacing refinement: separate Scaling, Zoom and Marker pairs by 16 px,
+while retaining IR's 4 px gap within each pair and 8 px viewport inset. One
+presentation constant owns the group gap; the marker/right anchor is unchanged.
+Existing mode/width geometry checks cover containment, gap and curve extent.
+CycleV2/tests build with --parallel 10; five focused cases / 665 assertions,
+architecture, code-map and whitespace checks pass. Native run 53f6e90ac8c9
+captures compact Static and normal 3D; both reviewed at production size.
+Evidence: `.context/envelope-group-spacing-{tests,native}.log` and
+`envelope-group-spacing-{static,three}.png`.

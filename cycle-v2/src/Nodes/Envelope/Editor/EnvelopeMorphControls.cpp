@@ -10,6 +10,12 @@ using namespace juce;
 
 namespace CycleV2 {
 
+namespace {
+
+constexpr float kOverlayGroupGap = 16.f;
+
+}
+
 Rectangle<float> EnvelopeMorphControls::planeGroupLabelBounds(Rectangle<float> controls) const {
     const auto plane = planeBounds(controls);
     return plane.isEmpty() ? plane : plane.reduced(8.f, 5.f).removeFromTop(18.f);
@@ -60,12 +66,12 @@ Rectangle<float> EnvelopeMorphControls::markerGroupBounds(Rectangle<float> panel
 Rectangle<float> EnvelopeMorphControls::axisScaleBounds(Rectangle<float> panel) const {
     const auto zoom = rangeGroupBounds(panel);
     return zoom.withWidth(EnvelopeToolbarMetrics::scalingSelectorWidth)
-            .withX(zoom.getX() - 8.f - EnvelopeToolbarMetrics::scalingSelectorWidth);
+            .withX(zoom.getX() - kOverlayGroupGap - EnvelopeToolbarMetrics::scalingSelectorWidth);
 }
 
 Rectangle<float> EnvelopeMorphControls::rangeGroupBounds(Rectangle<float> panel) const {
     const auto markers = markerGroupBounds(panel);
-    return markers.translated(-markers.getWidth() - 8.f, 0.f);
+    return markers.translated(-markers.getWidth() - kOverlayGroupGap, 0.f);
 }
 
 Rectangle<float> EnvelopeMorphControls::axisGroupLabelBounds(
