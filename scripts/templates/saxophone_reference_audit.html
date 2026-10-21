@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saxophone reference listening</title>
+<style>
+  :root { color-scheme: light; --paper:#f7f6f1; --surface:#fffefa; --ink:#292c25; --muted:#696d62; --line:#dedfd5; --olive:#535d37; --wash:#edf0e2; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  button,input,select,textarea { font:inherit; }
+  button,select,input[type="search"] { min-height:36px; border:1px solid #cdd0c3; border-radius:6px; background:var(--surface); color:var(--ink); }
+  button { padding:6px 12px; cursor:pointer; }
+  button:hover:not(:disabled) { background:var(--wash); border-color:#a3ad8b; }
+  button:disabled { cursor:default; color:#85897d; background:#f0f0e9; }
+  :focus-visible { outline:2px solid var(--olive); outline-offset:3px; }
+  a { color:var(--olive); text-underline-offset:3px; }
+  main { max-width:1280px; margin:auto; padding:28px 28px 48px; }
+  header { display:flex; align-items:flex-start; gap:24px; justify-content:space-between; margin-bottom:22px; }
+  .eyebrow { margin:0 0 4px; color:var(--olive); font-size:11px; font-weight:650; letter-spacing:.11em; text-transform:uppercase; }
+  h1 { margin:0; font-size:30px; line-height:1.2; font-weight:650; letter-spacing:-.7px; }
+  .intro { margin:9px 0 0; color:var(--muted); }
+  #export-audit { flex:none; margin-top:7px; }
+  .player { position:sticky; top:0; z-index:2; display:grid; grid-template-columns:minmax(180px,1fr) auto minmax(260px,360px); gap:18px; align-items:center; padding:16px 0; margin-bottom:16px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); background:var(--paper); }
+  .player-copy { min-width:0; }
+  #now-playing { display:block; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #player-detail { display:block; color:var(--muted); font-size:12px; }
+  .transport { display:flex; gap:5px; }
+  .transport button { padding:6px 10px; }
+  #repeat[aria-pressed="true"] { background:var(--wash); border-color:var(--olive); box-shadow:inset 0 -2px var(--olive); }
+  audio { width:100%; height:38px; }
+  .filters { display:grid; grid-template-columns:minmax(190px,1.6fr) minmax(130px,1fr) minmax(160px,1fr) auto; align-items:end; gap:12px; }
+  .filter { display:flex; flex-direction:column; gap:5px; font-size:12px; color:var(--muted); }
+  .filter input,.filter select { width:100%; padding:6px 10px; font-size:14px; }
+  .available { display:flex; gap:7px; align-items:center; min-height:36px; white-space:nowrap; color:var(--ink); font-size:13px; }
+  input[type="checkbox"] { accent-color:var(--olive); width:15px; height:15px; }
+  .list-summary { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:16px 0 8px; color:var(--muted); font-size:12px; }
+  #reset-filters { min-height:28px; padding:2px 8px; font-size:12px; border-color:transparent; background:transparent; }
+  #track-list { padding:0; margin:0; list-style:none; border-top:1px solid var(--line); }
+  .track { border-bottom:1px solid var(--line); padding:13px 0; }
+  .track.active { background:var(--wash); box-shadow:-10px 0 var(--wash),10px 0 var(--wash); }
+  .track-main { display:grid; grid-template-columns:48px minmax(180px,1fr) 76px 126px 80px 44px 162px; align-items:center; gap:14px; }
+  .play-track { width:44px; height:36px; padding:4px 0; font-size:12px; }
+  .track-title { display:block; font-weight:600; line-height:1.35; overflow-wrap:anywhere; }
+  .instrument { color:var(--muted); font-size:12px; }
+  .track-metadata { display:contents; }
+  .metadata { font-size:12px; color:var(--muted); }
+  .pitch { color:var(--ink); }
+  .duration { text-align:right; font-variant-numeric:tabular-nums; font-size:12px; color:var(--muted); }
+  .votes { display:flex; justify-content:flex-end; gap:3px; }
+  .vote { min-height:30px; padding:3px 8px; font-size:12px; }
+  .vote[aria-pressed="true"] { border-color:var(--olive); background:var(--wash); font-weight:650; box-shadow:inset 0 -2px var(--olive); }
+  .track-details { margin:7px 0 0 62px; font-size:12px; color:var(--muted); }
+  .track-details summary { cursor:pointer; width:fit-content; }
+  .detail-body { display:grid; grid-template-columns:minmax(240px,1fr) minmax(220px,1fr); gap:24px; padding:10px 0 3px; }
+  .detail-body p { margin:0 0 7px; }
+  .filename { overflow-wrap:anywhere; font:11px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .audit-note { display:flex; flex-direction:column; gap:5px; color:var(--muted); }
+  textarea { width:100%; min-height:72px; padding:8px; border:1px solid #cdd0c3; border-radius:5px; resize:vertical; background:var(--surface); color:var(--ink); }
+  .availability { display:inline-block; margin-left:6px; font-size:10px; font-weight:500; color:var(--muted); }
+  #empty { padding:34px 0; text-align:center; color:var(--muted); }
+  footer { margin-top:20px; font-size:12px; color:var(--muted); }
+  footer p { margin:6px 0; }
+  #status { min-height:18px; color:var(--olive); }
+  @media(max-width:1050px) {
+    .track-main { grid-template-columns:48px minmax(160px,1fr) 70px 100px 74px 42px; gap:10px; }
+    .votes { grid-column:2 / -1; justify-content:flex-start; }
+    .player { grid-template-columns:minmax(160px,1fr) auto; gap:10px 18px; }
+    audio { grid-column:1 / -1; }
+  }
+  @media(max-width:760px) {
+    main { padding:22px 18px 36px; }
+    header { gap:12px; }
+    h1 { font-size:25px; }
+    .filters { grid-template-columns:1fr 1fr; gap:10px; }
+    .filter:first-child { grid-column:1 / -1; }
+    .available { grid-column:1 / -1; }
+    .track-main { grid-template-columns:44px minmax(120px,1fr) 48px; gap:7px 10px; }
+    .track-title-wrap { grid-column:2; }
+    .track-metadata { display:flex; flex-wrap:wrap; grid-column:2 / -1; gap:2px 12px; }
+    .track-metadata > span + span::before { content:'·'; margin-right:12px; color:#a0a58f; }
+    .duration { grid-column:3; grid-row:1; }
+    .votes { grid-column:2 / -1; }
+    .track-details { margin-left:54px; }
+    .detail-body { grid-template-columns:1fr; gap:10px; }
+    .player { padding:12px 0; }
+  }
+  @media(prefers-reduced-motion:no-preference) { button { transition:background-color .1s,border-color .1s; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><p class="eyebrow">Reference library</p><h1 id="page-title">Saxophone listening</h1><p class="intro">Listen individually, compare articulations, and mark useful references.</p></div>
+    <button id="export-audit" type="button">Export audit</button>
+  </header>
+  <section class="player" aria-label="Recording player">
+    <div class="player-copy"><span id="now-playing">Choose a recording</span><span id="player-detail">Original pitch · normal speed</span></div>
+    <div class="transport"><button id="previous" type="button" aria-label="Play previous visible recording">Previous</button><button id="next" type="button" aria-label="Play next visible recording">Next</button><button id="repeat" type="button" aria-pressed="false">Repeat</button></div>
+    <audio id="audio-player" controls preload="none" controlslist="nodownload noplaybackrate" aria-label="Reference audio"></audio>
+  </section>
+  <section class="filters" aria-label="Filter recordings">
+    <label class="filter">Search<input id="search" type="search" placeholder="Name, pitch, technique…" autocomplete="off"></label>
+    <label class="filter">Source<select id="source-filter"><option value="">All sources</option></select></label>
+    <label class="filter">Technique<select id="technique-filter"><option value="">All techniques</option></select></label>
+    <label class="available"><input id="available-only" type="checkbox" checked>Playable recordings only</label>
+  </section>
+  <div class="list-summary"><span id="result-count" role="status"></span><button id="reset-filters" type="button">Reset filters</button></div>
+  <ol id="track-list" aria-label="Reference recordings"></ol>
+  <p id="empty" hidden>No recordings match these filters.</p>
+  <footer><p id="library-note"></p><p>Pitch labels follow the source filenames; they do not establish concert pitch. Layer numbers are source labels, not verified dynamic markings.</p><p>Keep / Maybe / Skip and your notes are saved in this browser. Export a copy to share or retain them.</p><p id="status" role="status" aria-live="polite"></p></footer>
+</main>
+<script id="catalog-data" type="application/json">__SAXOPHONE_CATALOG_JSON__</script>
+<script>
+(() => {
+  'use strict';
+  const catalog = JSON.parse(document.getElementById('catalog-data').textContent);
+  const tracks = Array.isArray(catalog.tracks) ? catalog.tracks : [];
+  const byId = new Map(tracks.map(track => [track.id, track]));
+  const $ = id => document.getElementById(id);
+  const audio = $('audio-player'), list = $('track-list');
+  const storageKey = 'amaranth.saxophone-reference-audit.v1';
+  let audit = {}, currentId = null, visible = [], storageWorks = true;
+  try { const saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); if (saved && typeof saved === 'object' && !Array.isArray(saved)) audit = saved; }
+  catch (_) { storageWorks = false; }
+  function el(tag, className, value) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (value != null) node.textContent = String(value);
+    return node;
+  }
+  function status(message) { $('status').textContent = message; }
+  function save() {
+    try { localStorage.setItem(storageKey, JSON.stringify(audit)); }
+    catch (_) { storageWorks = false; status('Browser storage is unavailable. Export your audit to keep it.'); }
+  }
+  function record(id) { if (!audit[id] || typeof audit[id] !== 'object') audit[id] = {}; return audit[id]; }
+  function duration(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) return '—';
+    if (seconds < 10) return `${seconds.toFixed(seconds < 1 ? 2 : 1)} s`;
+    return `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2,'0')}`;
+  }
+  function mediaURL(track) {
+    if (!track.available || !track.url) return null;
+    try { const url = new URL(track.url, location.href); return ['http:','https:','file:'].includes(url.protocol) && url.origin === location.origin ? url.href : null; } catch (_) { return null; }
+  }
+  function sourceLink(value) {
+    try { const url = new URL(value); if (['http:','https:'].includes(url.protocol)) { const link = el('a', '', 'Source page ↗'); link.href = url.href; link.target = '_blank'; link.rel = 'noopener noreferrer'; return link; } } catch (_) {}
+    return null;
+  }
+  function reviewedCount() { return tracks.filter(track => ['keep','maybe','skip'].includes(audit[track.id]?.choice)).length; }
+  function summary() { $('result-count').textContent = `${visible.length} of ${tracks.length} recordings · ${reviewedCount()} reviewed`; }
+  function syncPlayback() {
+    list.querySelectorAll('.track').forEach(row => {
+      const active = row.dataset.trackId === currentId;
+      row.classList.toggle('active', active);
+      const button = row.querySelector('.play-track');
+      button.textContent = active && !audio.paused ? 'Pause' : 'Play';
+      button.setAttribute('aria-label', `${active && !audio.paused ? 'Pause' : 'Play'} ${byId.get(row.dataset.trackId).title}`);
+      if (active) button.setAttribute('aria-current', 'true'); else button.removeAttribute('aria-current');
+    });
+  }
+  async function play(track) {
+    const url = mediaURL(track);
+    if (!url) return;
+    if (currentId === track.id && !audio.paused) { audio.pause(); return; }
+    if (currentId !== track.id) { audio.pause(); currentId = track.id; audio.src = url; }
+    audio.playbackRate = 1; audio.preservesPitch = true;
+    $('now-playing').textContent = track.title;
+    $('player-detail').textContent = [track.source, track.technique, track.pitch, track.dynamic, duration(track.durationSeconds)].filter(Boolean).join(' · ');
+    try { await audio.play(); record(track.id).lastPlayedAt = new Date().toISOString(); save(); status(''); }
+    catch (_) { status('This recording could not play. Check that its local media file is present.'); }
+    syncPlayback();
+  }
+  function makeTrack(track) {
+    const row = el('li', 'track'); row.dataset.trackId = track.id;
+    const main = el('div', 'track-main');
+    const button = el('button', 'play-track', 'Play'); button.type = 'button'; button.disabled = !mediaURL(track); button.addEventListener('click', () => play(track));
+    const titleWrap = el('div', 'track-title-wrap');
+    const title = el('span', 'track-title', track.title || track.originalFilename); titleWrap.append(title);
+    titleWrap.append(el('span', 'instrument', [track.instrument || 'Saxophone', track.kind].filter(Boolean).join(' · ')));
+    if (track.reserved || !mediaURL(track)) titleWrap.append(el('span', 'availability', track.reserved && !track.available ? 'Reserved · not loaded' : !mediaURL(track) ? 'Not available locally' : 'Reserved reference'));
+    const metadata = el('div', 'track-metadata');
+    metadata.append(el('span', 'metadata source', track.source), el('span', 'metadata technique', track.technique || track.kind || '—'), el('span', 'metadata pitch', [track.pitch, track.dynamic].filter(Boolean).join(' · ') || '—'));
+    main.append(button, titleWrap, metadata, el('span', 'duration', duration(track.durationSeconds)));
+    const votes = el('div', 'votes'); votes.setAttribute('role','group'); votes.setAttribute('aria-label', `Judgment for ${track.title}`);
+    ['keep','maybe','skip'].forEach(choice => {
+      const vote = el('button', 'vote', choice[0].toUpperCase() + choice.slice(1)); vote.type = 'button'; vote.dataset.choice = choice;
+      vote.setAttribute('aria-pressed', String(audit[track.id]?.choice === choice));
+      vote.addEventListener('click', () => {
+        record(track.id).choice = audit[track.id]?.choice === choice ? null : choice; save();
+        votes.querySelectorAll('button').forEach(peer => peer.setAttribute('aria-pressed', String(record(track.id).choice === peer.dataset.choice)));
+        summary(); if (storageWorks) status('Audit saved in this browser.');
+      });
+      votes.append(vote);
+    });
+    main.append(votes); row.append(main);
+    const details = el('details', 'track-details'); details.append(el('summary', '', 'Notes & provenance'));
+    const body = el('div', 'detail-body'), provenance = el('div');
+    if (track.note) provenance.append(el('p', '', track.note));
+    provenance.append(el('p', 'filename', track.originalFilename || ''));
+    const link = sourceLink(track.sourceUrl); if (link) provenance.append(link);
+    if (track.sha256) { const hash = el('p', 'filename', `SHA-256 ${track.sha256}`); provenance.append(hash); }
+    const noteLabel = el('label', 'audit-note', 'Listening notes');
+    const note = el('textarea'); note.value = typeof audit[track.id]?.note === 'string' ? audit[track.id].note : ''; note.placeholder = 'Attack, tone, expression, useful moments…'; note.rows = 2;
+    note.addEventListener('input', () => { record(track.id).note = note.value; save(); });
+    noteLabel.append(note); body.append(provenance, noteLabel); details.append(body); row.append(details);
+    return row;
+  }
+  function render() {
+    const query = $('search').value.trim().toLocaleLowerCase();
+    visible = tracks.filter(track => (!$('source-filter').value || track.source === $('source-filter').value) && (!$('technique-filter').value || track.technique === $('technique-filter').value) && (!$('available-only').checked || mediaURL(track)) && (!query || [track.title,track.instrument,track.technique,track.pitch,track.dynamic,track.originalFilename,track.note].filter(Boolean).join(' ').toLocaleLowerCase().includes(query)));
+    list.replaceChildren(...visible.map(makeTrack)); $('empty').hidden = visible.length > 0;
+    const playable = visible.some(mediaURL); $('previous').disabled = !playable; $('next').disabled = !playable;
+    summary(); syncPlayback();
+  }
+  function step(direction) {
+    const playable = visible.filter(mediaURL); if (!playable.length) return;
+    const index = playable.findIndex(track => track.id === currentId);
+    const next = index < 0 ? (direction > 0 ? 0 : playable.length - 1) : (index + direction + playable.length) % playable.length;
+    play(playable[next]);
+  }
+  [['source-filter','source'],['technique-filter','technique']].forEach(([id,key]) => {
+    [...new Set(tracks.map(track => track[key]).filter(Boolean))].sort().forEach(value => { const option = el('option','',value); option.value = value; $(id).append(option); });
+  });
+  ['search','source-filter','technique-filter','available-only'].forEach(id => $(id).addEventListener(id === 'search' ? 'input' : 'change', render));
+  $('reset-filters').addEventListener('click', () => { $('search').value = ''; $('source-filter').value = ''; $('technique-filter').value = ''; $('available-only').checked = true; render(); });
+  $('previous').addEventListener('click', () => step(-1)); $('next').addEventListener('click', () => step(1));
+  $('repeat').addEventListener('click', () => { audio.loop = !audio.loop; $('repeat').setAttribute('aria-pressed', String(audio.loop)); });
+  ['play','pause','ended'].forEach(event => audio.addEventListener(event, syncPlayback));
+  audio.addEventListener('ratechange', () => { if (audio.playbackRate !== 1) audio.playbackRate = 1; });
+  audio.addEventListener('error', () => { if (currentId) status('This recording could not load. Check that its local media file is present.'); });
+  $('export-audit').addEventListener('click', () => {
+    const output = {title:catalog.title, exportedAt:new Date().toISOString(), recordings:tracks.map(track => ({id:track.id, source:track.source, originalFilename:track.originalFilename, sourceUrl:track.sourceUrl, sha256:track.sha256, ...(audit[track.id] || {})}))};
+    const url = URL.createObjectURL(new Blob([JSON.stringify(output,null,2)], {type:'application/json'}));
+    const link = el('a'); link.href = url; link.download = 'saxophone-reference-audit.json'; document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url),1000);
+    status('Audit exported.');
+  });
+  if (catalog.title) { $('page-title').textContent = catalog.title; document.title = catalog.title; }
+  const reserved = tracks.filter(track => track.reserved && !track.available).length;
+  const unavailable = tracks.filter(track => !mediaURL(track) && !(track.reserved && !track.available)).length;
+  $('library-note').textContent = `${tracks.length} source recordings${reserved ? ` · ${reserved} reserved references omitted from playback` : ''}${unavailable ? ` · ${unavailable} unavailable locally` : ''}${reserved || unavailable ? ' (clear “Playable recordings only” to inspect their metadata)' : ''}.`;
+  if (!storageWorks) status('Browser storage is unavailable. Export your audit to keep it.');
+  render();
+})();
+</script>
+</body>
+</html>
