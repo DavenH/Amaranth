@@ -135,6 +135,7 @@ def control_suite(voice_duration_seconds):
             ("short", [cc(1, 127)], note(end=180)),
             ("tongued", [], note(end=250) + note(start=800, end=1050) + note(start=1600, end=1850)),
             ("brightness", [cc(2, 127, 1000)], note()),
+            ("timbral-onset", [cc(3, 127, 1000)], note()),
             ("pressure", [cc(11, 38), cc(11, 118, 1000)], note()),
             ("vibrato-depth", [cc(5, 100, 1000)], note()),
             ("vibrato-rate", [cc(5, 100), cc(76, 0), cc(76, 127, 1000)], note()),
@@ -143,6 +144,7 @@ def control_suite(voice_duration_seconds):
             ("combined-high", [cc(2, 105), cc(5, 80, 800), cc(4, 38, 1000), cc(77, 30, 1200)], note(72)),
             ("legato-run", [], note(48, 0, 600) + note(55, 500, 1100) + note(60, 1000, 1600)
              + note(64, 1500, 2400)),
+            ("descending-legato", [], note(84, 0, 600) + note(48, 500, 1100) + note(60, 1000, 2400)),
             ("held-return", [], note() + note(67, 800, 1600))):
         cases.append({"id": identifier, "durationMs": 4000, "events": initial + extra + notes,
                       "labels": {"purpose": "technical control/transition evidence; acoustic technique unverified"}})
@@ -151,7 +153,7 @@ def control_suite(voice_duration_seconds):
         "render": {"sampleRate": 48000, "blockSize": 256, "channels": 2, "ratePolicy": "native",
                    "randomSeed": 1729, "controlNoteOffset": 0,
                    "voiceDurationSeconds": voice_duration_seconds, "outputGain": .125},
-        "budget": {"maxRenders": 26, "maxAudioSeconds": 152, "maxWallSeconds": 900}, "cases": cases}
+        "budget": {"maxRenders": 30, "maxAudioSeconds": 168, "maxWallSeconds": 900}, "cases": cases}
 
 
 def run(source, output, send, engine):
@@ -205,7 +207,7 @@ def run(source, output, send, engine):
                 "a": {"performanceResults": "renders/results.json", "caseId": "straight"},
                 "b": {"performanceResults": "renders/results.json", "caseId": key},
                 "intervals": [{"id": "body", "role": "sustain", "startSeconds": 1.2, "endSeconds": 2.8}]}
-                for key in ("brightness", "pressure", "vibrato-depth", "air", "roughness")]})
+                for key in ("brightness", "timbral-onset", "pressure", "vibrato-depth", "air", "roughness")]})
         generate_report(load_study(audition), output / "auditions")
         verify(inputs)
         result.update(ok=True, invalidSequenceRejected=True,

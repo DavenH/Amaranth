@@ -151,7 +151,7 @@ class ArticulationDriverTest(unittest.TestCase):
         path = self.output / "suite.json"
         runner.write(path, runner.control_suite(2.082))
         suite = runner.load_suite(path)
-        self.assertEqual((suite["renderCount"], suite["audioSeconds"], suite["repetitions"]), (26, 152, 2))
+        self.assertEqual((suite["renderCount"], suite["audioSeconds"], suite["repetitions"]), (30, 168, 2))
         for case in suite["cases"][:-1]:
             self.assertEqual(case["performance"]["sampleRate"], 48000)
             self.assertEqual(case["performance"]["ratePolicy"], "native")
@@ -165,12 +165,21 @@ class ArticulationDriverTest(unittest.TestCase):
     def test_axis_auditions_share_notes_and_control_timestamps_with_unused_schedule_control(self):
         document = runner.control_suite(2.082)
         anchor = runner.named(document["cases"], "straight")["events"]
-        for identifier in ("brightness", "vibrato-depth", "air", "roughness"):
+        for identifier in ("brightness", "timbral-onset", "vibrato-depth", "air", "roughness"):
             events = copy.deepcopy(runner.named(document["cases"], identifier)["events"])
             moving = [event for event in events if event["type"] == "controller" and event["timeMs"] > 0]
             self.assertEqual(len(moving), 1)
             moving[0].update(controller=118, value=127)
             self.assertEqual(events, anchor)
+
+    def test_descending_legato_stresses_high_to_low_cycle_capacity_with_overlapping_notes(self):
+        case = runner.named(runner.control_suite(2.082)["cases"], "descending-legato")
+        notes = [event for event in case["events"] if event["type"] == "noteOn"]
+        releases = [event for event in case["events"] if event["type"] == "noteOff"]
+        self.assertEqual([event["note"] for event in notes], [84, 48, 60])
+        self.assertTrue(all(current["timeMs"] < following["timeMs"] < release["timeMs"]
+                            for current, following, release in zip(notes, notes[1:], releases)))
+        self.assertEqual(releases[-1]["timeMs"], 2400)
 
 
 if __name__ == "__main__":
