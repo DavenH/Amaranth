@@ -73,6 +73,8 @@ and drives `cliclick` through macOS. It covers Waveshaper add, move, reshape,
 delete, and re-add, followed by Trimesh add, collision rejection, move,
 vertex-parameter editing, morph editing, delete, and re-add. Each edit settles
 for at most 80 ms; do not replace these gestures with in-app pointer commands.
+Run `python3 scripts/test_cycle_v2_native_edit_smoke.py envelope-markers` for
+Envelope marker selection, pointer departure, Loop/Sustain publication and Undo.
 
 The coordinator writes `report.json`, `app.log`, `app.log.raw`, and `run.json`
 under the run directory. It exits nonzero for failed commands unless

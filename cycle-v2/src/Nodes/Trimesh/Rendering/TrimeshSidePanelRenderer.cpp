@@ -437,9 +437,9 @@ void TrimeshSidePanelRenderer::drawVertexParameter(
             ? row.withRight(guideBox.getX() - kVertexCellGap).reduced(8.f, 0.f) : vertexLabelBounds(row);
     const auto gainBox = vertexParameterGuideGainBounds(row);
     if (parameter.guideOnly) {
-        const Rectangle<float> icon(labelBox.getX(), row.getCentreY() - 10.f, 32.f, 20.f);
+        const Rectangle<float> icon(labelBox.getRight() - 64.f, row.getCentreY() - 10.f, 64.f, 20.f);
         NodeIconRenderer::paint(g, "componentCurve", icon);
-        labelBox.removeFromLeft(40.f);
+        labelBox.setRight(icon.getX() - 8.f);
     }
 
     g.setColour(parameter.enabled ? Colour(0xffb8c1cd) : Colour(0xff8793a1));

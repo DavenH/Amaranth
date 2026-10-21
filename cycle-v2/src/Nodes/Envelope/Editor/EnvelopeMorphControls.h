@@ -25,8 +25,7 @@ public:
     Rectangle<float> keyboardFocusBounds(Rectangle<float> controls, int axis) const;
     Rectangle<float> actionBarBounds(Rectangle<float> controls) const;
     Rectangle<float> actionRow(Rectangle<float> controls) const;
-    Rectangle<float> markerGroupLabelBounds(Rectangle<float> controls) const;
-    Rectangle<float> markerGroupBounds(Rectangle<float> controls) const;
+    Rectangle<float> markerGroupBounds(Rectangle<float> panel) const;
     Rectangle<float> axisScaleGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> axisScaleBounds(Rectangle<float> controls) const;
     Rectangle<float> rangeGroupLabelBounds(Rectangle<float> controls) const;
@@ -51,8 +50,7 @@ public:
             bool yellowLinked = true,
             const std::vector<TrimeshCubePreviewVertex>& vertices = {}) const;
 
-    void drawActions(Graphics& graphics, Rectangle<float> content,
-            bool loopSelected, bool sustainSelected) const;
+    void drawActions(Graphics& graphics, Rectangle<float> content) const;
 
 private:
     int dimensionCount { 2 };
@@ -63,9 +61,7 @@ private:
     Colour axisColour(int axis) const;
     void drawActionGroups(
             Graphics& graphics,
-            Rectangle<float> controls,
-            bool loopSelected,
-            bool sustainSelected) const;
+            Rectangle<float> controls) const;
 };
 
 }

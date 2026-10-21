@@ -42,6 +42,7 @@ public:
     }
 
     bool hasIcon() const { return icon != nullptr; }
+    void setOverlay(bool value) { overlay = value; }
 
     Rectangle<float> iconCanvasBounds() const {
         return getLocalBounds().toFloat().withSizeKeepingCentre(
@@ -51,7 +52,10 @@ public:
 
     void paintButton(Graphics& graphics, bool highlighted, bool down) override {
         const Rectangle<float> bounds = getLocalBounds().toFloat();
-        if (down || highlighted) {
+        if (overlay) {
+            paintPanelOverlayButton(graphics, bounds, highlighted, down,
+                    hasKeyboardFocus(false), getToggleState(), isEnabled());
+        } else if (down || highlighted) {
             graphics.setColour(Colours::white.withAlpha(down ? 0.12f : 0.06f));
             graphics.fillRect(bounds.reduced(2.f));
         }
@@ -65,7 +69,7 @@ public:
                     RectanglePlacement::centred,
                     opacity);
         }
-        if (hasKeyboardFocus(false)) {
+        if (hasKeyboardFocus(false) && !overlay) {
             graphics.setColour(Colour(0xff65b8ff));
             graphics.drawRoundedRectangle(
                     bounds.reduced(1.f),
@@ -82,6 +86,7 @@ private:
     }
 
     std::unique_ptr<Drawable> icon;
+    bool overlay {};
 };
 
 }
@@ -109,6 +114,10 @@ struct EnvelopeEditorComponent::Impl {
         owner.addAndMakeVisible(axisScale);
         owner.addAndMakeVisible(loop);
         owner.addAndMakeVisible(sustain);
+        loop.setOverlay(true);
+        sustain.setOverlay(true);
+        loop.setAlwaysOnTop(true);
+        sustain.setAlwaysOnTop(true);
         owner.addAndMakeVisible(fitVertical);
         owner.addAndMakeVisible(fullVertical);
         keyboardShortcutHelp = std::make_unique<MorphKeyboardShortcutHelp>(
@@ -434,7 +443,7 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
                 colourForMorphDimension(static_cast<MorphDimension>(axis)),
                 impl->linked(axis), true);
     }
-    impl->presentation.drawActions(graphics, contentBounds(), impl->loop.getToggleState(), impl->sustain.getToggleState());
+    impl->presentation.drawActions(graphics, contentBounds());
 
     const String focusedAxis = focusedMorphAxis();
     if (focusedAxis.isNotEmpty()) {
@@ -513,7 +522,7 @@ void EnvelopeEditorComponent::layoutEditor() {
         control.setBounds(impl->presentation.morphSliderBounds(controls, axis).toNearestInt(), 42, 0);
     }
 
-    auto markerGroup = impl->presentation.markerGroupBounds(contentBounds()).toNearestInt();
+    auto markerGroup = impl->presentation.markerGroupBounds(panelBoundsForAutomation()).toNearestInt();
     const int markerWidth = markerGroup.getWidth() / 2;
     const int pairedActionInset = roundToInt(
             EnvelopeToolbarMetrics::pairedActionOuterInset);
@@ -747,7 +756,6 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty(
             "actionBarBounds",
             editorBoundsToVar(impl->presentation.actionBarBounds(contentBounds())));
-    state.setProperty("markerGroupLabel", "Markers");
     state.setProperty("axisScaleGroupLabel", "Scaling");
     state.setProperty("rangeGroupLabel", "Zoom");
     state.setProperty(
@@ -757,11 +765,8 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
                     && impl->fitVertical.hasIcon()
                     && impl->fullVertical.hasIcon());
     state.setProperty(
-            "markerGroupLabelBounds",
-            editorBoundsToVar(impl->presentation.markerGroupLabelBounds(contentBounds())));
-    state.setProperty(
             "markerGroupBounds",
-            editorBoundsToVar(impl->presentation.markerGroupBounds(contentBounds())));
+            editorBoundsToVar(impl->presentation.markerGroupBounds(panelBoundsForAutomation())));
     state.setProperty("loopBounds", editorBoundsToVar(impl->loop.getBounds().toFloat()));
     state.setProperty("sustainBounds", editorBoundsToVar(impl->sustain.getBounds().toFloat()));
     const auto actionIconBounds = [](const EnvelopeActionButton& button) {
@@ -777,6 +782,8 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
             editorBoundsToVar(actionIconBounds(impl->sustain)));
     state.setProperty("loopEnabled", impl->loop.isEnabled());
     state.setProperty("sustainEnabled", impl->sustain.isEnabled());
+    state.setProperty("loopSelected", impl->loop.getToggleState());
+    state.setProperty("sustainSelected", impl->sustain.getToggleState());
     state.setProperty("loopTooltip", impl->loop.getTooltip());
     state.setProperty("sustainTooltip", impl->sustain.getTooltip());
     state.setProperty(

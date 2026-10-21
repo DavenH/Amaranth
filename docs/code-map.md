@@ -123,7 +123,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `docs/TDD/refactors.md` — Shared refactor backlog; check before adding another architectural wish.
 - `docs/TDD/ui-bugs.md` — UI/runtime incident ledger for incidental failures and focused repro evidence.
 - `docs/TDD/audio-bugs.md` — Realtime audio incident ledger and unresolved pipeline failures.
-- `docs/cycle-agent-runbook.md` — Focused UI fixtures, screenshots, state assertions, IPC, GL, and crash workflow.
+- `docs/cycle-agent-runbook.md` — Focused fixtures, native gestures, screenshots, state assertions, IPC, GL, and crash workflow.
 - `docs/chats/` — Durable user preferences and workflow decisions; not a substitute for architecture docs.
 - `scripts/cycle_automation.py` — Canonical local Cycle automation entry point for exact-PID lifecycle, fixtures, and capture.
 - `scripts/cycle_automation_support/` — Product profiles, workspace identity, registry leases, process lifecycle, and session client.

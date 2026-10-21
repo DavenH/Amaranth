@@ -1,5 +1,17 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Envelope marker actions target a hovered cube after leaving the curve
+
+On 2026-10-21, native selection of the attack point followed by moving to Loop
+left that point highlighted, but the marker action targeted the last hovered
+release cube. Validation then removed the invalid loop, making the click appear
+ineffective. The marker lookup used `currentVertex/currentCube` instead of the
+stable selection used by the inspector and model publication. Status: resolved
+by reusing `selectedEnvelopeCubeForModel()` for eligibility, state and toggles;
+the duplicate hover-based scan is deleted. Native regression sequence
+`envelope-markers` checks selection, pointer departure, both markers, publication
+and full model restoration by Undo. Evidence: `.context/marker-overlay-native.log`.
+
 ## P2: Envelope surface rebuilds during dragging, uses centred colour data and omits zoom hosts
 
 On 2026-10-21, Envelope editing visibly stalled while its morph surface rebuilt

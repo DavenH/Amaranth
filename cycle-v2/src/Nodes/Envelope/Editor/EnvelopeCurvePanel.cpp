@@ -619,7 +619,7 @@ public:
         Array<Vertex*> vertices;
 
         if (dimension == Vertex::Phase || dimension == Vertex::Amp || dimension == Vertex::Curve) {
-            VertCube* cube = selectedEnvelopeCube();
+            VertCube* cube = selectedEnvelopeCubeForModel();
             if (cube == nullptr) {
                 cube = closestEnvelopeCubeFor(vertex);
             }
@@ -648,35 +648,12 @@ public:
         return true;
     }
 
-    VertCube* selectedEnvelopeCube() const {
-        if (state.currentVertex == nullptr) {
-            return state.currentCube;
-        }
-
-        auto snapshot = envRasterizer.snapshotView();
-        VertCube* cube = nullptr;
-
-        for (const auto& intercept : snapshot.intercepts()) {
-            if (intercept.cube == nullptr) {
-                continue;
-            }
-
-            for (int i = 0; i < state.currentVertex->getNumOwners(); ++i) {
-                if (intercept.cube == state.currentVertex->owners[i]) {
-                    cube = intercept.cube;
-                }
-            }
-        }
-
-        return cube != nullptr ? cube : state.currentCube;
-    }
-
     bool hasSingleSelectedEnvelopeVertex() override {
-        return getSelected().size() == 1 && selectedEnvelopeCube() != nullptr;
+        return getSelected().size() == 1 && selectedEnvelopeCubeForModel() != nullptr;
     }
 
     bool selectedEnvelopeMarkerState(bool loopMarker) const override {
-        VertCube* cube = selectedEnvelopeCube();
+        VertCube* cube = const_cast<EnvelopeCurvePanel*>(this)->selectedEnvelopeCubeForModel();
 
         if (cube == nullptr) {
             return false;
@@ -687,7 +664,7 @@ public:
     }
 
     void toggleSelectedEnvelopeMarker(bool loopMarker) override {
-        VertCube* cube = selectedEnvelopeCube();
+        VertCube* cube = selectedEnvelopeCubeForModel();
 
         if (cube == nullptr) {
             return;

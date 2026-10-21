@@ -664,3 +664,69 @@ Completion evidence:
 - CycleV2 and tests build with --parallel 10. Architecture, code-map, manual
   style review and whitespace checks pass. The old Link column, dash painter
   and duplicate diagram geometry are deleted; all follow-up criteria complete.
+
+## Follow-up: Rail caps, component row and marker overlays
+
+Extend the shared near-black rail equally around the value track, preserving
+its endpoints, hit mapping and slider travel. Put the Component curve label
+before its more detailed intercept/curve glyph, aligned to the vertex labels;
+reuse the semantic SVG resource and existing attachment/gain controls.
+
+Move existing Envelope Loop/Sustain buttons into the curve's top-right corner,
+using the actual drawable viewport and the IR Modeller overlay button chrome.
+Share that chrome painter rather than cloning it. Retain marker eligibility,
+selection, command/undo and keyboard owners; promote buttons above the panel
+host so clicks cannot edit the underlying curve. Remove the obsolete footer
+marker heading/group and recenter the remaining Scaling/Zoom groups.
+
+Verify normal/compact and Static layouts, real marker clicks/undo, disabled and
+selected states, shared SVG coverage, slider endpoints, focused tests and
+native captures. Build CycleV2/tests --parallel 10 and run architecture,
+code-map, style and whitespace checks. No audio or mesh algorithm changes.
+
+The native check exposed a selection defect: the old marker helper followed
+`currentVertex/currentCube`, so leaving the curve could target a hovered release
+cube and have its loop removed by validation. Marker state/actions and parameter
+editing now share the existing `selectedEnvelopeCubeForModel()` authority.
+The hover-based intercept scan is deleted. Envelope seam matching and marker
+validation remain unchanged; setting a Loop may legitimately match Sustain's
+amplitude/sharpness, and Undo restores the complete model.
+
+Responsibility/size review:
+
+- EnvelopeCurvePanel 1325 → 1302 keeps mesh interaction and envelope presentation;
+  existing rasterizer/marker policies own lifecycle rules and the controller owns
+  publication. This slice deletes a duplicate selection policy rather than adding
+  another one. Existing curve-panel contracts remain the extraction boundary;
+  no broader panel decomposition is required for these presentation changes.
+- EnvelopeEditorComponent 1106 → 1113 coordinates controls, transactions and
+  composition with EnvelopeMorphControls and the shared curve editor. The overlay
+  introduces no new graph or rasterization policy. EnvelopeMorphControls shrinks
+  by 37 lines as the obsolete footer marker heading/highlight/group is deleted.
+- PropertyControlLookAndFeel 297 → 310 owns shared control paint. IR's existing
+  overlay chrome is extracted here and IR delegates to it; Envelope supplies
+  only hover/focus/enabled/marker facts. TrimeshSidePanelRenderer keeps the shared
+  component row composition. No audio or allocation path changes.
+
+Completion evidence:
+
+- CycleV2 and CycleV2_tests build with --parallel 10. All 49 focused cases /
+  5,948 assertions pass, covering slider geometry, icon coverage, all mode/width
+  layouts, purpose/guide interactions and overlay containment/spacing.
+- Native run 6eff43e002c5 checks real Loop/Sustain clicks and Undo and captures
+  normal 1600 × 900, compact 1100 × 800 and Static layouts. All captures reviewed
+  at production size against IR's overlay chrome; disabled, focused and selected
+  states remain legible. Evidence: `.context/marker-overlay-native.log` and
+  `marker-overlay-{normal-envelope,compact-static,compact-loop,ir-reference}.png`.
+- The durable native `envelope-markers` sequence checks pointer departure,
+  both marker publications and exact model restoration on Undo. Initial run
+  504a1c06e00c passes; evidence: `.context/marker-overlay-native-regression.log`.
+- The 28-command marker fixture, 37-command IR property fixture and existing
+  85-command morph-property fixture pass. Reports are under
+  `.context/marker-overlay-{fixture,ir,properties}-run.json`. Marker pointer
+  departure is proven by the native sequence; synthetic pointer movement is not
+  used as evidence for native hover/selection state.
+- Architecture audit, semantic code map, SVG parse, Python syntax, manual style
+  and production-diff review, and whitespace checks pass. Shared overlay paint,
+  deleted footer marker chrome and deleted hover-selection scan complete the
+  ownership/deletion targets for this follow-up.

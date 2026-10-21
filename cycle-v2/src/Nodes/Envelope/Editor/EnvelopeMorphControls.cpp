@@ -17,43 +17,21 @@ namespace {
 
 const Colour kGroupFill { 0xff151c24 };
 const Colour kGroupBorder { 0xff536171 };
-const Colour kSelectedFill { 0xff2b415a };
 constexpr float kActionTopInset = 4.f;
 constexpr float kActionBottomInset = 12.f;
 constexpr float kActionColumnGap = 28.f;
 constexpr float kActionColumnWidths[] {
-        EnvelopeToolbarMetrics::pairedActionWidth,
         EnvelopeToolbarMetrics::scalingSelectorWidth,
         EnvelopeToolbarMetrics::pairedActionWidth
 };
 constexpr float kActionBarHeight = PropertyControlMetrics::groupLabelHeight
         + EnvelopeToolbarMetrics::controlHeight + kActionTopInset + kActionBottomInset;
 
-Path segmentedHighlight(Rectangle<float> bounds, int selectedSegment) {
-    auto selected = bounds;
-    selected.setWidth(bounds.getWidth() * 0.5f);
-    if (selectedSegment == 1) {
-        selected.setPosition(bounds.getCentreX(), bounds.getY());
-    }
-    Path result;
-    result.addRoundedRectangle(
-            selected.getX(), selected.getY(), selected.getWidth(), selected.getHeight(),
-            5.f, 5.f,
-            selectedSegment == 0, selectedSegment == 1,
-            selectedSegment == 0, selectedSegment == 1);
-    return result;
-}
-
 void drawSegmentedGroup(
         Graphics& graphics,
-        Rectangle<float> bounds,
-        int selectedSegment) {
+        Rectangle<float> bounds) {
     graphics.setColour(kGroupFill);
     graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
-    if (selectedSegment >= 0) {
-        graphics.setColour(kSelectedFill);
-        graphics.fillPath(segmentedHighlight(bounds, selectedSegment));
-    }
     graphics.setColour(kGroupBorder.withAlpha(0.74f));
     graphics.drawVerticalLine(
             roundToInt(bounds.getCentreX()), bounds.getY() + 3.f, bounds.getBottom() - 3.f);
@@ -130,8 +108,7 @@ Rectangle<float> EnvelopeMorphControls::actionColumnBounds(
     auto area = actionRow(controls);
     const float totalWidth = kActionColumnWidths[0]
             + kActionColumnWidths[1]
-            + kActionColumnWidths[2]
-            + 2.f * kActionColumnGap;
+            + kActionColumnGap;
     area = area.withSizeKeepingCentre(totalWidth, area.getHeight());
     for (int index = 0; index < column; ++index) {
         area.removeFromLeft(kActionColumnWidths[index] + kActionColumnGap);
@@ -139,28 +116,25 @@ Rectangle<float> EnvelopeMorphControls::actionColumnBounds(
     return area.removeFromLeft(kActionColumnWidths[column]);
 }
 
-Rectangle<float> EnvelopeMorphControls::markerGroupLabelBounds(Rectangle<float> controls) const {
-    return actionGroupLabelBounds(controls, 0);
-}
-
-Rectangle<float> EnvelopeMorphControls::markerGroupBounds(Rectangle<float> controls) const {
-    return actionColumnBounds(controls, 0);
+Rectangle<float> EnvelopeMorphControls::markerGroupBounds(Rectangle<float> panel) const {
+    return Rectangle<float>(EnvelopeToolbarMetrics::pairedActionWidth, EnvelopeToolbarMetrics::controlHeight)
+            .withPosition(panel.getRight() - EnvelopeToolbarMetrics::pairedActionWidth - 8.f, panel.getY() + 8.f);
 }
 
 Rectangle<float> EnvelopeMorphControls::axisScaleGroupLabelBounds(Rectangle<float> controls) const {
-    return actionGroupLabelBounds(controls, 1);
+    return actionGroupLabelBounds(controls, 0);
 }
 
 Rectangle<float> EnvelopeMorphControls::axisScaleBounds(Rectangle<float> controls) const {
-    return actionColumnBounds(controls, 1);
+    return actionColumnBounds(controls, 0);
 }
 
 Rectangle<float> EnvelopeMorphControls::rangeGroupLabelBounds(Rectangle<float> controls) const {
-    return actionGroupLabelBounds(controls, 2);
+    return actionGroupLabelBounds(controls, 1);
 }
 
 Rectangle<float> EnvelopeMorphControls::rangeGroupBounds(Rectangle<float> controls) const {
-    return actionColumnBounds(controls, 2);
+    return actionColumnBounds(controls, 1);
 }
 
 Rectangle<float> EnvelopeMorphControls::actionGroupLabelBounds(
@@ -224,19 +198,15 @@ void EnvelopeMorphControls::draw(
             MorphDimensions::Plane::RedBlue, vertices);
 }
 
-void EnvelopeMorphControls::drawActions(Graphics& graphics, Rectangle<float> controls,
-        bool loopSelected, bool sustainSelected) const {
-    drawActionGroups(graphics, controls, loopSelected, sustainSelected);
-    paintPropertyGroupLabel(graphics, markerGroupLabelBounds(controls), "Markers");
+void EnvelopeMorphControls::drawActions(Graphics& graphics, Rectangle<float> controls) const {
+    drawActionGroups(graphics, controls);
     paintPropertyGroupLabel(graphics, axisScaleGroupLabelBounds(controls), "Scaling");
     paintPropertyGroupLabel(graphics, rangeGroupLabelBounds(controls), "Zoom");
 }
 
 void EnvelopeMorphControls::drawActionGroups(
         Graphics& graphics,
-        Rectangle<float> controls,
-        bool loopSelected,
-        bool sustainSelected) const {
+        Rectangle<float> controls) const {
     auto bar = actionBarBounds(controls);
     graphics.setColour(Colour(0xff0f151c).withAlpha(0.72f));
     graphics.fillRect(bar);
@@ -244,14 +214,7 @@ void EnvelopeMorphControls::drawActionGroups(
     graphics.fillRect(bar.removeFromTop(1.f));
     graphics.fillRect(bar.removeFromBottom(1.f));
 
-    int selectedMarker = -1;
-    if (loopSelected) {
-        selectedMarker = 0;
-    } else if (sustainSelected) {
-        selectedMarker = 1;
-    }
-    drawSegmentedGroup(graphics, markerGroupBounds(controls), selectedMarker);
-    drawSegmentedGroup(graphics, rangeGroupBounds(controls), -1);
+    drawSegmentedGroup(graphics, rangeGroupBounds(controls));
 }
 
 }

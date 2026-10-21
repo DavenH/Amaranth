@@ -1116,6 +1116,42 @@ class NativeEditSmoke:
         assert len(final["vertices"]) == len(deleted["vertices"]) + 1
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Waveshaper downstream output")
 
+    def envelope_markers_sequence(self):
+        self.command({
+            "command": "openGraph",
+            "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph"),
+        })
+        initial = self.open_editor("env")
+        panel = self.target("expanded:env.panel2D")
+        state = initial["effect2D"]["panelState"]
+        point = state["intercepts"][1]
+        zoom = state["zoom"]
+        vertex_point = self.point(panel,
+                (point["x"] - zoom["x"]) / zoom["w"],
+                1.0 - (point["y"] - zoom["y"]) / zoom["h"])
+        for marker in ("loop", "sustain"):
+            self.primary_click(vertex_point)
+            selected = self.inspect_until("env",
+                    lambda inspected: inspected["effect2D"]["loopEnabled"],
+                    timeout_seconds=0.5)
+            assert selected["effect2D"]["loopEnabled"]
+            # Leaving the curve must retain the selected point as the marker target.
+            self.move_pointer(self.point(panel, 0.92, 0.85))
+            before = self.inspect("env")
+            selected_key = marker + "Selected"
+            self.primary_click(self.point(
+                    self.target("expanded:env.envelopeAction." + marker), 0.5, 0.5))
+            changed = self.inspect_until("env", lambda inspected:
+                    inspected["effect2D"][selected_key] != before["effect2D"][selected_key],
+                    timeout_seconds=0.5)
+            assert changed["effect2D"][selected_key] != before["effect2D"][selected_key]
+            assert changed["model"]["state"]["mesh"] != before["model"]["state"]["mesh"]
+            self.key_chord("z")
+            undone = self.inspect_until("env", lambda inspected:
+                    inspected["model"]["state"] == before["model"]["state"],
+                    timeout_seconds=0.5)
+            assert undone["model"]["state"] == before["model"]["state"]
+
     def envelope_sequence(self):
         self.command({
             "command": "openGraph",
@@ -2394,6 +2430,7 @@ class NativeEditSmoke:
             "authoring": self.graph_authoring_sequence,
             "waveshaper": self.effect2d_sequence,
             "envelope": self.envelope_sequence,
+            "envelope-markers": self.envelope_markers_sequence,
             "envelope-release": self.envelope_release_sequence,
             "guide-previews": self.guide_preview_sequence,
             "intercept-visuals": self.intercept_visual_sequence,
@@ -2427,6 +2464,7 @@ if __name__ == "__main__":
         "authoring",
         "waveshaper",
         "envelope",
+        "envelope-markers",
         "envelope-release",
         "guide-previews",
         "intercept-visuals",

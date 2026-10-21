@@ -41,6 +41,9 @@ void paintMorphSlider(
         bool enabled = true);
 void paintMorphPreviewVertex(juce::Graphics& graphics, juce::Point<float> point, bool selected);
 void paintMorphPreviewCursor(juce::Graphics& graphics, juce::Point<float> point);
+void paintPanelOverlayButton(
+        juce::Graphics& graphics, juce::Rectangle<float> bounds,
+        bool hovered, bool down, bool focused, bool selected = false, bool enabled = true);
 juce::LookAndFeel& propertyControlLookAndFeel();
 
 }

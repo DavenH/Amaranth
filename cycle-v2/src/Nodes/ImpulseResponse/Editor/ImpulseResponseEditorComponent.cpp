@@ -8,6 +8,7 @@
 #include "UI/EffectEnableButton.h"
 #include "UI/Editors/ProcessingScopeSelector.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UiIconData.h"
 
 #include <Audio/CycleDsp/IrModel.h>
@@ -57,17 +58,8 @@ public:
 
     void paintButton(Graphics& graphics, bool highlighted, bool down) override {
         const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
-        const Colour accent { 0xff65b8ff };
-        graphics.setColour(Colour(0xff0e1318).brighter(
-                down ? 0.12f : highlighted ? 0.06f : 0.f));
-        graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
-        graphics.setColour(hasKeyboardFocus(false) ? accent : Colour(0xff536171));
-        graphics.drawRoundedRectangle(
-                bounds,
-                CanvasChromeMetrics::controlCornerRadius,
-                hasKeyboardFocus(false)
-                        ? CanvasChromeMetrics::focusRingWidth
-                        : CanvasChromeMetrics::restingBorderWidth);
+        paintPanelOverlayButton(graphics, getLocalBounds().toFloat(),
+                highlighted, down, hasKeyboardFocus(false));
         if (icon != nullptr) {
             icon->drawWithin(
                     graphics,

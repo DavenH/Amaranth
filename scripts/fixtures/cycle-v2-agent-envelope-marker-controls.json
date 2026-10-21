@@ -2,13 +2,18 @@
   "commands": [
     {
       "command": "openGraph",
-      "path": "../../cycle-v2/content/presets/old/stengah.cyclegraph"
+      "path": "../../cycle-v2/resources/default.cyclegraph"
     },
     {
       "command": "openNodeEditor",
-      "nodeId": "scratchEnvelope",
+      "nodeId": "env",
       "waitForIdle": true,
       "idleDelayMs": 200
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.meshDimensions.three"
     },
     {
       "command": "assertState",
@@ -24,11 +29,6 @@
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.loopTooltip",
       "equals": "Select one envelope vertex to set the loop start"
-    },
-    {
-      "command": "assertState",
-      "path": "expandedNodeControls.effect2D.markerGroupLabel",
-      "equals": "Markers"
     },
     {
       "command": "assertState",
@@ -51,7 +51,7 @@
     {
       "command": "pointer",
       "event": "move",
-      "targetId": "expanded:scratchEnvelope.envelopeAction.loop"
+      "targetId": "expanded:env.envelopeAction.loop"
     },
     {
       "command": "assertState",
@@ -61,7 +61,7 @@
     {
       "command": "pointer",
       "event": "click",
-      "targetId": "expanded:scratchEnvelope.panel2D",
+      "targetId": "expanded:env.panel2D",
       "targetX": 0.02,
       "targetY": 0.9,
       "waitForIdle": true,
@@ -80,7 +80,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.guideControlsVisible",
-      "equals": false
+      "equals": true
     },
     {
       "command": "assertState",
@@ -89,18 +89,66 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.linkGroupLabelBounds.width",
-      "equals": 24
-    },
-    {
-      "command": "assertState",
       "path": "expandedNodeControls.effect2D.loopTooltip",
       "equals": "Toggle selected vertex as loop start"
     },
     {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.envelopeAction.loop",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.loopSelected",
+      "equals": true
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.loopSelected",
+      "equals": false
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.panel2D",
+      "targetX": 0.02,
+      "targetY": 0.9,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.envelopeAction.sustain",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.sustainSelected",
+      "equals": true
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.sustainSelected",
+      "equals": false
+    },
+    {
       "command": "screenshot",
       "area": "canvas",
-      "path": "/private/tmp/cycle-v2-envelope-marker-controls-enabled.png"
+      "path": "../../.context/marker-overlay-fixture.png"
     }
   ],
   "quit": true

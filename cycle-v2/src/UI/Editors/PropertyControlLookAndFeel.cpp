@@ -46,8 +46,8 @@ void paintSliderTrack(
         bool hovered,
         bool enabled) {
     graphics.setColour(kRail.withMultipliedAlpha(enabled ? 1.f : 0.55f));
-    graphics.fillRoundedRectangle(geometry.track.withSizeKeepingCentre(
-            geometry.track.getWidth(), PropertyControlMetrics::visibleRailHeight), 2.5f);
+    graphics.fillRoundedRectangle(geometry.track.expanded(
+            (PropertyControlMetrics::visibleRailHeight - geometry.track.getHeight()) * 0.5f), 2.5f);
     graphics.setColour((hovered ? kTrackHover : kTrack).withMultipliedAlpha(enabled ? 1.f : 0.55f));
     graphics.fillRoundedRectangle(geometry.track, 1.f);
     graphics.setColour(fill.withMultipliedAlpha(enabled ? 0.78f : 0.35f));
@@ -271,6 +271,19 @@ void paintMorphSlider(
 LookAndFeel& propertyControlLookAndFeel() {
     static PropertyControlLookAndFeel result;
     return result;
+}
+
+void paintPanelOverlayButton(Graphics& graphics, Rectangle<float> bounds,
+        bool hovered, bool down, bool focused, bool selected, bool enabled) {
+    bounds = bounds.reduced(0.75f);
+    const Colour accent { 0xff65b8ff };
+    graphics.setColour(selected ? Colour(0xff243d52) : Colour(0xff0e1318).brighter(
+            down ? 0.12f : hovered ? 0.06f : 0.f));
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
+    graphics.setColour((focused || selected ? accent : Colour(0xff536171))
+            .withMultipliedAlpha(enabled ? 1.f : 0.55f));
+    graphics.drawRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius,
+            focused ? CanvasChromeMetrics::focusRingWidth : CanvasChromeMetrics::restingBorderWidth);
 }
 
 void paintMorphPreviewVertex(Graphics& graphics, Point<float> point, bool selected) {
