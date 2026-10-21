@@ -124,20 +124,22 @@ def articulation_plan(graph, voice_duration_seconds):
     rough_model = _loop_model(seconds, (25, 25), [1] * 7,
                               [1, 1, .825, .65, .825, 1, 1])
     new_nodes = [
-        {"id": "expressionControls", "kind": "modulationTriple", "position": {"x": 100, "y": 80},
+        {"id": "expressionControls", "kind": "modulationTriple", "position": {"x": 104, "y": 930},
          "parameters": {"yellowSource": "midiCC", "yellowController": 77,
                         "redSource": "midiCC", "redController": 76,
                         "blueSource": "midiCC", "blueController": 5}},
-        {"id": "growlEnvelope", "kind": "envelope", "position": {"x": 900, "y": 1250},
+        {"id": "growlEnvelope", "kind": "envelope", "position": {"x": 2732, "y": 1204},
          "parameters": {"enabled": True, "purpose": "control", "logarithmic": False,
                         "declick": False, "red": .5, "blue": 0, "level": 1}, "model": rough_model},
-        {"id": "growlMultiply", "kind": "multiply", "position": {"x": 1750, "y": 1250},
+        {"id": "growlMultiply", "kind": "multiply", "position": {"x": 2945, "y": 886},
          "parameters": {}},
     ]
     old_edge = _edge("volumeMultiply", "out", "voiceOutput", "time")
     if old_edge not in graph["edges"]:
         raise ValueError("Expected the direct existing per-voice volume output")
-    return {"edits": edits, "addNodes": new_nodes, "removeEdges": [old_edge], "addEdges": [
+    return {"edits": edits, "addNodes": new_nodes,
+            "moves": [{"nodeId": "voiceOutput", "position": {"x": 3175, "y": 886}}],
+            "removeEdges": [old_edge], "addEdges": [
                 _edge("expressionControls", "red", "pitchEnvelope1", "red"),
                 _edge("expressionControls", "blue", "pitchEnvelope1", "blue"),
                 _edge("expressionControls", "yellow", "growlEnvelope", "blue"),

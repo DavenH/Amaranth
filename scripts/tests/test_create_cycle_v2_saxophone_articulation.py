@@ -71,7 +71,8 @@ class ArticulationDriverTest(unittest.TestCase):
                 return {"physicalValue": 2.082}
             elif kind == "addNode":
                 identifier = "voice" if collide else list(self.identifiers.values())[len(state["added"])]
-                node = {"id": identifier, "kind": command["kind"], "parameters": {}}
+                node = {"id": identifier, "kind": command["kind"], "parameters": {},
+                        "position": {"x": command["x"], "y": command["y"]}}
                 if node["kind"] == "envelope":
                     node["model"] = {"schema": "envelope", "revision": 7, "state": {"revision": 7}}
                 state["graph"]["nodes"].append(node)
@@ -98,6 +99,9 @@ class ArticulationDriverTest(unittest.TestCase):
                 state["graph"] = state["redo"]
             elif kind == "deleteEdge":
                 state["graph"]["edges"].pop(command["edgeIndex"])
+            elif kind == "moveNode":
+                node = runner.named(state["graph"]["nodes"], command["nodeId"])
+                node["position"] = {"x": command["x"], "y": command["y"]}
             elif kind == "connectPorts":
                 state["graph"]["edges"].append({key: value for key, value in command.items() if key != "command"})
             elif kind == "setExplanation":
@@ -126,6 +130,12 @@ class ArticulationDriverTest(unittest.TestCase):
         self.assertEqual(sum(command["command"] == "applyNodeEdits" for command in state["calls"]), 1)
         self.assertEqual((self.output / "reloaded.cyclegraph").read_bytes(),
                          (self.output / "candidate-inspection.cyclegraph").read_bytes())
+        for node in self.graph["nodes"]:
+            expected = {"x": 3175, "y": 886} if node["id"] == "voiceOutput" else node["position"]
+            self.assertEqual(runner.named(saved["nodes"], node["id"])["position"], expected)
+        commands = [command["command"] for command in state["calls"]]
+        self.assertLess(commands.index("redo"), commands.index("moveNode"))
+        self.assertLess(commands.index("moveNode"), commands.index("connectPorts"))
 
     def test_collision_or_rejected_semantic_edit_cannot_save_a_candidate(self):
         for collide, rejected in ((True, None), (False, "applyNodeEdits")):

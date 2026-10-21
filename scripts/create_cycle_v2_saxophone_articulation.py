@@ -91,6 +91,9 @@ def author_candidate(source, output, invoke):
         invoke({"command": action})
         if export(action + ".cyclegraph") != expected:
             raise RuntimeError("Shape " + action + " changed unrelated content")
+    for move in plan.get("moves", []):
+        invoke({"command": "moveNode", "nodeId": identifiers.get(move["nodeId"], move["nodeId"]),
+                **move["position"]})
     for edge in plan["removeEdges"]:
         current = json.loads(export("routing-inspection.cyclegraph"))
         invoke({"command": "deleteEdge", "edgeIndex": edge_index(current, remap_edge(edge, identifiers))})

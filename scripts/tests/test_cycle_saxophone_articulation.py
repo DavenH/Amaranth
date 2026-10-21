@@ -112,6 +112,13 @@ class SaxophoneArticulationTest(unittest.TestCase):
         self.assertEqual([controls[key] for key in ("blueController", "redController", "yellowController")], [5, 76, 77])
         self.assertEqual({item["controller"] for item in CONTROL_MAP}, set(DEFAULT_CONTROLLERS))
 
+    def test_card_positions_extend_the_existing_signal_path_and_only_move_voice_output(self):
+        self.assertEqual(self.plan["moves"], [{"nodeId": "voiceOutput", "position": {"x": 3175, "y": 886}}])
+        self.assertEqual({node["id"]: node["position"] for node in self.plan["addNodes"]}, {
+            "expressionControls": {"x": 104, "y": 930},
+            "growlEnvelope": {"x": 2732, "y": 1204},
+            "growlMultiply": {"x": 2945, "y": 886}})
+
     def test_demo_initializes_and_resets_every_used_lane_with_balanced_finite_notes(self):
         sequence = demonstration_sequence()
         self.assertEqual(set(sequence), {"durationSeconds", "notes", "controls"})
