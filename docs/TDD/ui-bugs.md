@@ -1,5 +1,23 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Modulation Triple split profiles hide Constant and MIDI CC controls
+
+On 2026-10-20, UX review reproduced a missing Constant value control and MIDI
+controller-number control in the expanded Modulation Triple. Add `modTriple`,
+set `yellowSource=constant` and `envelopeYellowSource=midiCC`, then open its
+editor. Both source menus render, but their associated value controls are absent.
+The exported editor state confirms Constant 0.5 and controller 1 remain selected.
+
+`ModulationSourceRow::resized()` spends each 161 px profile row on the 30 px axis
+label and remaining 131 px source menu. The conditional control receives zero
+remaining width. Reflow source-specific controls below their selector using the
+shared compact property grammar and its usable-travel minimum; verify both
+profiles and all conditional source types. Status: open; discovered during
+review, with no production change in that review. Artifacts:
+`.context/ux-review-modulation-conditional.png`,
+`.context/ux-review-modulation-controls.json`, and
+`.context/ux-modulation-review.log`.
+
 ## P3: Native verification intermittently fails exact-PID foreground activation
 
 On 2026-10-20, the first vertex-slider native review stopped before dispatching
