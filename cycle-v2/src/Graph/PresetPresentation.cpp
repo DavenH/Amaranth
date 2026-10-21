@@ -12,19 +12,35 @@ constexpr int kMaximumPreviewWidth = 1024;
 constexpr int kMaximumPreviewHeight = 1024;
 constexpr size_t kMaximumPreviewBytes = 512 * 1024;
 
+std::optional<double> sequenceNumber(const juce::var& value, double minimum, double maximum, bool whole = false) {
+    if (!value.isInt() && !value.isInt64() && !value.isDouble()) {
+        return std::nullopt;
+    }
+    const double number = (double) value;
+    if (!std::isfinite(number) || number < minimum || number > maximum
+            || (whole && std::floor(number) != number)) {
+        return std::nullopt;
+    }
+    return number;
+}
+
 std::optional<PresetMidiSequence> readSequence(const juce::var& value) {
     const auto* object = value.getDynamicObject();
     if (object == nullptr) {
         return std::nullopt;
     }
-    const double duration = (double) object->getProperty("durationSeconds");
-    if (!std::isfinite(duration) || duration <= 0.0
-            || duration > PresetMidiSequence::maximumDurationSeconds) {
+    const auto durationValue = sequenceNumber(object->getProperty("durationSeconds"),
+            0.0, PresetMidiSequence::maximumDurationSeconds);
+    if (!durationValue.has_value() || *durationValue <= 0.0) {
         return std::nullopt;
     }
+    const double duration = *durationValue;
     PresetMidiSequence sequence;
     sequence.durationSeconds = duration;
     const juce::var notesValue = object->getProperty("notes");
+    if (object->hasProperty("notes") && !notesValue.isArray()) {
+        return std::nullopt;
+    }
     if (const auto* notes = notesValue.getArray()) {
         if (notes->size() > (int) PresetMidiSequence::maximumEventsPerLane) {
             return std::nullopt;
@@ -34,23 +50,21 @@ std::optional<PresetMidiSequence> readSequence(const juce::var& value) {
             if (note == nullptr) {
                 return std::nullopt;
             }
-            PresetMidiNote decoded;
-            decoded.pitch = (int) note->getProperty("pitch");
-            decoded.velocity = (int) note->getProperty("velocity");
-            decoded.startSeconds = (double) note->getProperty("startSeconds");
-            decoded.durationSeconds = (double) note->getProperty("durationSeconds");
-            if (decoded.pitch < 0 || decoded.pitch > 127
-                    || decoded.velocity < 1 || decoded.velocity > 127
-                    || !std::isfinite(decoded.startSeconds)
-                    || !std::isfinite(decoded.durationSeconds)
-                    || decoded.startSeconds < 0.0 || decoded.durationSeconds <= 0.0
-                    || decoded.startSeconds + decoded.durationSeconds > duration + 0.001) {
+            const auto pitch = sequenceNumber(note->getProperty("pitch"), 0, 127, true);
+            const auto velocity = sequenceNumber(note->getProperty("velocity"), 1, 127, true);
+            const auto start = sequenceNumber(note->getProperty("startSeconds"), 0, duration + .001);
+            const auto length = sequenceNumber(note->getProperty("durationSeconds"), 0, duration + .001);
+            if (!pitch.has_value() || !velocity.has_value() || !start.has_value() || !length.has_value()
+                    || *length <= 0.0 || *start + *length > duration + 0.001) {
                 return std::nullopt;
             }
-            sequence.notes.push_back(decoded);
+            sequence.notes.push_back({ (int) *pitch, (int) *velocity, *start, *length });
         }
     }
     const juce::var controlsValue = object->getProperty("controls");
+    if (object->hasProperty("controls") && !controlsValue.isArray()) {
+        return std::nullopt;
+    }
     if (const auto* controls = controlsValue.getArray()) {
         if (controls->size() > (int) PresetMidiSequence::maximumEventsPerLane) {
             return std::nullopt;
@@ -60,17 +74,13 @@ std::optional<PresetMidiSequence> readSequence(const juce::var& value) {
             if (control == nullptr) {
                 return std::nullopt;
             }
-            PresetMidiControl decoded;
-            decoded.controller = (int) control->getProperty("controller");
-            decoded.value = (int) control->getProperty("value");
-            decoded.timeSeconds = (double) control->getProperty("timeSeconds");
-            if (decoded.controller < 0 || decoded.controller > 127
-                    || decoded.value < 0 || decoded.value > 127
-                    || !std::isfinite(decoded.timeSeconds)
-                    || decoded.timeSeconds < 0.0 || decoded.timeSeconds > duration) {
+            const auto controller = sequenceNumber(control->getProperty("controller"), 0, 127, true);
+            const auto amount = sequenceNumber(control->getProperty("value"), 0, 127, true);
+            const auto time = sequenceNumber(control->getProperty("timeSeconds"), 0, duration);
+            if (!controller.has_value() || !amount.has_value() || !time.has_value()) {
                 return std::nullopt;
             }
-            sequence.controls.push_back(decoded);
+            sequence.controls.push_back({ (int) *controller, (int) *amount, *time });
         }
     }
     return sequence;
