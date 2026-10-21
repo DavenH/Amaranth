@@ -1,5 +1,24 @@
 # Audio Bug Notes
 
+## P2: Long reference imports omit the tail without an explicit truncation flag
+
+On 2026-10-21, preparation of the downloaded saxophone references found
+`PitchedSample::load` limits decoding to 2,097,152 frames. This is about
+47.55 seconds at 44.1 kHz and 43.69 seconds at 48 kHz, shorter than most of the
+45.8–70.9-second Iowa scales and the supplied 594-second solo. The existing
+reference export reports the decoded duration alongside the full source path,
+without an explicit original-length/truncated field. This source-reviewed
+limitation has not been reproduced by importing these long recordings; the
+calibration deliberately uses short VCSL notes instead.
+
+Status: open. Expose the bounded decode/source extent and support source-aware
+region preparation before interpreting long-reference analysis as complete.
+Host observation crops currently select cached analysis without retracking;
+they do not recover the omitted tail. Source headers and lengths are recorded
+in `.context/sax-reference-downloads/iowa/collection.json` and
+`youtube/acquisition.json`. Region workflow requirements are in modelling
+feature queue M02; this is separate from adding a second decoder or tracker.
+
 ## P2: Reference analysis exports Cycle note numbers under MIDI field names
 
 On 2026-10-20, saxophone-pilot reference triage found

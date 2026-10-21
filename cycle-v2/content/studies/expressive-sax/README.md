@@ -1,4 +1,4 @@
-# Expressive saxophone feasibility pilot
+# Expressive saxophone studies
 
 This study uses the existing `saxophone-3.cyclegraph` as one shared synthesis
 structure. It tests control response and one manually declared edit. It does
@@ -8,6 +8,15 @@ Record newly encountered capability gaps in the
 [modelling feature queue](../../../../docs/TDD/cycle-v2-preset-modelling-feature-queue.md).
 Subsequent [external reference acquisition](REFERENCE-SOURCES.md) is preserved
 separately from this experiment's frozen inputs and results.
+
+The follow-up [VCSL calibration](../../../../docs/TDD/cycle-v2-saxophone-reference-calibration.md)
+uses twelve pinned CC0 isolated notes: eight objective recordings and four
+reserved D3 parents. `vcsl-calibration.json` declares one pitch-envelope ablation
+of the same factory structure. It compares source and synthesized pitch traces
+and raw/RMS auditions, without changing geometry or inventing source controls.
+Run its objective and audit stages with
+`scripts/run_cycle_v2_saxophone_calibration.py`; the runbook describes the local
+corpus layout. The following sections describe the original growl pilot.
 
 The plan and performance suites beside this file separate objective cases
 from reserved performance combinations before editing. Objective rendering

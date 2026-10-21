@@ -42,8 +42,8 @@ that mapping separately rather than claiming live adoption alone solves it.
 
 ## M02 — Reviewable note regions from scales and continuous performances
 
-Status: Workflow opportunity observed during reference acquisition; inspect
-reusable onset/region tools before designing an implementation.
+Status: Region-level analysis is a confirmed workflow gap; automatic boundary
+proposals remain an opportunity. Inspect reusable tools before implementation.
 
 Musical task: use both isolated notes and the connected attacks, slurs, bends
 and transitions in a solo. The Iowa collection contains 18 chromatic-scale
@@ -56,6 +56,20 @@ and selects existing pitch frames/cyclogram columns without retracking.
 Audition selectors already crop immutable source audio and retain the source
 origin. This request is for proposed boundaries, review/correction and
 region-specific labels/confidence, not a second file decoder or cropping store.
+
+During real-reference calibration, source review found that
+`PitchedSample::load` caps decoded input at 2,097,152 frames (about 47.55 seconds
+at 44.1 kHz, 43.69 seconds at 48 kHz). Most Iowa scales and the supplied solo
+exceed this. Full-file tracking also corrects toward a dominant pitch; exported
+periods are rebuilt from the effective edited pitch path. Selecting a crop from
+that cached analysis does not establish a separately tracked note region.
+Use the isolated VCSL notes for the current calibration rather than silently
+truncating or treating a full chromatic scale as one reliable pitched sample.
+
+Reuse lead: `OscAudioProcessor::detectOnsets` already detects level rises, but
+it is product-private, runs after input saturation and timestamps block ends.
+Automatic reference proposals would need a shared extraction and a reviewed
+timing contract, not a copied host detector or sample-accuracy claim.
 
 Acceptance direction: preserve original recording hashes and time offsets;
 offer editable region proposals with uncertain/overlapping/slurred boundaries
@@ -73,6 +87,11 @@ Implementation remains in that slice after the pilot's evidence gate.
 Evidence: the pilot's unchanged shared structure contains 23 nodes, 1,176 mesh
 vertices and 147 cubes; its pitch envelope alone has 840 vertices/104 cubes.
 These counts do not prove redundancy or justify deleting that contour.
+The VCSL calibration subsequently bypasses only that pitch envelope and obtains
+straighter tracked NV pitch at objective and reserved notes, while losing
+variation present in vibrato references. It preserves all geometry. This
+demonstrates why an ablation needs behavior-specific acceptance: a smaller
+straight-tone error alone would reward removing useful expressive capability.
 
 Owner: [Preset Authoring Roadmap](cycle-v2-agent-preset-authoring.md), constrained
 search/simplification slice. Compare ablations and bounded shape reductions

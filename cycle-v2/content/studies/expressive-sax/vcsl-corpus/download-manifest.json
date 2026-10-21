@@ -1,0 +1,811 @@
+{
+  "schema": "sax-reference-downloads.v1",
+  "status": "complete",
+  "downloadedUtc": "2026-10-21T02:50:02.886592+00:00",
+  "repository": "https://github.com/sgossner/VCSL",
+  "commit": "c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e",
+  "selectionPath": "selection.json",
+  "selectionSha256": "6269e348be1725c7a51eeeff22d01dac6e5d512c1732c027cf160db2a4022383",
+  "licence": {
+    "identifier": "CC0-1.0",
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/LICENSE",
+    "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+    "declarationUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/README.md"
+  },
+  "metadata": [
+    {
+      "path": "LICENSE",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/LICENSE",
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/LICENSE",
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "bytes": 7048
+    },
+    {
+      "path": "UPSTREAM-README.md",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/README.md",
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/README.md",
+      "sha256": "6f7214a188f106c917d6503748485413c3e47cf56bce69f82beb9d16aa0894a9",
+      "bytes": 4365
+    },
+    {
+      "path": "freepats-saxophone.html",
+      "url": "https://freepats.zenvoid.org/Reed/saxophone.html",
+      "finalUrl": "https://freepats.zenvoid.org/Reed/saxophone.html",
+      "sha256": "401f5d8b7f64ee6452bb7c802fc3fc9cd02339178367c0b24cd36f41e9e2c320",
+      "bytes": 10501
+    },
+    {
+      "path": "versilian-vcsl.html",
+      "url": "https://versilian-studios.com/vcsl/",
+      "finalUrl": "https://versilian-studios.com/vcsl/",
+      "sha256": "7d042b031aa6cadbf791dfe615426db67576776f0eeb391eb41e7ff22f747020",
+      "bytes": 165921
+    }
+  ],
+  "audioFiles": [
+    {
+      "id": "BrettTenor_NV_Main_C2_vl2_rr1",
+      "split": "objective",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_C2_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C2_vl2_rr1.wav",
+      "localPath": "audio/Non-Vibrato/BrettTenor_NV_Main_C2_vl2_rr1.wav",
+      "expectedBytes": 2363426,
+      "gitBlobSha1": "5b327c8f95808da4995f74f5f6da82bf4792f457",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Non-Vibrato",
+        "noteToken": "C2",
+        "velocityLayer": 2,
+        "roundRobinToken": 1,
+        "variationToken": null,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "09ab83ec9ddccc53dfbcc2fe938eacf35c1f5e6a2add063a24808f294cee40ba",
+      "bytes": 2363426,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C2_vl2_rr1.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 393897,
+        "durationSeconds": 8.2061875,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 2363382
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    },
+    {
+      "id": "BrettTenor_NV_Main_C2_vl3_rr1",
+      "split": "objective",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_C2_vl3_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C2_vl3_rr1.wav",
+      "localPath": "audio/Non-Vibrato/BrettTenor_NV_Main_C2_vl3_rr1.wav",
+      "expectedBytes": 2132990,
+      "gitBlobSha1": "f25d85bd4530c9ea296d809efb1d533075266217",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Non-Vibrato",
+        "noteToken": "C2",
+        "velocityLayer": 3,
+        "roundRobinToken": 1,
+        "variationToken": null,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "e4f9a951de691c5c7c4e1c54c9f3fd44e704c14a553a510b8422e7718b1cc1ab",
+      "bytes": 2132990,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C2_vl3_rr1.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 355491,
+        "durationSeconds": 7.4060625,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 2132946
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    },
+    {
+      "id": "BrettTenor_NV_Main_C4_vl2_rr1",
+      "split": "objective",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_C4_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C4_vl2_rr1.wav",
+      "localPath": "audio/Non-Vibrato/BrettTenor_NV_Main_C4_vl2_rr1.wav",
+      "expectedBytes": 2463728,
+      "gitBlobSha1": "9e9df9d0336413de8ba7b3aa4f0a564bdee17346",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Non-Vibrato",
+        "noteToken": "C4",
+        "velocityLayer": 2,
+        "roundRobinToken": 1,
+        "variationToken": null,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "f2eebd4fc0faecae312bd886c9830b268b134842e927f5a5c79ccc2ed24ed597",
+      "bytes": 2463728,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C4_vl2_rr1.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 410614,
+        "durationSeconds": 8.554458333333333,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 2463684
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    },
+    {
+      "id": "BrettTenor_NV_Main_C4_vl3_rr1",
+      "split": "objective",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_C4_vl3_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C4_vl3_rr1.wav",
+      "localPath": "audio/Non-Vibrato/BrettTenor_NV_Main_C4_vl3_rr1.wav",
+      "expectedBytes": 2946356,
+      "gitBlobSha1": "3d6419cf2f174406312d09ee67392d5c1bf3193e",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Non-Vibrato",
+        "noteToken": "C4",
+        "velocityLayer": 3,
+        "roundRobinToken": 1,
+        "variationToken": null,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "039dff9fa11e807ff5c3ceba33aae3416fa89c7ed2af64dbff4e657f67b28217",
+      "bytes": 2946356,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_C4_vl3_rr1.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 491052,
+        "durationSeconds": 10.23025,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 2946312
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    },
+    {
+      "id": "BrettTenor_Staccato_Main_C3_vl1_rr4",
+      "split": "objective",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Staccato/BrettTenor_Staccato_Main_C3_vl1_rr4.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Staccato/BrettTenor_Staccato_Main_C3_vl1_rr4.wav",
+      "localPath": "audio/Staccato/BrettTenor_Staccato_Main_C3_vl1_rr4.wav",
+      "expectedBytes": 143492,
+      "gitBlobSha1": "3a4d6bb99e426443cfd099aa3ff0a1edf7bcae64",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Staccato",
+        "noteToken": "C3",
+        "velocityLayer": 1,
+        "roundRobinToken": 4,
+        "variationToken": null,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "e13e2a8575231caba175e31ca61cb824c20b2e948ae1ef5e337228d47a1a2ea6",
+      "bytes": 143492,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Staccato/BrettTenor_Staccato_Main_C3_vl1_rr4.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 23908,
+        "durationSeconds": 0.4980833333333333,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 143448
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    },
+    {
+      "id": "BrettTenor_Staccato_Main_C3_vl2_rr4",
+      "split": "objective",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Staccato/BrettTenor_Staccato_Main_C3_vl2_rr4.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Staccato/BrettTenor_Staccato_Main_C3_vl2_rr4.wav",
+      "localPath": "audio/Staccato/BrettTenor_Staccato_Main_C3_vl2_rr4.wav",
+      "expectedBytes": 152162,
+      "gitBlobSha1": "0a8dbc8c545a2ad82e821dfca9b8b99572aefbef",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Staccato",
+        "noteToken": "C3",
+        "velocityLayer": 2,
+        "roundRobinToken": 4,
+        "variationToken": null,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "0984039ad9542a4feee2ae34cf817042e7e2aa17330b1e7d595a513535e4d62d",
+      "bytes": 152162,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Staccato/BrettTenor_Staccato_Main_C3_vl2_rr4.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 25353,
+        "durationSeconds": 0.5281875,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 152118
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    },
+    {
+      "id": "BrettTenor_Vib_Main_C2_var4",
+      "split": "objective",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Vibrato/BrettTenor_Vib_Main_C2_var4.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Vibrato/BrettTenor_Vib_Main_C2_var4.wav",
+      "localPath": "audio/Vibrato/BrettTenor_Vib_Main_C2_var4.wav",
+      "expectedBytes": 2077850,
+      "gitBlobSha1": "ec51783285d2132758c759817b46e7087e87276b",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Vibrato",
+        "noteToken": "C2",
+        "velocityLayer": null,
+        "roundRobinToken": null,
+        "variationToken": 4,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "7dfc6ddb457baf07c1973348ede1bcfe2c580758b60667109d0850b3e5336891",
+      "bytes": 2077850,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Vibrato/BrettTenor_Vib_Main_C2_var4.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 346301,
+        "durationSeconds": 7.214604166666667,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 2077806
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    },
+    {
+      "id": "BrettTenor_Vib_Main_C4_var2",
+      "split": "objective",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Vibrato/BrettTenor_Vib_Main_C4_var2.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Vibrato/BrettTenor_Vib_Main_C4_var2.wav",
+      "localPath": "audio/Vibrato/BrettTenor_Vib_Main_C4_var2.wav",
+      "expectedBytes": 1674950,
+      "gitBlobSha1": "799c970465abb2b1b9040080ed553dc91d9f1803",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Vibrato",
+        "noteToken": "C4",
+        "velocityLayer": null,
+        "roundRobinToken": null,
+        "variationToken": 2,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "3af58ad97bfaddf59a0303f658a36dfd74e829ed3360ed24d96dc7c521b53e7f",
+      "bytes": 1674950,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Vibrato/BrettTenor_Vib_Main_C4_var2.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 279151,
+        "durationSeconds": 5.815645833333333,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 1674906
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    },
+    {
+      "id": "BrettTenor_NV_Main_D3_vl2_rr1",
+      "split": "reserved",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_D3_vl2_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_D3_vl2_rr1.wav",
+      "localPath": "audio/Non-Vibrato/BrettTenor_NV_Main_D3_vl2_rr1.wav",
+      "expectedBytes": 2190272,
+      "gitBlobSha1": "4a9ce914994589b289d46c3a122dc9ecc164767c",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Non-Vibrato",
+        "noteToken": "D3",
+        "velocityLayer": 2,
+        "roundRobinToken": 1,
+        "variationToken": null,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "6324a58060534001081a33b54d6c2dfb290dee31ae82639f8514cdacf83eadee",
+      "bytes": 2190272,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_D3_vl2_rr1.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 365038,
+        "durationSeconds": 7.604958333333333,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 2190228
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    },
+    {
+      "id": "BrettTenor_NV_Main_D3_vl3_rr1",
+      "split": "reserved",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Non-Vibrato/BrettTenor_NV_Main_D3_vl3_rr1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_D3_vl3_rr1.wav",
+      "localPath": "audio/Non-Vibrato/BrettTenor_NV_Main_D3_vl3_rr1.wav",
+      "expectedBytes": 1962368,
+      "gitBlobSha1": "4251262bc348bec8392ea683178d20dd550216cc",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Non-Vibrato",
+        "noteToken": "D3",
+        "velocityLayer": 3,
+        "roundRobinToken": 1,
+        "variationToken": null,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "cc07e85cf6a1768ff66478e07a060eb50be1432d7f12c0ad29c2d605774370b2",
+      "bytes": 1962368,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Non-Vibrato/BrettTenor_NV_Main_D3_vl3_rr1.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 327054,
+        "durationSeconds": 6.813625,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 1962324
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    },
+    {
+      "id": "BrettTenor_Staccato_Main_D3_vl2_rr5",
+      "split": "reserved",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Staccato/BrettTenor_Staccato_Main_D3_vl2_rr5.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Staccato/BrettTenor_Staccato_Main_D3_vl2_rr5.wav",
+      "localPath": "audio/Staccato/BrettTenor_Staccato_Main_D3_vl2_rr5.wav",
+      "expectedBytes": 165950,
+      "gitBlobSha1": "1d0776037bc48d75f235fd48da47886ecc00dfa7",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Staccato",
+        "noteToken": "D3",
+        "velocityLayer": 2,
+        "roundRobinToken": 5,
+        "variationToken": null,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "7afa9afdec980242a61c164878ee09bcf363f960fdee9b4a870780be3a917f64",
+      "bytes": 165950,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Staccato/BrettTenor_Staccato_Main_D3_vl2_rr5.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 27651,
+        "durationSeconds": 0.5760625,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 165906
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    },
+    {
+      "id": "BrettTenor_Vib_Main_D3_var1",
+      "split": "reserved",
+      "sourcePath": "Aerophones/Reed Aerophones/Tenor Saxophone/Vibrato/BrettTenor_Vib_Main_D3_var1.wav",
+      "url": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Vibrato/BrettTenor_Vib_Main_D3_var1.wav",
+      "localPath": "audio/Vibrato/BrettTenor_Vib_Main_D3_var1.wav",
+      "expectedBytes": 2180402,
+      "gitBlobSha1": "c827f6ca6504e2f6c4d8c6988d23c679710fbdd2",
+      "sourceLabels": {
+        "instrument": "Tenor Saxophone",
+        "articulationFolder": "Vibrato",
+        "noteToken": "D3",
+        "velocityLayer": null,
+        "roundRobinToken": null,
+        "variationToken": 1,
+        "performerToken": "Brett",
+        "positionToken": "Main"
+      },
+      "labelEvidence": "Upstream path and filename; octave convention, actual sounding pitch, dynamic markings and performer identity are unverified.",
+      "sha256": "4375f5c5041751d8b8b4e977476785e58e09035182bca2462160258990e46abe",
+      "bytes": 2180402,
+      "finalUrl": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Aerophones/Reed%20Aerophones/Tenor%20Saxophone/Vibrato/BrettTenor_Vib_Main_D3_var1.wav",
+      "wave": {
+        "sampleRate": 48000,
+        "channels": 2,
+        "sampleWidth": 3,
+        "frames": 363393,
+        "durationSeconds": 7.5706875,
+        "compression": "NONE"
+      },
+      "riffChunks": [
+        {
+          "id": "fmt ",
+          "bytes": 16
+        },
+        {
+          "id": "data",
+          "bytes": 2180358
+        }
+      ],
+      "samplerLoopMetadata": [],
+      "license": "CC0-1.0",
+      "licensePath": "LICENSE"
+    }
+  ],
+  "audioFileCount": 12,
+  "totalAudioBytes": 20453946,
+  "objectiveSourceIds": [
+    "BrettTenor_NV_Main_C2_vl2_rr1",
+    "BrettTenor_NV_Main_C2_vl3_rr1",
+    "BrettTenor_NV_Main_C4_vl2_rr1",
+    "BrettTenor_NV_Main_C4_vl3_rr1",
+    "BrettTenor_Staccato_Main_C3_vl1_rr4",
+    "BrettTenor_Staccato_Main_C3_vl2_rr4",
+    "BrettTenor_Vib_Main_C2_var4",
+    "BrettTenor_Vib_Main_C4_var2"
+  ],
+  "reservedSourceIds": [
+    "BrettTenor_NV_Main_D3_vl2_rr1",
+    "BrettTenor_NV_Main_D3_vl3_rr1",
+    "BrettTenor_Staccato_Main_D3_vl2_rr5",
+    "BrettTenor_Vib_Main_D3_var1"
+  ],
+  "notes": [
+    "Unmodified files fetched from original VCSL repository; this is not a claim of unprocessed microphone recordings.",
+    "FreePats tenor bank derives from VCSL and explicitly adds edited infinite sustain loops; not downloaded as an independent reference source.",
+    "Filename note tokens have no verified concert/written pitch or octave convention here; do not transfer them into pitched analysis without validation.",
+    "vl tokens label source velocity layers only, not calibrated pp/mf/ff, MIDI velocities or acoustic SPL.",
+    "Brett is a filename token only; full performer identity, session, instrument setup, reed and microphone are unspecified in repository sax documentation.",
+    "Round-robin/variation identifiers retained verbatim; one sample per selected layer does not provide repeated same-condition takes.",
+    "No continuous note-to-note transition, crescendo, growl, subtone or independently controlled timbre axes are labelled in this subset.",
+    "Reserved D3 files/notes were selected before any audio download. They share the same performer/recording family and are not independent-player coverage."
+  ],
+  "sourceCoverage": {
+    "upstreamSaxDocumentation": "No sax-specific text/credits/recording metadata found in complete pinned repository tree; only filenames/folders plus top-level README/LICENSE.",
+    "filenamePerformerToken": "Brett",
+    "performerIdentityVerified": false,
+    "instruments": {
+      "Tenor Saxophone": {
+        "Non-Vibrato": {
+          "fileCount": 46,
+          "audioBytes": 100095362,
+          "sourceNoteTokens": [
+            "G#1",
+            "A#1",
+            "C2",
+            "D2",
+            "E2",
+            "F#2",
+            "G#2",
+            "A#2",
+            "C3",
+            "D3",
+            "E3",
+            "F#3",
+            "G#3",
+            "A#3",
+            "C4",
+            "D4",
+            "E4",
+            "F#4",
+            "G#4",
+            "A#4",
+            "C5",
+            "D5",
+            "E5"
+          ],
+          "velocityLayerCounts": {
+            "2": 23,
+            "3": 23
+          },
+          "roundRobinTokenCounts": {
+            "1": 46
+          },
+          "variationTokenCounts": {}
+        },
+        "Staccato": {
+          "fileCount": 40,
+          "audioBytes": 6436862,
+          "sourceNoteTokens": [
+            "G#1",
+            "A#1",
+            "C2",
+            "D2",
+            "E2",
+            "F#2",
+            "G#2",
+            "A2",
+            "C3",
+            "D3",
+            "E3",
+            "F#3",
+            "G#3",
+            "A#3",
+            "C4",
+            "D4",
+            "E4",
+            "F4",
+            "G#4",
+            "A4",
+            "C5",
+            "D5",
+            "E5"
+          ],
+          "velocityLayerCounts": {
+            "2": 23,
+            "1": 17
+          },
+          "roundRobinTokenCounts": {
+            "5": 4,
+            "3": 6,
+            "4": 10,
+            "1": 14,
+            "7": 2,
+            "2": 3,
+            "6": 1
+          },
+          "variationTokenCounts": {}
+        },
+        "Vibrato": {
+          "fileCount": 19,
+          "audioBytes": 33776198,
+          "sourceNoteTokens": [
+            "A#1",
+            "C2",
+            "D2",
+            "E2",
+            "F#2",
+            "A#2",
+            "C3",
+            "D3",
+            "E3",
+            "F#3",
+            "A#3",
+            "C4",
+            "D4",
+            "E4",
+            "G4",
+            "G#4",
+            "A#4",
+            "C5",
+            "D5"
+          ],
+          "velocityLayerCounts": {},
+          "roundRobinTokenCounts": {},
+          "variationTokenCounts": {
+            "2": 7,
+            "4": 3,
+            "3": 6,
+            "1": 3
+          }
+        }
+      },
+      "Saxello": {
+        "Non-Vibrato": {
+          "fileCount": 16,
+          "audioBytes": 23851760,
+          "sourceNoteTokens": [
+            "A#2",
+            "D3",
+            "F#3",
+            "A#3",
+            "D4",
+            "F#4",
+            "A#4",
+            "E5"
+          ],
+          "velocityLayerCounts": {
+            "2": 8,
+            "3": 8
+          },
+          "roundRobinTokenCounts": {
+            "2": 8,
+            "1": 8
+          },
+          "variationTokenCounts": {}
+        },
+        "Staccato": {
+          "fileCount": 15,
+          "audioBytes": 2103150,
+          "sourceNoteTokens": [
+            "A#2",
+            "D3",
+            "F#3",
+            "A#3",
+            "D4",
+            "F#4",
+            "A#4",
+            "D5"
+          ],
+          "velocityLayerCounts": {
+            "1": 8,
+            "2": 7
+          },
+          "roundRobinTokenCounts": {
+            "2": 2,
+            "3": 3,
+            "1": 1,
+            "5": 4,
+            "4": 3,
+            "6": 2
+          },
+          "variationTokenCounts": {}
+        },
+        "Vibrato": {
+          "fileCount": 8,
+          "audioBytes": 14380720,
+          "sourceNoteTokens": [
+            "A#2",
+            "D3",
+            "F#3",
+            "A#3",
+            "D4",
+            "F#4",
+            "A#4",
+            "D#5"
+          ],
+          "velocityLayerCounts": {
+            "2": 8
+          },
+          "roundRobinTokenCounts": {
+            "1": 8
+          },
+          "variationTokenCounts": {}
+        }
+      }
+    },
+    "sourceTreePath": "source-tree.json",
+    "sourceTreeSha256": "11f773aa1b8fce53e8a8ad41c35a1850ed9b2f5713bef6fa0e49eee27bc12179",
+    "sourceTreeApiUrl": "https://api.github.com/repos/sgossner/VCSL/git/trees/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e?recursive=1",
+    "rangeInterpretation": "Note tokens ordered by their written octave digits only; no claim of calibrated sounding MIDI pitch or tenor transposition convention."
+  },
+  "verification": {
+    "all12GitBlobSha1AndSha256Rechecked": true,
+    "noObjectiveReservedSourceHashOverlap": true,
+    "noObjectiveReservedNoteTokenOverlap": true,
+    "noReservedPCMReadForFittingOrQualityEvaluation": true,
+    "selectedFilesHaveNoSmplLoopChunk": true,
+    "trackedFilesTouched": false
+  }
+}

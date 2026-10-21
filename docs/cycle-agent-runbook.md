@@ -368,6 +368,28 @@ not validate saxophone expression across the synthetic test performances. See
 `cycle-v2/content/studies/expressive-sax/README.md` and the pilot TDD for coverage,
 control timing and the still-open acoustic/search gate.
 
+The follow-up VCSL calibration uses downloaded, pinned CC0 originals at native
+48 kHz. Supply the corpus directory containing `download-manifest.json`,
+`selection.json`, `LICENSE` and the original `audio/` tree:
+
+Use `cycle-v2/content/studies/expressive-sax/vcsl-corpus/README.md` to reconstruct
+that corpus from the tracked acquisition records when starting from a fresh
+checkout.
+
+```sh
+python3 scripts/run_cycle_v2_saxophone_calibration.py --stage objective --corpus-root /path/to/vcsl --output-dir .context/sax-calibration
+python3 scripts/run_cycle_v2_saxophone_calibration.py --stage audit --corpus-root /path/to/vcsl --output-dir .context/sax-calibration
+```
+
+The fixed plan reserves four D3 parents before decoding them. Objective hashes
+all twelve files, compares eight sources and freezes a single pitch-envelope
+ablation; audit decodes the reserved four with no candidate edits. Reference,
+intervention and pitch-trace reports retain raw timing and confidence. Pitch
+frames describe the effective library path, not raw detector observations.
+Source velocity and control settings remain unknown. See
+`docs/TDD/cycle-v2-saxophone-reference-calibration.md`; straighter tracked pitch
+alone does not establish timbre, taste, economy or an expressive saxophone.
+
 ## Crash And Assertion Triage
 
 Use a minimal fixture and inspect its report, `run.json`, and scoped app logs.

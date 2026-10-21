@@ -67,6 +67,11 @@ The predeclared split is `vcsl/selection.json`; original licence/source snapshot
 are retained beside it. Reserved audio has not been used to fit or select a
 candidate.
 
+The byte-identical acquisition manifest, selection and licence are now tracked
+in [vcsl-corpus](vcsl-corpus/README.md), with a reconstruction recipe. The
+calibration's strict metadata identities therefore do not depend on access to
+the original workspace's ignored files. Downloaded audio remains local.
+
 ## Continuous solo supplied by the user
 
 [Ivan Renta, tenor sax solo](https://www.youtube.com/watch?v=89A0vvoeI6M),
