@@ -14,12 +14,9 @@ namespace CycleV2 {
 
 namespace {
 
-const Colour kText { 0xffe2e8ef };
 const Colour kGroupFill { 0xff151c24 };
 const Colour kGroupBorder { 0xff536171 };
 const Colour kSelectedFill { 0xff2b415a };
-constexpr float kMorphLabelY = 0.f;
-constexpr float kMorphRowsY = 28.f;
 constexpr float kActionTopInset = 4.f;
 constexpr float kActionBottomInset = 12.f;
 constexpr float kActionColumnGap = 28.f;
@@ -68,47 +65,33 @@ void drawSegmentedGroup(
 
 }
 
-Rectangle<float> EnvelopeMorphControls::squareColumn(Rectangle<float> controls) const {
-    controls.reduce(12.f, 8.f);
-    return controls.removeFromLeft(178.f);
+float EnvelopeMorphControls::actionBarHeight() {
+    return kActionBarHeight;
 }
 
-Rectangle<float> EnvelopeMorphControls::planeGroupLabelBounds(
-        Rectangle<float> controls) const {
-    return squareColumn(controls).removeFromTop(
-            PropertyControlMetrics::groupLabelHeight);
+Rectangle<float> EnvelopeMorphControls::planeGroupLabelBounds(Rectangle<float> controls) const {
+    const auto plane = planeBounds(controls);
+    return plane.isEmpty() ? plane : plane.reduced(8.f, 5.f).removeFromTop(18.f);
 }
 
 Rectangle<float> EnvelopeMorphControls::planeBounds(Rectangle<float> controls) const {
-    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount).diagram();
-}
-
-Rectangle<float> EnvelopeMorphControls::railColumn(Rectangle<float> controls) const {
-    controls.reduce(12.f, 8.f);
-    controls.removeFromLeft(200.f);
-    return controls.removeFromLeft(328.f);
+    return MorphControlLayout(controls, dimensionCount).diagram();
 }
 
 Rectangle<float> EnvelopeMorphControls::morphGroupLabelBounds(Rectangle<float> controls) const {
-    auto column = railColumn(controls);
-    column.removeFromRight(
-            58.f + PropertyControlMetrics::morphKeyboardFocusSlotWidth);
-    return {
-            column.getX(),
-            column.getY() + kMorphLabelY,
-            column.getWidth(),
-            (float) PropertyControlMetrics::groupLabelHeight
-    };
+    const int firstAxis = dimensionCount == 2 ? 1 : 0;
+    auto row = morphRow(controls, firstAxis);
+    return row.isEmpty() ? row : row.withY(row.getY() - 12.f).withHeight(10.f);
 }
 
 Rectangle<float> EnvelopeMorphControls::morphRow(Rectangle<float> controls, int axis) const {
-    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount).row(axis);
+    return MorphControlLayout(controls, dimensionCount).row(axis);
 }
 
 Rectangle<float> EnvelopeMorphControls::morphSliderBounds(
         Rectangle<float> controls,
         int axis) const {
-    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount)
+    return MorphControlLayout(controls, dimensionCount)
             .row(axis).withTrimmedRight(56.f + PropertyControlMetrics::morphKeyboardFocusSlotWidth);
 }
 
@@ -182,32 +165,30 @@ Rectangle<float> EnvelopeMorphControls::actionGroupLabelBounds(
 
 Rectangle<float> EnvelopeMorphControls::axisGroupLabelBounds(
         Rectangle<float> controls) const {
-    return Rectangle<float>(24.f, (float) PropertyControlMetrics::groupLabelHeight)
-            .withCentre({
-                    axisBounds(controls, 0).getCentreX(),
-                    morphGroupLabelBounds(controls).getCentreY()
-            });
+    const int axis = dimensionCount == 2 ? 1 : 0;
+    const auto button = axisBounds(controls, axis);
+    return button.isEmpty() ? button
+            : TrimeshSidePanelRenderer::morphColumnHeaderBounds(button, morphRow(controls, axis));
 }
 
 Rectangle<float> EnvelopeMorphControls::linkGroupLabelBounds(
         Rectangle<float> controls) const {
-    return Rectangle<float>(24.f, (float) PropertyControlMetrics::groupLabelHeight)
-            .withCentre({
-                    linkBounds(controls, 0).getCentreX(),
-                    morphGroupLabelBounds(controls).getCentreY()
-            });
+    const int axis = dimensionCount == 2 ? 1 : 0;
+    const auto button = linkBounds(controls, axis);
+    return button.isEmpty() ? button
+            : TrimeshSidePanelRenderer::morphColumnHeaderBounds(button, morphRow(controls, axis));
 }
 
 Rectangle<float> EnvelopeMorphControls::axisBounds(Rectangle<float> controls, int axis) const {
-    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount).axis(axis);
+    return MorphControlLayout(controls, dimensionCount).axis(axis);
 }
 
 Rectangle<float> EnvelopeMorphControls::linkBounds(Rectangle<float> controls, int axis) const {
-    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount).link(axis);
+    return MorphControlLayout(controls, dimensionCount).link(axis);
 }
 
 Rectangle<float> EnvelopeMorphControls::vertexBounds(Rectangle<float> controls) const {
-    return MorphControlLayout(controls.withTrimmedBottom(kActionBarHeight), dimensionCount).vertices();
+    return MorphControlLayout(controls, dimensionCount).vertices();
 }
 
 Rectangle<float> EnvelopeMorphControls::vertexParameterRowBounds(
@@ -230,8 +211,7 @@ Colour EnvelopeMorphControls::axisColour(int axis) const {
 
 void EnvelopeMorphControls::draw(
         Graphics& graphics, Rectangle<float> controls, float red, float blue,
-        int viewAxis, bool redLinked, bool blueLinked, bool loopSelected,
-        bool sustainSelected, float yellow, bool yellowLinked,
+        int viewAxis, bool redLinked, bool blueLinked, float yellow, bool yellowLinked,
         const std::vector<TrimeshCubePreviewVertex>& vertices) const {
     const std::array<TrimeshSidePanelRenderer::AxisState, 3> axes {
             TrimeshSidePanelRenderer::AxisState { "Yellow", "Y", axisColour(0), yellow, viewAxis == 0, yellowLinked },
@@ -239,8 +219,12 @@ void EnvelopeMorphControls::draw(
             TrimeshSidePanelRenderer::AxisState { "Blue", "B", axisColour(2), blue, viewAxis == 2, blueLinked }
     };
     TrimeshSidePanelRenderer::drawMorphControls(graphics,
-            controls.withTrimmedBottom(kActionBarHeight), axes, dimensionCount,
+            controls, axes, dimensionCount,
             MorphDimensions::Plane::RedBlue, vertices);
+}
+
+void EnvelopeMorphControls::drawActions(Graphics& graphics, Rectangle<float> controls,
+        bool loopSelected, bool sustainSelected) const {
     drawActionGroups(graphics, controls, loopSelected, sustainSelected);
     paintPropertyGroupLabel(graphics, markerGroupLabelBounds(controls), "Markers");
     paintPropertyGroupLabel(graphics, axisScaleGroupLabelBounds(controls), "Scaling");

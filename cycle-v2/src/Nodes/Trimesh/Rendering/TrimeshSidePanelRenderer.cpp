@@ -9,6 +9,7 @@
 #include "UI/Editors/PropertyControls.h"
 #include "UI/NodeIconRenderer.h"
 #include "UI/Editors/MorphControlLayout.h"
+#include "UI/Editors/MeshEditorLayout.h"
 
 namespace CycleV2 {
 
@@ -110,7 +111,7 @@ void paintGuideGainKnob(
 
 MorphControlLayout controlLayout(Rectangle<float> area, bool showOutputScale) {
     if (showOutputScale) {
-        area.removeFromBottom(52.f);
+        area.removeFromBottom(MeshEditorLayout::controlFooterHeight);
     }
     return MorphControlLayout(area, 3, MorphDimensions::Plane::YellowRed);
 }
@@ -254,7 +255,7 @@ void TrimeshSidePanelRenderer::drawSidePanel(
         int dimensionCount, const String& feedbackParameter) {
     auto controls = area;
     if (showOutputScale) {
-        controls.removeFromBottom(52.f);
+        controls.removeFromBottom(MeshEditorLayout::controlFooterHeight);
     }
     drawMorphControls(g, controls, axes, dimensionCount, MorphDimensions::Plane::YellowRed, cubeVertices);
     drawVertexParameters(g, MorphControlLayout(controls, dimensionCount).vertices(),
@@ -650,7 +651,7 @@ Rectangle<float> TrimeshSidePanelRenderer::keyboardFocusBounds(
         int dimensionCount) {
     auto controls = sideArea;
     if (showOutputScale) {
-        controls.removeFromBottom(52.f);
+        controls.removeFromBottom(MeshEditorLayout::controlFooterHeight);
     }
     const MorphControlLayout layout(controls, dimensionCount, MorphDimensions::Plane::YellowRed);
     return morphKeyboardFocusOutlineBounds(layout.row(axisIndex), layout.link(axisIndex));

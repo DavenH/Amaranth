@@ -67,7 +67,8 @@ TrimeshRenderData TrimeshGridRenderService::renderGrid(
         int midiNote,
         int keyScaleAxis) {
     rows = jmax(2, rows);
-    columns = jmax(2, columns);
+    const bool isStatic = model.getDimensionCount() == 0;
+    columns = isStatic ? 1 : jmax(2, columns);
     const PortDomain domain = renderProfile.getDomain();
     const bool cyclic = domain == PortDomain::TimeSignal;
     const bool pitchSpansColumns = (domain == PortDomain::SpectralMagnitudeSignal
@@ -83,7 +84,7 @@ TrimeshRenderData TrimeshGridRenderService::renderGrid(
     result.pitchSpansColumns = pitchSpansColumns;
 
     result.slice = renderSlice(model, rows, renderProfile, midiNote);
-    if (model.getDimensionCount() == 0) {
+    if (isStatic && !renderProfile.getSliceStyle().isSpectral()) {
         result.columns = 0;
         return result;
     }
@@ -95,10 +96,11 @@ TrimeshRenderData TrimeshGridRenderService::renderGrid(
     gridwiseDsp.setFrequencyMidiNote(midiNote);
     result.surface.resize((size_t) rows * (size_t) columns);
     Buffer<float> surface(result.surface.data(), (int) result.surface.size());
+    const MorphPosition center = isStatic ? MorphPosition(0.f, 0.f, 0.f) : model.morph;
     if (pitchSpansColumns) {
         gridwiseDsp.renderPitchColumnsInto(
                 model.mesh(),
-                model.morph,
+                center,
                 model.primaryViewAxis,
                 (size_t) columns,
                 surface,
@@ -106,7 +108,7 @@ TrimeshRenderData TrimeshGridRenderService::renderGrid(
     } else {
         gridwiseDsp.renderColumnsInto(
                 model.mesh(),
-                model.morph,
+                center,
                 model.primaryViewAxis,
                 (size_t) columns,
                 surface,

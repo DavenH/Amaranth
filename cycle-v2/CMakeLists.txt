@@ -206,6 +206,7 @@ set(RUNTIME_SOURCES
 set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/Rendering/EnvelopeMorphSurfacePreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MorphControlLayout.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MeshEditorLayout.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MeshDimensionOptions.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/EffectEnableButton.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MorphKeyboardShortcutHelp.cpp"

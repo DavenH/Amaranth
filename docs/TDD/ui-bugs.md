@@ -1,5 +1,17 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Static spectral Trimesh loses harmonic partials
+
+On 2026-10-21, switching a spectral Trimesh to Static removes its partial bars.
+TrimeshGridRenderService returns zero columns for Static; TrimeshPanel2D's
+existing partial painter consequently cannot obtain a column from the data
+source. Prepare one equivalent zero-morph column without a drawable surface.
+Status: resolved by one grid-equivalent spectral column at morph zero, without
+making a drawable surface. Magnitude/phase parity, guide refresh and fixed/pitch
+sampling tests pass, as does the focused Static/3D/Undo fixture. Evidence:
+`.context/shared-mesh-layout-tests.log`,
+`shared-mesh-static-partials-ui-run.json` and `shared-mesh-static-partials.png`.
+
 ## P2: Modulation Triple split profiles hide Constant and MIDI CC controls
 
 On 2026-10-20, UX review reproduced a missing Constant value control and MIDI
@@ -786,3 +798,12 @@ in-app mode click and asserts `dimensionCount=0` before capture. Native acceptan
 for the relocated Component menus passes for both families. Artifacts:
 `.context/native-component-curve-review.py` and `.context/component-curve-native.log`.
 This is separate from the passing 85-command mode/row fixture.
+
+The 2026-10-21 shared mesh-layout native review also missed one mode-pill click;
+capture preparation now selects the mode through the semantic pointer fixture
+and verifies its state. Native curve, toolbar and morph gestures are exercised
+separately. Artifact: `.context/shared-mesh-native-pill-click.log`. An earlier
+marker attempt clicked its disabled control after Undo cleared the session
+selection; the corrected gesture explicitly reselects the original point and
+asserts marker availability before testing it. This is a precondition for the
+native check, not a change to marker or selection policy.

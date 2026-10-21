@@ -1,6 +1,6 @@
 # Unified Mesh Dimensionality
 
-Status: Complete — dimensionality, migration, shared morph defaults and inspector usability follow-ups verified.
+Status: Complete — shared mesh editor composition, restrained previews and Static spectral partials verified.
 
 ## Contract
 
@@ -407,3 +407,88 @@ Responsibility and size review:
   duplicating gesture lifecycle. Shared endpoint painters and hover tracking
   are presentation-only; all old scanline and raw conditional-slider paths
   are deleted. The UI scope has no DSP or persistent-topology changes.
+
+## Follow-up: shared editor composition and Static partials
+
+Use Trimesh as the layout template for both mesh families: upper-left morph
+surface, upper-right morph/vertex inspector, full-width editable curve below.
+Static compacts to a curve beside vertex properties. Envelope retains its
+panel-wide marker/scaling/zoom toolbar along the bottom. Both families use the
+same popup sizing, column geometry and full-height property rows. Preserve the
+140–220 px vertex travel budget and mature envelope editing/marker policies.
+
+Extract the existing Trimesh body rectangles into MeshEditorLayout; both editor
+adapters consume that authority. Remove Envelope's fixed 310 px control band,
+57% curve/surface split and reduced row-height scale. The shared morph diagram
+slot may grow to 210 px (from 140), bounded by its column and three rail rows.
+Selected endpoints become small solid semantic accents, without oversized rings;
+the diamond cursor stays distinct. No selection or link semantics change.
+
+Static currently returns no grid columns, starving the existing spectral partial
+painter. Prepare exactly one grid-equivalent column at morph zero, reusing
+TrimeshGridwiseDsp, spectral pitch mapping and guide seed policy. No drawable
+surface, multi-column grid or realtime work is required. The same data-source
+column API continues to serve the mature partial painter. Test magnitude/phase,
+pitch-spanning and fixed-pitch cases, guide seeds and model edit refresh against
+a canonical 3D mesh's zero column. Existing zero-live-slice audio checks remain.
+
+Verify actual layout/pointer bounds in all modes at normal and compact widths,
+Envelope curve edits/morph/marker controls with Undo, Static partial availability
+and edit refresh, and production-size captures. Build with --parallel 10; run
+focused tests, UI fixtures, architecture/code-map/style/whitespace checks.
+
+Completion evidence:
+
+- MeshEditorLayout owns the body rectangles previously held by TrimeshWidget.
+  Envelope consumes those same controls/surface/curve rectangles, reserving its
+  own bottom toolbar. Both node view modules use the same scale/aspect policy;
+  the Envelope factory preserves its toolbar when compacting Static. Full-width
+  lower-curve and compact Static layout are asserted on actual editor automation
+  bounds at 1,400/890 px widths across all four modes, with 140–220 px tracks.
+- MorphControlLayout grows the shared diagram slot from 140 to at most 210 px,
+  constrained by the column and rail space. Both families share a 5 px endpoint
+  backplate and 3 px selected/2 px ordinary dot, replacing the 8 px selected disc
+  and 7 px ring. Cursor, face blending and linked-axis semantics are unchanged.
+- Static spectral render data retains one column, so canDrawSurface remains
+  false while the mature partial painter receives data through its existing
+  copyColumnAtMorph API. The zero column reuses GridwiseDsp's ordinary/pitch
+  sampling, column-zero guide seeds and render-profile mapping. Static time
+  rendering continues to omit columns. No realtime paths or allocations change.
+- 50 focused cases / 5,296 assertions pass. The new partial regression compares
+  magnitude/phase against canonical 3D zero-column output with a component guide,
+  for fixed pitch and pitch spanning columns, and checks guide-gain refresh.
+  Existing zero-live-slice runtime checks remain in this focused selection.
+  CycleV2 and tests build with --parallel 10. The 85-command mode/property
+  fixture passes (run 3bffbf701826); the new 10-command spectral fixture passes
+  (fe22667176d8), including Static → 3D → Undo and one-column restoration.
+  Evidence: `.context/shared-mesh-layout-{build,tests}.log`,
+  `shared-mesh-layout-ui-run.json`, `shared-mesh-static-partials-ui-run.json`.
+
+Responsibility review: EnvelopeEditorComponent 1069 → 1063 remains the domain
+editor composition and control-event adapter; geometry now delegates to the
+shared layout and its own toolbar. TrimeshWidget 958 → 940 delegates its former
+body rectangle ownership to that same class. EnvelopeMorphControls 272 → 256
+owns Envelope toolbar composition and uses shared morph geometry/painting;
+obsolete fixed-column geometry is gone. Side-panel renderer 762 → 763 keeps
+shared painting and now consumes the shared footer metric. ConcreteNodeEditors
+490 → 501 adds only Envelope's compact factory adaptation. GridRenderService
+128 → 130 keeps grid/slice orchestration over the mature DSP and mapping owners.
+The two new layout files contain rectangle composition only; no model, gesture,
+selection, transaction, interpolation, invalidation or audio policy moved there.
+Deletion targets (310 px band, 57% split, reduced property-row scale, oversized
+selected ring and Static spectral zero-column return) are complete.
+
+Native completion: run 2604269b5ef1 passed real macOS Envelope vertex movement,
+marker toggle and morph multi-update drags, each with Undo. Normal (1,600 × 900)
+and compact (1,100 × 800) captures cover all modes, selected corners and Static
+spectral partials. Capture preparation verifies modes through semantic pointer
+commands; native input separately verifies the affected editing workflows.
+Evidence: `.context/shared-mesh-native.log`,
+`shared-mesh-{normal,compact}-envelope-selected.png`,
+`shared-mesh-{normal,compact}-envelope-static.png`,
+`shared-mesh-{normal,compact}-static-partials.png` and the intermediate mode captures.
+The final native captures use a height that fits the physical display; an early
+1,050 px request was clamped by macOS and its normal capture was discarded.
+Architecture, code-map, style and whitespace checks pass. This targeted native
+proof does not claim resolution of the previously recorded broader automation
+input-timing debt.

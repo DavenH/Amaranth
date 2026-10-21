@@ -87,7 +87,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Nodes/` — Domain node implementations; keep DSP, model, editor, panel, and rendering layers distinct.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
 - `cycle-v2/src/Graph/MeshDimensionality.h` — Shared node axis eligibility, projection, and dimensional edit semantics.
-- `cycle-v2/src/UI/Editors/` — Shared property controls, morph geometry/markers, minimum travel and keyboard interaction.
+- `cycle-v2/src/UI/Editors/` — Shared mesh editor layout, property/morph controls, markers, minimum travel and keyboard interaction.
 - `cycle-v2/src/Nodes/Curve/` — Curve node model/editor/panel adapters over shared curve behavior.
 - `cycle-v2/src/Nodes/Envelope/` — Envelope state, playback, editor, morph surfaces, and signal processing.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.

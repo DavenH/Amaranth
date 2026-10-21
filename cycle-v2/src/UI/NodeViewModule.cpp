@@ -124,7 +124,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
         curve.expandedEditorSize = editorSize;
         add(kind, curve);
     };
-    addCurve(NodeKind::Envelope, { 840.f, 684.f }, true);
+    add(NodeKind::Envelope, mesh);
     addCurve(NodeKind::ImpulseResponse, { 1296.f, 430.f });
     addCurve(NodeKind::Waveshaper, { 766.f, 464.f });
 

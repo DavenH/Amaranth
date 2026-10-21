@@ -66,6 +66,13 @@ the existing two-dimensional envelope presentation and interaction language,
 including its curve geometry, selection, controls, and undo. A new miniature
 curve editor inside every comparison card would be a second interaction system.
 
+Both mesh editor families use the same body composition: morph surface above
+left, morph controls and vertex properties above right, and a full-width editable
+curve below. Static compacts to a curve beside the inspector. Domain tools such
+as Envelope's markers and scaling stay in a bottom toolbar. Reserve useful
+preview scale before decorative space; selected morph corners use small solid
+accents rather than large rings.
+
 In mesh editors, put Component curve below the vertex coordinate/property rows.
 Depict a component as two intercepts with a wave-shaped segment between them;
 keep the Guide resource glyph in the attachment selector. The two concepts

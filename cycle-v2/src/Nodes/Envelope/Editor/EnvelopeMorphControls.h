@@ -13,12 +13,11 @@ class EnvelopeMorphControls {
 public:
     void setDimensionCount(int count) { dimensionCount = count; }
     int getDimensionCount() const { return dimensionCount; }
-    static constexpr float controlsHeight = 310.f;
-    static constexpr float vertexParameterHeightScale = 0.82f;
+    static float actionBarHeight();
+    static constexpr float vertexParameterHeightScale = 1.f;
 
     Rectangle<float> planeGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> planeBounds(Rectangle<float> controls) const;
-    Rectangle<float> railColumn(Rectangle<float> controls) const;
     Rectangle<float> morphGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> morphRow(Rectangle<float> controls, int axis) const;
     Rectangle<float> morphSliderBounds(Rectangle<float> controls, int axis) const;
@@ -48,15 +47,15 @@ public:
             int viewAxis,
             bool redLinked,
             bool blueLinked,
-            bool loopSelected,
-            bool sustainSelected,
             float yellow = 0.f,
             bool yellowLinked = true,
             const std::vector<TrimeshCubePreviewVertex>& vertices = {}) const;
 
+    void drawActions(Graphics& graphics, Rectangle<float> content,
+            bool loopSelected, bool sustainSelected) const;
+
 private:
     int dimensionCount { 2 };
-    Rectangle<float> squareColumn(Rectangle<float> controls) const;
     Rectangle<float> actionColumnBounds(Rectangle<float> controls, int column) const;
     Rectangle<float> actionGroupLabelBounds(
             Rectangle<float> controls,

@@ -3,6 +3,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "Graph/MeshDimensionality.h"
 #include "UI/Editors/MorphControlLayout.h"
+#include "UI/Editors/MeshEditorLayout.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 
@@ -17,9 +18,6 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr float kExpandedPanelGap      = 8.f;
-constexpr float kExpandedTopRowRatio   = 0.54f;
-constexpr float kExpandedGridRatio     = 0.50f;
 constexpr int kPreviewRows             = 320;
 constexpr int kPreviewColumns          = 96;
 constexpr int kExpandedRows            = 320;
@@ -518,7 +516,7 @@ Rectangle<float> TrimeshWidget::controlRail(Rectangle<float> content, int axis) 
     const int count = bridge.getModel().getDimensionCount();
     auto area = morphPanelBounds(content, count);
     if (showsOutputScale()) {
-        area.removeFromBottom(52.f);
+        area.removeFromBottom(MeshEditorLayout::controlFooterHeight);
     }
     return MorphControlLayout(area, count, MorphDimensions::Plane::YellowRed).rail(axis);
 }
@@ -736,7 +734,7 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
     const Rectangle<float> morphArea = morphPanelBounds(content, dimensionCount);
     auto reducedArea = morphArea;
     if (showOutputScale) {
-        reducedArea.removeFromBottom(52.f);
+        reducedArea.removeFromBottom(MeshEditorLayout::controlFooterHeight);
     }
     const MorphControlLayout reduced(reducedArea, dimensionCount, MorphDimensions::Plane::YellowRed);
     const auto dimensions = MorphDimensions::trimesh(dimensionCount);
@@ -838,10 +836,7 @@ Rectangle<float> TrimeshWidget::meshPreviewContentArea(Rectangle<float> area) {
 }
 
 Rectangle<float> TrimeshWidget::expandedSidePanelContentBounds(Rectangle<float> content, int dimensionCount) {
-    auto topRow = content.removeFromTop(content.getHeight() * (dimensionCount == 0 ? 1.f : kExpandedTopRowRatio));
-    const float width = jmax(topRow.getWidth() * (1.f - kExpandedGridRatio) - kExpandedPanelGap,
-            MorphControlLayout::minimumWidth());
-    return topRow.withLeft(topRow.getRight() - width);
+    return MeshEditorLayout(content, dimensionCount).controls();
 }
 
 Rectangle<float> TrimeshWidget::morphPanelBounds(Rectangle<float> content, int dimensionCount) {
@@ -884,7 +879,7 @@ String TrimeshWidget::primaryAxisValue(int axis) {
 Rectangle<float> TrimeshWidget::vertexParameterPanelBounds(Rectangle<float> content) const {
     auto area = morphPanelBounds(content, bridge.getModel().getDimensionCount());
     if (showsOutputScale()) {
-        area.removeFromBottom(52.f);
+        area.removeFromBottom(MeshEditorLayout::controlFooterHeight);
     }
     return MorphControlLayout(area, bridge.getModel().getDimensionCount()).vertices();
 }
@@ -922,17 +917,11 @@ Rectangle<float> TrimeshWidget::waveshapeContentBounds(Rectangle<float> content,
 }
 
 Rectangle<float> TrimeshWidget::staticEditorBounds(Rectangle<float> fullBounds) {
-    const float chromeHeight = CanvasChromeMetrics::embeddedEditorHeaderHeight + 16.f;
-    return fullBounds.withHeight(chromeHeight + (fullBounds.getHeight() - chromeHeight) * kExpandedTopRowRatio);
+    return MeshEditorLayout::staticEditorBounds(fullBounds);
 }
 
 Rectangle<float> TrimeshWidget::expandedGridPanelContentBounds(Rectangle<float> content, int dimensionCount) {
-    if (dimensionCount == 0) {
-        return {};
-    }
-    const auto sidePanel = expandedSidePanelContentBounds(content, dimensionCount);
-    auto topRow = content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
-    return topRow.withRight(sidePanel.getX() - kExpandedPanelGap);
+    return MeshEditorLayout(content, dimensionCount).surface();
 }
 
 int TrimeshWidget::expandedColumnCount(Rectangle<float>) {
@@ -945,14 +934,7 @@ void TrimeshWidget::syncExpandedNode(const Node& node, Rectangle<float> content)
 }
 
 Rectangle<float> TrimeshWidget::expandedWavePanelContentBounds(Rectangle<float> content, int dimensionCount) {
-    if (dimensionCount == 0) {
-        const auto controls = expandedSidePanelContentBounds(content, 0).withTrimmedBottom(52.f);
-        const auto properties = MorphControlLayout(controls, 0).vertices();
-        return content.withRight(properties.getX() - kExpandedPanelGap);
-    }
-    content.removeFromTop(content.getHeight() * kExpandedTopRowRatio);
-    content.removeFromTop(kExpandedPanelGap);
-    return content;
+    return MeshEditorLayout(content, dimensionCount).curve();
 }
 
 }

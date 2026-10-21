@@ -12,6 +12,8 @@
 #include "Runtime/NodePreviewProcessor.h"
 #include "UI/ModulationNodeEditors.h"
 #include "UI/NodeEditorHost.h"
+#include "UI/Editors/MeshEditorLayout.h"
+#include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
 
 namespace CycleV2 {
 
@@ -125,6 +127,15 @@ private:
 
 class CurveNodeEditorFactory final : public NodeEditorFactory {
 public:
+    Rectangle<float> layoutBounds(const Node& node, Rectangle<float> bounds) const override {
+        if (node.kind != NodeKind::Envelope || MeshDimensionality::dimensions(node).axisCount() != 0) {
+            return bounds;
+        }
+        const float footer = EnvelopeMorphControls::actionBarHeight();
+        const auto body = MeshEditorLayout::staticEditorBounds(bounds.withTrimmedBottom(footer));
+        return body.withHeight(body.getHeight() + footer);
+    }
+
     std::unique_ptr<NodeEditor> create(
             const Node& node,
             const NodeEditorContext& context) const override {

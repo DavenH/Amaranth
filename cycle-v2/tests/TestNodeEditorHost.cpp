@@ -34,6 +34,8 @@
 #include "UI/EffectEnableButton.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
+#include "UI/Editors/MeshEditorLayout.h"
+#include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
 #include "UI/Editors/ProcessingScopeSelector.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertySegmentedSelector.h"
@@ -5138,6 +5140,59 @@ TEST_CASE("Modulation profiles expose usable conditional controls and undo indep
             REQUIRE(document.undo());
             REQUIRE(parameterValueForNode(*document.graph().findNode("mod"), parameter) == before);
             REQUIRE_FALSE(document.canUndo());
+        }
+    }
+}
+
+TEST_CASE("Envelope uses the Trimesh composition and a full width editable curve",
+        "[cycle-v2][mesh-dimensions][editor][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    for (const auto size : { Point<int>(1400, 920), Point<int>(890, 760) }) {
+        NodeGraph graph;
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher dispatcher(document);
+        CurveEditorWidget widget(NodeKind::Envelope);
+        auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
+        const auto* factory = NodeEditorFactoryRegistry::instance().find(NodeKind::Envelope);
+        for (const int count : { 3, 2, 1, 0 }) {
+            REQUIRE(dispatcher.setMeshDimensions("env", count).succeeded());
+            const auto& node = *document.graph().findNode("env");
+            const auto bounds = factory->layoutBounds(node, { 0.f, 0.f, (float) size.x, (float) size.y });
+            editor->setBounds(bounds.toNearestInt());
+            editor->setNode(node);
+            const var state = editor->automationState();
+            const auto content = editor->getLocalBounds().toFloat()
+                    .withTrimmedTop(CanvasChromeMetrics::embeddedEditorHeaderHeight).reduced(12.f, 10.f);
+            const auto body = content.withTrimmedBottom(EnvelopeMorphControls::actionBarHeight());
+            const MeshEditorLayout layout(body, count);
+            const auto curveBounds = rectangleProperty(state, "panelBounds");
+            REQUIRE(curveBounds == layout.curve());
+            REQUIRE(rectangleProperty(state, "controlBounds")
+                    == layout.controls().withTrimmedBottom(MeshEditorLayout::controlFooterHeight));
+            REQUIRE(rectangleProperty(state, "morphSurfaceBounds") == layout.surface());
+            REQUIRE(curveBounds.getWidth() >= content.getWidth() * (count == 0 ? 0.55f : 0.99f));
+            const auto actions = rectangleProperty(state, "actionBarBounds");
+            REQUIRE(actions.getY() >= curveBounds.getBottom());
+            REQUIRE(actions.getCentreX() == Catch::Approx(content.getCentreX()));
+            const auto rails = state.getProperty("vertexParameterRails", {});
+            REQUIRE(rails.size() == 7);
+            for (const auto& row : *rails.getArray()) {
+                if (row.getProperty("id", {}) == "guide.time") {
+                    continue;
+                }
+                const auto rail = rectangleProperty(row, "bounds");
+                REQUIRE(rail.getWidth() >= PropertyControlMetrics::minimumUsableTrackWidth);
+                REQUIRE(rail.getWidth() <= 220.f);
+                REQUIRE_FALSE(rail.intersects(curveBounds));
+            }
+            if (count > 0) {
+                const auto preview = rectangleProperty(state, "morphPlaneBounds");
+                REQUIRE(preview.getWidth() >= (size.x > 1000 ? 200.f : 140.f));
+            } else {
+                REQUIRE(bounds.getHeight() < (float) size.y * 0.65f);
+            }
         }
     }
 }

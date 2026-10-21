@@ -31,7 +31,7 @@ float MorphControlLayout::minimumWidth() {
 }
 
 float MorphControlLayout::diagramSize() const {
-    return juce::jmin(140.f, morphColumn().getWidth(), juce::jmax(70.f, area.getHeight() - 132.f));
+    return juce::jmin(210.f, morphColumn().getWidth(), juce::jmax(70.f, area.getHeight() - 132.f));
 }
 
 juce::Rectangle<float> MorphControlLayout::diagram() const {

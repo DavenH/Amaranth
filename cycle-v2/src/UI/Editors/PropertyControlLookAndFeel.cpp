@@ -277,12 +277,9 @@ LookAndFeel& propertyControlLookAndFeel() {
 
 void paintMorphPreviewVertex(Graphics& graphics, Point<float> point, bool selected) {
     graphics.setColour(Colours::black);
-    graphics.fillEllipse(Rectangle<float>(selected ? 8.f : 6.f, selected ? 8.f : 6.f).withCentre(point));
-    graphics.setColour(selected ? Colour(0xffed7c7c) : Colours::white);
-    graphics.fillEllipse(Rectangle<float>(3.f, 3.f).withCentre(point));
-    if (selected) {
-        graphics.drawEllipse(Rectangle<float>(7.f, 7.f).withCentre(point), 1.f);
-    }
+    graphics.fillEllipse(Rectangle<float>(5.f, 5.f).withCentre(point));
+    graphics.setColour(selected ? Colour(0xffdf9292) : Colour(0xffc3cbd5));
+    graphics.fillEllipse(Rectangle<float>(selected ? 3.f : 2.f, selected ? 3.f : 2.f).withCentre(point));
 }
 
 void paintMorphPreviewCursor(Graphics& graphics, Point<float> point) {

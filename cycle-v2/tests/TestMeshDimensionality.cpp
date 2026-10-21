@@ -20,6 +20,9 @@
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
 #include "UI/Editors/MeshDimensionOptions.h"
 #include "UI/Editors/MorphControlLayout.h"
+#include "Nodes/Trimesh/Panel/TrimeshPanelDataSource.h"
+#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
+#include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "UI/Editors/PropertyControls.h"
 #include <Curve/Rasterization/Rasterizer/VoiceRasterizer.h>
 #include <Curve/Curve.h>
@@ -752,6 +755,72 @@ TEST_CASE("Mesh editors reserve usable vertex and morph slider travel before sur
             const float travel = TrimeshSidePanelRenderer::vertexParameterRailBounds(row).getWidth();
             REQUIRE(travel >= PropertyControlMetrics::minimumUsableTrackWidth);
             REQUIRE(travel <= 220.f);
+        }
+    }
+}
+
+TEST_CASE("Static spectral partials retain the guided zero column without a surface",
+        "[cycle-v2][mesh-dimensions][spectral][regression]") {
+    NodeGraph graph;
+    graph.addNode(authoredMesh());
+    FlatCurveModel curve;
+    REQUIRE(curve.replaceVertices({ { 1, 0.05f, 0.2f, 0.4f }, { 2, 0.95f, 0.8f, 0.6f } }));
+    GuideCurveResource guide;
+    guide.id = "guide";
+    guide.shortLabel = "G1";
+    guide.model = CurveNodeModelState::copyOf(curve, 2);
+    REQUIRE(graph.addGuideCurve(std::move(guide)));
+    REQUIRE(graph.assignGuideCurve({ "guide", "mesh", { 0, GuideCurveField::Time } }));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.setMeshDimensions("mesh", 0).succeeded());
+    const Node node = *document.graph().findNode("mesh");
+    TrimeshNodeModel model;
+    model.syncFromNode(node);
+    const auto guides = TrimeshGuidePreparation::prepare(document.graph(), node, model.currentMesh());
+    REQUIRE(guides.assignmentCount == 1);
+    model.applyPreparedGuides(*guides.mesh, guides.provider);
+    Node referenceNode = node;
+    for (auto& parameter : referenceNode.parameters) {
+        if (parameter.id == "dimensionCount") {
+            parameter.value = "3";
+        } else if (parameter.id == "yellow" || parameter.id == "red" || parameter.id == "blue") {
+            parameter.value = "0";
+        }
+    }
+    TrimeshNodeModel reference;
+    reference.syncFromNode(referenceNode);
+    reference.applyPreparedGuides(*guides.mesh, guides.provider);
+    const float originalGain = model.vertexGuideGain(0, "guideGain.time");
+    for (const auto domain : { PortDomain::SpectralMagnitudeSignal, PortDomain::SpectralPhaseSignal }) {
+        for (const int keyAxis : std::array<int, 2> { -1, Vertex::Time }) {
+            const auto profile = TrimeshRenderProfile::fromDomain(domain);
+            TrimeshPanelDataSource source;
+            source.rebuild(model, 128, 768, profile, 60, keyAxis);
+            REQUIRE_FALSE(source.getRenderData().canDrawSurface());
+            REQUIRE(source.getColumns().size() == 1);
+            REQUIRE(source.getColumnArray().size() == 128);
+            TrimeshPanelDataSource full;
+            full.rebuild(reference, 128, 4, profile, 60, keyAxis);
+            std::vector<float> expected;
+            std::vector<float> actual;
+            int expectedNote {};
+            int actualNote {};
+            REQUIRE(full.copyColumnAtMorph(0.f, expected, expectedNote));
+            for (const float morph : { 0.f, 0.5f, 1.f }) {
+                REQUIRE(source.copyColumnAtMorph(morph, actual, actualNote));
+                REQUIRE(actualNote == expectedNote);
+                REQUIRE(actual.size() == expected.size());
+                REQUIRE(std::any_of(actual.begin(), actual.end(), [](float value) { return value != 0.f; }));
+                for (size_t i = 0; i < actual.size(); ++i) {
+                    REQUIRE(actual[i] == Catch::Approx(expected[i]).margin(0.00001f));
+                }
+            }
+            REQUIRE(model.setVertexGuideGain(0, "guideGain.time", 0.1f));
+            source.rebuild(model, 128, 768, profile, 60, keyAxis);
+            REQUIRE(source.copyColumnAtMorph(0.f, actual, actualNote));
+            REQUIRE(actual != expected);
+            REQUIRE(model.setVertexGuideGain(0, "guideGain.time", originalGain));
         }
     }
 }
