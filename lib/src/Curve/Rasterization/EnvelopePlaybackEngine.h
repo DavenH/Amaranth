@@ -22,6 +22,11 @@ namespace Rasterization {
         int noiseSeed { -1 };
     };
 
+    struct EnvelopeLoopSpan {
+        double start {};
+        double length { -1. };
+    };
+
     class EnvelopePlaybackEngine {
     public:
         enum { graphicVoiceIndex = 0, firstAudioVoiceIndex = 1 };
@@ -37,6 +42,11 @@ namespace Rasterization {
         void setOneSamplePerCycle(bool enabled);
         void setMode(EnvelopePlaybackMode mode);
         void validate(const PreparedEnvelopePlaybackView& prepared);
+        void adopt(
+                const PreparedEnvelopePlaybackView& previous,
+                const PreparedEnvelopePlaybackView& replacement);
+        void adopt(EnvelopeLoopSpan previous, const PreparedEnvelopePlaybackView& replacement);
+        static EnvelopeLoopSpan loopSpan(const PreparedEnvelopePlaybackView& prepared);
 
         bool renderToBuffer(
                 const PreparedEnvelopePlaybackView& prepared,

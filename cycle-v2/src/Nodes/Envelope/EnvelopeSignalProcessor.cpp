@@ -1,5 +1,7 @@
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 
+#include <algorithm>
+
 #include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Util/Arithmetic.h>
 
@@ -157,6 +159,7 @@ void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     }
 
     activeConfiguration = configuration;
+    hasPreparedMorph = false;
     if (!materializer.prepare(configuration->realtimePlan)
             || (configuration->cycleGuideRequired
                     && !cycleMaterializer.prepare(configuration->cycleRealtimePlan))) {
@@ -199,9 +202,10 @@ Rasterization::PreparedEnvelopePlaybackView EnvelopeSignalProcessor::cycleEnvelo
     return preparedPlaybackView();
 }
 
-bool EnvelopeSignalProcessor::prepareNoteEnvelope(
+bool EnvelopeSignalProcessor::prepareEnvelope(
         const AudioProcessContext& context,
-        size_t sampleOffset) {
+        size_t sampleOffset,
+        bool preservePlayback) {
     if (activeConfiguration == nullptr) {
         return false;
     }
@@ -220,11 +224,28 @@ bool EnvelopeSignalProcessor::prepareNoteEnvelope(
     const SignalPayload* blueInput = inputAt(context, 1);
     const float red = valueAt(redInput, activeConfiguration->redMorph);
     const float blue = valueAt(blueInput, activeConfiguration->blueMorph);
-    if (!materializer.materialize(red, blue)) {
+    if (preservePlayback && hasPreparedMorph
+            && red == preparedRed && blue == preparedBlue) {
+        return true;
+    }
+    const auto previous = preparedPlaybackView();
+    if (!materializer.stage(red, blue)
+            || (activeConfiguration->cycleGuideRequired
+                    && !cycleMaterializer.stage(red, blue))) {
         return false;
     }
-    return !activeConfiguration->cycleGuideRequired
-            || cycleMaterializer.materialize(red, blue);
+    materializer.adoptStaged();
+    if (activeConfiguration->cycleGuideRequired) {
+        cycleMaterializer.adoptStaged();
+    }
+    if (preservePlayback) {
+        playback.adopt(previous, preparedPlaybackView());
+    }
+    preparedRed = red;
+    preparedBlue = blue;
+    hasPreparedMorph = true;
+    ++preparedGeneration;
+    return true;
 }
 
 void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
@@ -251,6 +272,16 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         size_t rendered = 0;
 
         const auto& voice = processVoice(context);
+        const bool lifecycleAtStart = std::any_of(
+                voice.events.begin(), voice.events.end(), [&](const auto& event) {
+                    return event.voiceIndex == voice.voiceIndex
+                            && (event.sampleOffset == 0
+                                    || event.type == NoteLifecycleType::NoteOn);
+                });
+        if (context.liveEnvelopeMorph && active && !released
+                && current->enabled && !lifecycleAtStart) {
+            prepareEnvelope(context, 0, true);
+        }
         const double sampleRateIncrement = context.timing.sampleRate > 0.
                 ? 1. / context.timing.sampleRate
                 : 0.;
@@ -371,7 +402,8 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(
 
     switch (event.type) {
         case NoteLifecycleType::NoteOn:
-            if (!prepareNoteEnvelope(context, sampleOffset)) {
+            released = false;
+            if (!prepareEnvelope(context, sampleOffset, false)) {
                 active = false;
                 fadingIn = false;
                 fadingOut = false;
@@ -386,6 +418,7 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(
             break;
 
         case NoteLifecycleType::NoteOff:
+            released = true;
             if (!current->enabled || !playback.noteOff(preparedPlaybackView())) {
                 fadingOut = current->volumePurpose && current->declick;
                 releaseSamplePosition = 0;
@@ -394,6 +427,7 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(
             break;
 
         case NoteLifecycleType::Reset:
+            released = true;
             playback.noteOn();
             active = false;
             fadingIn = false;

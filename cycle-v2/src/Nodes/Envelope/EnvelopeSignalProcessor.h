@@ -38,6 +38,7 @@ public:
         return preparedConfiguration();
     }
     Rasterization::PreparedEnvelopePlaybackView cycleEnvelopePlaybackView() const override;
+    uint64_t cycleEnvelopeGeneration() const override { return preparedGeneration; }
     double playbackPosition() const {
         return playback.samplePosition(Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex);
     }
@@ -46,7 +47,7 @@ public:
 private:
     const EnvelopeConfiguration* preparedConfiguration() const;
     Rasterization::PreparedEnvelopePlaybackView preparedPlaybackView() const;
-    bool prepareNoteEnvelope(const AudioProcessContext& context, size_t sampleOffset);
+    bool prepareEnvelope(const AudioProcessContext& context, size_t sampleOffset, bool preservePlayback);
     void applyLifecycleEvent(
             const NoteLifecycleEvent& event,
             const AudioProcessContext& context,
@@ -66,11 +67,16 @@ private:
     Rasterization::RealtimeEnvelopeMaterializer cycleMaterializer;
     MeshLibrary::EnvProps props;
     bool active {};
+    bool released {};
+    bool hasPreparedMorph {};
     bool fadingIn {};
     bool fadingOut {};
     int attackSamplePosition {};
     int releaseSamplePosition {};
     float level { 1.f };
+    float preparedRed {};
+    float preparedBlue {};
+    uint64_t preparedGeneration {};
     uint64_t adoptedRevision {};
     uint64_t pendingRevision {};
     std::shared_ptr<const EnvelopeConfiguration> configuration;

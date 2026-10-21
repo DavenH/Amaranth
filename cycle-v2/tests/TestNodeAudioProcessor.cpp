@@ -957,6 +957,58 @@ TEST_CASE("Envelope materializes routed morph at a nonzero note-on sample offset
             output(expectedContext).block.samples.begin()));
 }
 
+TEST_CASE("Voice-authorized Envelope morph adopts once at block start and freezes on release",
+        "[cycle-v2][runtime][envelope][modulation][live]") {
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(envelopeParameters());
+    REQUIRE(configuration != nullptr);
+    for (const double sampleRate : { 44100., 96000. }) {
+        for (const size_t frameCount : { 16u, 256u }) {
+            EnvelopeSignalProcessor processor;
+            processor.adoptConfiguration({ 1, "live-envelope", configuration });
+            AudioExecutionSpec spec;
+            spec.maximumFrameCount = frameCount;
+            spec.sampleRate = sampleRate;
+            processor.prepareExecution(spec);
+            const auto process = [&](std::vector<float> red,
+                                     std::vector<NoteLifecycleEvent> events = {}) {
+                AudioProcessContext context;
+                context.frameCount = frameCount;
+                context.liveEnvelopeMorph = true;
+                context.captureTraversalGrid = false;
+                context.timing.sampleRate = sampleRate;
+                context.inputs = { payload(red), payload({ 0.25f }) };
+                context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+                context.voice.events = std::move(events);
+                processor.process(context);
+            };
+            process({ 0.1f }, { { NoteLifecycleType::NoteOn, 3, 0 } });
+            const uint64_t firstGeneration = processor.cycleEnvelopeGeneration();
+            REQUIRE(firstGeneration == 1);
+            const double firstPosition = processor.playbackPosition();
+            std::vector<float> timedControl(frameCount, 0.9f);
+            timedControl.front() = 0.1f;
+            process(timedControl);
+            REQUIRE(processor.cycleEnvelopeGeneration() == firstGeneration);
+            REQUIRE(processor.realtimePreparationDiagnostics().attempts == 1);
+            process({ 0.9f });
+            REQUIRE(processor.cycleEnvelopeGeneration() == firstGeneration + 1);
+            REQUIRE(processor.realtimePreparationDiagnostics().attempts == 2);
+            REQUIRE(processor.playbackPosition() > firstPosition);
+            REQUIRE(processor.cycleEnvelopeConfiguration() == configuration.get());
+            process({ 0.9f });
+            REQUIRE(processor.realtimePreparationDiagnostics().attempts == 2);
+            process({ 0.2f }, { { NoteLifecycleType::NoteOff, 0, 0 } });
+            process({ 0.3f });
+            REQUIRE(processor.realtimePreparationDiagnostics().attempts == 2);
+            process({ 0.4f }, { { NoteLifecycleType::NoteOn, 2, 0 } });
+            REQUIRE(processor.cycleEnvelopeGeneration() == firstGeneration + 2);
+            process({ 0.7f }, { { NoteLifecycleType::Reset, 0, 0 } });
+            process({ 0.8f });
+            REQUIRE(processor.realtimePreparationDiagnostics().attempts == 3);
+        }
+    }
+}
+
 TEST_CASE("Envelope processor preserves active position across snapshot edits", "[cycle-v2][runtime][envelope]") {
     const String initialSnapshot = EnvelopeMeshState::defaultSnapshot();
     EnvelopeMesh editedMesh("EditedEnvelope");

@@ -256,12 +256,22 @@ namespace Rasterization {
 
         activePlan = plan;
         activeSlot = 0;
+        hasStagedResult = false;
         hasActiveResult = false;
         instrumentation = {};
         return true;
     }
 
     bool RealtimeEnvelopeMaterializer::materialize(float red, float blue) {
+        if (!stage(red, blue)) {
+            return false;
+        }
+        adoptStaged();
+        return true;
+    }
+
+    bool RealtimeEnvelopeMaterializer::stage(float red, float blue) {
+        hasStagedResult = false;
         ++instrumentation.attempts;
         const auto started = std::chrono::steady_clock::now();
         const int inactiveSlot = 1 - activeSlot;
@@ -311,9 +321,16 @@ namespace Rasterization {
             return false;
         }
 
-        activeSlot = inactiveSlot;
-        hasActiveResult = true;
+        hasStagedResult = true;
         return true;
+    }
+
+    void RealtimeEnvelopeMaterializer::adoptStaged() {
+        if (hasStagedResult) {
+            activeSlot = 1 - activeSlot;
+            hasActiveResult = true;
+            hasStagedResult = false;
+        }
     }
 
     PreparedEnvelopePlaybackView RealtimeEnvelopeMaterializer::preparedPlaybackView() const {
