@@ -26,6 +26,7 @@ struct TrimeshVertexEditDelta {
     TrimeshVertexEditTarget target { TrimeshVertexEditTarget::VertexValue };
     int vertexIndex { -1 };
     int valueIndex { -1 };
+    int replicatedPoles {};
     std::vector<TrimeshVertexValueChange> changes;
 
     bool changed() const { return !changes.empty(); }
@@ -46,7 +47,8 @@ public:
             const Mesh& mesh,
             int vertexIndex,
             const juce::String& parameterId,
-            float value);
+            float value,
+            int dimensionCount = 3);
     static std::optional<TrimeshVertexEditDelta> prepareGuideGain(
             const Mesh& mesh,
             int vertexIndex,

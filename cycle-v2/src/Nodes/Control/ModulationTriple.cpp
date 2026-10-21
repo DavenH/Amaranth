@@ -51,6 +51,11 @@ std::shared_ptr<const ModulationTripleConfiguration> buildModulationTripleConfig
             ModulationSource::buildConfiguration(parameters, "red", "keyScale"),
             ModulationSource::buildConfiguration(parameters, "blue", "modWheel")
     };
+    configuration->envelopeSources = {
+            ModulationSource::buildConfiguration(parameters, "envelopeYellow", "unmapped"),
+            ModulationSource::buildConfiguration(parameters, "envelopeRed", "keyScale"),
+            ModulationSource::buildConfiguration(parameters, "envelopeBlue", "modWheel")
+    };
     return configuration;
 }
 

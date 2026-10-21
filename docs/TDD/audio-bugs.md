@@ -1061,3 +1061,20 @@ failure at `TestNodeCanvasAuthoring.cpp:232` is already tracked in
 capture, display-domain persistence, and output visibility tests pass.
 Status: open; reconcile these fixture and preview expectations independently
 of Spy card presentation.
+
+
+## Open: legacy scratch ControlSignal and strict pitch-guide comparison fixtures
+
+During mesh dimensionality verification on 2026-10-20, the case
+`Scratch Envelope drives every attached Trimesh from one prepared trajectory`
+still reports `blockDifference == 0` with explicitly restored 3D Trimeshes and
+2D authored scratch geometry. Its mesh operands resolve through ControlSignal;
+`TrimeshMorphResolver::domainFor` accepts TimeSignal/spectral domains only
+(the same boundary exists in HEAD). Inspect the older fixture's materialization
+boundary separately; do not treat this result as native audio acceptance.
+The preset case `Pitch Envelope Guide phase is distinct per Unison lane and
+stable per note seed` also reports a strict `first == legacyValues` mismatch.
+This run has not established whether that failure predates this change.
+Evidence: `.context/dimensions-tests.log`, `.context/dimensions-regression.log`.
+Focused guided migration through sustain/release and reduced interpolation
+parity pass independently in TestMeshDimensionality.cpp.

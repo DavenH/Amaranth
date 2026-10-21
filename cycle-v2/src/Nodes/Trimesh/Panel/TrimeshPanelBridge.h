@@ -60,6 +60,9 @@ public:
     bool isMeshEditGestureActive() const { return meshEditGestureActive; }
     void renderPanel3D(juce::Rectangle<float> bounds, float scaleFactor);
     void renderPanel2D(juce::Rectangle<float> bounds, float scaleFactor);
+    bool renderPreview2D(juce::Rectangle<float> bounds, float scaleFactor);
+    bool paintPreview2D(juce::Graphics& graphics, juce::Rectangle<float> bounds) const;
+    uint64_t previewSnapshotRevision() const { return panelHosts.previewSnapshotRevision(); }
     int selectedVertexIndexForPanel() const;
 
 private:

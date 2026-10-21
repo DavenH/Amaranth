@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Curve/Mesh/Vertex.h>
+#include <Curve/Mesh/MorphDimensions.h>
 #include "Policies/Core/PointScalingPolicy.h"
 #include "WaveformBakeWork.h"
 #include "../../Inter/Dimensions.h"
@@ -9,7 +10,11 @@
 class Mesh;
 
 namespace Rasterization {
+    struct PreparedMeshSlice;
     struct RasterizationRequest {
+        int dimensionCount { 3 };
+        MorphDimensions::Plane twoDimensionalPlane { MorphDimensions::Plane::RedBlue };
+        const PreparedMeshSlice* preparedSlice {};
         Dimensions dims;
         MorphPosition morph;
 

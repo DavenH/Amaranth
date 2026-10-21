@@ -20,6 +20,7 @@ public:
     virtual void closeTrimeshEditor() = 0;
     virtual void repaintTrimeshEditorOpenGL() = 0;
     virtual void setTrimeshEnabled(bool enabled) = 0;
+    virtual bool setTrimeshDimensionCount(int) { return false; }
     virtual bool setTrimeshSignalTypeValue(const juce::String& signalType) = 0;
     virtual bool setTrimeshPolarityValue(const juce::String& polarity) = 0;
     virtual bool setTrimeshPhaseModeValue(const juce::String& phaseMode) = 0;
@@ -27,6 +28,9 @@ public:
     virtual void toggleTrimeshLinkAxisValue(const juce::String& axis) = 0;
     virtual bool beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
     virtual bool updateTrimeshMorphEdit(float value) = 0;
+    virtual bool beginTrimeshMorphPairEdit(
+            const std::array<juce::String, 2>& ids, juce::Point<float> values) { return false; }
+    virtual bool updateTrimeshMorphPairEdit(juce::Point<float> values) { return false; }
     virtual void endTrimeshMorphEdit() = 0;
     virtual bool beginTrimeshOutputScaleEdit(const juce::String& id, float value) = 0;
     virtual bool updateTrimeshOutputScaleEdit(float value) = 0;
@@ -41,6 +45,7 @@ public:
 };
 
 class TrimeshExpandedEditorComponent : public juce::Component,
+                                       public juce::TooltipClient,
                                        private TrimeshControlsDelegate,
                                        private TrimeshPanelHostDelegate {
 public:
@@ -48,6 +53,7 @@ public:
     ~TrimeshExpandedEditorComponent() override;
 
     void setDelegate(TrimeshExpandedEditorDelegate* nextDelegate);
+    juce::Rectangle<float> morphDiagramBounds() const;
     void setNode(const Node& nextNode);
     void setGuideAttachmentLabels(std::array<juce::String, 6> labels);
     void setDisplayDomain(PortDomain domain);
@@ -64,6 +70,7 @@ public:
     const juce::String& phaseModeValue() const { return phaseModeSelector.selectedValue(); }
 
     void paint(juce::Graphics& g) override;
+    juce::String getTooltip() override { return controls.getTooltip(); }
     void resized() override;
     void mouseEnter(const juce::MouseEvent& event) override;
     void mouseMove(const juce::MouseEvent& event) override;
@@ -88,12 +95,16 @@ private:
     juce::Rectangle<int> polaritySelectorBounds() const;
     juce::Rectangle<int> phaseModeSelectorBounds() const;
     void setLocalOutputScale(const juce::String& id, float value);
+    void setLocalMorphPairValues(juce::Point<float> values);
     void setLocalMorphValue(const juce::String& id, float value);
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
     void toggleTrimeshLinkAxis(const juce::String& axis) override;
     float trimeshMorphControlValue(const juce::String& id) const override;
     void beginTrimeshMorphControlEdit(const juce::String& id, float value) override;
     void updateTrimeshMorphControlEdit(float value) override;
+    void beginTrimeshMorphPairControlEdit(
+            const std::array<juce::String, 2>& ids, juce::Point<float> values) override;
+    void updateTrimeshMorphPairControlEdit(juce::Point<float> values) override;
     void endTrimeshMorphControlEdit() override;
     void beginTrimeshOutputScaleControlEdit(const juce::String& id, float value) override;
     void updateTrimeshOutputScaleControlEdit(float value) override;
@@ -118,6 +129,8 @@ private:
             "Toggles this Trimesh layer",
             "Enable or disable this Trimesh layer"
     };
+    PropertySegmentedSelector dimensionSelector;
+    juce::Label dimensionLabel;
     juce::Label signalTypeLabel;
     PropertySegmentedSelector signalTypeSelector;
     juce::Label polarityLabel;
@@ -125,6 +138,7 @@ private:
     juce::Label phaseModeLabel;
     PropertySegmentedSelector phaseModeSelector;
     Node node;
+    std::array<juce::String, 2> activeMorphPairIds;
     juce::String activeMorphParameterId;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     juce::MouseCursor panel2DCursor { juce::MouseCursor::NormalCursor };

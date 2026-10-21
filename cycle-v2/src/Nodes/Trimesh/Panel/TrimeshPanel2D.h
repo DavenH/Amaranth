@@ -17,7 +17,6 @@ public:
 
     void preDraw() override;
     void drawBackground(bool fillBackground = true) override;
-    void drawViewableVerts() override {}
     void panelResized() override;
     void zoomUpdated(int updateSource) override;
     void doZoomExtra(bool commandDown) override;

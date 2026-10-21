@@ -115,6 +115,10 @@ void applyTrimeshParameters(
             parameterMap.floatValue("red", 0.5f),
             parameterMap.floatValue("blue", 0.5f)
     };
+    configuration.dimensionCount = parameterMap.intValue("dimensionCount", 0);
+    if (configuration.dimensionCount != 0) {
+        configuration.staticSlice.reset();
+    }
     const String axis = parameterMap.stringValue("primaryAxis", "yellow");
     configuration.primaryViewAxis = axis == "red" ? Vertex::Red
             : (axis == "blue" ? Vertex::Blue : Vertex::Time);
@@ -135,7 +139,8 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         return {};
     }
     applyTrimeshParameters(*configuration, parameters);
-    configuration->scratchSourceEnabled = scratchSourceEnabled(
+    configuration->scratchSourceEnabled = MorphDimensions::trimesh(configuration->dimensionCount).active(Vertex::Time)
+            && scratchSourceEnabled(
             graph,
             nodeId,
             scratchSourceNodeId);
@@ -151,6 +156,11 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
             configuration->guideCurveProvider = std::move(guides.provider);
             configuration->guideAssignmentCount = guides.assignmentCount;
         }
+    }
+    if (configuration->dimensionCount == 0) {
+        configuration->staticSlice = std::make_shared<const Rasterization::PreparedMeshSlice>(
+                Rasterization::PreparedMeshSlice::forMesh(*configuration->mesh,
+                        configuration->morph, Vertex::Time));
     }
     return configuration;
 }

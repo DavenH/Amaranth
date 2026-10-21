@@ -212,6 +212,8 @@ TEST_CASE("Attached Mod Triple parameter edits refresh implicit voice modulation
             graph,
             { "voice", "context", false },
             { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;

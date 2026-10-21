@@ -62,6 +62,39 @@ void CurveEditorWidget::setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) {
     }
 }
 
+Component* CurveEditorWidget::envelopeMorphSurfaceComponent() {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        return envelope->morphSurfaceComponent();
+    }
+    return nullptr;
+}
+
+void CurveEditorWidget::prepareEnvelopeMorphSurface(int axis, const MorphPosition& morph) {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->prepareMorphSurface(axis, morph);
+    }
+}
+
+void CurveEditorWidget::renderEnvelopeMorphSurface(Rectangle<float> bounds, float scaleFactor) {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->renderMorphSurface(bounds, scaleFactor);
+    }
+}
+
+void CurveEditorWidget::setEditGestureActive(bool active) {
+    controller->setEditGestureActive(active);
+}
+
+Rectangle<float> CurveEditorWidget::panelContentBounds(Rectangle<float> frame) const {
+    return controller->panelContentBounds(frame);
+}
+
+void CurveEditorWidget::setEnvelopeDimensions(int count, bool yellowLinked) {
+    if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
+        envelope->setDimensions(count, yellowLinked);
+    }
+}
+
 void CurveEditorWidget::setEnvelopeAxisLinks(bool redLinked, bool blueLinked) {
     if (auto* envelope = dynamic_cast<EnvelopeCurvePanelController*>(controller.get())) {
         envelope->setAxisLinks(redLinked, blueLinked);
@@ -242,6 +275,10 @@ uint64_t CurveEditorWidget::modelRevision() const {
 
 uint64_t CurveEditorWidget::contentRevision() const {
     return controller->contentRevision();
+}
+
+std::vector<TrimeshCubePreviewVertex> CurveEditorWidget::morphPreviewVertices() const {
+    return controller->morphPreviewVertices();
 }
 
 std::vector<TrimeshVertexParameter> CurveEditorWidget::selectedVertexParameters() const {

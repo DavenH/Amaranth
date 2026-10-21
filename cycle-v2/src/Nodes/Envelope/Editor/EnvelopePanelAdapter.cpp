@@ -39,6 +39,8 @@ bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
     syncedNodeId = node.id;
     syncedModel = node.model;
     const NodeParameterMap parameters(node);
+    dimensions = parameters.intValue("dimensionCount", 0);
+    morphYellow = parameters.floatValue("yellow", 0.f);
     morphRed = parameters.floatValue("red", 0.5f);
     morphBlue = parameters.floatValue("blue", 0.5f);
     if (differentNode) {
@@ -80,7 +82,7 @@ std::vector<CurvePreviewVertex> EnvelopePanelAdapter::previewVertices() {
     std::vector<CurvePreviewVertex> result;
     result.reserve((size_t) mesh().getNumCubes());
     MorphPosition position;
-    position.time.setValueDirect(0.f);
+    position.time.setValueDirect(morphYellow);
     position.red.setValueDirect(morphRed);
     position.blue.setValueDirect(morphBlue);
     position.timeDepth = 0.001f;
@@ -111,9 +113,10 @@ bool EnvelopePanelAdapter::registerMeshEdit() {
     return true;
 }
 
-void EnvelopePanelAdapter::setMorph(float red, float blue) {
-    morphRed = red;
-    morphBlue = blue;
+void EnvelopePanelAdapter::setMorph(const MorphPosition& position) {
+    morphYellow = position.time;
+    morphRed = position.red;
+    morphBlue = position.blue;
 }
 
 void EnvelopePanelAdapter::setLogarithmic(bool logarithmicToUse) {

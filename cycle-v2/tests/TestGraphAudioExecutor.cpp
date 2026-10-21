@@ -2011,6 +2011,11 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "consumePeer", {}));
     setEnvelopePurpose(graph, "scratch", EnvelopePurpose::Scratch);
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "scratch", "dimensionCount", "Dimensions", "2").succeeded());
+    EnvelopeNodeModel scratchModel;
+    REQUIRE(graph.replaceNodeModel("scratch", CurveNodeModelState::copyOf(scratchModel, 0.5f, 0.5f, 1)));
+
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "fixedYellow", "source", "Source", "constant").succeeded());
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "fixedYellow", "constant", "Constant", "0.9").succeeded());
@@ -2023,6 +2028,8 @@ TEST_CASE("Scratch Envelope drives every attached Trimesh from one prepared traj
     mesh->destroy();
 
     for (const String& target : { "attachedA", "attachedB", "unattached" }) {
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, target, "dimensionCount", "Dimensions", "3").succeeded());
         REQUIRE(GraphNodeStateEditor().setNodeParameter(
                 graph, target, "yellow", "Yellow", "0.9").succeeded());
         graph.addEdge({
@@ -2838,6 +2845,8 @@ TEST_CASE("Synchronous Envelope note preparation remains allocation-free on the 
     graph.addNode(factory.createNode(NodeKind::ImageSource, "redControl", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
     setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "env", "dimensionCount", "Dimensions", "3").succeeded());
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "output", {}));

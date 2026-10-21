@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 
 #include "Graph/GraphSerializer.h"
+#include "Graph/MeshDimensionalityMigration.h"
 #include "Graph/GlobalAudioGraphRepresentationMigration.h"
 #include "Graph/TrimeshSemanticRepresentationMigration.h"
 
@@ -37,6 +38,11 @@ int main(int argc, char* argv[]) {
                 TrimeshSemanticRepresentationMigration().migrate(encoded);
         if (!trimeshMigration.succeeded()) {
             std::cerr << trimeshMigration.error << "\n";
+            return 1;
+        }
+        const auto dimensions = MeshDimensionalityMigration().migrate(encoded);
+        if (!dimensions.succeeded()) {
+            std::cerr << dimensions.error << "\n";
             return 1;
         }
         if (!destination.replaceWithText(

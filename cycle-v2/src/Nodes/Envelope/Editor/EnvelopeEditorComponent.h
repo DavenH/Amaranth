@@ -14,12 +14,14 @@ public:
     explicit EnvelopeEditorComponent(CurveEditorWidget& target);
     ~EnvelopeEditorComponent() override;
 
+    void renderOpenGL(float scaleFactor) override;
     String getTooltip() override;
     bool keyPressed(const juce::KeyPress& key) override;
     juce::String focusedMorphAxis() const;
 
 private:
     struct Impl;
+    Rectangle<float> morphSurfaceBounds() const;
     Rectangle<float> editorPanelBounds() const override;
     Rectangle<float> editorControlBounds() const override;
     void paintEditor(Graphics&) override;
@@ -30,6 +32,7 @@ private:
     std::vector<NodeParameter> editorControls() const override;
     void appendEditorAutomation(DynamicObject&) const override;
     bool editorMouseMove(Point<float>) override;
+    bool updatePropertyFeedback(Point<float> position);
     bool editorMouseDown(Point<float>) override;
     bool editorMouseDrag(Point<float>) override;
     void editorMouseUp() override;
@@ -40,6 +43,7 @@ private:
     bool dragVertexParameter(Point<float> position);
     bool handleMorphKeyboardShortcut(const juce::KeyPress& key);
     void rememberMorphFocus(const juce::String& axis);
+    bool selectableMorphAxis(const juce::String& axis) const;
     bool selectMorphAxis(const juce::String& axis);
     bool selectAdjacentMorphAxis(int direction);
     PrecisionSlider* focusedMorphSlider() const;

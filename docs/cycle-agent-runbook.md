@@ -136,11 +136,17 @@ scripts/test_cycle_v2_native_edit_smoke.py
 
 The smoke launches one persistent app instance by its exact configured `.app`
 path so another worktree's Cycle build cannot receive its native gestures. It
-resolves target screen bounds,
+activates and raises that exact PID through NSRunningApplication/Accessibility, resolves target screen bounds,
 and drives `cliclick` through macOS. It covers Waveshaper add, move, reshape,
 delete, and re-add, followed by Trimesh add, collision rejection, move,
 vertex-parameter editing, morph editing, delete, and re-add. Each edit settles
 for at most 80 ms; do not replace these gestures with in-app pointer commands.
+Run `python3 scripts/test_cycle_v2_native_edit_smoke.py envelope-markers` for
+Envelope marker selection, pointer departure, Loop/Sustain publication and Undo.
+Use the `cube-faces` sequence for all three cube faces in both mesh editors,
+paired-axis movement, held coordinates, geometry preservation and Undo.
+Use `envelope-scales` for native Volume Linear/Logarithmic clicks and cursor captures,
+hidden scale controls/targets in other purposes, and their return on Volume.
 
 The coordinator writes `report.json`, `app.log`, `app.log.raw`, and `run.json`
 under the run directory. It exits nonzero for failed commands unless

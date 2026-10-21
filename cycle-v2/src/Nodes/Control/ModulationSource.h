@@ -11,6 +11,7 @@
 namespace CycleV2 {
 
 enum class ModulationSourceMode {
+    Unmapped,
     VoiceTime,
     Velocity,
     InverseVelocity,

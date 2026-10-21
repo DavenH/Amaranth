@@ -14,7 +14,7 @@ inline juce::String morphKeyboardShortcutHelpText(bool includesYellowAxis) {
             "Up / Down: Move focus\n"
             "Left / Right: Send morph to pole\n"
             "Shift + Left / Right: Move morph 20%\n"
-            "L: Toggle link";
+            "L: Toggle pole lock";
 }
 
 inline juce::String morphAxisForKeyboardShortcut(const juce::KeyPress& key) {

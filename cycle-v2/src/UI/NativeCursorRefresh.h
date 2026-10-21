@@ -15,7 +15,13 @@ inline void showNativeCursorForPanel(
     juce::MessageManager::callAsync([safePanel, cursor] {
         if (safePanel != nullptr
                 && safePanel->getScreenBounds().contains(juce::Desktop::getMousePosition())) {
-            juce::Desktop::getInstance().getMainMouseSource().showMouseCursor(cursor);
+            auto& desktop = juce::Desktop::getInstance();
+            auto* target = desktop.findComponentAt(juce::Desktop::getMousePosition());
+            if (target != nullptr) {
+                const auto resolved = target == safePanel.getComponent() || safePanel->isParentOf(target)
+                        ? cursor : target->getLookAndFeel().getMouseCursorFor(*target);
+                desktop.getMainMouseSource().showMouseCursor(resolved);
+            }
         }
     });
 }

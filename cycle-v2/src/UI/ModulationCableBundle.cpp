@@ -1,4 +1,6 @@
 #include "UI/ModulationCableBundle.h"
+#include "Graph/MeshDimensionality.h"
+#include "Graph/GraphEdgeIndex.h"
 #include "Graph/GraphConnectionValidator.h"
 #include "Graph/GraphValidationContext.h"
 #include "Graph/GraphValidator.h"
@@ -26,11 +28,8 @@ bool isAxisEdge(const Edge& edge) {
 }
 
 bool destinationSupportsAxis(const Node& node, const String& axis) {
-    if (node.kind == NodeKind::TrilinearMesh) {
-        return axis == "yellow" || axis == "red" || axis == "blue";
-    }
-    return node.kind == NodeKind::Envelope
-            && (axis == "red" || axis == "blue");
+    return MeshDimensionality::applies(node.kind)
+            && MeshDimensionality::axisForPort(axis) >= 0 && axis != "scratch";
 }
 
 bool isVoiceContextDestination(const Node& node, const PortAddress& address) {
@@ -82,8 +81,23 @@ bool ModulationCableBundle::supportsDestination(const Node& node) {
             || node.kind == NodeKind::Envelope;
 }
 
+bool ModulationCableBundle::socketVisible(const Node& node, const GraphEdgeIndex& edges) {
+    if (!supportsDestination(node)) {
+        return false;
+    }
+    if (MeshDimensionality::dimensions(node).axisCount() > 0) {
+        return true;
+    }
+    for (const char* axis : kAxes) {
+        if (!edges.edgesToInput(node.id, axis).empty()) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool ModulationCableBundle::destinationIncludesYellow(const Node& node) {
-    return node.kind == NodeKind::TrilinearMesh;
+    return MeshDimensionality::dimensions(node).active(Vertex::Time);
 }
 
 std::vector<ModulationCableBundleRoute> ModulationCableBundle::routes(
@@ -108,7 +122,8 @@ std::vector<ModulationCableBundleRoute> ModulationCableBundle::routes(
     std::vector<ModulationCableBundleRoute> result;
     result.reserve(kAxes.size());
     for (const char* axis : kAxes) {
-        if (!destinationSupportsAxis(*destinationNode, axis)) {
+        if (!destinationSupportsAxis(*destinationNode, axis)
+                || !MeshDimensionality::inputActive(*destinationNode, axis)) {
             continue;
         }
         result.push_back({
@@ -198,7 +213,7 @@ std::vector<int> ModulationCableBundle::edgeIndices(
                             && !edge.isAttachment();
                 });
         if (found == edges.end()) {
-            return { edgeIndex };
+            continue;
         }
         result.push_back((int) std::distance(edges.begin(), found));
     }

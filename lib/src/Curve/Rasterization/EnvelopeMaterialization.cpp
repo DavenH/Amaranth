@@ -261,7 +261,7 @@ namespace Rasterization {
         return true;
     }
 
-    bool RealtimeEnvelopeMaterializer::materialize(float red, float blue) {
+    bool RealtimeEnvelopeMaterializer::materialize(const MorphPosition& morph) {
         ++instrumentation.attempts;
         const auto started = std::chrono::steady_clock::now();
         const int inactiveSlot = 1 - activeSlot;
@@ -274,7 +274,7 @@ namespace Rasterization {
         const auto loopCurveCapacity = target.loop.curves.capacity();
         const auto loopGuideCapacity = target.loop.guideCurveRegions.capacity();
         RasterizationRequest request = activePlan.request;
-        request.morph = MorphPosition(0.f, red, blue);
+        request.morph = morph;
         target.metadata = materializeEnvelope(
                 *activePlan.mesh,
                 request,

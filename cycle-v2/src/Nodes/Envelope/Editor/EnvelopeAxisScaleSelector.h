@@ -19,7 +19,6 @@ public:
     juce::Rectangle<float> optionBounds(bool logarithmicOption) const;
     juce::Rectangle<float> optionDiagramBounds(bool logarithmicOption) const;
 
-    void paint(juce::Graphics& graphics) override;
     void resized() override;
 
     std::function<void(bool)> onChange;

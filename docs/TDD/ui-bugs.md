@@ -1,5 +1,126 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved: Cube drags focus the Blue lock and draw its focus ring
+
+On 2026-10-21, native Trimesh cube dragging showed a cyan outline around the
+Blue lock. The cube mouse target did not accept focus, so JUCE climbed to the
+controls parent and chose its first focusable child, the Blue lock. The host
+regression reproduced `trimesh.link.blue` instead of `trimesh.morphSpace`.
+The existing cube target now accepts focus. Native before/after held-drag
+captures confirm that the lock ring disappears while both axes continue moving;
+genuine lock focus and keyboard/link behavior remain covered by focused tests.
+Evidence: `.context/cube-lock-{before,after}/cube-lock-during-drag.png`,
+`.context/cube-lock-{before-tests,tests,after-native}.log`. Native fixed run:
+`189238dc84d0`; five focused cases / 405 assertions pass.
+
+## P2: Envelope overlay hover can retain the curve's native crosshair
+
+On 2026-10-21, hovering Linear/Logarithmic over a Pitch or Scratch curve showed
+its edit crosshair. These purposes intentionally disable logarithmic scaling,
+but the tooltip did not explain that restriction. `showNativeCursorForPanel`
+queued a native cursor update based only on the underlying panel's screen bounds;
+overlay buttons lie inside those bounds. The callback now checks the actual
+hit component and resolves an overlay's cursor instead of forcing the panel cursor. Scale buttons use a hand when
+available and an arrow with an explanatory tooltip when disabled. The selected
+underline is removed and response-curve SVGs replace ambiguous tiny grid bars.
+
+## P2: Cube input fixes Yellow at zero and ignores visible faces
+
+On 2026-10-21, Envelope's entire 3D diagram used its reduced rectangular
+Red/Blue mapping, so dragging could not change Yellow. Trimesh's cube had no
+input mapping. Shared MorphSpaceLayout now owns face hit-testing and inverse
+projection. Editors latch one face and initial position on press, update only
+that face's two axes, and retain their existing transaction owners. Three
+focused cases / 416 assertions cover all faces, both editors, exact endpoints,
+no initial jump, unchanged third coordinate, one Undo, and zero live graph/mesh
+copies or model serialization. Native verification is recorded in the active
+mesh dimensionality TDD.
+
+## P2: Envelope marker actions target a hovered cube after leaving the curve
+
+On 2026-10-21, native selection of the attack point followed by moving to Loop
+left that point highlighted, but the marker action targeted the last hovered
+release cube. Validation then removed the invalid loop, making the click appear
+ineffective. The marker lookup used `currentVertex/currentCube` instead of the
+stable selection used by the inspector and model publication. Status: resolved
+by reusing `selectedEnvelopeCubeForModel()` for eligibility, state and toggles;
+the duplicate hover-based scan is deleted. Native regression sequence
+`envelope-markers` checks selection, pointer departure, both markers, publication
+and full model restoration by Undo. Evidence: `.context/marker-overlay-native.log`.
+
+## P2: Envelope surface rebuilds during dragging, uses centred colour data and omits zoom hosts
+
+On 2026-10-21, Envelope editing visibly stalled while its morph surface rebuilt
+48 cross-sections for every transient content revision in paint. Its shared E3
+rasterizer emits HalfBipolar values (authored value minus 0.5), but the preview
+passed these directly to a normalized scalar material. The curve editor mounted
+its inner input host instead of its existing ZoomPanel; the software surface had
+no zoom wrapper. Envelope also retained a keyboard morph hint after its axis
+became inactive. Status: resolved. Surface preparation now follows the existing
+editor transaction boundary; its columns use normalized amplitudes and mature
+panel/zoom hosts. Framing also refreshes scrollbar ranges without extra slicing.
+58 focused cases and native held curve/parameter/morph drags, exact one-rebuild
+commit, Undo, zoom/pan and keyboard-focus transitions pass. Evidence:
+`.context/envelope-surface-tests.log`, `envelope-surface-native.log`, native run
+3e82760a206f and the surface-interaction fixture run 66f767096447.
+
+## P2: Static spectral Trimesh loses harmonic partials
+
+On 2026-10-21, switching a spectral Trimesh to Static removes its partial bars.
+TrimeshGridRenderService returns zero columns for Static; TrimeshPanel2D's
+existing partial painter consequently cannot obtain a column from the data
+source. Prepare one equivalent zero-morph column without a drawable surface.
+Status: resolved by one grid-equivalent spectral column at morph zero, without
+making a drawable surface. Magnitude/phase parity, guide refresh and fixed/pitch
+sampling tests pass, as does the focused Static/3D/Undo fixture. Evidence:
+`.context/shared-mesh-layout-tests.log`,
+`shared-mesh-static-partials-ui-run.json` and `shared-mesh-static-partials.png`.
+
+## P2: Modulation Triple split profiles hide Constant and MIDI CC controls
+
+On 2026-10-20, UX review reproduced a missing Constant value control and MIDI
+controller-number control in the expanded Modulation Triple. Add `modTriple`,
+set `yellowSource=constant` and `envelopeYellowSource=midiCC`, then open its
+editor. Both source menus render, but their associated value controls are absent.
+The exported editor state confirms Constant 0.5 and controller 1 remain selected.
+
+`ModulationSourceRow::resized()` spends each 161 px profile row on the 30 px axis
+label and remaining 131 px source menu. The conditional control receives zero
+remaining width. Reflow source-specific controls below their selector using the
+shared compact property grammar and its usable-travel minimum; verify both
+profiles and all conditional source types. Status: resolved by composing
+NodePropertySliderRow below the source menu, with compact paired row heights.
+Focused tests exercise both profiles and source types, multi-update drags,
+keyboard editing and Undo; native Constant drag and CC numeric entry/Undo pass.
+Current proof: `.context/inspector-usability-tests.log` and
+`inspector-usability-native.log`. Original review artifacts:
+`.context/ux-review-modulation-conditional.png`,
+`.context/ux-review-modulation-controls.json`, and
+`.context/ux-modulation-review.log`.
+
+## Resolved: Vertex property values missed first native hover
+
+On 2026-10-20, the inspector feedback follow-up passed synthetic enter events
+but failed its first real macOS hover assertion. The OpenGL-attached peer can
+miss mouse-enter notifications, as previously observed for morph shortcut help.
+The shared PropertyHoverTracker reconciles pointer position using a 30 Hz JUCE
+Timer for visible editors in the foreground process. Trimesh and Envelope reuse
+it; drag events retain their original owners. A fresh native run confirms both
+editors display values before any property click. Artifacts:
+`.context/inspector-usability-native-hover-failure.log` and
+`.context/inspector-usability-native.log`. Status: resolved.
+
+## P3: Native verification intermittently fails exact-PID foreground activation
+
+On 2026-10-20, the first vertex-slider native review stopped before dispatching
+Cmd-Z: `launch_cycle_app --focus 92424` reported that the PID did not become
+frontmost. Mode clicks and the preceding vertex drag succeeded. A fresh complete
+run passed all modes, endpoint/intermediate drags and Undo at both window sizes.
+No product crash was observed. Status: intermittent automation activation;
+retain exact-PID ownership and foreground leases. Artifacts:
+`.context/vertex-travel-native-focus-failure.log` and
+`.context/vertex-travel-native.log`.
+
 ## P3: Collapsed-group cable takes an excessive detour above upper-row nodes
 
 On 2026-10-20, the native group-card acceptance screenshot showed a large purple
@@ -110,6 +231,25 @@ delayed tooltips. The broader findings and validation rules are recorded in
 pre-click hover and pointer-leave dismissal were verified from a fresh process.
 Artifact: `.context/native-morph-hover-final-crop.png`.
 
+## P2: Empty Trimesh test fixture dereferences its first vertex
+
+On 2026-10-20, the focused `[trimesh],[envelope],[modulation]` run stopped at
+`TestNodeEditorHost.cpp:4803`: the mesh-edit fixture calls `getVerts().front()`
+on the factory's empty Trimesh model. `TrimeshNodeModelCodec::createDefault()`
+already creates an empty mesh in the preceding commit. Tests that need authored
+geometry must install an explicit mesh fixture before dereferencing vertices.
+Artifact: `.context/dimensions-tests.log`.
+
+The 2026-10-20 property-layout follow-up broad filter
+`[nodes][trimesh],[editor][envelope],[mesh-dimensions],[property-controls]`
+again crashed in `Trimesh node model preserves live mesh pointers for equivalent
+publications` at its empty `getVerts().front()`. Earlier failures in the same
+run were the obsolete lower-right-cube layout contract and a bridge fixture
+expecting three columns from an empty model. The focused 45-case dimensionality,
+property, guide and keyboard selection passes. Artifact:
+`.context/morph-properties-tests-broad.log`. Status: existing fixture debt;
+the broader run does not establish full-suite success.
+
 ## P2: Full CTest run has broad pre-existing Cycle V2 failures
 
 On 2026-10-18, `ctest --test-dir build/tests -V` passed 1,267 of 1,353 tests
@@ -180,6 +320,13 @@ curve and point failures were inspection races; the smoke now waits for mesh
 content as well as revision. Log: the runner's
 `cycle-v2-native-edit-smoke.log` in its temporary directory. Status: open;
 inspect the rail's native hit and settle sequence separately.
+
+Related inspection evidence from 2026-10-21 axis-lock review: a one-shot
+post-click or post-L read sometimes returned the previous control flag while
+the ensuing capture showed the updated lock. The final native proof waits for
+the changed flag within 500 ms without retrying input; it passes all lock and
+reduced-diagram gestures. Evidence: `.context/axis-lock-native-final.log`, run
+f1f8573cca9a. The amplitude-rail report above remains open.
 
 ## P2: Cycle 1 Organ4 preset crashes during visual DSP update
 
@@ -785,3 +932,66 @@ frontmost OS capture then rendered both sample and Spy surfaces correctly
 (`.context/shelf-os.png`). The app-side screenshot was black in the background
 run. Current status: open as an automation timing/focus issue; no surface
 rendering change was made for the elective shelf correction.
+
+## P2: Envelope morph gestures did not publish after dimensionality was introduced (resolved)
+
+On 2026-10-20, native keyboard focus selected Red and the Left key changed the
+Envelope editor's Red value to 0, while the graph retained 0.5. The complete
+curve control publication omitted `dimensionCount`, so graph validation rejected
+it. Envelope publications now retain that setting; the editor transaction test
+checks the durable morph value, dimensionality, and Undo. Evidence:
+`.context/native-keyboard-diagnostic.log`. Current status: resolved in the
+mesh dimensionality refinement.
+
+## P3: Extended native morph screenshot scenario has intermittent drag delivery
+
+On 2026-10-20, the `with-spies` native screenshot review sometimes retained Red
+at 0.68 after a fast 12-step drag toward 0.25 in Yellow/Red mode, while remembering
+Red focus. One identical run completed the drag (0.233), Undo, mode changes and
+captures. The isolated native morph, keyboard and point-drag smokes pass, as do
+the semantic reduced-gesture fixture and editor tests. Evidence:
+`.context/native-morph-full-review.py`, `.context/morph-refinement-native-review.log`,
+and successful run identity `a10ee2c48615`. Parallel CycleV2 launches also disrupted
+some earlier attempts. Current status: open as native fixture/input timing work;
+no full native-suite reliability claim is made.
+
+The Component-row review also missed one native Static-pill click: the intended
+Static screenshots still showed 3D. Its corrected capture preparation uses an
+in-app mode click and asserts `dimensionCount=0` before capture. Native acceptance
+for the relocated Component menus passes for both families. Artifacts:
+`.context/native-component-curve-review.py` and `.context/component-curve-native.log`.
+This is separate from the passing 85-command mode/row fixture.
+
+The 2026-10-21 shared mesh-layout native review also missed one mode-pill click;
+capture preparation now selects the mode through the semantic pointer fixture
+and verifies its state. Native curve, toolbar and morph gestures are exercised
+separately. Artifact: `.context/shared-mesh-native-pill-click.log`. An earlier
+marker attempt clicked its disabled control after Undo cleared the session
+selection; the corrected gesture explicitly reselects the original point and
+asserts marker availability before testing it. This is a precondition for the
+native check, not a change to marker or selection policy.
+
+Incidental 2026-10-21 focused-test failure: the Envelope preview initialization
+case expected four logical moving points for a newly created node. New nodes
+are Static, so selection contains one logical point and eight replicated physical
+corners. Updated that stale expectation; the 27-case suite passes. Native cube
+checks also initially read committed Trimesh parameters during a transient drag
+and used Envelope's mesh serialization path for Trimesh. The fixture now checks
+committed paired coordinates on release, with live child-target movement covered
+by the host test, and uses each model's established serialization accessor.
+
+The final cube/scale combined native run (59a695d3392a) completed all six cube
+gestures but initially retained the curve hover target on entry to a scale icon.
+The scale fixture now settles hover with native movement before its cursor
+assertion; the complete four-purpose replay passes (220204b8f788). Actions are
+not retried. Actual screenshots confirm hand cursors for available controls and
+arrow cursors plus the explanatory tooltip for Pitch/Scratch.
+
+The 2026-10-21 Volume-only scale review reproduced a false cursor-inspection
+failure: `inspectPointerCursor` reported the cached curve/NodeCanvas component
+while the contemporaneous native screenshot showed a hand over the scale icon.
+Evidence: `.context/volume-scale-native.log` (failed attempt) and
+`.context/scale-volume-logarithmic-cursor.png`. The scale smoke now verifies
+actual native clicks and captures the native cursor for visual review rather
+than gating on that stale cached classification. Other cursor smokes retain
+their existing checks; the inspector's cached-source limitation remains open.

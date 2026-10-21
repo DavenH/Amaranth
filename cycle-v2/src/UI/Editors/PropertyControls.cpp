@@ -2,6 +2,7 @@
 
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/Editors/MorphSpaceLayout.h"
 
 #include <cmath>
 #include <cstdlib>
@@ -251,29 +252,43 @@ void paintPropertySegmentedControl(
             CanvasChromeMetrics::restingBorderWidth);
 }
 
-void paintPropertyLinkToggle(
+String morphAxisLinkTooltip(const String& axis, bool linked) {
+    return axis + " poles edit " + (linked ? "together" : "independently")
+            + ". Click to edit " + (linked ? "independently" : "together") + ". (L)";
+}
+
+void paintMorphAxisLock(
         Graphics& graphics,
         Rectangle<float> bounds,
         Colour accent,
-        bool linked) {
-    graphics.setColour(accent.withAlpha(linked ? 0.38f : 0.055f));
-    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
-    graphics.setColour(accent.withAlpha(linked ? 0.96f : 0.32f));
-    graphics.drawRoundedRectangle(
-            bounds,
-            CanvasChromeMetrics::controlCornerRadius,
-            linked
-                    ? CanvasChromeMetrics::activeBorderWidth
-                    : CanvasChromeMetrics::restingBorderWidth);
-
+        bool linked,
+        bool hovered,
+        bool focused) {
+    if (bounds.isEmpty()) {
+        return;
+    }
+    const auto badge = MorphSpaceLayout::lockBadge(bounds);
+    const Colour ink = linked ? accent : Colour(0xffa0aab8);
+    graphics.setColour(Colour(hovered ? 0xff343d49 : 0xff22272f));
+    graphics.fillRoundedRectangle(badge, 4.f);
+    graphics.setColour(ink.withAlpha(hovered || focused ? 1.f : linked ? 0.75f : 0.35f));
+    graphics.drawRoundedRectangle(badge.reduced(0.5f), 4.f, 1.f);
+    const auto centre = badge.getCentre();
+    Path shackle;
+    shackle.startNewSubPath(centre.x - 3.f, centre.y - 1.f);
+    shackle.lineTo(centre.x - 3.f, centre.y - 4.f);
+    shackle.cubicTo(centre.x - 3.f, centre.y - 8.f,
+            centre.x + 3.f, centre.y - 8.f, centre.x + 3.f, centre.y - 4.f);
     if (linked) {
-        graphics.setColour(accent.withAlpha(0.88f));
-        graphics.drawLine(
-                bounds.getX() + 6.f,
-                bounds.getCentreY(),
-                bounds.getRight() - 6.f,
-                bounds.getCentreY(),
-                1.5f);
+        shackle.lineTo(centre.x + 3.f, centre.y - 1.f);
+    }
+    graphics.setColour(ink);
+    graphics.strokePath(shackle, PathStrokeType(1.4f, PathStrokeType::curved, PathStrokeType::rounded));
+    graphics.drawRoundedRectangle(Rectangle<float>(9.f, 7.f)
+            .withPosition(centre.x - 4.5f, centre.y - 1.f), 1.5f, 1.4f);
+    if (focused) {
+        graphics.setColour(propertyControlFocusColour());
+        graphics.drawRoundedRectangle(bounds.reduced(0.5f), 5.f, 1.f);
     }
 }
 

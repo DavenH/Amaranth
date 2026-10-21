@@ -15,7 +15,8 @@ void paintModulationPie(
         Point<float> centre,
         float diameter,
         bool output,
-        bool yellowEnabled) {
+        bool yellowEnabled,
+        int activeMask = 7) {
     const Rectangle<float> bounds(diameter, diameter);
     const auto placed = bounds.withCentre(centre);
     graphics.setColour(CanvasChromePalette::canvasBackground.withAlpha(0.96f));
@@ -34,7 +35,7 @@ void paintModulationPie(
                 -MathConstants<float>::halfPi + segment * (float) index,
                 -MathConstants<float>::halfPi + segment * (float) (index + 1),
                 0.f);
-        const bool enabled = index != 0 || yellowEnabled;
+        const bool enabled = (index != 0 || yellowEnabled) && (activeMask & (4 >> index)) != 0;
         graphics.setColour(colourForMorphDimension(dimensions[index]).withAlpha(
                 enabled ? 1.f : 0.18f));
         graphics.fillPath(wedge);
@@ -93,7 +94,7 @@ void paintSignalCable(
                     PathStrokeType::curved,
                     PathStrokeType::rounded));
 
-    if (!style.invalid) {
+    if (!style.invalid && !style.inactive) {
         return;
     }
 
@@ -130,7 +131,7 @@ void paintEndpoints(
                 edge.destination,
                 size,
                 false,
-                edge.destinationBundleIncludesYellow);
+                edge.destinationBundleIncludesYellow, edge.destinationMorphMask);
         return;
     }
 
@@ -242,8 +243,9 @@ void NodeCableRenderer::paintModulationSocket(
         Point<float> centre,
         float diameter,
         bool output,
-        bool yellowEnabled) {
-    paintModulationPie(graphics, centre, diameter, output, yellowEnabled);
+        bool yellowEnabled,
+        int activeMask) {
+    paintModulationPie(graphics, centre, diameter, output, yellowEnabled, activeMask);
 }
 
 }

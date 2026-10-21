@@ -64,6 +64,7 @@ public:
     void mouseEnter(const MouseEvent& e) override;
     void panelComponentChanged(Component* newComponent, Component* oldComponent = nullptr);
     void panelZoomChanged(bool cmdDown);
+    void updateScrollbars();
     void panHorizontal(float wheelDelta);
     void setScrollbarsVisible(bool visible);
     void scrollBarMoved (ScrollBar* bar, double newRangeStart) override;

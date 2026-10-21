@@ -206,7 +206,7 @@ public:
                 graphics,
                 content,
                 { "L" },
-                "Toggle link");
+                "Toggle pole lock");
     }
 
 private:

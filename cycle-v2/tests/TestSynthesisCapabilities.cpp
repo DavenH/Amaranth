@@ -145,8 +145,12 @@ TEST_CASE("Discovery distinguishes destination control timing and scoped effect 
     const auto envelope = find(nodes, "typeId", "envelope");
     REQUIRE(property(find(property(mesh, "inputs"), "id", "red"), "controlTiming").toString()
             == "continuous");
-    REQUIRE(property(find(property(envelope, "inputs"), "id", "red"), "controlTiming").toString()
-            == "noteOnLatched");
+    for (const String axis : { "yellow", "red", "blue" }) {
+        REQUIRE(property(find(property(envelope, "inputs"), "id", axis), "controlTiming").toString()
+                == "noteOnLatched");
+        REQUIRE(property(find(property(envelope, "parameters"), "id", axis), "controlTiming").toString()
+                == "noteOnLatched");
+    }
     REQUIRE(property(find(property(mesh, "inputs"), "id", "context"), "controlTiming").toString()
             == "unspecified");
     REQUIRE(property(find(nodes, "typeId", "reverb"), "processingCapability").toString() == "globalOnly");

@@ -6,6 +6,7 @@
 #include "UI/ExplanationEditor.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Graph/MeshDimensionality.h"
 #include "Runtime/FingerprintBuilder.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
@@ -894,8 +895,8 @@ void NodeCanvasPresentation::paintEdges(
 
         const auto& edge = edges[(size_t) sceneEdge.edgeIndex];
         const bool invalid = GraphValidator().edgeHasValidationIssue(frame.graph, edge);
-        const Colour colour = invalid
-                ? Colour(0xffff5a5f)
+        const Colour colour = sceneEdge.inactive ? Colour(0xff76808c)
+                : invalid ? Colour(0xffff5a5f)
                 : colourForDomain(frame.facts.domainForEdge(frame.graph, edge));
         const NodeCableStyle style {
                 colour,
@@ -903,7 +904,8 @@ void NodeCanvasPresentation::paintEdges(
                 sceneEdge.edgeIndex == frame.selectedEdgeIndex
                         || sceneEdge.edgeIndex == frame.hoveredEdgeIndex,
                 sceneEdge.edgeIndex == frame.spliceTargetEdgeIndex,
-                sceneEdge.modulationBundle
+                sceneEdge.modulationBundle,
+                sceneEdge.inactive
         };
         if (frame.nodeDragActive) {
             NodeCableRenderer::paint(graphics, sceneEdge, style, zoom);
@@ -1382,7 +1384,9 @@ void NodeCanvasPresentation::paintNode(
 
     if (node.kind != NodeKind::SpectralLayer) {
         for (const auto& port : node.inputs) {
-            if (!ModulationCableBundle::hidesIndividualPort(node, port)) {
+            if (!ModulationCableBundle::hidesIndividualPort(node, port)
+                    && (MeshDimensionality::inputActive(node, port.id)
+                        || !frame.facts.edgeIndex().edgesToInput(node.id, port.id).empty())) {
                 paintPort(port);
             }
         }
@@ -1392,14 +1396,15 @@ void NodeCanvasPresentation::paintNode(
         }
     }
 
-    if (ModulationCableBundle::supportsDestination(node)) {
+    if (ModulationCableBundle::socketVisible(node, frame.facts.edgeIndex())) {
         NodeCableRenderer::paintModulationSocket(
                 graphics,
                 frame.viewport.toScreen(
                         ModulationCableBundle::worldCentre(node, true)),
                 ModulationCableBundle::socketDiameter * scale,
                 false,
-                ModulationCableBundle::destinationIncludesYellow(node));
+                ModulationCableBundle::destinationIncludesYellow(node),
+                MeshDimensionality::dimensions(node).cornerMask());
     }
 }
 

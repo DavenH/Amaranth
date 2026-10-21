@@ -27,7 +27,9 @@ public:
     std::vector<CurvePreviewVertex> previewVertices();
     bool registerMeshEdit();
 
-    void setMorph(float red, float blue);
+    void setMorph(const MorphPosition& position);
+    int dimensionCount() const { return dimensions; }
+    void setDimensionCount(int count) { dimensions = count; }
     void setLogarithmic(bool logarithmic);
     void setAxisLinks(bool redLinked, bool blueLinked);
     bool logarithmic() const { return model.logarithmic; }
@@ -36,6 +38,8 @@ public:
 
     const String& lastNodeId() const { return syncedNodeId; }
 private:
+    int dimensions { 2 };
+    float morphYellow {};
     float morphRed { 0.5f };
     float morphBlue { 0.5f };
     bool morphRedLinked { true };

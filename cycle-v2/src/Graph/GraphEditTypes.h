@@ -54,6 +54,7 @@ struct GraphChangeSet {
     // Recorded in removal order; inverse application restores them in reverse.
     std::vector<IndexedEdgeState> removedEdges;
     std::vector<IndexedGuideAssignmentState> removedGuideAssignments;
+    std::vector<GuideCurveAssignment> addedGuideAssignments;
     bool topologyChanged {};
     bool layoutChanged {};
     bool probesChanged {};

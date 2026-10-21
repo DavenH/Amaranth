@@ -100,6 +100,10 @@ public:
 
     MorphPosition& getMorphPosition() { return request.morph; }
     Rasterization::PointScalingMode getScalingType() const { return request.scalingMode; }
+    void setDimensionality(int count, const Rasterization::PreparedMeshSlice* prepared = nullptr) {
+        request.dimensionCount = count;
+        request.preparedSlice = prepared;
+    }
     void setCalcDepthDimensions(bool calc) { request.calcDepthDimensions = calc; }
     void setDecoupleComponentDfrm(bool does) { request.decoupleComponentDeforms = does; }
     void setDims(const Dimensions& dims) { request.dims = dims; }

@@ -24,13 +24,28 @@ constexpr int railContentInset = 12;
 constexpr int groupLabelHeight = 18;
 constexpr float groupLabelFontSize = 9.5f;
 constexpr float groupLabelTextGap = 2.5f;
-constexpr float visibleTrackHeight = 4.f;
+constexpr float visibleTrackHeight = 2.f;
+constexpr float visibleRailHeight = 5.f;
 constexpr float thumbWidth = 8.f;
 constexpr float indicatorWidth = 1.5f;
 constexpr float indicatorHeight = 17.f;
 constexpr float morphRowHeight = 36.f;
 constexpr float morphRowStride = 44.f;
 constexpr float morphKeyboardFocusSlotWidth = 24.f;
+
+}
+
+namespace VertexPropertyMetrics {
+
+constexpr float labelWidth = 60.f;
+constexpr float guideWidth = 40.f;
+constexpr float gainSize = 24.f;
+constexpr float cellGap = 6.f;
+constexpr float columnInset = 8.f;
+constexpr float rowChromeWidth = labelWidth + guideWidth + gainSize + 3.f * cellGap;
+constexpr float minimumColumnWidth = PropertyControlMetrics::minimumUsableTrackWidth
+        + rowChromeWidth + 2.f * columnInset;
+constexpr float maximumColumnWidth = minimumColumnWidth + 80.f;
 
 }
 
@@ -84,11 +99,14 @@ void paintPropertySegmentedControl(
         juce::Rectangle<float> bounds,
         int segmentCount,
         int selectedSegment);
-void paintPropertyLinkToggle(
+juce::String morphAxisLinkTooltip(const juce::String& axis, bool linked);
+void paintMorphAxisLock(
         juce::Graphics& graphics,
         juce::Rectangle<float> bounds,
         juce::Colour accent,
-        bool linked);
+        bool linked,
+        bool hovered = false,
+        bool focused = false);
 
 void stylePropertyLabel(juce::Label& label, const juce::String& text);
 void stylePropertyButton(juce::TextButton& button, const juce::String& text);

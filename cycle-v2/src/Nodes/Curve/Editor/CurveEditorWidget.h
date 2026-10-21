@@ -22,6 +22,12 @@ public:
     void setEnvelopeBipolar(bool bipolar);
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale);
     void setEnvelopeAxisLinks(bool redLinked, bool blueLinked);
+    void setEnvelopeDimensions(int count, bool yellowLinked);
+    Component* envelopeMorphSurfaceComponent();
+    void prepareEnvelopeMorphSurface(int axis, const MorphPosition& morph);
+    void renderEnvelopeMorphSurface(Rectangle<float> bounds, float scaleFactor);
+    void setEditGestureActive(bool active);
+    Rectangle<float> panelContentBounds(Rectangle<float> frame) const;
     void fitEnvelopeVerticalRange();
     void resetEnvelopeVerticalRange();
     void setImpulseResponseAudioResource(const AudioSampleResource* resource);
@@ -65,6 +71,7 @@ public:
     uint64_t previewRevision() const { return previewPresentationRevision; }
     uint64_t previewSnapshotRevision() const;
     std::vector<TrimeshVertexParameter> selectedVertexParameters() const;
+    std::vector<TrimeshCubePreviewVertex> morphPreviewVertices() const;
     bool setSelectedVertexParameter(const String& parameterId, float normalizedValue);
     int selectedEnvelopeGuideCubeIndex();
     bool hasSingleSelectedEnvelopeVertex();

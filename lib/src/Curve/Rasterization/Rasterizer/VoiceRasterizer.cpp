@@ -94,7 +94,9 @@ const RenderResult& VoiceRasterizer::renderOrdinary(Mesh* mesh, float phase, Wav
             request,
             phase,
             [this](VertCube* cube) { return resolveCube(cube); });
-    ++renderDiagnostics.sliceCount;
+    if (getRequest().preparedSlice == nullptr) {
+        ++renderDiagnostics.sliceCount;
+    }
     ++renderDiagnostics.sortCount;
     ++renderDiagnostics.bakeCount;
     return result();
@@ -218,7 +220,9 @@ const RenderResult& VoiceRasterizer::renderVoiceSlice(float oscPhase) {
         return sliceResult;
     }
 
-    float voiceTime = jmin(1.f, getRequest().morph.time + state->advancement);
+    float voiceTime = MorphDimensions(getRequest().dimensionCount, getRequest().twoDimensionalPlane).active(Vertex::Time)
+            ? jmin(1.f, getRequest().morph.time + state->advancement)
+            : getRequest().morph.time.getCurrentValue();
     auto guideApplier = createGuideCurveApplier(
             chainReduction,
             &chainResult.needsResorting,
@@ -231,12 +235,16 @@ const RenderResult& VoiceRasterizer::renderVoiceSlice(float oscPhase) {
                 voiceTime,
                 oscPhase,
                 guideApplier,
-                sliceResult.intercepts);
+                sliceResult.intercepts,
+                getRequest().preparedSlice != nullptr
+                        ? &getRequest().preparedSlice->cells[(size_t) i] : nullptr);
     }
 
     std::sort(sliceResult.intercepts.begin(), sliceResult.intercepts.end());
     ++renderDiagnostics.sortCount;
-    ++renderDiagnostics.sliceCount;
+    if (getRequest().preparedSlice == nullptr) {
+        ++renderDiagnostics.sliceCount;
+    }
     sliceResult.sampleable = sliceResult.intercepts.size() >= 2;
 
     return sliceResult;
@@ -247,12 +255,18 @@ void VoiceRasterizer::appendVoiceCubeIntercept(
         float voiceTime,
         float oscPhase,
         GuideCurveApplier& applyGuide,
-        std::vector<Intercept>& intercepts) {
-    voiceSlicer.slice(
+        std::vector<Intercept>& intercepts,
+        const VertCube::ReductionData* prepared) {
+    if (prepared != nullptr) {
+        PreparedMeshSlice::copy(*prepared, chainReduction);
+    } else {
+        voiceSlicer.slice(
             *cube,
             Vertex::Time,
             chainReduction,
-            getRequest().morph.withTime(voiceTime));
+            getRequest().morph.withTime(voiceTime),
+            getRequest().dimensionCount, getRequest().twoDimensionalPlane);
+    }
 
     Vertex* a = &chainReduction.v0;
     Vertex* b = &chainReduction.v1;

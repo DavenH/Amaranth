@@ -7,6 +7,7 @@
 #include <UI/Panels/ScalarSurfaceProgram.h>
 
 #include "UI/NodePreviewRenderer.h"
+#include "Graph/MeshDimensionality.h"
 
 #include "Runtime/PreviewContrastNormalization.h"
 
@@ -607,6 +608,9 @@ bool NodePreviewRenderer::renderOpenGL(
         const Node& node,
         Rectangle<float> area,
         float scaleFactor) {
+    if (node.kind == NodeKind::TrilinearMesh && MeshDimensionality::dimensions(node).axisCount() == 0) {
+        return resources.trimeshWidget(node).renderCompactPreviewOpenGL(node, area, scaleFactor);
+    }
     if (!requiresCurveModel(node.kind)) {
         return false;
     }
