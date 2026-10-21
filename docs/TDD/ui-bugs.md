@@ -1,5 +1,22 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved: Shipped graph fixtures drifted from canonical serialization
+
+On 2026-10-20, the merged authoring-tools run stopped in "Every shipped graph
+is canonical JSON and compiles" at `african-horn.cyclegraph`: one canvas Y
+coordinate spelled `422.12049` canonicalized to `422.12048` after float decoding.
+The subsequent fixture audit found missing `unisonWidthLayoutVersion` markers
+in `alto-sax`, `baroque-flute`, and resources `default`, `fft-sawtooth`,
+`with-spies`; the three resources also omitted their existing default
+`phaseMode: absolute` fields. Four small `baroque-flute` phase literals needed
+canonical scientific notation without changing their numeric values.
+Minimal content-only repairs preserve every previously decoded graph/model
+value and file layout. The existing GraphMigrator loads and validates all seven
+fixtures and emits byte-identical output on the next pass. No test or synthesis
+behavior was changed. Evidence: `.context/canonical-content-check/repaired-results.json`
+in the exemplar worktree; original test log `.context/merged-next-wave-tests.log`
+in the group worktree. Current status: resolved.
+
 ## Resolved: Envelope equality depended on allocation order
 
 On 2026-10-20, strict candidate-authoring compatibility tests independently
