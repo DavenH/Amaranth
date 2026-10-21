@@ -62,7 +62,16 @@ folder. Save the unedited annotated baseline, inspect required capabilities and
 controls, apply one semantic factor, prove all unrelated serialized synthesis
 state identical, undo to the exact baseline, redo to the exact variant, save/
 reload, then run fixed-seed baseline and variant suites with two repetitions.
-Record exact payloads and engine/source/performance/PCM hashes. Reject a
+Record exact payloads and engine/source/performance/PCM hashes. Verify the
+CC comparison prefix 0–180 ms exactly, retaining a declared 20 ms boundary guard
+before the first 200 ms controller change and retaining complete raw audio.
+Retain full 0–200 ms worst-error/count/first-difference diagnostics. A negative
+control changes only moving CC1 targets to unused, non-channel-mode CC118 while
+retaining initial CC1=0, note, velocity, seed and event times. Render two repeats
+per example (eight extra captures; 72 total). Compare response against this
+same-time control and report held-vs-control drift separately; declare response
+only when a descriptor exceeds its measured drift plus 1e-10. Reused immutable
+captures must match negative-control engine and effective-graph identities. Reject a
 non-effective intervention rather than publishing a demonstrated-effect claim.
 Use explicit held-note/release/CC intervals without automatic alignment. Notes
 qualify effects not established by the measurements as authored hypotheses.
@@ -74,7 +83,7 @@ qualify effects not established by the measurements as authored hypotheses.
 - `cycle-v2/content/exemplars/index.json` and `performance-suite.json`: four
   manifest entries and one bounded suite covering register, velocity and timed
   CC, with controls/limits and reproducible comparison intervals.
-- `scripts/render_cycle_v2_exemplars.py`: approximately 200–260 lines, fixed
+- `scripts/render_cycle_v2_exemplars.py`: approximately 320 lines including measured-boundary negative-control QA, fixed
   recipe translation and orchestration over the existing domain APIs/runners.
 - Focused host content/recipe tests, `docs/cycle-explained-exemplars.md`, README
   and existing code-map feature route. No C++ or DSP dependency is introduced.

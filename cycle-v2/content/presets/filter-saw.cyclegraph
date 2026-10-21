@@ -45,6 +45,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 855.20001, "y": 886.0 },
+            "rationale": "Waveform foundation\nFeeds the FFT with the repeating time-domain shape. Edit this source for waveform structure, or the later magnitude mesh for a separate spectral-mask contribution.",
             "parameters": {
                 "enabled": true,
                 "gain": 0.5,
@@ -130,6 +131,7 @@
             "kind": "trilinearMesh",
             "definitionVersion": 1,
             "position": { "x": 1591.19995, "y": 387.0 },
+            "rationale": "Moving spectral mask\nMultiplies the FFT magnitude through magnitudeOp1 before resynthesis. FFT phase bypasses this mask into the IFFT. The linked blue dimension follows CC1.",
             "portSides": {
                 "outputs": { "out": "bottom" }
             },
@@ -205,6 +207,7 @@
             "kind": "multiply",
             "definitionVersion": 1,
             "position": { "x": 1659.19995, "y": 736.0 },
+            "rationale": "Magnitude combination\nApplies the authored mask to the FFT magnitude. Keeping this multiplication visible makes the waveform source and its spectral shaping separate editing choices.",
             "portSides": {
                 "inputs": { "right": "top" }
             },
@@ -215,6 +218,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1902.0, "y": 1084.0 },
+            "rationale": "Sustain and release\nHolds the voice contour through the marked sustain, then follows the later shape after note-off. Sustain cube 1 has phase 1 across morph dimensions. Moving only later phase coordinates changes release timing while preserving their amplitudes and marker membership.",
             "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": true, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -404,6 +408,7 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 1007.0 },
+            "rationale": "Traversal contour\nChanges voice progression through the scratch attachment. Use it for traversal behavior; the volume envelope separately controls amplitude.",
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
             "model": {
                 "schema": "envelope",
@@ -525,6 +530,7 @@
             "kind": "delay",
             "definitionVersion": 1,
             "position": { "x": 761.20001, "y": 1424.0 },
+            "rationale": "Repeating lead tail\nProcesses the summed voices after amplitude shaping, so repeats can continue beyond a voice release. Change its mix or feedback when the tail should carry more or less of the phrase.",
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.5, "spin": 0.5, "spinIters": 0.5 }
         },
         {
@@ -600,6 +606,7 @@
     "probes": [],
     "presetPresentation": {
         "version": 1,
+        "description": "Designed for a moving saw-family lead with a separate spectral mask and clear articulation.\nThe time mesh feeds an FFT; the magnitude mesh multiplies its magnitude before IFFT resynthesis with the original phase. CC1 explores linked blue morph. The volume envelope shapes each voice, then global delay carries repeats beyond note-off.\nStart with input MIDI notes 48-72 at moderate velocity. Envelope morph is selected at note-on, while linked mesh dimensions can evolve during the note; a long output tail can include delay as well as voice release.",
         "tags": ["Lead", "Analog"],
         "preview": {
             "mediaType": "image/jpeg",

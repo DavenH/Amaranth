@@ -1,5 +1,21 @@
 # Audio Bug Notes
 
+## P3: One-LSB CC boundary difference precedes the scheduled controller time
+
+On 2026-10-20, the explained-exemplar suite rendered `reed.cyclegraph` twice
+with identical note/seed/render settings, once with held CC1=0 and once changing
+CC1 to 64 at 200 ms. Both conditions repeat exactly across two captures. The
+first 200 ms differ at one PCM sample per channel: frame 8808 (199.727891 ms at
+44.1 kHz), 12 samples before the authored event, by one 24-bit LSB
+(`1.1920928955078125e-7`). Sat-bass and filter-saw prefixes match exactly.
+No drift appears in the earlier 0–180 ms interval. Repro artifacts:
+`.context/exemplars-first/reed/baseline-renders/middle-{held,cc1}-01.wav` in the
+exemplar worktree, with the actual event list and matching repeat PCM hashes in
+that directory's `results.json`. Current status: open; investigate control
+interpolation/resampling at the event boundary separately. Exemplar response
+proof uses an explicit 20 ms boundary guard while preserving complete raw audio;
+no DSP or scheduling behavior was changed.
+
 ## Open: Ubuntu legacy BlockConvolver Dirac test loses about 0.1% per stage
 
 During the 2026-10-11 Reverb kernel portability fix, the isolated
