@@ -171,6 +171,12 @@ indexed group lookup/copy/overlay behavior, and zero unrelated work at 0/128
 unrelated nodes with mesh/audio resources. Native undo/redo skips guide-editor
 rebinding for annotation-only edits, as automation already did.
 
+After merging the explained exemplar bank (`7280ccb1`), the exact group-card app
+also read all 27 preset/node explanations from its four annotated factory graphs
+through the existing automation commands. Compatibility evidence is
+`.context/exemplar-note-api-compatibility.json` in the implementation worktree;
+the check opened sources read-only and stopped only its owned process.
+
 App-rendered screenshots were inspected at 1728 × 962 and 1100 × 742. The
 normal-zoom view uses a scratch layout authored solely through existing
 `moveNode`/`saveGraph`/`openGraph` commands; factory graphs are untouched. Its zoom
