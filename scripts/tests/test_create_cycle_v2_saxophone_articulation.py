@@ -43,10 +43,16 @@ class ArticulationDriverTest(unittest.TestCase):
         self.assertEqual(new_envelope["model"]["revision"], 8)
         self.assertEqual(new_envelope["model"]["state"]["revision"], 8)
         self.assertEqual(self.plan, before)
+        self.assertFalse(any(edit["nodeId"] == "generated31" for edit in edits))
         for revision in (0, True, "7"):
             with self.assertRaises(ValueError):
                 runner.node_edits(self.plan, self.identifiers,
                                   lambda identifier: {"model": {"revision": revision}})
+
+    def test_new_node_default_parameters_do_not_create_empty_semantic_edits(self):
+        plan = {"edits": [], "addNodes": [{"id": "new", "parameters": {"enabled": True, "red": .5}}]}
+        inspected = {"parameters": [{"id": "enabled", "value": "1"}, {"id": "red", "value": "0.5"}]}
+        self.assertEqual(runner.node_edits(plan, {"new": "generated"}, lambda identifier: inspected), [])
 
     def fake_authoring(self, collide=False, reject=None):
         state = {"graph": None, "revision": 0, "added": [], "calls": []}

@@ -43,18 +43,21 @@ def edge_index(graph, address):
 def node_edits(plan, identifiers, inspect):
     edits = copy.deepcopy(plan["edits"])
     for node in plan["addNodes"]:
+        current = inspect(identifiers[node["id"]])
+        stored = {parameter["id"]: parameter["value"] for parameter in current.get("parameters", [])}
         edit = {"nodeId": identifiers[node["id"]], "parameters": [
-            {"id": key, "value": str(value).lower() if isinstance(value, bool) else str(value)}
-            for key, value in node["parameters"].items()]}
+            {"id": key, "value": str(int(value)) if isinstance(value, bool) else str(value)}
+            for key, value in node["parameters"].items()
+            if stored.get(key) != (str(int(value)) if isinstance(value, bool) else str(value))]}
         if "model" in node:
-            current = inspect(edit["nodeId"])["model"]
-            revision = current["revision"]
+            revision = current["model"]["revision"]
             if type(revision) is not int or revision < 1:
                 raise ValueError("New node lacks a current model revision")
             edit["expectedModelRevision"] = revision
             edit["model"] = copy.deepcopy(node["model"])
             edit["model"]["revision"] = edit["model"]["state"]["revision"] = revision + 1
-        edits.append(edit)
+        if edit["parameters"] or "model" in edit:
+            edits.append(edit)
     return edits
 
 
