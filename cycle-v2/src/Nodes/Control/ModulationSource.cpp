@@ -224,6 +224,24 @@ void ModulationSource::renderAudioBlock(
         return;
     }
 
+    if (configuration.mode == ModulationSourceMode::KeyScale && !voice.noteRetargets.empty()) {
+        size_t offset {};
+        for (const auto& event : voice.noteRetargets) {
+            const size_t eventOffset = jmin(event.sampleOffset, (size_t) values.size());
+            if (eventOffset > offset) {
+                values.section((int) offset, (int) (eventOffset - offset)).set(
+                        evaluate(configuration, current));
+            }
+            current.noteNumber = event.noteNumber + noteOffset;
+            offset = eventOffset;
+        }
+        if (offset < (size_t) values.size()) {
+            values.section((int) offset, values.size() - (int) offset).set(
+                    evaluate(configuration, current));
+        }
+        return;
+    }
+
     const bool timedController = configuration.mode == ModulationSourceMode::ModWheel
             || configuration.mode == ModulationSourceMode::MidiController
             || configuration.mode == ModulationSourceMode::ChannelPressure;

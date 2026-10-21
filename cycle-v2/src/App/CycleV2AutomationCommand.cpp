@@ -32,6 +32,7 @@ const std::pair<const char*, Command> commands[] {
             { "invokePaletteItem", Command::InvokePaletteItem },
             { "captureAudio", Command::CaptureAudio },
             { "exportPatternSchedule", Command::ExportPatternSchedule },
+            { "setPresetSequence", Command::SetPresetSequence },
             { "captureLiveAudio", Command::CaptureLiveAudio },
             { "openNodeEditor", Command::OpenNodeEditor },
             { "pinComparisonSpy", Command::PinComparisonSpy },

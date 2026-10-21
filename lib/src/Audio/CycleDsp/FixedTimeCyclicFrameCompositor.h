@@ -36,6 +36,11 @@ public:
     static float samplePeriodicFrame(
             Buffer<float> frame,
             double phaseCycles);
+    static void renderPeriodicFrame(
+            Buffer<float> frame,
+            Buffer<float> output,
+            double initialPhaseCycles,
+            double phaseIncrement);
     static float compose(const FixedTimeCyclicFrameSampleRequest& request);
 };
 

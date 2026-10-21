@@ -60,6 +60,19 @@ var CycleV2AutomationWorkspaceCommands::addNode(const var& commandValue) {
     return okResult("addNode", data);
 }
 
+var CycleV2AutomationWorkspaceCommands::setPresetSequence(const var& commandValue) {
+    const auto* object = commandValue.getDynamicObject();
+    const auto sequence = PresetPresentationCodec::readSequenceJSON(
+            object != nullptr ? object->getProperty("sequence") : var());
+    if (!sequence.has_value()) {
+        return failedResult("setPresetSequence", "Invalid preset MIDI sequence");
+    }
+    if (!workspace.setPresetSequenceForAutomation(*sequence)) {
+        return failedResult("setPresetSequence", "Preset sequence cannot be edited during a gesture");
+    }
+    return okResult("setPresetSequence", snapshot());
+}
+
 var CycleV2AutomationWorkspaceCommands::moveNode(const var& commandValue) {
     const String nodeId = stringProperty(commandValue, "nodeId");
     const Point<float> position {

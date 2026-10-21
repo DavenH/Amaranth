@@ -327,6 +327,8 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return captureAudio(commandValue);
         case Command::ExportPatternSchedule:
             return exportPatternSchedule(commandValue);
+        case Command::SetPresetSequence:
+            return workspaceCommands->setPresetSequence(commandValue);
         case Command::CaptureLiveAudio:
             return captureLiveAudio(commandValue);
         case Command::OpenNodeEditor:

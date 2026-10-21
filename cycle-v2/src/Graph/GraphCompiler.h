@@ -131,6 +131,9 @@ struct CompiledVoiceContext {
     std::shared_ptr<const INodeDspConfiguration> unison;
     String defaultScratchNodeId;
     CycleDsp::UnisonVoiceLayout lanes;
+    float portamentoSeconds { 0.06f };
+    bool monophonicLegato {};
+    bool liveEnvelopeMorph {};
 };
 
 struct GraphExecutionStep {
@@ -157,6 +160,7 @@ struct GraphExecutionStep {
     std::vector<GraphStepInput> inputs;
     std::vector<GraphStepOutput> outputs;
     std::vector<GraphStepAttachment> attachments;
+    bool liveEnvelopeMorph {};
 };
 
 String effectiveScratchSourceNodeId(const GraphExecutionStep& step);

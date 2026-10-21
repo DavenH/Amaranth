@@ -902,6 +902,7 @@ void GraphAudioExecutor::prepareStepContext(
         const GraphExecutionStep& step,
         PreparedVoice::Step& preparedStep) const {
     AudioProcessContext& context = preparedStep.context;
+    context.liveEnvelopeMorph = step.liveEnvelopeMorph;
     context.traversalDurationSeconds = 0.0;
     if (step.oscillatorRegionIndex >= 0
             && (size_t) step.oscillatorRegionIndex < plan.oscillatorRegions.size()) {

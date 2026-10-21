@@ -92,6 +92,7 @@ public:
     bool redoForAutomation();
     GraphEditResult applyNodeEditsForAutomation(const NodeAuthoringEdits& edits);
     uint64_t documentRevisionForAutomation() const { return canvas.documentRevisionForAutomation(); }
+    bool setPresetSequenceForAutomation(PresetMidiSequence sequence);
     bool setGuideParameterForAutomation(
             const String& guideId,
             const String& parameterId,

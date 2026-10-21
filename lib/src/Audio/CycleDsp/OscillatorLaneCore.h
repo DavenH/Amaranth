@@ -13,7 +13,7 @@ public:
     static double angleDelta(int midiNote, float detuneCents, double sampleRate);
     static double legacyNeutralAngleDelta(int midiNote, double sampleRate);
     static double angleDeltaForPitchUnit(
-            int midiNote,
+            double midiNote,
             float detuneCents,
             float pitchUnitValue,
             double sampleRate);

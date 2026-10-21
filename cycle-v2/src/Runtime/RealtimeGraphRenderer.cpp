@@ -38,6 +38,7 @@ RealtimeGraphRenderer::RealtimeGraphRenderer() {
     midiControls.prepare(maximumEventsPerChannel);
     for (auto& voice : voices) {
         voice.context.events.reserve(RealtimeMidiEventQueue::capacity * 2);
+        voice.context.noteRetargets.reserve(RealtimeMidiEventQueue::capacity * 2);
         midiControls.prepareVoice(voice.context);
     }
 }
@@ -54,6 +55,20 @@ RealtimeGraphRenderer::prepareGraph(
     // Realtime execution never captures traversal grids.
     prepared->spec.prewarmTraversalGrid = false;
     prepared->outputGainRamp.resize((int) spec.maximumFrameCount);
+    if (!prepared->plan.oscillatorRegions.empty()) {
+        const auto& nodeId = prepared->plan.oscillatorRegions.front().voiceContextNodeId;
+        const auto found = std::find_if(
+                prepared->plan.voiceContexts.begin(),
+                prepared->plan.voiceContexts.end(),
+                [&](const CompiledVoiceContext& context) { return context.nodeId == nodeId; });
+        if (found != prepared->plan.voiceContexts.end()) {
+            prepared->monophonicLegato = found->monophonicLegato;
+            prepared->portamentoSeconds = found->portamento ? found->portamentoSeconds : 0.f;
+        }
+    }
+    if (prepared->monophonicLegato) {
+        prepared->pitchRamps.resize((int) (voiceCount * spec.maximumFrameCount));
+    }
     for (size_t voiceIndex = 0; voiceIndex < voiceCount; ++voiceIndex) {
         prepared->executor.prepareRealtimeVoiceExecution(
                 prepared->plan,
@@ -64,7 +79,8 @@ RealtimeGraphRenderer::prepareGraph(
             prepared->plan,
             prepared->spec);
     prepared->blockStorageValues
-            = prepared->executor.preparedBlockStorageValueCount();
+            = prepared->executor.preparedBlockStorageValueCount()
+                    + (uint64_t) prepared->pitchRamps.size();
     prepared->gridStorageValues
             = prepared->executor.preparedGridStorageValueCount();
     return prepared;
@@ -159,6 +175,7 @@ uint64_t RealtimeGraphRenderer::process(
         AudioPerformanceMetrics::ScopedRealtimeStage stage(
                 performanceSample,
                 AudioPerformanceMetrics::Stage::BlockSetup);
+        currentSampleRate = sampleRate;
         beginBlock();
     }
 
@@ -201,11 +218,15 @@ void RealtimeGraphRenderer::resetVoices(bool resetControls) {
     for (auto& voice : voices) {
         voice.context.events.clear();
         voice.context.controlEvents.clear();
+        voice.context.noteRetargets.clear();
+        voice.context.oscillatorPitchOffsets.nullify();
+        voice.notes.reset();
         voice.active = false;
         voice.released = false;
         voice.normalizedTime = 0.f;
     }
     scheduledEventCount = 0;
+    pendingStolenNoteOffs = {};
     if (resetControls) {
         midiControls.reset();
     }
@@ -217,6 +238,16 @@ void RealtimeGraphRenderer::beginBlock() {
     for (auto& voice : voices) {
         voice.context.events.clear();
         voice.context.controlEvents.clear();
+        voice.context.noteRetargets.clear();
+        voice.context.oscillatorPitchOffsets.nullify();
+        voice.blockStartNote = voice.noteNumber;
+        voice.pitchRenderedThrough = 0;
+        if (preparedGraph->monophonicLegato) {
+            const auto index = (size_t) (&voice - voices.data());
+            voice.context.oscillatorPitchOffsets = preparedGraph->pitchRamps.section(
+                    (int) (index * preparedGraph->spec.maximumFrameCount),
+                    (int) preparedGraph->spec.maximumFrameCount);
+        }
     }
 }
 
@@ -240,6 +271,9 @@ RealtimeGraphRenderer::consumeEvents(
     const uint32_t currentPatternGeneration = queue.generation(
             MidiEventSource::PatternPlayback);
     if (currentPatternGeneration != patternPlaybackGeneration) {
+        if (preparedGraph->monophonicLegato) {
+            releaseSource(MidiEventSource::PatternPlayback, 0);
+        }
         size_t retainedCount {};
         for (size_t index = 0; index < scheduledEventCount; ++index) {
             if (queue.isCurrent(scheduledEvents[index])) {
@@ -304,10 +338,46 @@ void RealtimeGraphRenderer::applyEvent(
         size_t sampleOffset) {
     switch (event.kind) {
         case RealtimeMidiEvent::Kind::NoteOn:
+            if (preparedGraph->monophonicLegato) {
+                const auto found = std::find_if(voices.begin(), voices.end(), [&](const Voice& voice) {
+                    return voice.active && !voice.released
+                            && voice.source == event.source && voice.midiChannel == event.channel;
+                });
+                if (found != voices.end()) {
+                    renderPitchThrough(*found, sampleOffset);
+                    found->notes.press(event.data1, glideSamples());
+                    retargetVoice(*found, found->notes.currentNote(), sampleOffset);
+                    return;
+                }
+            }
             allocateVoice(event, sampleOffset);
             return;
 
         case RealtimeMidiEvent::Kind::NoteOff: {
+            if (preparedGraph->monophonicLegato) {
+                auto& pending = pendingStolenNoteOffs[(size_t) event.source]
+                        [(size_t) event.channel - 1][(size_t) event.data1];
+                if (pending > 0) {
+                    --pending;
+                    return;
+                }
+                for (auto& voice : voices) {
+                    if (!voice.active || voice.released || voice.source != event.source
+                            || voice.midiChannel != event.channel) {
+                        continue;
+                    }
+                    renderPitchThrough(voice, sampleOffset);
+                    if (!voice.notes.release(event.data1, glideSamples())) {
+                        return;
+                    }
+                    const int current = voice.notes.currentNote();
+                    if (current >= 0) {
+                        retargetVoice(voice, current, sampleOffset);
+                        return;
+                    }
+                    break;
+                }
+            }
             Voice* oldestMatchingVoice {};
             for (auto& voice : voices) {
                 if (voice.active
@@ -340,46 +410,68 @@ void RealtimeGraphRenderer::applyEvent(
             return;
 
         case RealtimeMidiEvent::Kind::AllNotesOff:
-            releaseSource(event.source, sampleOffset);
+            releaseSource(event.source, sampleOffset,
+                    preparedGraph->monophonicLegato ? event.channel : 0);
             return;
 
         case RealtimeMidiEvent::Kind::AllSoundOff:
-            resetSource(event.source, sampleOffset);
+            resetSource(event.source, sampleOffset,
+                    preparedGraph->monophonicLegato ? event.channel : 0);
             return;
     }
 }
 
 void RealtimeGraphRenderer::releaseSource(
         MidiEventSource source,
-        size_t sampleOffset) {
+        size_t sampleOffset,
+        int channel) {
+    auto& pending = pendingStolenNoteOffs[(size_t) source];
+    for (size_t index = 0; index < pending.size(); ++index) {
+        if (channel == 0 || (int) index + 1 == channel) {
+            pending[index].fill(0);
+        }
+    }
     for (auto& voice : voices) {
-        if (!voice.active || voice.released || voice.source != source) {
+        if (!voice.active || voice.released || voice.source != source
+                || (channel != 0 && voice.midiChannel != channel)) {
             continue;
         }
         const bool hasTail = preparedGraph != nullptr
                 && preparedGraph->executor.hasVoiceTailProcessor(voice.context.voiceIndex);
+        renderPitchThrough(voice, sampleOffset);
         voice.context.events.push_back({
                 hasTail ? NoteLifecycleType::NoteOff : NoteLifecycleType::Reset,
                 sampleOffset,
                 voice.context.voiceIndex
         });
         voice.released = true;
+        voice.notes.reset();
     }
 }
 
 void RealtimeGraphRenderer::resetSource(
         MidiEventSource source,
-        size_t sampleOffset) {
+        size_t sampleOffset,
+        int channel) {
+    auto& pending = pendingStolenNoteOffs[(size_t) source];
+    for (size_t index = 0; index < pending.size(); ++index) {
+        if (channel == 0 || (int) index + 1 == channel) {
+            pending[index].fill(0);
+        }
+    }
     for (auto& voice : voices) {
-        if (!voice.active || voice.source != source) {
+        if (!voice.active || voice.source != source
+                || (channel != 0 && voice.midiChannel != channel)) {
             continue;
         }
+        renderPitchThrough(voice, sampleOffset);
         voice.context.events.push_back({
                 NoteLifecycleType::Reset,
                 sampleOffset,
                 voice.context.voiceIndex
         });
         voice.released = true;
+        voice.notes.reset();
     }
 }
 
@@ -393,6 +485,11 @@ RealtimeGraphRenderer::Voice& RealtimeGraphRenderer::allocateVoice(
         selected = std::min_element(voices.begin(), voices.end(), [](const auto& left, const auto& right) {
             return left.startOrder < right.startOrder;
         });
+        if (preparedGraph->monophonicLegato) {
+            renderPitchThrough(*selected, sampleOffset);
+            selected->notes.abandon(pendingStolenNoteOffs[(size_t) selected->source]
+                    [(size_t) selected->midiChannel - 1]);
+        }
         selected->context.events.push_back({
                 NoteLifecycleType::Reset,
                 sampleOffset,
@@ -401,6 +498,11 @@ RealtimeGraphRenderer::Voice& RealtimeGraphRenderer::allocateVoice(
     }
 
     const int voiceIndex = (int) std::distance(voices.begin(), selected);
+    const bool replacing = selected->active && preparedGraph->monophonicLegato;
+    if (replacing && selected->pitchRenderedThrough > 0) {
+        selected->context.oscillatorPitchOffsets.section(0, (int) selected->pitchRenderedThrough).add(
+                (float) selected->oscillatorNoteNumber - event.data1);
+    }
     selected->context.voiceIndex = voiceIndex;
     selected->context.events.push_back({ NoteLifecycleType::NoteOn, sampleOffset, voiceIndex });
     selected->context.lifecycleSeed = event.lifecycleSeed;
@@ -411,11 +513,45 @@ RealtimeGraphRenderer::Voice& RealtimeGraphRenderer::allocateVoice(
     selected->startOrder = ++nextVoiceOrder;
     selected->midiChannel = event.channel;
     selected->noteNumber = event.data1;
+    if (replacing) {
+        selected->context.noteRetargets.push_back({ sampleOffset,
+                jlimit(0, 127, event.data1 + controlNoteOffset) });
+    } else {
+        selected->blockStartNote = event.data1;
+    }
+    selected->oscillatorNoteNumber = event.data1;
+    if (preparedGraph->monophonicLegato) {
+        selected->notes.start(event.data1);
+    }
     selected->velocity = (float) event.data2 / 127.f;
     selected->normalizedTime = 0.f;
     selected->active = true;
     selected->released = false;
     return *selected;
+}
+
+size_t RealtimeGraphRenderer::glideSamples() const {
+    return (size_t) std::max(0, roundToInt(preparedGraph->portamentoSeconds * currentSampleRate));
+}
+
+void RealtimeGraphRenderer::renderPitchThrough(Voice& voice, size_t sampleOffset) {
+    auto values = voice.context.oscillatorPitchOffsets;
+    const size_t end = std::min(sampleOffset, (size_t) values.size());
+    if (end <= voice.pitchRenderedThrough) {
+        return;
+    }
+    auto section = values.section(
+            (int) voice.pitchRenderedThrough,
+            (int) (end - voice.pitchRenderedThrough));
+    voice.notes.renderPitch(section);
+    section.add(-(float) voice.oscillatorNoteNumber);
+    voice.pitchRenderedThrough = end;
+}
+
+void RealtimeGraphRenderer::retargetVoice(Voice& voice, int noteNumber, size_t sampleOffset) {
+    voice.noteNumber = noteNumber;
+    voice.context.noteRetargets.push_back({
+            sampleOffset, jlimit(0, 127, noteNumber + controlNoteOffset) });
 }
 
 void RealtimeGraphRenderer::renderVoices(
@@ -460,8 +596,13 @@ void RealtimeGraphRenderer::renderVoices(
             voice.context.controls.noteNumber = jlimit(
                     0,
                     127,
-                    voice.noteNumber + controlNoteOffset);
-            voice.context.oscillatorNoteNumber = voice.noteNumber;
+                    voice.blockStartNote + controlNoteOffset);
+            voice.context.oscillatorNoteNumber = preparedGraph->monophonicLegato
+                    ? voice.oscillatorNoteNumber : voice.noteNumber;
+            if (preparedGraph->monophonicLegato) {
+                renderPitchThrough(voice, (size_t) frameCount);
+                voice.context.oscillatorPitchOffsets = voice.context.oscillatorPitchOffsets.withSize(frameCount);
+            }
             voice.context.controls.velocity = voice.velocity;
             voice.context.controls.normalizedVoiceTime = voice.normalizedTime;
             voice.context.controls.normalizedVoiceTimeIncrement = timeIncrement;
