@@ -81,6 +81,11 @@ Place output gain directly beneath the property stack, retaining that anchor
 across morph modes. Label Guide and Gain columns, keep disabled labels readable,
 and show exact property values during hover and adjustment.
 
+All Cycle 2 sliders use a thin value track inside a contrasting near-black
+backing rail. Property, morph, vertex, output and MIDI phrase sliders share the
+same painter; panel adapters supply accents and values. Keep the backing rail
+visually distinct from the interactive target and preserve usable travel.
+
 ## Make visualizations truthful and comparable
 
 - A Spy shows the observed processed signal; a Trimesh node shows authored mesh

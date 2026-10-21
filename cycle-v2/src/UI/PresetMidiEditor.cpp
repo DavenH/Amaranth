@@ -3,6 +3,7 @@
 
 #include "UI/PresetMidiEditor.h"
 #include "UI/CanvasChromePalette.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
 
 namespace CycleV2 {
 
@@ -27,6 +28,7 @@ PresetMidiEditor::PresetMidiEditor(
     addAndMakeVisible(durationLabel);
     addAndMakeVisible(durationSlider);
     durationSlider.setName("PresetMidiEditor.Length");
+    durationSlider.setLookAndFeel(&propertyControlLookAndFeel());
     durationLabel.setText("LENGTH", dontSendNotification);
     durationLabel.setColour(Label::textColourId, CanvasChromePalette::mutedText);
     durationLabel.setFont(FontOptions(10.f, Font::bold));
@@ -88,6 +90,7 @@ PresetMidiEditor::PresetMidiEditor(
 }
 
 PresetMidiEditor::~PresetMidiEditor() {
+    durationSlider.setLookAndFeel(nullptr);
     releaseAudition();
 }
 

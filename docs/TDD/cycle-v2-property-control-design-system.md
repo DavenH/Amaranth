@@ -143,7 +143,7 @@ local replacements without a documented semantic need.
 | Section gap | 16 px | Marks a real semantic group boundary |
 | Label column | 88 px | Shared within a rail; alignment follows the row variant |
 | Value field | 56 px minimum | Expanded for the longest valid formatted value |
-| Continuous visible track | 4 px | Presentation only, centred in the hit region |
+| Continuous visible track | 2 px | Value track centred in a 5 px near-black backing rail |
 | Continuous thumb | 8-10 px | Contains a centre notch or hairline reference |
 | Continuous hit height | 28 px minimum | May exceed the painted geometry |
 | Ordinary usable track | 140 px minimum | After thumb radius and end insets |
@@ -1165,3 +1165,20 @@ Resource-boundary completion (2026-08-27):
   the empty-resource status is explicit; it also covers first-Escape close.
 - Production screenshot:
   `/private/tmp/cycle-v2-ir-audio-resources.png`.
+
+### Shared slider backing rail (2026-10-21)
+
+PropertyControlLookAndFeel owns one track painter for property, morph, vertex
+and output controls: a 2 px value track inside a 5 px near-black backing rail.
+The MIDI phrase Length slider now uses that look-and-feel while retaining
+JUCE's textbox layout. PrecisionSlider keeps its existing travel, fine
+adjustment, landmarks, focus and value-entry owners. The parallel morph track
+painting and property accent overpainting are removed; adapters supply colour
+and position to the same painter. No graph, DSP or gesture lifecycle changes.
+
+CycleV2 and tests build with --parallel 10. All 28 focused cases / 1,049
+assertions pass; the 30-command Reverb and 85-command morph-property fixtures
+pass. Normal/compact native captures cover mesh, Static, Envelope, Reverb and
+MIDI Length (`.context/slider-rail-*`). Architecture, code-map and whitespace
+checks pass. All touched source files remain below size-review thresholds;
+the shared painter remains the appearance authority, not a domain owner.
