@@ -1,6 +1,6 @@
 # Cycle V2 explained exemplars
 
-Status: In Progress
+Status: Implemented
 
 ## Product contract
 
@@ -116,3 +116,54 @@ copying rasterization, envelope playback, guide generation or DSP behavior.
   code-map and whitespace checks pass. Record new incidents in existing ledgers.
 - Before marking Implemented, record production sizes, mature owners reused,
   branch/adapter review, compatibility/deletion state and concrete evidence.
+
+
+## Completion evidence
+
+- Production: one 323-line fixed-content host runner, two small data manifests,
+  23 node rationales and four preset descriptions (27 added factory JSON lines).
+  No C++/DSP/model/topology/parameter/resource/guide/pattern change. Source and
+  decoded synthesis identities remain unchanged for all four annotated graphs.
+- The runner reuses canonical capabilities, explanation inspection, node/guide
+  commands, undo/save/reload, suite rendering and audition-report owners.
+  Four recipe branches translate reviewed content edits; no playback,
+  rasterization, FFT, scheduling or transaction algorithm was copied. No
+  compatibility layer or deletion target remains. Ordinary edit/publication
+  and realtime complexity are unchanged.
+- 66 focused Python checks pass, including nine exemplar content/recipe/control
+  cases and existing candidate, performance, reference, audio-diagnostic and
+  audition-report contracts. Canonical GraphMigrator loading validates all four
+  annotated sources and preserves decoded synthesis/notes.
+- Real app proof uses an independent snapshot of the exact merged engine built
+  at `984d1ff9` (C++ unchanged at data-fix baseline `609e1bea`), executable SHA
+  `1fa1fde130e2b86347dc4ee88520e7586e5036b9a400c10fdd7ba08dafee5122`.
+  Own-profile coordinator runs opened explicit source paths. No user app or
+  preset was touched. All 27 explanations matched inspection exactly; all four
+  interventions passed unrelated-state identity, exact undo/redo/save/reload.
+- Audio evidence contains 72 source captures / 36 exact repeated pairs, all
+  nonzero and finite. Original 64 baseline/variant captures remain immutable;
+  eight later CC118 controls match their baseline executable/effective-graph
+  identities. An independent reviewer rehashed all 72 WAV/PCM artifacts.
+- Every one-factor edit produces measured differences. Filter-saw held-note PCM
+  remains exact through 600 ms; its edited release increases following-window
+  channel RMS from 0.0125507 to 0.0188471 with the same delay chain. This does not
+  claim the complete effect tail duration doubles.
+- All CC118 motion descriptor drift is zero. Actual CC1 motion mean-absolute
+  centroid differences are 197.838 Hz (sat-bass), 1170.670 Hz (filter-saw),
+  84.235 Hz (reed), and 182.495 Hz (warmth), exceeding their measured control
+  drift. Full-prefix differences before 200 ms remain documented for reed and
+  warmth; all 180 ms proof windows are exact. The known boundary issue remains
+  open in `audio-bugs.md`; no sample-exact onset or DSP correction is claimed.
+- Four standalone reports contain six cases each, 96 raw/RMS A/B WAVs and 48
+  PNG/SVG plots. All 144 generated artifacts were rehashed; relative player
+  links, immutable original audio, one-factor state and history proof pass.
+  The filter release plot was visually inspected.
+- Evidence in this worktree: `.context/exemplars-verified/index.html`,
+  `.context/exemplar-artifact-audit.json`, `.context/exemplar-focused-tests.log`,
+  `.context/exemplar-engine-snapshot.json`. Coordinated own child processes were
+  stopped and leases released. The extra controls used background semantic
+  automation while the Mac was locked; no native UI screenshot proof is claimed
+  or required for this content-only change.
+- Code-map and whitespace checks pass. Architecture audit retains 24 existing
+  C++ size triggers; no C++ source changes were introduced. The incidental
+  shipped-fixture canonical repairs landed separately as PR #190.

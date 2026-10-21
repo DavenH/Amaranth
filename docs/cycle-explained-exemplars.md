@@ -97,3 +97,21 @@ without claiming a demonstrated response. Guide Noise is a local guide
 variation amount, not a calibrated acoustic breath-noise level. Delay bypass
 still includes unchanged reverb. These examples teach causal editing choices;
 listening remains the way to decide musical preference or instrument likeness.
+
+
+## Verified bank evidence
+
+The four one-factor interventions preserve unrelated graph state and survive
+exact undo/redo/save/reload. The reference demonstration produced 72 nonzero,
+repeatable source captures and four six-case audition reports. The CC118 controls
+match held baselines exactly; actual CC1 motion differs beyond this measured
+control drift on all four examples. Filter-saw's held audio remains identical
+while its changed release produces a longer, stronger post-note-off contour
+through the unchanged delay.
+
+Small pre-event differences remain visible in full-prefix diagnostics: reed has
+two one-LSB samples from 199.728 ms, and warmth has 35 samples from 198.254 ms
+(worst error 0.0000342131), before the authored 200 ms event. The 180 ms proof
+window is exact; the documented 20 ms guard does not establish a sample-exact
+controller onset. The [audio incident ledger](TDD/audio-bugs.md) retains this
+finding for separate control/oversampling investigation.
