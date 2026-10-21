@@ -1,5 +1,6 @@
 #include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
 #include "UI/Editors/MorphControlLayout.h"
+#include "UI/Editors/MorphSpaceLayout.h"
 
 #include "Graph/NodeGraph.h"
 #include "Nodes/Trimesh/Rendering/TrimeshSidePanelRenderer.h"
@@ -78,6 +79,16 @@ Rectangle<float> EnvelopeMorphControls::planeBounds(Rectangle<float> controls) c
     return MorphControlLayout(controls, dimensionCount).diagram();
 }
 
+Rectangle<float> EnvelopeMorphControls::morphInputBounds(Rectangle<float> controls) const {
+    const auto diagram = planeBounds(controls);
+    if (dimensionCount == 3) {
+        return diagram;
+    }
+    const MorphSpaceLayout space(diagram, MorphDimensions(dimensionCount));
+    return dimensionCount == 1 ? space.surface.withSizeKeepingCentre(space.surface.getWidth(), 24.f)
+            : space.surface;
+}
+
 Rectangle<float> EnvelopeMorphControls::morphGroupLabelBounds(Rectangle<float> controls) const {
     const int firstAxis = dimensionCount == 2 ? 1 : 0;
     auto row = morphRow(controls, firstAxis);
@@ -91,16 +102,14 @@ Rectangle<float> EnvelopeMorphControls::morphRow(Rectangle<float> controls, int 
 Rectangle<float> EnvelopeMorphControls::morphSliderBounds(
         Rectangle<float> controls,
         int axis) const {
-    return MorphControlLayout(controls, dimensionCount)
-            .row(axis).withTrimmedRight(56.f + PropertyControlMetrics::morphKeyboardFocusSlotWidth);
+    const MorphControlLayout layout(controls, dimensionCount);
+    return layout.row(axis).withRight(layout.rail(axis).getRight());
 }
 
 Rectangle<float> EnvelopeMorphControls::keyboardFocusBounds(
         Rectangle<float> controls,
         int axis) const {
-    return morphKeyboardFocusOutlineBounds(
-            morphRow(controls, axis),
-            linkBounds(controls, axis));
+    return MorphControlLayout(controls, dimensionCount).keyboardFocus(axis);
 }
 
 Rectangle<float> EnvelopeMorphControls::actionBarBounds(Rectangle<float> controls) const {
@@ -167,14 +176,6 @@ Rectangle<float> EnvelopeMorphControls::axisGroupLabelBounds(
         Rectangle<float> controls) const {
     const int axis = dimensionCount == 2 ? 1 : 0;
     const auto button = axisBounds(controls, axis);
-    return button.isEmpty() ? button
-            : TrimeshSidePanelRenderer::morphColumnHeaderBounds(button, morphRow(controls, axis));
-}
-
-Rectangle<float> EnvelopeMorphControls::linkGroupLabelBounds(
-        Rectangle<float> controls) const {
-    const int axis = dimensionCount == 2 ? 1 : 0;
-    const auto button = linkBounds(controls, axis);
     return button.isEmpty() ? button
             : TrimeshSidePanelRenderer::morphColumnHeaderBounds(button, morphRow(controls, axis));
 }

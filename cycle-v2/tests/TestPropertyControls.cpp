@@ -3,6 +3,8 @@
 
 #include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
 #include "UI/Editors/MorphKeyboardShortcuts.h"
+#include "UI/Editors/MorphControlLayout.h"
+#include "UI/Editors/MorphSpaceLayout.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertyControls.h"
 #include "UI/Editors/PropertySegmentedSelector.h"
@@ -63,7 +65,7 @@ TEST_CASE("Keyboard focus presentation scopes a morph tuple before its icon",
     REQUIRE(morphKeyboardShortcutHelpText(false).startsWith("R / B"));
     REQUIRE(morphKeyboardShortcutHelpText(false).contains(
             "Shift + Left / Right"));
-    REQUIRE(morphKeyboardShortcutHelpText(false).contains("Toggle link"));
+    REQUIRE(morphKeyboardShortcutHelpText(false).contains("Toggle pole lock"));
 
     const ModifierKeys shift(ModifierKeys::shiftModifier);
     REQUIRE(morphStepForKeyboardShortcut(
@@ -76,7 +78,7 @@ TEST_CASE("Keyboard focus presentation scopes a morph tuple before its icon",
             KeyPress(KeyPress::downKey, shift, 0)).has_value());
 }
 
-TEST_CASE("Envelope morph focus contains the tuple and reserves a trailing icon slot",
+TEST_CASE("Envelope morph focus stays with the slider and Axis selector after relocating locks",
         "[cycle-v2][ui][property-controls][keyboard][geometry]") {
     const EnvelopeMorphControls controls;
     const Rectangle<float> area { 0.f, 0.f, 900.f, 310.f };
@@ -91,10 +93,10 @@ TEST_CASE("Envelope morph focus contains the tuple and reserves a trailing icon 
 
         REQUIRE(slider.getRight() < axisButton.getX());
         REQUIRE(focus.contains(axisButton));
-        REQUIRE(focus.contains(link));
+        REQUIRE_FALSE(focus.intersects(link));
         REQUIRE(focus.getHeight() == Catch::Approx(
                 row.getHeight() - 2.f));
-        REQUIRE(icon.getX() > link.getRight());
+        REQUIRE(icon.getX() > axisButton.getRight());
         REQUIRE(icon.getRight() <= row.getRight());
     }
 
@@ -102,6 +104,40 @@ TEST_CASE("Envelope morph focus contains the tuple and reserves a trailing icon 
     const Rectangle<float> blueFocus = controls.keyboardFocusBounds(area, 2);
     REQUIRE(blueFocus.getY() - redFocus.getBottom() == Catch::Approx(
             PropertyControlMetrics::rowGap + 2.f));
+}
+
+TEST_CASE("Morph pole locks stay outside uninterrupted rails in every dimensional view",
+        "[cycle-v2][ui][property-controls][morph][axis-lock]") {
+    for (const auto plane : { MorphDimensions::Plane::YellowRed, MorphDimensions::Plane::RedBlue }) {
+        for (const float size : { 170.f, 190.f, 210.f, 230.f }) {
+            const Rectangle<float> diagram(35.f, 60.f, size, size);
+            for (int count = 0; count <= 3; ++count) {
+                const MorphDimensions dimensions(count, plane);
+                const MorphSpaceLayout space(diagram, dimensions);
+                for (int axis = 0; axis < 3; ++axis) {
+                    const auto target = space.locks[(size_t) axis];
+                    if (!dimensions.active(MorphDimensions::axes[(size_t) axis])) {
+                        REQUIRE(target.isEmpty());
+                        continue;
+                    }
+                    INFO("size=" << size << " dimensions=" << count << " axis=" << axis);
+                    REQUIRE(diagram.contains(target));
+                    REQUIRE(diagram.contains(space.labels[(size_t) axis]));
+                    REQUIRE(target.getWidth() == Catch::Approx(28.f));
+                    REQUIRE(target.getHeight() == Catch::Approx(28.f));
+                    REQUIRE(target.contains(MorphSpaceLayout::lockBadge(target)));
+                    for (int other = 0; other < 3; ++other) {
+                        if (dimensions.active(MorphDimensions::axes[(size_t) other])) {
+                            REQUIRE_FALSE(target.intersects(space.rails[(size_t) other]));
+                            if (axis != other) {
+                                REQUIRE_FALSE(target.intersects(space.locks[(size_t) other]));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 TEST_CASE("Property group labels establish scope without a surrounding box",

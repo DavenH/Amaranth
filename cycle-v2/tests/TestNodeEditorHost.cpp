@@ -3156,12 +3156,9 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(parameterRails.getArray()->getUnchecked(0).getProperty("id", {}) == "guide.time");
     const auto morphLabelBounds = rectangleProperty(state, "morphGroupLabelBounds");
     const auto axisGroupLabelBounds = rectangleProperty(state, "axisGroupLabelBounds");
-    const auto linkGroupLabelBounds = rectangleProperty(state, "linkGroupLabelBounds");
     REQUIRE(axisGroupLabelBounds.getWidth() == Catch::Approx(24.f));
-    REQUIRE(linkGroupLabelBounds.getWidth() == Catch::Approx(24.f));
-    REQUIRE_FALSE(axisGroupLabelBounds.intersects(linkGroupLabelBounds));
     REQUIRE(axisGroupLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
-    REQUIRE(linkGroupLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
+    REQUIRE_FALSE(state.hasProperty("linkGroupLabelBounds"));
     const auto vertexParameterBounds = rectangleProperty(state, "vertexParameterBounds");
     REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(270.f));
     REQUIRE(actionBarBounds.getRight() > vertexParameterBounds.getRight());
@@ -4285,6 +4282,8 @@ TEST_CASE("Trimesh link toggles survive rebind and undo",
             NodeKind::TrilinearMesh,
             "mesh",
             {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Curve morphing", "3").succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
     RecordingPresentation presentation;
@@ -5174,7 +5173,7 @@ TEST_CASE("Envelope uses the Trimesh composition and a full width editable curve
             REQUIRE(rectangleProperty(state, "panelFrameBounds") == layout.curve());
             REQUIRE(curveBounds == layout.curve().toNearestInt().toFloat().withTrimmedRight(8.f).withTrimmedBottom(8.f));
             REQUIRE(rectangleProperty(state, "controlBounds")
-                    == layout.controls().withTrimmedBottom(MeshEditorLayout::controlFooterHeight));
+                    == layout.controls());
             REQUIRE(rectangleProperty(state, "morphSurfaceBounds") == layout.surface());
             REQUIRE(curveBounds.getWidth() >= content.getWidth() * (count == 0 ? 0.55f : 0.99f));
             const auto actions = rectangleProperty(state, "actionBarBounds");
@@ -5310,5 +5309,61 @@ TEST_CASE("Morph keyboard hints disappear only when their slider disappears",
         bind();
         REQUIRE(focused().isEmpty());
         REQUIRE_FALSE(hint()->isVisible());
+    }
+}
+
+TEST_CASE("Reduced Envelope diagram gestures follow visible axes and preserve inactive positions",
+        "[cycle-v2][editor][envelope][axis-lock]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    for (const int count : { 1, 2 }) {
+        Component owner;
+        owner.setBounds(0, 0, 1100, 800);
+        NodeGraph graph;
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, "env", "dimensionCount", "Curve morphing", String(count)).succeeded());
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher dispatcher(document);
+        RecordingPresentation presentation;
+        EnvelopeEditorResources resources;
+        NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+        NodeEditorHost host(owner, commands, presentation, resources);
+        REQUIRE(host.bind(document.graph().findNode("env"), owner.getLocalBounds(), document.revision()));
+        auto* editor = dynamic_cast<EnvelopeEditorComponent*>(host.component());
+        REQUIRE(editor != nullptr);
+        const auto values = [&] {
+            const NodeParameterMap parameters(*dispatcher.editingGraph().findNode("env"));
+            return std::array<float, 3> { parameters.floatValue("yellow", 0.5f),
+                    parameters.floatValue("red", 0.5f), parameters.floatValue("blue", 0.5f) };
+        };
+        const auto before = values();
+        const auto input = rectangleProperty(editor->automationState(), "morphInputBounds");
+        REQUIRE_FALSE(input.isEmpty());
+        const auto source = input.getCentre();
+        editor->mouseDown(curvePanelMouseEvent(*editor, source,
+                ModifierKeys::leftButtonModifier, source, false));
+        editor->mouseDrag(curvePanelMouseEvent(*editor, input.getBottomLeft(),
+                ModifierKeys::leftButtonModifier, source, true));
+        const auto held = editor->automationState();
+        REQUIRE((double) held.getProperty(count == 1 ? "yellowMorph" : "redMorph", {}) == Catch::Approx(0.f));
+        if (count == 2) {
+            REQUIRE((double) held.getProperty("blueMorph", {}) == Catch::Approx(0.f));
+        }
+        editor->mouseDrag(curvePanelMouseEvent(*editor, input.getTopRight(),
+                ModifierKeys::leftButtonModifier, source, true));
+        editor->mouseUp(curvePanelMouseEvent(*editor, input.getTopRight(), {}, source, true));
+        const auto after = values();
+        if (count == 1) {
+            REQUIRE(after[0] == Catch::Approx(1.f));
+            REQUIRE(after[1] == Catch::Approx(before[1]));
+            REQUIRE(after[2] == Catch::Approx(before[2]));
+        } else {
+            REQUIRE(after[0] == Catch::Approx(before[0]));
+            REQUIRE(after[1] == Catch::Approx(1.f));
+            REQUIRE(after[2] == Catch::Approx(1.f));
+        }
+        REQUIRE(document.undo());
+        REQUIRE(values() == before);
     }
 }

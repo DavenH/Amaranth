@@ -99,11 +99,14 @@ void paintPropertySegmentedControl(
         juce::Rectangle<float> bounds,
         int segmentCount,
         int selectedSegment);
-void paintPropertyLinkToggle(
+juce::String morphAxisLinkTooltip(const juce::String& axis, bool linked);
+void paintMorphAxisLock(
         juce::Graphics& graphics,
         juce::Rectangle<float> bounds,
         juce::Colour accent,
-        bool linked);
+        bool linked,
+        bool hovered = false,
+        bool focused = false);
 
 void stylePropertyLabel(juce::Label& label, const juce::String& text);
 void stylePropertyButton(juce::TextButton& button, const juce::String& text);

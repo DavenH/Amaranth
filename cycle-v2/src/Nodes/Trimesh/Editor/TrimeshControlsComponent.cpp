@@ -11,6 +11,7 @@
 #include "UI/Editors/MorphKeyboardShortcuts.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertyHoverTracker.h"
+#include "UI/Editors/PropertyControls.h"
 
 namespace CycleV2 {
 
@@ -33,7 +34,7 @@ public:
                 : MouseCursor::PointingHandCursor);
         if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
             setComponentID("trimesh.link." + region.axisValue);
-            setTitle("Link " + region.axisValue);
+            setTitle("Edit both " + region.axisValue + " poles together");
             setWantsKeyboardFocus(true);
         }
         if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
@@ -69,11 +70,24 @@ public:
 
     String getTooltip() override { return owner.tooltipFor(region); }
 
+    void paint(Graphics& graphics) override {
+        if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
+            const bool linked = NodeParameterMap(owner.node).boolValue("link." + region.axisValue, true);
+            const MorphDimension dimension = region.axisValue == "yellow" ? MorphDimension::Yellow
+                    : region.axisValue == "red" ? MorphDimension::Red : MorphDimension::Blue;
+            const Colour colour = colourForMorphDimension(dimension);
+            paintMorphAxisLock(graphics, getLocalBounds().toFloat(), colour, linked,
+                    isMouseOverOrDragging(), hasKeyboardFocus(false));
+        }
+    }
+
     void mouseEnter(const MouseEvent&) override {
         owner.showPropertyFeedback(region.parameterId);
+        repaint();
     }
 
     void mouseExit(const MouseEvent&) override {
+        repaint();
         if (owner.dragTarget == DragTarget::None) {
             owner.showPropertyFeedback({});
         }
@@ -172,6 +186,10 @@ void TrimeshControlsComponent::showPropertyFeedback(const String& id) {
 }
 
 String TrimeshControlsComponent::tooltipFor(const TrimeshExpandedHitRegion& region) {
+    if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
+        return morphAxisLinkTooltip(region.axisValue.substring(0, 1).toUpperCase() + region.axisValue.substring(1),
+                NodeParameterMap(node).boolValue("link." + region.axisValue, true));
+    }
     const bool vertex = region.kind == TrimeshExpandedHitRegionKind::VertexParameter
             || region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
             || region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment;

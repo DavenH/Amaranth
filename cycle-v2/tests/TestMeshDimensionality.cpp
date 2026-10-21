@@ -648,7 +648,9 @@ TEST_CASE("Surviving Trimesh rails and parameters occupy stable slots in every m
                         && candidate.axisValue == region.axisValue;
             });
             REQUIRE(before != full.end());
-            REQUIRE(region.bounds.toNearestInt() == before->bounds.toNearestInt());
+            if (region.kind != TrimeshExpandedHitRegionKind::LinkToggle) {
+                REQUIRE(region.bounds.toNearestInt() == before->bounds.toNearestInt());
+            }
         }
     }
     for (const auto plane : { MorphDimensions::Plane::YellowRed, MorphDimensions::Plane::RedBlue }) {

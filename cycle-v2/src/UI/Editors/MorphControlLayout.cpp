@@ -1,5 +1,7 @@
 #include "UI/Editors/MorphControlLayout.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/Editors/MorphSpaceLayout.h"
 
 namespace CycleV2 {
 
@@ -7,7 +9,7 @@ namespace {
 
 constexpr float kInset = 8.f;
 constexpr float kMorphLabelWidth = 42.f;
-constexpr float kMorphControlsWidth = 56.f + PropertyControlMetrics::morphKeyboardFocusSlotWidth;
+constexpr float kMorphControlsWidth = 28.f + PropertyControlMetrics::morphKeyboardFocusSlotWidth;
 
 }
 
@@ -31,7 +33,7 @@ float MorphControlLayout::minimumWidth() {
 }
 
 float MorphControlLayout::diagramSize() const {
-    return juce::jmin(210.f, morphColumn().getWidth(), juce::jmax(70.f, area.getHeight() - 132.f));
+    return juce::jmin(230.f, morphColumn().getWidth(), juce::jmax(70.f, area.getHeight() - 116.f));
 }
 
 juce::Rectangle<float> MorphControlLayout::diagram() const {
@@ -64,17 +66,23 @@ juce::Rectangle<float> MorphControlLayout::axis(int axisIndex) const {
     if (bounds.isEmpty() || dimensions.axisCount() <= 1) {
         return {};
     }
-    return { bounds.getRight() - 52.f - PropertyControlMetrics::morphKeyboardFocusSlotWidth,
+    return { bounds.getRight() - 24.f - PropertyControlMetrics::morphKeyboardFocusSlotWidth,
             bounds.getCentreY() - 10.f, 20.f, 20.f };
 }
 
 juce::Rectangle<float> MorphControlLayout::link(int axisIndex) const {
+    return MorphSpaceLayout(diagram(), dimensions).locks[(size_t) axisIndex];
+}
+
+juce::Rectangle<float> MorphControlLayout::keyboardFocus(int axisIndex) const {
     const auto bounds = row(axisIndex);
     if (bounds.isEmpty()) {
         return {};
     }
-    return { bounds.getRight() - 24.f - PropertyControlMetrics::morphKeyboardFocusSlotWidth,
-            bounds.getCentreY() - 10.f, 20.f, 20.f };
+    const juce::Rectangle<float> axisSlot(bounds.getRight() - 24.f
+            - PropertyControlMetrics::morphKeyboardFocusSlotWidth,
+            bounds.getCentreY() - 10.f, 20.f, 20.f);
+    return morphKeyboardFocusOutlineBounds(bounds, axisSlot);
 }
 
 }

@@ -160,6 +160,7 @@ struct EnvelopeEditorComponent::Impl {
 
     EnvelopePurpose appliedPurpose { EnvelopePurpose::Control };
     int viewAxis {};
+    int hoveredLink { -1 };
     bool hasAppliedPurpose {};
     bool yellowLinked { true };
     bool redLinked { true };
@@ -257,6 +258,11 @@ String EnvelopeEditorComponent::getTooltip() {
         return impl->sustain.getTooltip();
     }
     const auto controls = editorControlBounds();
+    for (int axis = 0; axis < 3; ++axis) {
+        if (impl->presentation.linkBounds(controls, axis).contains(position)) {
+            return morphAxisLinkTooltip(axis == 0 ? "Yellow" : axis == 1 ? "Red" : "Blue", impl->linked(axis));
+        }
+    }
     for (const auto& parameter : widget.selectedVertexParameters()) {
         const auto row = impl->presentation.vertexParameterRowBounds(controls, parameter.id);
         if (row.contains(position)) {
@@ -392,8 +398,7 @@ void EnvelopeEditorComponent::updateKeyboardShortcutHint() {
 
 Rectangle<float> EnvelopeEditorComponent::editorControlBounds() const {
     const auto body = contentBounds().withTrimmedBottom(EnvelopeMorphControls::actionBarHeight());
-    return MeshEditorLayout(body, MeshDimensionality::dimensions(node).axisCount()).controls()
-            .withTrimmedBottom(MeshEditorLayout::controlFooterHeight);
+    return MeshEditorLayout(body, MeshDimensionality::dimensions(node).axisCount()).controls();
 }
 
 Rectangle<float> EnvelopeEditorComponent::morphSurfaceBounds() const {
@@ -423,6 +428,12 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
             impl->redLinked,
             impl->blueLinked,
             static_cast<float>(impl->yellowMorph.slider.getValue()), impl->yellowLinked, widget.morphPreviewVertices());
+    if (impl->hoveredLink >= 0) {
+        const int axis = impl->hoveredLink;
+        paintMorphAxisLock(graphics, impl->presentation.linkBounds(controls, axis),
+                colourForMorphDimension(static_cast<MorphDimension>(axis)),
+                impl->linked(axis), true);
+    }
     impl->presentation.drawActions(graphics, contentBounds(), impl->loop.getToggleState(), impl->sustain.getToggleState());
 
     const String focusedAxis = focusedMorphAxis();
@@ -650,6 +661,9 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty("redMorph", impl->redMorph.slider.getValue());
     state.setProperty("enabled", impl->enabled.getToggleState());
     state.setProperty("blueMorph", impl->blueMorph.slider.getValue());
+    state.setProperty("yellowLinked", impl->yellowLinked);
+    state.setProperty("redLinked", impl->redLinked);
+    state.setProperty("blueLinked", impl->blueLinked);
     state.setProperty("focusedMorphAxis", focusedMorphAxis());
     state.setProperty(
             "redMorphKeyboardIconBounds",
@@ -685,9 +699,8 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty(
             "axisGroupLabelBounds",
             editorBoundsToVar(impl->presentation.axisGroupLabelBounds(controls)));
-    state.setProperty(
-            "linkGroupLabelBounds",
-            editorBoundsToVar(impl->presentation.linkGroupLabelBounds(controls)));
+    state.setProperty("yellowLinkBounds", editorBoundsToVar(impl->presentation.linkBounds(controls, 0)));
+    state.setProperty("morphInputBounds", editorBoundsToVar(impl->presentation.morphInputBounds(controls)));
     state.setProperty(
             "redLinkBounds",
             editorBoundsToVar(impl->presentation.linkBounds(controls, 1)));
@@ -858,11 +871,9 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
 
 bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
     const auto controls = editorControlBounds();
-    bool interactive = impl->presentation.planeBounds(controls).contains(position);
+    bool interactive = impl->presentation.morphInputBounds(controls).contains(position);
     for (int axis = 0; axis < 3; ++axis) {
         interactive = interactive || impl->presentation.axisBounds(controls, axis).contains(position);
-        interactive = interactive
-                || (impl->presentation.linkBounds(controls, axis).contains(position));
     }
 
     interactive = updatePropertyFeedback(position) || interactive;
@@ -872,7 +883,17 @@ bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
 
 bool EnvelopeEditorComponent::updatePropertyFeedback(Point<float> position) {
     const auto controls = editorControlBounds();
-    bool interactive = false;
+    int hoveredLink = -1;
+    for (int axis = 0; axis < 3; ++axis) {
+        if (impl->presentation.linkBounds(controls, axis).contains(position)) {
+            hoveredLink = axis;
+        }
+    }
+    if (impl->hoveredLink != hoveredLink) {
+        impl->hoveredLink = hoveredLink;
+        requestRepaint();
+    }
+    bool interactive = hoveredLink >= 0;
     String feedback;
     const auto parameters = widget.selectedVertexParameters();
     for (int index = 0; index < static_cast<int>(parameters.size()); ++index) {
@@ -914,7 +935,7 @@ bool EnvelopeEditorComponent::editorMouseDown(Point<float> position) {
     if (handleVertexParameterMouseDown(position, controls)) {
         return true;
     }
-    const auto plane = impl->presentation.planeBounds(controls);
+    const auto plane = impl->presentation.morphInputBounds(controls);
     if (plane.contains(position)) {
         impl->draggingMorph = true;
         return editorMouseDrag(position);
@@ -1001,17 +1022,21 @@ bool EnvelopeEditorComponent::editorMouseDrag(Point<float> position) {
 }
 
 bool EnvelopeEditorComponent::dragMorph(Point<float> position) {
-    const auto plane = impl->presentation.planeBounds(editorControlBounds());
-    const float red = jlimit(0.f, 1.f, (position.x - plane.getX()) / plane.getWidth());
-    const float blue = jlimit(0.f, 1.f, (plane.getBottom() - position.y) / plane.getHeight());
-    const bool redChanged = static_cast<float>(impl->redMorph.slider.getValue()) != red;
-    const bool blueChanged = static_cast<float>(impl->blueMorph.slider.getValue()) != blue;
-    if (!redChanged && !blueChanged) {
+    const auto plane = impl->presentation.morphInputBounds(editorControlBounds());
+    const bool oneDimension = impl->presentation.getDimensionCount() == 1;
+    auto& horizontal = impl->morph(oneDimension ? 0 : 1).slider;
+    const float u = jlimit(0.f, 1.f, (position.x - plane.getX()) / plane.getWidth());
+    const float v = jlimit(0.f, 1.f, (plane.getBottom() - position.y) / plane.getHeight());
+    const bool horizontalChanged = static_cast<float>(horizontal.getValue()) != u;
+    const bool verticalChanged = !oneDimension && static_cast<float>(impl->blueMorph.slider.getValue()) != v;
+    if (!horizontalChanged && !verticalChanged) {
         return true;
     }
 
-    impl->redMorph.slider.setValue(red, dontSendNotification);
-    impl->blueMorph.slider.setValue(blue, dontSendNotification);
+    horizontal.setValue(u, dontSendNotification);
+    if (!oneDimension) {
+        impl->blueMorph.slider.setValue(v, dontSendNotification);
+    }
     publishCurrentState();
     return true;
 }

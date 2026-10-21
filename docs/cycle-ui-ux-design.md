@@ -86,6 +86,11 @@ backing rail. Property, morph, vertex, output and MIDI phrase sliders share the
 same painter; panel adapters supply accents and values. Keep the backing rail
 visually distinct from the interactive target and preserve usable travel.
 
+Put opposite-pole editing locks beside the morph diagram's coloured axis bars,
+with short connectors and uninterrupted bars. Use open/closed silhouettes for
+independent/together editing in the cube, plane and line views. Explain the
+editing relationship on hover; keep the Axis selector with the slider row.
+
 ## Make visualizations truthful and comparable
 
 - A Spy shows the observed processed signal; a Trimesh node shows authored mesh

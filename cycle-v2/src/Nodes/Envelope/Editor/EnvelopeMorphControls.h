@@ -18,6 +18,7 @@ public:
 
     Rectangle<float> planeGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> planeBounds(Rectangle<float> controls) const;
+    Rectangle<float> morphInputBounds(Rectangle<float> controls) const;
     Rectangle<float> morphGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> morphRow(Rectangle<float> controls, int axis) const;
     Rectangle<float> morphSliderBounds(Rectangle<float> controls, int axis) const;
@@ -31,7 +32,6 @@ public:
     Rectangle<float> rangeGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> rangeGroupBounds(Rectangle<float> controls) const;
     Rectangle<float> axisGroupLabelBounds(Rectangle<float> controls) const;
-    Rectangle<float> linkGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> axisBounds(Rectangle<float> controls, int axis) const;
     Rectangle<float> linkBounds(Rectangle<float> controls, int axis) const;
     Rectangle<float> vertexBounds(Rectangle<float> controls) const;

@@ -65,8 +65,7 @@ public:
     static void drawMorphColumnHeaders(
             juce::Graphics& g,
             juce::Rectangle<float> firstRow,
-            juce::Rectangle<float> axisButton,
-            juce::Rectangle<float> linkButton);
+            juce::Rectangle<float> axisButton);
 
     static juce::Rectangle<float> morphCubeBounds(
             juce::Rectangle<float> sideArea,

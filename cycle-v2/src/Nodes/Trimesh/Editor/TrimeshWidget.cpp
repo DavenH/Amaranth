@@ -784,7 +784,7 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
         }
         regions.push_back({
                 TrimeshExpandedHitRegionKind::LinkToggle,
-                reduced.link(i).expanded(4.f),
+                reduced.link(i),
                 {},
                 primaryAxisValue(i)
         });

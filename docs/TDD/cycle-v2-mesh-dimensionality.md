@@ -587,3 +587,80 @@ Responsibility review:
   audio and occurs only at the existing gesture boundary. The old live-image
   rebuild, centred scalar feed, hidden zoom wrappers and stale focus paths are
   deleted. Architecture, code-map, style and whitespace checks pass.
+
+## Follow-up: Axis-attached pole-edit locks
+
+Implement the approved mockup in both mesh families. Open/closed locks indicate
+independent/together opposite-pole edits; place them outside uninterrupted axis
+bars with short connectors. Use 28 px hit targets, 20 × 22 px badges and a
+12 × 14 px glyph canvas. A shared morph-space layout owns projection, rails,
+labels and lock targets; existing renderers retain surface/cursor/highlight
+painting. Delete duplicate projection/rail-placement calculations and the Link
+column. Keep slider anchors stable across dimensions, and retain the Axis
+selector and row keyboard hint without enclosing the relocated locks.
+
+Reuse existing Trimesh delegate and Envelope session-link state, linked-corner
+selection, parameter commands and L shortcut. Envelope locks remain session-only;
+Trimesh locks retain their existing parameter persistence and undo. Lock clicks
+do not change authored morph positions or primary view. Pointer-down remains
+constant-size routing; no new live edit or document lifecycle is introduced.
+Tooltips explain edit-together semantics.
+
+Verify targets stay inside the diagram and clear of bars and each other at
+normal/compact widths, inactive locks disappear, primary axis and slider
+geometry remain stable, and both families preserve linked edits, independent
+edits and undo. Review native captures and hover/focus states in all modes;
+build CycleV2/tests --parallel 10 and run focused fixtures, architecture,
+code-map and whitespace checks.
+
+Implementation and ownership:
+
+- MorphSpaceLayout extracts the existing cube projection and owns all diagram
+  rails, label placement and lock targets. Both families' painting, hit regions
+  and automation consume it. The old cube fitting/axis placement and reduced
+  rail placement are removed. Shared vector control painting replaces the
+  rectangular dash toggle; the Link heading and its geometry API are removed.
+- Each 28 × 28 px target contains a 20 × 22 px badge. The glyph uses a 12 × 14
+  px canvas with a 9 × 13 px live area and 1.4 px strokes. Closed and open
+  shackles differ structurally; colour reinforces state. Existing tooltip and
+  hover owners explain the edit relationship. Trimesh's existing target owns
+  Return/tab focus; both families retain L and the row's keyboard hint.
+- MorphControlLayout reserves the same surviving slider/Axis slots in every
+  mode. The diagram uses previously unused vertical space. Envelope removes
+  the unused output-footer reservation, retaining readable diagram scale and
+  full vertex-slider travel. Its 1D/2D input bounds now match the rendered
+  line/plane; 1D edits Yellow alone, 2D edits Red/Blue. The established 3D drag
+  policy remains with Envelope. Multi-update gestures commit once and undo.
+- Source responsibility review: TrimeshSidePanelRenderer 763 → 674 delegates
+  projection/axis layout to MorphSpaceLayout (113 cpp / 31 header lines).
+  EnvelopeEditorComponent 1081 → 1106 keeps session state, input translation
+  and composition; no document or interpolation policy is introduced.
+  PropertyControls 795 → 810 replaces its existing generic link painter with
+  lock presentation and hover wording; formatting/layout remain cohesive
+  collaborators. NodeCanvasAutomationInspector 1230 → 1232 only exports
+  owner-provided Yellow lock and morph-input rectangles. No domain policy or
+  geometry calculation enters that facade.
+
+Completion evidence:
+
+- All 54 focused cases / 5,902 assertions pass. Geometry checks cover both 2D
+  planes and 170/190/210/230 px diagrams: labels and 28 px targets stay inside,
+  targets clear all rails and each other, and inactive axes have no target.
+  Existing slider-travel, mode-stability, focus, guide and link-undo cases pass.
+- The new reduced-Envelope gesture case checks two updates, exact endpoints,
+  held local values, unchanged inactive coordinates, committed parameters and
+  undo for both the Yellow line and Red/Blue plane.
+- The 49-command axis-lock fixture verifies all axes, reduced views, Trimesh
+  parameter undo, Envelope session-only links and focus dismissal. The existing
+  85-command morph-property fixture passes. Reports:
+  `.context/axis-lock-{fixture,properties}-run.json`.
+- Native run f1f8573cca9a verifies every physical lock target/click, unchanged
+  mesh and non-link parameters, L, reduced Envelope plane/line drags and undo.
+  Normal 1600 × 900 and compact 1100 × 800 captures cover all modes and both
+  families; hover/open/closed/focus states reviewed at production size. Earlier
+  one-shot inspections occasionally preceded the updated control state; the
+  final proof waits for that state within 500 ms, without retrying input.
+  Evidence: `.context/axis-lock-native-final.log` and `axis-lock-*.png`.
+- CycleV2 and tests build with --parallel 10. Architecture, code-map, manual
+  style review and whitespace checks pass. The old Link column, dash painter
+  and duplicate diagram geometry are deleted; all follow-up criteria complete.

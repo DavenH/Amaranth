@@ -362,9 +362,11 @@ public:
             const Node& node,
             Rectangle<float> panel,
             const DynamicObject& curveEditorState) {
-        const std::array<std::pair<const char*, const char*>, 8> actions {{
+        const std::array<std::pair<const char*, const char*>, 10> actions {{
             { "loop", "loopBounds" },
             { "sustain", "sustainBounds" },
+            { "yellowLink", "yellowLinkBounds" },
+            { "morphSpace", "morphInputBounds" },
             { "redLink", "redLinkBounds" },
             { "blueLink", "blueLinkBounds" },
             { "linear", "linearAxisScaleBounds" },

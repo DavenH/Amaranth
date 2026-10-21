@@ -181,6 +181,13 @@ content as well as revision. Log: the runner's
 `cycle-v2-native-edit-smoke.log` in its temporary directory. Status: open;
 inspect the rail's native hit and settle sequence separately.
 
+Related inspection evidence from 2026-10-21 axis-lock review: a one-shot
+post-click or post-L read sometimes returned the previous control flag while
+the ensuing capture showed the updated lock. The final native proof waits for
+the changed flag within 500 ms without retrying input; it passes all lock and
+reduced-diagram gestures. Evidence: `.context/axis-lock-native-final.log`, run
+f1f8573cca9a. The amplitude-rail report above remains open.
+
 ## P2: Cycle 1 Organ4 preset crashes during visual DSP update
 
 On 2026-10-07, a Cycle 1 `openPreset` automation run for

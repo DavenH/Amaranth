@@ -15,6 +15,7 @@ public:
     juce::Rectangle<float> rail(int axisIndex) const;
     juce::Rectangle<float> axis(int axisIndex) const;
     juce::Rectangle<float> link(int axisIndex) const;
+    juce::Rectangle<float> keyboardFocus(int axisIndex) const;
     juce::Rectangle<float> vertices() const;
 
 private:
