@@ -590,6 +590,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("hoveredEdgeIndex", state.hoveredEdgeIndex);
     root->setProperty("documentDirty", context.document.isDirty());
     root->setProperty("documentRevision", (int64) context.document.revision());
+    root->setProperty("graphRevision", (int64) graph.getRevision());
     root->setProperty("canUndo", context.document.canUndo());
     root->setProperty("canRedo", context.document.canRedo());
     root->setProperty("documentFile", context.document.file().getFullPathName());
@@ -606,10 +607,21 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
         encoded->setProperty("title", group.title);
         encoded->setProperty("collapsed", group.collapsed);
         encoded->setProperty("memberCount", (int) group.nodeIds.size());
+        encoded->setProperty("rationale", group.rationale);
+        encoded->setProperty("cardEnabled", group.informationCardOffset.has_value());
+        if (group.informationCardOffset.has_value()) {
+            auto* offset = new DynamicObject();
+            offset->setProperty("x", group.informationCardOffset->x);
+            offset->setProperty("y", group.informationCardOffset->y);
+            encoded->setProperty("cardOffset", offset);
+        }
         nodeGroups.add(encoded);
     }
     root->setProperty("nodeGroups", nodeGroups);
     root->setProperty("nodeGroupCount", nodeGroups.size());
+    root->setProperty("informationCardCount", (int) state.informationCards.size());
+    root->setProperty("focusedInformationGroup", state.focusedInformationGroup);
+    root->setProperty("informationCardDragging", state.informationCardDragging);
     root->setProperty("presetDescription", context.document.presentation().description);
     root->setProperty("explanationEditorOpen", !state.explanationEditor.isVoid());
     root->setProperty("explanationEditor", state.explanationEditor);
@@ -883,7 +895,16 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
     targets.add(AutomationValueEncoder::pointerTargetToVar(
             "workspace.presetInformation", "presetExplanation", state.presetInformationBounds));
     for (const auto& [id, bounds] : state.explanationTargets) {
-        targets.add(AutomationValueEncoder::pointerTargetToVar(id, "explanationEditor", bounds));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id,
+                id.startsWith("groupInformation:") ? "groupExplanation" : "explanationEditor", bounds));
+    }
+    for (const auto& card : state.informationCards) {
+        const String id = "groupCard:" + card.groupId;
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id, "groupInformationCard", card.bounds.card));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id + ".header", "groupInformationCardHeader",
+                card.bounds.header.withTrimmedRight(card.bounds.close.getWidth())));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id + ".body", "groupInformationCardBody", card.bounds.body));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id + ".close", "groupInformationCardClose", card.bounds.close));
     }
     for (const auto& node : context.document.graph().getNodes()) {
         if (context.presentation.snapshot().facts != nullptr

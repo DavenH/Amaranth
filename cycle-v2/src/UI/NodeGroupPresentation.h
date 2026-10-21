@@ -30,6 +30,11 @@ public:
             const NodeGroup& group,
             const NodeCanvasViewport& viewport,
             const GraphEdgeIndex& edgeIndex);
+    static juce::Rectangle<float> informationBounds(
+            const NodeGraph& graph,
+            const NodeGroup& group,
+            const NodeCanvasViewport& viewport,
+            const GraphEdgeIndex& edgeIndex);
     static juce::Rectangle<float> expandedBackdropBounds(
             const NodeGraph& graph,
             const NodeGroup& group,

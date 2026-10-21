@@ -303,26 +303,60 @@ var CycleV2AutomationWorkspaceCommands::setVertexParameter(const var& commandVal
 
 var CycleV2AutomationWorkspaceCommands::explanation(const var& commandValue) {
     const String command = stringProperty(commandValue, "command");
-    const String scope = stringProperty(commandValue, "scope");
-    const String nodeId = stringProperty(commandValue, "nodeId");
-    if ((scope != "node" && scope != "preset")
-            || (scope == "node" && nodeId.isEmpty())
-            || (scope == "preset" && nodeId.isNotEmpty())) {
-        return failedResult(command, "Use scope node with nodeId, or scope preset without nodeId");
+    const var scopeValue = commandValue["scope"];
+    const String scope = scopeValue.toString();
+    const bool hasNode = commandValue.hasProperty("nodeId");
+    const bool hasGroup = commandValue.hasProperty("groupId");
+    ExplanationTarget target;
+    if (scopeValue.isString() && scope == "preset" && !hasNode && !hasGroup) {
+        target = { ExplanationScope::Preset, {} };
+    } else if (scopeValue.isString() && scope == "node" && hasNode && !hasGroup
+            && commandValue["nodeId"].isString() && commandValue["nodeId"].toString().isNotEmpty()) {
+        target = { ExplanationScope::Node, commandValue["nodeId"].toString() };
+    } else if (scopeValue.isString() && scope == "group" && hasGroup && !hasNode
+            && commandValue["groupId"].isString() && commandValue["groupId"].toString().isNotEmpty()) {
+        target = { ExplanationScope::Group, commandValue["groupId"].toString() };
+    } else {
+        return failedResult(command, "Use scope preset without IDs, node with nodeId, or group with groupId");
     }
-    if (workspace.inspectExplanationForAutomation(nodeId).isVoid()) {
+    if (workspace.inspectExplanationForAutomation(target).isVoid()) {
         return failedResult(command, "Unknown explanation target");
     }
     if (command == "setExplanation") {
-        const var text = commandValue.getProperty("text", {});
-        if (!text.isString() || !workspace.setExplanationForAutomation(nodeId, text.toString())) {
+        const var text = commandValue["text"];
+        if (!text.isString() || !workspace.setExplanationForAutomation(target, text.toString())) {
             return failedResult(command, "Explanation must be text of at most 16384 characters; target must be editable");
         }
+    } else if (command == "setGroupInformationCard") {
+        const var visible = commandValue["visible"];
+        if (target.scope != ExplanationScope::Group || !visible.isBool()) {
+            return failedResult(command, "Information cards require group scope and a boolean visible value");
+        }
+        bool succeeded = false;
+        if (commandValue.hasProperty("offset")) {
+            const var offset = commandValue["offset"];
+            const var x = offset["x"];
+            const var y = offset["y"];
+            const auto numeric = [](const var& value) {
+                return value.isDouble() || value.isInt() || value.isInt64();
+            };
+            if (!(bool) visible || offset.getDynamicObject() == nullptr || !numeric(x) || !numeric(y)
+                    || !isValidInformationCardOffset((double) x, (double) y)) {
+                return failedResult(command, "A visible card offset requires finite x/y within the supported world range");
+            }
+            succeeded = workspace.setGroupInformationCardForAutomation(target.id,
+                    Point<float>((float) x, (float) y));
+        } else {
+            succeeded = workspace.setGroupInformationCardVisibleForAutomation(target.id, (bool) visible);
+        }
+        if (!succeeded) {
+            return failedResult(command, "Could not change information card placement");
+        }
     } else if (command == "openExplanationEditor"
-            && !workspace.openExplanationEditorForAutomation(nodeId)) {
+            && !workspace.openExplanationEditorForAutomation(target)) {
         return failedResult(command, "Could not open explanation editor");
     }
-    return okResult(command, workspace.inspectExplanationForAutomation(nodeId));
+    return okResult(command, workspace.inspectExplanationForAutomation(target));
 }
 
 }

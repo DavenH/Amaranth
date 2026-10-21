@@ -56,6 +56,7 @@ enum class CycleV2AutomationCommand {
     InspectNodeControls,
     InspectExplanation,
     SetExplanation,
+    SetGroupInformationCard,
     OpenExplanationEditor,
     SetMorphSlider,
     SetPrimaryAxis,

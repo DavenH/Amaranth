@@ -108,9 +108,11 @@ public:
     bool setVertexParameterForAutomation(const String& nodeId, const String& parameterId, float value);
     bool getNodeParameterForAutomation(const String& nodeId, const String& parameterId, String& value) const;
     var inspectNodeControlsForAutomation(const String& nodeId) const;
-    bool setExplanationForAutomation(const String& nodeId, const String& text);
-    var inspectExplanationForAutomation(const String& nodeId) const;
-    bool openExplanationEditorForAutomation(const String& nodeId);
+    bool setExplanationForAutomation(const ExplanationTarget& target, const String& text);
+    var inspectExplanationForAutomation(const ExplanationTarget& target) const;
+    bool openExplanationEditorForAutomation(const ExplanationTarget& target);
+    bool setGroupInformationCardForAutomation(const String& groupId, std::optional<Point<float>> offset);
+    bool setGroupInformationCardVisibleForAutomation(const String& groupId, bool visible);
     var inspectPointerTargetsForAutomation() const;
     var inspectOpenGLDiagnosticsForAutomation() const;
     var inspectCanvasPerformanceForAutomation() const;

@@ -59,6 +59,15 @@ var CycleV2Automation::inspectSynthesisCapabilities(const var& command) const {
     }
     fields.setProperty("lifecycleCommands", lifecycle);
     objectFor(capabilities)->setProperty("authoring", authoring);
+    var explanations = makeObject();
+    objectFor(explanations)->setProperty("scopes", var(StringArray { "preset", "node", "group" }));
+    objectFor(explanations)->setProperty("readCommand", automationCommandName(CycleV2AutomationCommand::InspectExplanation));
+    objectFor(explanations)->setProperty("writeCommand", automationCommandName(CycleV2AutomationCommand::SetExplanation));
+    objectFor(explanations)->setProperty("editorCommand", automationCommandName(CycleV2AutomationCommand::OpenExplanationEditor));
+    objectFor(explanations)->setProperty("maximumTextLength", maximumExplanationLength);
+    objectFor(explanations)->setProperty("groupCardCommand", automationCommandName(CycleV2AutomationCommand::SetGroupInformationCard));
+    objectFor(explanations)->setProperty("maximumCardOffset", maximumInformationCardOffset);
+    objectFor(capabilities)->setProperty("explanations", explanations);
     const File path = resolveCommandPath(stringProperty(command, "path"));
     if (path == File()) {
         return okResult("inspectSynthesisCapabilities", capabilities);

@@ -187,7 +187,8 @@ void NodeCanvasPresentation::paintStatus(
     }
     graphics.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
     graphics.setColour(CanvasChromePalette::mutedText);
-    graphics.drawText("…", textBounds.withTop(visibleText.getBottom()), Justification::topLeft);
+    graphics.drawText(String::charToString(0x2026),
+            textBounds.withTop(visibleText.getBottom()), Justification::topLeft);
 }
 
 void NodeCanvasPresentation::paintPalette(

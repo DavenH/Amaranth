@@ -13,6 +13,21 @@ struct PortAddress {
     bool input {};
 };
 
+enum class ExplanationScope {
+    Preset,
+    Node,
+    Group
+};
+
+struct ExplanationTarget {
+    ExplanationScope scope { ExplanationScope::Preset };
+    String id;
+
+    bool operator==(const ExplanationTarget& other) const {
+        return scope == other.scope && id == other.id;
+    }
+};
+
 enum class GraphEditCode {
     Connected,
     MissingNode,

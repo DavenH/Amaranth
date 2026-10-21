@@ -67,11 +67,19 @@ private:
     NodeGraph currentGraph;
     PresetPresentation presetPresentation;
     juce::File currentFile;
-    struct ExplanationEdit {
-        juce::String nodeId;
+    struct ExplanationTextEdit {
         juce::String before;
         juce::String after;
     };
+    struct InformationCardPlacementEdit {
+        std::optional<juce::Point<float>> before;
+        std::optional<juce::Point<float>> after;
+    };
+    struct ExplanationEdit {
+        ExplanationTarget target;
+        std::variant<ExplanationTextEdit, InformationCardPlacementEdit> value;
+    };
+    juce::String* explanationTextForEditing(const ExplanationTarget& target);
     void recordExplanation(ExplanationEdit edit);
     void applyExplanation(const ExplanationEdit& edit, bool forward);
 
