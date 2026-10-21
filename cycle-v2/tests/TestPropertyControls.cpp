@@ -494,3 +494,32 @@ TEST_CASE("Property slider supports semantic keyboard steps and wider values",
             0)));
     REQUIRE(std::pow(row.slider.getValue(), 3.0) == Catch::Approx(0.134).margin(0.00001));
 }
+
+TEST_CASE("Cube face drags preserve the third coordinate and reach both axis endpoints",
+        "[cycle-v2][ui][property-controls][morph-face]") {
+    for (const float size : { 170.f, 230.f }) {
+        const MorphSpaceLayout space({ 20.f, 30.f, size, size }, MorphDimensions(3));
+        REQUIRE(space.cubeFaceAt({ -100.f, -100.f }) == -1);
+        for (int held = 0; held < 3; ++held) {
+            const auto axes = MorphSpaceLayout::cubeFaceAxes(held);
+            const auto source = space.cubeFacePoint(held, 0.5f, 0.5f);
+            REQUIRE(space.cubeFaceAt(source) == held);
+            const std::array<float, 3> before { 0.31f, 0.43f, 0.57f };
+            REQUIRE(space.dragCubeFace(held, {}, before) == before);
+            for (const float value : { 0.f, 0.25f, 0.75f, 1.f }) {
+                auto expected = before;
+                expected[(size_t) axes[0]] = value;
+                expected[(size_t) axes[1]] = 1.f - value;
+                const auto delta = space.project(expected[1], expected[2], expected[0])
+                        - space.project(before[1], before[2], before[0]);
+                const auto actual = space.dragCubeFace(held, delta, before);
+                for (int axis = 0; axis < 3; ++axis) {
+                    REQUIRE(actual[(size_t) axis] == Catch::Approx(expected[(size_t) axis]).margin(1.e-6f));
+                }
+                REQUIRE(actual[(size_t) held] == before[(size_t) held]);
+            }
+        }
+    }
+    const MorphSpaceLayout reduced({ 0.f, 0.f, 200.f, 200.f }, MorphDimensions(2));
+    REQUIRE(reduced.cubeFaceAt({ 100.f, 100.f }) == -1);
+}

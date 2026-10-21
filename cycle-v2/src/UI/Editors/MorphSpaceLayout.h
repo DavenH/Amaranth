@@ -12,6 +12,11 @@ class MorphSpaceLayout {
 public:
     MorphSpaceLayout(juce::Rectangle<float> diagram, MorphDimensions dimensions);
     juce::Point<float> project(float red, float blue, float yellow) const;
+    juce::Point<float> cubeFacePoint(int heldAxis, float first, float second) const;
+    int cubeFaceAt(juce::Point<float> position) const;
+    static std::array<int, 2> cubeFaceAxes(int heldAxis);
+    std::array<float, 3> dragCubeFace(int heldAxis, juce::Point<float> delta,
+            std::array<float, 3> initial) const;
     static juce::Rectangle<float> lockBadge(juce::Rectangle<float> target);
 
     juce::Rectangle<float> surface;
@@ -21,6 +26,7 @@ public:
     std::array<juce::Rectangle<float>, 3> locks;
 
 private:
+    juce::Point<float> cubeFaceCoordinates(int heldAxis, juce::Point<float> delta) const;
     void placeLock(int axis, juce::Point<float> outward);
     MorphDimensions dimensions;
     juce::Point<float> origin;

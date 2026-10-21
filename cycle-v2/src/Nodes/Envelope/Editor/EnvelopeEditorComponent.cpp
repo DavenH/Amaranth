@@ -18,6 +18,7 @@
 #include "UI/Editors/MorphKeyboardShortcutHelp.h"
 #include "UI/Editors/MorphKeyboardShortcuts.h"
 #include "UI/Editors/MeshEditorLayout.h"
+#include "UI/Editors/MorphSpaceLayout.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertyHoverTracker.h"
 #include "UiIconData.h"
@@ -164,6 +165,9 @@ struct EnvelopeEditorComponent::Impl {
     String linkNodeId;
     String keyboardMorphAxis;
     bool draggingMorph {};
+    int cubeFace { -1 };
+    Point<float> cubeDragOrigin;
+    std::array<float, 3> cubeDragInitial {};
     bool draggingParameter {};
     float guideGainDragStartY {};
     float guideGainDragStartValue {};
@@ -845,7 +849,10 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
 
 bool EnvelopeEditorComponent::editorMouseMove(Point<float> position) {
     const auto controls = editorControlBounds();
-    bool interactive = impl->presentation.morphInputBounds(controls).contains(position);
+    const bool cube = impl->presentation.getDimensionCount() == 3;
+    const MorphSpaceLayout space(impl->presentation.planeBounds(controls), MorphDimensions(3));
+    bool interactive = cube ? space.cubeFaceAt(position) >= 0
+            : impl->presentation.morphInputBounds(controls).contains(position);
     for (int axis = 0; axis < 3; ++axis) {
         interactive = interactive || impl->presentation.axisBounds(controls, axis).contains(position);
     }
@@ -899,6 +906,7 @@ bool EnvelopeEditorComponent::updatePropertyFeedback(Point<float> position) {
 
 bool EnvelopeEditorComponent::editorMouseDown(Point<float> position) {
     impl->draggingMorph = false;
+    impl->cubeFace = -1;
     impl->draggingParameter = false;
     impl->parameterId.clear();
     const auto controls = editorControlBounds();
@@ -908,6 +916,19 @@ bool EnvelopeEditorComponent::editorMouseDown(Point<float> position) {
     }
     if (handleVertexParameterMouseDown(position, controls)) {
         return true;
+    }
+    if (impl->presentation.getDimensionCount() == 3) {
+        const MorphSpaceLayout space(impl->presentation.planeBounds(controls), MorphDimensions(3));
+        impl->cubeFace = space.cubeFaceAt(position);
+        if (impl->cubeFace >= 0) {
+            impl->draggingMorph = true;
+            impl->cubeDragOrigin = position;
+            for (int axis = 0; axis < 3; ++axis) {
+                impl->cubeDragInitial[(size_t) axis] = (float) impl->morph(axis).slider.getValue();
+            }
+            return true;
+        }
+        return false;
     }
     const auto plane = impl->presentation.morphInputBounds(controls);
     if (plane.contains(position)) {
@@ -996,6 +1017,21 @@ bool EnvelopeEditorComponent::editorMouseDrag(Point<float> position) {
 }
 
 bool EnvelopeEditorComponent::dragMorph(Point<float> position) {
+    if (impl->cubeFace >= 0) {
+        const MorphSpaceLayout space(impl->presentation.planeBounds(editorControlBounds()), MorphDimensions(3));
+        const auto next = space.dragCubeFace(impl->cubeFace,
+                position - impl->cubeDragOrigin, impl->cubeDragInitial);
+        bool changed = false;
+        for (int axis = 0; axis < 3; ++axis) {
+            auto& slider = impl->morph(axis).slider;
+            changed = changed || (float) slider.getValue() != next[(size_t) axis];
+            slider.setValue(next[(size_t) axis], dontSendNotification);
+        }
+        if (changed) {
+            publishCurrentState();
+        }
+        return true;
+    }
     const auto plane = impl->presentation.morphInputBounds(editorControlBounds());
     const bool oneDimension = impl->presentation.getDimensionCount() == 1;
     auto& horizontal = impl->morph(oneDimension ? 0 : 1).slider;
@@ -1055,6 +1091,7 @@ bool EnvelopeEditorComponent::dragVertexParameter(Point<float> position) {
 
 void EnvelopeEditorComponent::editorMouseUp() {
     impl->draggingMorph = false;
+    impl->cubeFace = -1;
     impl->draggingParameter = false;
     impl->parameterId.clear();
 }

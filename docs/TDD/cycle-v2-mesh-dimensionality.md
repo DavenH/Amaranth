@@ -799,3 +799,74 @@ architecture, code-map and whitespace checks pass. Native run 53f6e90ac8c9
 captures compact Static and normal 3D; both reviewed at production size.
 Evidence: `.context/envelope-group-spacing-{tests,native}.log` and
 `envelope-group-spacing-{static,three}.png`.
+
+## Follow-up: Scale meaning, pointer ownership and cube-face input
+
+Replace the reduced tick diagrams with response-curve SVGs (straight Linear,
+concave Logarithmic), remove the misleading selection underline, and explain
+why Pitch/Scratch scale controls are disabled. NativeCursorRefresh currently
+checks only panel screen bounds before asynchronously forcing the curve cursor;
+it must respect the actual component under the pointer so overlay cursors win.
+Envelope's domain label for vertex.phase becomes time; Yellow keeps its meaning.
+
+Cube gestures currently use the Envelope's rectangular Red/Blue mapping for all
+3D clicks and Trimesh has no cube input. Give shared MorphSpaceLayout face hit
+and inverse-projection geometry, then let each editor retain its existing
+session/publication/transaction owners. Choose one visible face on press, hold
+the third coordinate fixed and keep that face through the gesture. Check full
+ranges, two updates, retained coordinates, primary axis, Undo and native input.
+
+Ownership and deletion review: MorphSpaceLayout owns constant-size face geometry;
+both editors own gesture state and retain their existing publication services.
+Trimesh reuses ControlTarget for native cube hit-testing and its existing morph
+transaction for a paired edit. NodeEditorCommandService owns commit/Undo and
+primary-axis publication. The mature Cycle 1 cube is paint-only; no domain
+algorithm was copied. Removed flat 3D Red/Blue mapping, tick bars, selection
+underline and bounds-only asynchronous cursor forcing. No realtime paths changed.
+
+Size review (before → after): EnvelopeEditorComponent 1080 → 1117 retains local
+control/session composition; the new inverse projection lives in shared geometry.
+TrimeshControlsComponent 709 → 758 owns input routing; expanded editor 649 → 681
+owns local feedback; Widget 940 → 952 adds only canonical layout/hit regions.
+Command service 851 → 876 extends its existing morph transaction rather than
+introducing a second publication path. Automation inspector 1232 → 1260 only
+encodes authoritative face geometry in its existing expanded-target encoder.
+Its cohesive role remains serialization of the automation schema; subsequent
+decomposition should move the complete expanded-editor target encoder and remove
+that responsibility from the inspector, rather than relocating face math there. MorphSpaceLayout 113 → 163 is the sole
+new face authority. No orchestration file gained a rendering/domain algorithm.
+
+CycleV2 and tests build with --parallel 10. The focused property/Envelope/face
+suite passes 27 cases / 1,913 assertions. Face tests exercise two live updates,
+exact endpoints, no press jump, held coordinates, one Undo and zero graph/mesh
+copies or model serialization; Trimesh routes through its actual child target.
+Architecture, semantic code-map, SVG XML and whitespace checks pass.
+
+Native evidence: Envelope's three faces pass in d9bf5fe894bc; Trimesh's three
+faces pass in c7267cb896f7. Mesh geometry, primary-axis selection and Undo are
+preserved. Available Volume/Control scale clicks and hand cursors pass in
+dcd2ddde0e25; disabled Pitch/Scratch actions leave state unchanged and show an
+arrow plus explanatory tooltip in 0637296ceb1d. Actual cursor screenshots were
+reviewed, including the failed crosshair capture before the final cursor fix.
+Artifacts: `.context/morph-face-{focused-tests,mesh-native}.log`,
+`.context/scale-response-{enabled,disabled}-native.log`,
+`.context/cube-{env,waveMesh}-{yellow,red,blue}.png`,
+`.context/scale-{volume,control,pitch,scratch}-{linear,logarithmic}-cursor.png`.
+Static scale captures cover the 1100 × 800 window; cube captures cover normal
+width. All keep Envelope's domain label time and the shared Yellow morph axis.
+
+Final native replay: all six cube gestures pass in 59a695d3392a. The combined
+run then exposed a stale hover target during its scale sequence; no scale action
+was attempted. The retained scale smoke now settles hover with small native
+movements before asserting the cursor. Its complete four-purpose/eight-action
+replay passes in 220204b8f788, with actual hand/arrow screenshots reviewed at
+normal width. No action retry is used. Evidence:
+`.context/morph-face-native-final.log` and `.context/scale-response-native-final.log`.
+The normal and compact captures show the same response-curve icon family and
+stable inspector geometry. The purpose fixture also passes all 32 commands.
+
+Final shared-control fixtures pass: purpose 32 commands, markers 26 commands,
+and morph properties 26 commands. Reports are
+`.context/morph-face-{purpose,markers,properties}-report.json`. The final build,
+27 focused cases, architecture/code-map and whitespace checks pass. Follow-up
+ownership and deletion targets above are complete.

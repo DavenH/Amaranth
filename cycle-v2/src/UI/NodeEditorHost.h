@@ -74,6 +74,10 @@ public:
             const String& parameterId,
             float value) = 0;
     virtual bool updateTrimeshMorphEditValue(float value) = 0;
+    virtual bool beginTrimeshMorphPairEdit(const String&, const String&, const String&, Point<float>) {
+        return false;
+    }
+    virtual bool updateTrimeshMorphPairEdit(Point<float>) { return false; }
     virtual void endTrimeshMorphEdit() = 0;
     virtual bool beginTrimeshVertexParameterEdit(
             const String& nodeId,
@@ -260,6 +264,9 @@ public:
             const String& parameterId,
             float value) override;
     bool updateTrimeshMorphEditValue(float value) override;
+    bool beginTrimeshMorphPairEdit(const String& nodeId, const String& firstId,
+            const String& secondId, Point<float> values) override;
+    bool updateTrimeshMorphPairEdit(Point<float> values) override;
     void endTrimeshMorphEdit() override;
     bool beginTrimeshVertexParameterEdit(
             const String& nodeId,
@@ -279,6 +286,7 @@ public:
 
 private:
     const Node* findNode(const String& nodeId) const;
+    bool updateTrimeshMorphAxisValue(const String& parameterId, float value);
 
     Component::SafePointer<Component> owner;
     GraphDocument& document;
@@ -289,7 +297,8 @@ private:
     NodeEditorModelCommands modelCommands;
     String activeMorphNodeId;
     String activeMorphParameterId;
-    bool activeMorphIsPrimary {};
+    String activeMorphSecondaryId;
+    String activeMorphPrimaryField;
     String activeVertexNodeId;
     String activeVertexParameterId;
     TrimeshWidget* activeVertexWidget {};

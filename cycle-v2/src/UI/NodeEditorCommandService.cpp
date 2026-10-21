@@ -436,22 +436,46 @@ bool NodeEditorCommandService::beginTrimeshMorphEdit(
     }
     activeMorphNodeId = nodeId;
     activeMorphParameterId = parameterId;
-    activeMorphIsPrimary = NodeParameterMap(*node).stringValue(
-            "primaryAxis", "yellow") == parameterId;
+    activeMorphSecondaryId.clear();
+    activeMorphPrimaryField = NodeParameterMap(*node).stringValue(
+            "primaryAxis", "yellow") == parameterId ? parameterId : String();
     presentation.selectEditedNode(nodeId);
     return updateTrimeshMorphEditValue(value);
 }
 
 bool NodeEditorCommandService::updateTrimeshMorphEditValue(float value) {
-    const Node* node = findNode(activeMorphNodeId);
-    if (node == nullptr || activeMorphParameterId.isEmpty()) {
+    return updateTrimeshMorphAxisValue(activeMorphParameterId, value);
+}
+
+bool NodeEditorCommandService::beginTrimeshMorphPairEdit(
+        const String& nodeId, const String& firstId, const String& secondId, Point<float> values) {
+    if (!beginTrimeshMorphEdit(nodeId, firstId, values.x)) {
         return false;
     }
-    const String label = activeMorphParameterId.substring(0, 1).toUpperCase()
-            + activeMorphParameterId.substring(1);
+    activeMorphSecondaryId = secondId;
+    const Node* node = findNode(nodeId);
+    if (node != nullptr && NodeParameterMap(*node).stringValue("primaryAxis", "yellow") == secondId) {
+        activeMorphPrimaryField = secondId;
+    }
+    return updateTrimeshMorphAxisValue(secondId, values.y);
+}
+
+bool NodeEditorCommandService::updateTrimeshMorphPairEdit(Point<float> values) {
+    return !activeMorphSecondaryId.isEmpty()
+            && updateTrimeshMorphAxisValue(activeMorphParameterId, values.x)
+            && updateTrimeshMorphAxisValue(activeMorphSecondaryId, values.y);
+}
+
+bool NodeEditorCommandService::updateTrimeshMorphAxisValue(const String& parameterId, float value) {
+    const Node* node = findNode(activeMorphNodeId);
+    if (node == nullptr || parameterId.isEmpty()) {
+        return false;
+    }
+    const String label = parameterId.substring(0, 1).toUpperCase()
+            + parameterId.substring(1);
     const auto result = commands.setNodeParameter(
             activeMorphNodeId,
-            activeMorphParameterId,
+            parameterId,
             label,
             formatTrimeshMorphValue(value));
     if (!result.succeeded()) {
@@ -462,7 +486,7 @@ bool NodeEditorCommandService::updateTrimeshMorphEditValue(float value) {
     }
     presentation.recordNodeEditorMovement(
             activeMorphNodeId,
-            activeMorphParameterId,
+            parameterId,
             static_cast<uint64_t>(String(value, 9).hashCode64()),
             std::nullopt);
     presentation.setNodeEditorStatus("Morph " + label + " = " + String(value, 2));
@@ -478,10 +502,11 @@ void NodeEditorCommandService::endTrimeshMorphEdit() {
             activeMorphNodeId,
             commands,
             document,
-            activeMorphIsPrimary ? activeMorphParameterId : String());
+            activeMorphPrimaryField);
     activeMorphNodeId = {};
     activeMorphParameterId = {};
-    activeMorphIsPrimary = false;
+    activeMorphSecondaryId.clear();
+    activeMorphPrimaryField.clear();
 }
 
 bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(

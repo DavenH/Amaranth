@@ -394,6 +394,14 @@ private:
         return commands.updateTrimeshMorphEditValue(value);
     }
 
+    bool beginTrimeshMorphPairEdit(const std::array<String, 2>& ids, Point<float> values) override {
+        return commands.beginTrimeshMorphPairEdit(nodeId, ids[0], ids[1], values);
+    }
+
+    bool updateTrimeshMorphPairEdit(Point<float> values) override {
+        return commands.updateTrimeshMorphPairEdit(values);
+    }
+
     void endTrimeshMorphEdit() override {
         commands.endTrimeshMorphEdit();
     }

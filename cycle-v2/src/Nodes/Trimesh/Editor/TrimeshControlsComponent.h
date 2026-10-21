@@ -2,6 +2,7 @@
 
 #include "Graph/NodeGraph.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "UI/Editors/MorphSpaceLayout.h"
 
 #include <JuceHeader.h>
 
@@ -21,6 +22,9 @@ public:
     virtual float trimeshMorphControlValue(const juce::String& id) const = 0;
     virtual void beginTrimeshMorphControlEdit(const juce::String& id, float value) = 0;
     virtual void updateTrimeshMorphControlEdit(float value) = 0;
+    virtual void beginTrimeshMorphPairControlEdit(
+            const std::array<juce::String, 2>& ids, juce::Point<float> values) {}
+    virtual void updateTrimeshMorphPairControlEdit(juce::Point<float> values) {}
     virtual void endTrimeshMorphControlEdit() = 0;
     virtual void beginTrimeshOutputScaleControlEdit(const juce::String& id, float value) = 0;
     virtual void updateTrimeshOutputScaleControlEdit(float value) = 0;
@@ -72,6 +76,7 @@ private:
     enum class DragTarget {
         None,
         Morph,
+        MorphFace,
         OutputScale,
         VertexParameter,
         VertexGuideGain
@@ -86,6 +91,8 @@ private:
             const TrimeshExpandedHitRegion& region,
             juce::Point<float> position,
             juce::Rectangle<int> screenArea);
+    void beginMorphFaceDrag(juce::Point<float> position);
+    MorphSpaceLayout morphSpace() const;
     void dragControl(juce::Point<float> position);
     void endControlDrag();
     bool adjustGuideGainFromKeyboard(
@@ -107,6 +114,9 @@ private:
     DragTarget dragTarget { DragTarget::None };
     juce::String keyboardMorphAxis;
     juce::String activeParameterId;
+    int cubeFace { -1 };
+    juce::Point<float> cubeDragOrigin;
+    std::array<float, 3> cubeDragInitial {};
     float guideGainDragStartY {};
     float guideGainDragStartValue {};
     juce::Rectangle<float> contentBounds;

@@ -75,6 +75,10 @@ vertex-parameter editing, morph editing, delete, and re-add. Each edit settles
 for at most 80 ms; do not replace these gestures with in-app pointer commands.
 Run `python3 scripts/test_cycle_v2_native_edit_smoke.py envelope-markers` for
 Envelope marker selection, pointer departure, Loop/Sustain publication and Undo.
+Use the `cube-faces` sequence for all three cube faces in both mesh editors,
+paired-axis movement, held coordinates, geometry preservation and Undo.
+Use `envelope-scales` for native Linear/Logarithmic clicks, enabled hand cursors,
+disabled Pitch/Scratch arrow cursors and unchanged state after disabled clicks.
 
 The coordinator writes `report.json`, `app.log`, `app.log.raw`, and `run.json`
 under the run directory. It exits nonzero for failed commands unless

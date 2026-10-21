@@ -512,13 +512,21 @@ TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     return stats;
 }
 
-Rectangle<float> TrimeshWidget::controlRail(Rectangle<float> content, int axis) const {
+MorphControlLayout TrimeshWidget::controlLayout(Rectangle<float> content) const {
     const int count = bridge.getModel().getDimensionCount();
     auto area = morphPanelBounds(content, count);
     if (showsOutputScale()) {
         area.removeFromBottom(MeshEditorLayout::controlFooterHeight);
     }
-    return MorphControlLayout(area, count, MorphDimensions::Plane::YellowRed).rail(axis);
+    return MorphControlLayout(area, count, MorphDimensions::Plane::YellowRed);
+}
+
+Rectangle<float> TrimeshWidget::morphDiagramBounds(Rectangle<float> content) const {
+    return controlLayout(content).diagram();
+}
+
+Rectangle<float> TrimeshWidget::controlRail(Rectangle<float> content, int axis) const {
+    return controlLayout(content).rail(axis);
 }
 
 bool TrimeshWidget::findMorphControlAt(
@@ -788,6 +796,10 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
                 {},
                 primaryAxisValue(i)
         });
+    }
+
+    if (dimensionCount == 3) {
+        regions.push_back({ TrimeshExpandedHitRegionKind::MorphSpace, reduced.diagram(), {}, {} });
     }
 
     const Rectangle<float> parameterArea = reduced.vertices();

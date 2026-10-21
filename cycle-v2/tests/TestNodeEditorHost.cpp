@@ -38,6 +38,7 @@
 #include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
 #include "UI/Editors/MeshEditorLayout.h"
+#include "UI/Editors/MorphSpaceLayout.h"
 #include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
 #include "UI/Editors/ProcessingScopeSelector.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
@@ -3118,9 +3119,9 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
         REQUIRE(optionBounds.getWidth() == Catch::Approx(24.f));
         REQUIRE(optionBounds.getHeight() == Catch::Approx(24.f));
         REQUIRE(diagramBounds.getWidth() == Catch::Approx(10.875f));
-        REQUIRE(diagramBounds.getHeight() == Catch::Approx(8.15625f));
+        REQUIRE(diagramBounds.getHeight() == Catch::Approx(10.875f));
         REQUIRE(diagramBounds.getX() - optionBounds.getX() == Catch::Approx(6.5625f));
-        REQUIRE(diagramBounds.getY() - optionBounds.getY() == Catch::Approx(7.921875f));
+        REQUIRE(diagramBounds.getY() - optionBounds.getY() == Catch::Approx(6.5625f));
     }
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());
@@ -3281,7 +3282,7 @@ TEST_CASE("Envelope preview sync defers selection work until host initialization
             Rectangle<float>(0.f, 0.f, 640.f, 400.f)) != nullptr);
     const var initializedState = widget.automationState();
     REQUIRE((bool) initializedState.getProperty("hasCurrentCube", {}));
-    REQUIRE((int) initializedState.getProperty("movingVertexCount", 0) == 4);
+    REQUIRE((int) initializedState.getProperty("movingVertexCount", 0) == 1);
     REQUIRE((int) initializedState.getProperty("physicalMovingVertexCount", 0) == 8);
 }
 
@@ -5346,5 +5347,85 @@ TEST_CASE("Reduced Envelope diagram gestures follow visible axes and preserve in
         }
         REQUIRE(document.undo());
         REQUIRE(values() == before);
+    }
+}
+
+TEST_CASE("Both mesh editors publish one undoable gesture for each visible cube face",
+        "[cycle-v2][editor][morph-face]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    for (const auto kind : { NodeKind::Envelope, NodeKind::TrilinearMesh }) {
+        for (int held = 0; held < 3; ++held) {
+            Component owner;
+            owner.setSize(1100, 800);
+            NodeGraph graph;
+            graph.addNode(GraphNodeFactory().createNode(kind, "subject", {}));
+            const char* ids[] { "yellow", "red", "blue" };
+            REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "subject", "dimensionCount", "Dimensions", "3").succeeded());
+            for (const char* id : ids) {
+                REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "subject", id, id, "0.5").succeeded());
+            }
+            GraphDocument document(std::move(graph));
+            GraphCommandDispatcher dispatcher(document);
+            RecordingPresentation presentation;
+            EnvelopeEditorResources resources;
+            TrimeshWidget mesh;
+            resources.activeTrimesh = &mesh;
+            NodeEditorCommandService service(owner, document, dispatcher, presentation, resources);
+            NodeEditorHost host(owner, service, presentation, resources);
+            REQUIRE(host.bind(document.graph().findNode("subject"), owner.getLocalBounds(), document.revision()));
+            auto* editor = host.component();
+            Rectangle<float> diagram;
+            if (kind == NodeKind::Envelope) {
+                diagram = rectangleProperty(dynamic_cast<EnvelopeEditorComponent*>(editor)->automationState(), "morphPlaneBounds");
+            } else {
+                const auto content = editor->getLocalBounds().toFloat().withTrimmedTop(34.f).reduced(10.f, 8.f);
+                diagram = mesh.morphDiagramBounds(content);
+            }
+            const MorphSpaceLayout space(diagram, MorphDimensions(3));
+            const auto axes = MorphSpaceLayout::cubeFaceAxes(held);
+            const auto source = space.cubeFacePoint(held, 0.5f, 0.5f);
+            const auto parameters = [&] {
+                const NodeParameterMap values(*dispatcher.editingGraph().findNode("subject"));
+                return std::array<float, 3> { values.floatValue(ids[0]), values.floatValue(ids[1]), values.floatValue(ids[2]) };
+            };
+            const auto before = parameters();
+            auto* input = kind == NodeKind::TrilinearMesh
+                    ? editor->getComponentAt(source.roundToInt()) : editor;
+            REQUIRE(input != nullptr);
+            const auto inputSource = input->getLocalPoint(editor, source);
+            input->mouseDown(curvePanelMouseEvent(*input, inputSource, ModifierKeys::leftButtonModifier, inputSource, false));
+            REQUIRE(parameters() == before);
+            Point<float> destination;
+            for (const float value : { 0.25f, 1.f }) {
+                auto next = before;
+                next[(size_t) axes[0]] = value;
+                next[(size_t) axes[1]] = 1.f - value;
+                destination = source + space.project(next[1], next[2], next[0])
+                        - space.project(before[1], before[2], before[0]);
+                InteractionComplexityDiagnostics::reset();
+                input->mouseDrag(curvePanelMouseEvent(*input, input->getLocalPoint(editor, destination),
+                        ModifierKeys::leftButtonModifier, inputSource, true));
+                REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+                REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+                REQUIRE(InteractionComplexityDiagnostics::counts().modelSerializations == 0);
+                auto actual = parameters();
+                if (kind == NodeKind::Envelope) {
+                    const auto local = dynamic_cast<EnvelopeEditorComponent*>(editor)->automationState();
+                    actual = { (float) local.getProperty("yellowMorph", {}),
+                            (float) local.getProperty("redMorph", {}), (float) local.getProperty("blueMorph", {}) };
+                }
+                for (int axis = 0; axis < 3; ++axis) {
+                    REQUIRE(actual[(size_t) axis] == Catch::Approx(next[(size_t) axis]).margin(1.e-5f));
+                }
+            }
+            input->mouseUp(curvePanelMouseEvent(*input, input->getLocalPoint(editor, destination), {}, inputSource, true));
+            const auto committed = parameters();
+            REQUIRE(committed[(size_t) held] == before[(size_t) held]);
+            REQUIRE(committed[(size_t) axes[0]] == Catch::Approx(1.f));
+            REQUIRE(committed[(size_t) axes[1]] == Catch::Approx(0.f));
+            REQUIRE(document.undo());
+            REQUIRE(parameters() == before);
+        }
     }
 }

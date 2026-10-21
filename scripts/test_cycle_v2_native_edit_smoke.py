@@ -1116,6 +1116,95 @@ class NativeEditSmoke:
         assert len(final["vertices"]) == len(deleted["vertices"]) + 1
         self.assert_audio_changed(initial_audio, self.audio_samples(), "Waveshaper downstream output")
 
+    def cube_faces_sequence(self, node_ids=("env", "waveMesh")):
+        self.command({"command": "openGraph",
+                "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph")})
+        names = ("yellow", "red", "blue")
+        for node_id in node_ids:
+            self.open_editor(node_id)
+            self.command({"command": "pointer", "event": "click",
+                    "targetId": f"expanded:{node_id}.meshDimensions.three",
+                    "waitForIdle": True, "idleDelayMs": 150})
+            for held, name in enumerate(names):
+                before = self.inspect(node_id)
+                initial = {axis: float(self.parameters(before)[axis]) for axis in names}
+                target = next(target for target in self.command({"command": "inspectPointerTargets"})["targets"]
+                        if target["id"] == f"expanded:{node_id}.morphFace.{name}")
+                source = self.point(target["screenBounds"], 0.5, 0.5)
+                axes = [axis for axis in names if axis != name]
+                first = target["firstVector"]
+                second = target["secondVector"]
+                self.move_pointer(source)
+                self.begin_drag(source)
+                selected = self.inspect(node_id)
+                if node_id == "env":
+                    for axis in names:
+                        assert abs(selected["effect2D"][axis + "Morph"] - initial[axis]) < 0.0001
+                for amount in (0.12, 0.24):
+                    destination = (round(source[0] + amount * (first["x"] + second["x"])),
+                            round(source[1] + amount * (first["y"] + second["y"])))
+                    self.move_held_drag(source, destination)
+                    current = self.inspect(node_id)
+                    if node_id == "env":
+                        values = {axis: current["effect2D"][axis + "Morph"] for axis in names}
+                        assert abs(values[name] - initial[name]) < 0.0001, (node_id, name, values, initial)
+                        for axis in axes:
+                            assert abs(values[axis] - min(1, initial[axis] + amount)) < 0.035, (node_id, name, axis, values, initial)
+                self.release_drag(destination)
+                after = self.inspect_until(node_id, lambda inspected:
+                        all(float(self.parameters(inspected)[axis]) > initial[axis] + 0.15 for axis in axes),
+                        timeout_seconds=0.5)
+                if node_id == "env":
+                    assert after["model"]["state"]["mesh"] == before["model"]["state"]["mesh"]
+                else:
+                    assert self.trimesh_model(after) == self.trimesh_model(before)
+                for axis in axes:
+                    assert float(self.parameters(after)[axis]) > initial[axis] + 0.15
+                assert abs(float(self.parameters(after)[name]) - initial[name]) < 0.0001
+                if node_id == "waveMesh":
+                    assert self.parameters(after)["primaryAxis"] == self.parameters(before)["primaryAxis"]
+                self.capture(f"cube-{node_id}-{name}", self.target(f"expanded:{node_id}"))
+                self.key_chord("z")
+                undone = self.inspect_until(node_id, lambda inspected:
+                        all(abs(float(self.parameters(inspected)[axis]) - initial[axis]) < 0.0001 for axis in names),
+                        timeout_seconds=0.5)
+                for axis in names:
+                    assert abs(float(self.parameters(undone)[axis]) - initial[axis]) < 0.0001
+
+    def envelope_scales_sequence(self):
+        self.command({"command": "openGraph",
+                "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph")})
+        self.open_editor("env")
+        self.command({"command": "pointer", "event": "click",
+                "targetId": "expanded:env.meshDimensions.static", "waitForIdle": True, "idleDelayMs": 150})
+        for purpose in ("volume", "control", "pitch", "scratch"):
+            self.command({"command": "pointer", "event": "click",
+                    "targetId": "expanded:env.envelopeMode." + purpose,
+                    "waitForIdle": True, "idleDelayMs": 150})
+            available = purpose in ("volume", "control")
+            for action in ("logarithmic", "linear"):
+                self.move_pointer(self.point(self.target("expanded:env.panel2D"), 0.5, 0.5))
+                point = self.point(self.target("expanded:env.envelopeAction." + action), 0.5, 0.5)
+                self.move_pointer((point[0] - 3, point[1]))
+                self.move_pointer(point)
+                expected_cursor = "pointingHand" if available else "normal"
+                for _ in range(3):
+                    if self.command({"command": "inspectPointerCursor"})["cursor"] == expected_cursor:
+                        break
+                    self.move_pointer((point[0] + 1, point[1]))
+                    self.move_pointer(point)
+                self.cursor_until(expected_cursor)
+                self.capture(f"scale-{purpose}-{action}-cursor", self.target("expanded:env"))
+                before = self.inspect("env")
+                self.click(f"c:{point[0]},{point[1]}")
+                expected = available and action == "logarithmic"
+                after = self.inspect_until("env", lambda state: state["effect2D"]["logarithmic"] == expected,
+                        timeout_seconds=0.5)
+                assert after["effect2D"]["logarithmic"] == expected, (purpose, action)
+                if not available:
+                    assert after["model"]["state"] == before["model"]["state"]
+                    assert self.parameters(after) == self.parameters(before)
+
     def envelope_markers_sequence(self):
         self.command({
             "command": "openGraph",
@@ -2431,6 +2520,8 @@ class NativeEditSmoke:
             "waveshaper": self.effect2d_sequence,
             "envelope": self.envelope_sequence,
             "envelope-markers": self.envelope_markers_sequence,
+            "cube-faces": self.cube_faces_sequence,
+            "envelope-scales": self.envelope_scales_sequence,
             "envelope-release": self.envelope_release_sequence,
             "guide-previews": self.guide_preview_sequence,
             "intercept-visuals": self.intercept_visual_sequence,
@@ -2465,6 +2556,7 @@ if __name__ == "__main__":
         "waveshaper",
         "envelope",
         "envelope-markers",
+        "cube-faces", "envelope-scales",
         "envelope-release",
         "guide-previews",
         "intercept-visuals",

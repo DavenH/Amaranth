@@ -548,7 +548,7 @@ public:
                         gain(Vertex::Red) },
                 { "vertex.blue", "blue", vertex->values[Vertex::Blue], 0.f, 1.f,
                         gain(Vertex::Blue) },
-                { "vertex.phase", "phase", vertex->values[Vertex::Phase], 0.f, 1.5f,
+                { "vertex.phase", "time", vertex->values[Vertex::Phase], 0.f, 1.5f,
                         gain(Vertex::Phase) },
                 { "vertex.amp", "amp", vertex->values[Vertex::Amp], 0.f, 1.f,
                         gain(Vertex::Amp) },

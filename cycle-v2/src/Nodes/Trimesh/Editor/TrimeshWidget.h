@@ -17,8 +17,11 @@
 
 namespace CycleV2 {
 
+class MorphControlLayout;
+
 enum class TrimeshExpandedHitRegionKind {
     MorphControl,
+    MorphSpace,
     OutputScale,
     PrimaryAxis,
     LinkToggle,
@@ -136,6 +139,7 @@ public:
     static juce::Colour surfaceColourForDomain(float value, PortDomain domain);
     static juce::Colour surfaceColourForProfile(float value, const TrimeshRenderProfile& profile);
 
+    juce::Rectangle<float> morphDiagramBounds(juce::Rectangle<float> content) const;
     bool findMorphControlAt(
             juce::Rectangle<float> content,
             juce::Point<float> position,
@@ -189,6 +193,7 @@ public:
             int dimensionCount = 3);
 
 private:
+    MorphControlLayout controlLayout(juce::Rectangle<float> content) const;
     juce::Rectangle<float> controlRail(juce::Rectangle<float> content, int axis) const;
     void syncExpandedNode(const Node& node, juce::Rectangle<float> content);
 

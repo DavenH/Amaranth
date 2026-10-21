@@ -1,5 +1,28 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Envelope overlay hover can retain the curve's native crosshair
+
+On 2026-10-21, hovering Linear/Logarithmic over a Pitch or Scratch curve showed
+its edit crosshair. These purposes intentionally disable logarithmic scaling,
+but the tooltip did not explain that restriction. `showNativeCursorForPanel`
+queued a native cursor update based only on the underlying panel's screen bounds;
+overlay buttons lie inside those bounds. The callback now checks the actual
+hit component and resolves an overlay's cursor instead of forcing the panel cursor. Scale buttons use a hand when
+available and an arrow with an explanatory tooltip when disabled. The selected
+underline is removed and response-curve SVGs replace ambiguous tiny grid bars.
+
+## P2: Cube input fixes Yellow at zero and ignores visible faces
+
+On 2026-10-21, Envelope's entire 3D diagram used its reduced rectangular
+Red/Blue mapping, so dragging could not change Yellow. Trimesh's cube had no
+input mapping. Shared MorphSpaceLayout now owns face hit-testing and inverse
+projection. Editors latch one face and initial position on press, update only
+that face's two axes, and retain their existing transaction owners. Three
+focused cases / 416 assertions cover all faces, both editors, exact endpoints,
+no initial jump, unchanged third coordinate, one Undo, and zero live graph/mesh
+copies or model serialization. Native verification is recorded in the active
+mesh dimensionality TDD.
+
 ## P2: Envelope marker actions target a hovered cube after leaving the curve
 
 On 2026-10-21, native selection of the attack point followed by moving to Loop
@@ -842,3 +865,19 @@ marker attempt clicked its disabled control after Undo cleared the session
 selection; the corrected gesture explicitly reselects the original point and
 asserts marker availability before testing it. This is a precondition for the
 native check, not a change to marker or selection policy.
+
+Incidental 2026-10-21 focused-test failure: the Envelope preview initialization
+case expected four logical moving points for a newly created node. New nodes
+are Static, so selection contains one logical point and eight replicated physical
+corners. Updated that stale expectation; the 27-case suite passes. Native cube
+checks also initially read committed Trimesh parameters during a transient drag
+and used Envelope's mesh serialization path for Trimesh. The fixture now checks
+committed paired coordinates on release, with live child-target movement covered
+by the host test, and uses each model's established serialization accessor.
+
+The final cube/scale combined native run (59a695d3392a) completed all six cube
+gestures but initially retained the curve hover target on entry to a scale icon.
+The scale fixture now settles hover with native movement before its cursor
+assertion; the complete four-purpose replay passes (220204b8f788). Actions are
+not retried. Actual screenshots confirm hand cursors for available controls and
+arrow cursors plus the explanatory tooltip for Pitch/Scratch.

@@ -101,6 +101,56 @@ Point<float> MorphSpaceLayout::project(float red, float blue, float yellow) cons
             surface.getBottom() - surface.getHeight() * values[planeAxes[1]] };
 }
 
+std::array<int, 2> MorphSpaceLayout::cubeFaceAxes(int heldAxis) {
+    return heldAxis == 0 ? std::array<int, 2> { 1, 2 }
+            : heldAxis == 1 ? std::array<int, 2> { 0, 2 } : std::array<int, 2> { 0, 1 };
+}
+
+Point<float> MorphSpaceLayout::cubeFacePoint(int heldAxis, float first, float second) const {
+    const auto axes = cubeFaceAxes(heldAxis);
+    std::array<float, 3> values {};
+    values[(size_t) heldAxis] = heldAxis == 0 ? 0.f : 1.f;
+    values[(size_t) axes[0]] = first;
+    values[(size_t) axes[1]] = second;
+    return project(values[1], values[2], values[0]);
+}
+
+Point<float> MorphSpaceLayout::cubeFaceCoordinates(int heldAxis, Point<float> delta) const {
+    const auto axes = cubeFaceAxes(heldAxis);
+    constexpr int cornerBits[] { 4, 1, 2 };
+    const auto first = corners[(size_t) cornerBits[axes[0]]] - corners[0];
+    const auto second = corners[(size_t) cornerBits[axes[1]]] - corners[0];
+    const auto inverse = AffineTransform(first.x, second.x, 0.f, first.y, second.y, 0.f).inverted();
+    return delta.transformedBy(inverse);
+}
+
+int MorphSpaceLayout::cubeFaceAt(Point<float> position) const {
+    if (dimensions.axisCount() != 3 || surface.isEmpty()) {
+        return -1;
+    }
+    // The visible faces are Yellow=0 (left), Red=1 (right), Blue=1 (top).
+    for (int axis = 0; axis < 3; ++axis) {
+        const auto coordinate = cubeFaceCoordinates(axis, position - cubeFacePoint(axis, 0.f, 0.f));
+        if (coordinate.x >= 0.f && coordinate.x <= 1.f
+                && coordinate.y >= 0.f && coordinate.y <= 1.f) {
+            return axis;
+        }
+    }
+    return -1;
+}
+
+std::array<float, 3> MorphSpaceLayout::dragCubeFace(
+        int heldAxis, Point<float> delta, std::array<float, 3> initial) const {
+    if (dimensions.axisCount() != 3 || heldAxis < 0 || heldAxis > 2 || surface.isEmpty()) {
+        return initial;
+    }
+    const auto axes = cubeFaceAxes(heldAxis);
+    const auto change = cubeFaceCoordinates(heldAxis, delta);
+    initial[(size_t) axes[0]] = jlimit(0.f, 1.f, initial[(size_t) axes[0]] + change.x);
+    initial[(size_t) axes[1]] = jlimit(0.f, 1.f, initial[(size_t) axes[1]] + change.y);
+    return initial;
+}
+
 void MorphSpaceLayout::placeLock(int axis, Point<float> outward) {
     locks[(size_t) axis] = Rectangle<float>(28.f, 28.f)
             .withCentre(rails[(size_t) axis].getPointAlongLineProportionally(0.5f) + outward * 22.f);

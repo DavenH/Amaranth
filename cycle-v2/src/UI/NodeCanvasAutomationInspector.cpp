@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "UI/NodeCanvasAutomationInspector.h"
+#include "UI/Editors/MorphSpaceLayout.h"
 #include "UI/NodeCanvasEditorCoordinator.h"
 #include "Graph/MeshDimensionality.h"
 
@@ -131,6 +132,23 @@ public:
         }
 
         return object;
+    }
+
+    static void addMorphFaceTargets(Array<var>& targets, const Node& node, Rectangle<float> diagram) {
+        const MorphSpaceLayout space(diagram, MorphDimensions(3));
+        constexpr const char* names[] { "yellow", "red", "blue" };
+        for (int axis = 0; axis < 3; ++axis) {
+            const auto origin = space.cubeFacePoint(axis, 0.f, 0.f);
+            const auto first = space.cubeFacePoint(axis, 1.f, 0.f);
+            const auto second = space.cubeFacePoint(axis, 0.f, 1.f);
+            const Point<float> points[] { origin, first, second, space.cubeFacePoint(axis, 1.f, 1.f) };
+            var target = pointerTargetToVar("expanded:" + node.id + ".morphFace." + names[axis],
+                    "morphCubeFace", Rectangle<float>::findAreaContainingPoints(points, 4), node.id);
+            auto* encoded = target.getDynamicObject();
+            encoded->setProperty("firstVector", pointToVar(first - origin));
+            encoded->setProperty("secondVector", pointToVar(second - origin));
+            targets.add(target);
+        }
     }
 
     static var portToVar(const Port& port) {
@@ -297,6 +315,8 @@ public:
 
     static String trimeshHitRegionKind(TrimeshExpandedHitRegionKind kind) {
         switch (kind) {
+        case TrimeshExpandedHitRegionKind::MorphSpace:
+            return "trimeshMorphSpace";
         case TrimeshExpandedHitRegionKind::MorphControl:
             return "trimeshMorphRail";
         case TrimeshExpandedHitRegionKind::OutputScale:
@@ -403,6 +423,10 @@ public:
         }
         addEnvelopeModeTargets(targets, node, panel, *curveEditorState);
         addEnvelopeActionTargets(targets, node, panel, *curveEditorState);
+        if ((int) curveEditorState->getProperty("dimensionCount") == 3) {
+            addMorphFaceTargets(targets, node, AutomationValueEncoder::rectangleFromVar(
+                    curveEditorState->getProperty("morphPlaneBounds")).translated(panel.getX(), panel.getY()));
+        }
         const auto addZoomTargets = [&](const var& zoom, const var& frame, const String& family) {
             const auto origin = AutomationValueEncoder::rectangleFromVar(frame).getPosition() + panel.getPosition();
             for (const String axis : { "horizontal", "vertical" }) {
@@ -573,6 +597,10 @@ public:
                     editorComponent);
             const bool showOutputScale = trimeshEditor != nullptr
                     && trimeshEditor->showsOutputScale();
+            if (count == 3 && trimeshEditor != nullptr) {
+                addMorphFaceTargets(targets, node,
+                        trimeshEditor->morphDiagramBounds().translated(panel.getX(), panel.getY()));
+            }
             for (const auto& region : TrimeshWidget::expandedControlHitRegions(
                     content,
                     showOutputScale,

@@ -19,7 +19,7 @@ inline constexpr float svgLiveAreaSize = svgViewBoxSize - 2.f * svgLiveAreaInset
 
 inline constexpr float diagramControlWidth = controlWidth;
 inline constexpr float diagramCanvasWidth = actionIconCanvasSize * svgLiveAreaSize / svgViewBoxSize;
-inline constexpr float diagramCanvasHeight = diagramCanvasWidth * 0.75f;
+inline constexpr float diagramCanvasHeight = diagramCanvasWidth;
 inline constexpr float diagramHorizontalMargin
         = (diagramControlWidth - diagramCanvasWidth) * 0.5f;
 inline constexpr float diagramVerticalMargin

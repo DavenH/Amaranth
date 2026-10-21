@@ -2,6 +2,7 @@
 
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/EnvelopeToolbarMetrics.h"
+#include "UiIconData.h"
 
 namespace CycleV2 {
 
@@ -9,31 +10,10 @@ using namespace juce;
 
 namespace {
 
-const Colour kIndicator { 0xffdbe5ef };
-constexpr int kScaleLineCount = 4;
-constexpr float kLinearPositions[] { 0.f, 0.333f, 0.667f, 1.f };
-constexpr float kLogarithmicPositions[] { 0.f, 0.08f, 0.30f, 1.f };
-
 Rectangle<float> scaleDiagramBounds(Rectangle<float> bounds) {
     return bounds.withSizeKeepingCentre(
             EnvelopeToolbarMetrics::diagramCanvasWidth,
             EnvelopeToolbarMetrics::diagramCanvasHeight);
-}
-
-void drawScaleDiagram(Graphics& graphics, Rectangle<float> bounds, bool logarithmic, bool enabled) {
-    bounds = scaleDiagramBounds(bounds);
-    graphics.setColour(kIndicator.withAlpha(enabled ? 0.82f : 0.25f));
-    const float* positions = logarithmic
-            ? kLogarithmicPositions
-            : kLinearPositions;
-    for (int index = 0; index < kScaleLineCount; ++index) {
-        const float position = positions[index];
-        const float y = bounds.getY() + position * bounds.getHeight();
-        graphics.drawHorizontalLine(
-                roundToInt(y),
-                bounds.getX(),
-                bounds.getRight());
-    }
 }
 
 }
@@ -53,6 +33,12 @@ public:
                 : "Use linear envelope axis spacing");
         setMouseCursor(MouseCursor::PointingHandCursor);
         setWantsKeyboardFocus(true);
+        const auto document = parseXML(String::fromUTF8(logarithmicMode
+                ? UiIconData::envelopeScaleLogarithmic : UiIconData::envelopeScaleLinear));
+        jassert(document != nullptr);
+        if (document != nullptr) {
+            icon = Drawable::createFromSVG(*document);
+        }
     }
 
     Rectangle<float> diagramBounds() const {
@@ -62,18 +48,25 @@ public:
     void paintButton(Graphics& graphics, bool highlighted, bool down) override {
         paintPanelOverlayButton(graphics, getLocalBounds().toFloat(),
                 highlighted, down, hasKeyboardFocus(false), getToggleState(), isEnabled());
-        drawScaleDiagram(
-                graphics,
-                getLocalBounds().toFloat(),
-                logarithmicMode, isEnabled());
-        if (getToggleState()) {
-            graphics.setColour(kIndicator.withAlpha(isEnabled() ? 0.92f : 0.25f));
-            Rectangle<float> indicator = getLocalBounds().toFloat().withTrimmedBottom(3.f).removeFromBottom(2.f);
-            graphics.fillRect(indicator.reduced(8.f, 0.f));
+        if (icon != nullptr) {
+            icon->drawWithin(graphics,
+                    getLocalBounds().toFloat().reduced(CanvasChromeMetrics::panelOverlayIconInset),
+                    RectanglePlacement::centred, isEnabled() ? 1.f : 0.25f);
         }
     }
 
+    MouseCursor getMouseCursor() override {
+        return isEnabled() ? MouseCursor::PointingHandCursor : MouseCursor::NormalCursor;
+    }
+
+    void enablementChanged() override {
+        setTooltip(isEnabled()
+                ? logarithmicMode ? "Use logarithmic envelope axis spacing" : "Use linear envelope axis spacing"
+                : "Pitch and Scratch envelopes use linear axis spacing");
+    }
+
 private:
+    std::unique_ptr<Drawable> icon;
     bool logarithmicMode {};
 };
 
@@ -86,6 +79,7 @@ EnvelopeAxisScaleSelector::EnvelopeAxisScaleSelector() :
     logarithmicButton->onClick = [this] {
         setLogarithmic(true, sendNotificationSync);
     };
+    setMouseCursor(MouseCursor::NormalCursor);
     addAndMakeVisible(*linearButton);
     addAndMakeVisible(*logarithmicButton);
     setLogarithmic(false);

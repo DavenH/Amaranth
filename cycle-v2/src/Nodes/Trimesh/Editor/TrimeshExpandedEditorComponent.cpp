@@ -131,6 +131,10 @@ void TrimeshExpandedEditorComponent::setDelegate(TrimeshExpandedEditorDelegate* 
     controls.setDelegate(this);
 }
 
+Rectangle<float> TrimeshExpandedEditorComponent::morphDiagramBounds() const {
+    return widget.morphDiagramBounds(contentBounds());
+}
+
 void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
     node = nextNode;
     dimensionSelector.setSelectedValue(NodeParameterMap(node).stringValue("dimensionCount", "0"));
@@ -336,12 +340,40 @@ void TrimeshExpandedEditorComponent::updateTrimeshMorphControlEdit(float value) 
     }
 }
 
+void TrimeshExpandedEditorComponent::beginTrimeshMorphPairControlEdit(
+        const std::array<String, 2>& ids, Point<float> values) {
+    widget.setMorphEditGestureActive(true);
+    if (delegate != nullptr && delegate->beginTrimeshMorphPairEdit(ids, values)) {
+        activeMorphPairIds = ids;
+        setLocalMorphPairValues(values);
+        return;
+    }
+    widget.setMorphEditGestureActive(false);
+}
+
+void TrimeshExpandedEditorComponent::updateTrimeshMorphPairControlEdit(Point<float> values) {
+    if (delegate != nullptr && delegate->updateTrimeshMorphPairEdit(values)) {
+        setLocalMorphPairValues(values);
+    }
+}
+
+void TrimeshExpandedEditorComponent::setLocalMorphPairValues(Point<float> values) {
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == activeMorphPairIds[0] || parameter.id == activeMorphPairIds[1]) {
+            parameter.value = formatTrimeshMorphValue(parameter.id == activeMorphPairIds[0] ? values.x : values.y);
+        }
+    }
+    widget.syncExpandedFromNode(node);
+    repaint();
+}
+
 void TrimeshExpandedEditorComponent::endTrimeshMorphControlEdit() {
     if (delegate != nullptr) {
         delegate->endTrimeshMorphEdit();
     }
     widget.setMorphEditGestureActive(false);
     activeMorphParameterId = {};
+    activeMorphPairIds = {};
 }
 
 void TrimeshExpandedEditorComponent::beginTrimeshOutputScaleControlEdit(
