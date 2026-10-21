@@ -186,3 +186,27 @@ and sixteen synthetic objective observations, plus four source/eight synthetic
 audit observations, match recorded analysis/reference/audio identities.
 Whitespace, code-map and architecture checks pass. The two stages share the
 same executable identity; only the owned coordinated app is stopped afterward.
+
+## Human audition and next target
+
+On 2026-10-21, the user auditioned the launched calibration candidate and
+reported brightness expression on CC2, with little other expressivity. This
+adds a human interpretation of the existing live time/magnitude morph: useful
+brightness control. It does not establish a complete expressive instrument or
+validate the other controller mappings. This was an informal audition with no
+recorded take, controller schedule or blind baseline comparison.
+
+The launched candidate bypasses its pitch envelope; CC1 volume morph and the
+remaining CC3 scratch-envelope morphs retain note-on latching. These technical
+facts help explain the limited current control response but do not prove that
+every other expressive dimension requires new DSP. Preserve the frozen study
+and the user's current app session while designing the next candidate.
+
+The next musical target is independent expression: retain the user-identified
+brightness axis, add controllable vibrato depth/rate during a held note, and
+make note-on attack/articulation audibly selectable across repeated notes.
+Require isolated control demonstrations followed by combinations across low,
+middle and high notes. Distinguish pitch variation from brightness/level changes;
+human listening must establish useful expression beyond the pitch-spread score.
+Inspect existing graph composition before declaring a missing engine feature;
+M01 remains the confirmed envelope-adoption gap.

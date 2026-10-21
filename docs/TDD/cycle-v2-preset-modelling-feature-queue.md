@@ -7,6 +7,16 @@ target. Distinguish confirmed gaps from workflow opportunities; reuse an
 existing TDD instead of creating a competing feature or policy. Do not turn a
 workaround or an unexplored control into a missing-engine claim.
 
+Current listening evidence (2026-10-21): after launching the calibration
+candidate, the user reports useful brightness expression on CC2 and little
+else. This is an informal human assessment of that candidate, not a captured
+controlled trial. Treat additional independent expressive axes as the next
+musical acceptance target. Preserve brightness while demonstrating live
+vibrato depth/rate and selectable note-on articulation, separately and in
+combination across registers. A static contour bypass or a better pitch score
+alone does not satisfy that target. Inspect existing control composition before
+classifying any additional missing mechanism as an engine feature request.
+
 ## M01 — Live envelope morph adoption during a held note
 
 Status: Confirmed timing limitation; existing design In Progress. High priority
@@ -24,6 +34,14 @@ adopt a new morph during the same note. The pilot reserves a repeated-note
 CC1 trajectory, but its audio is a performance probe, not an isolated proof of
 every envelope's live-update behavior. Live Trimesh modulation and persistent
 Envelope authoring edits already exist; neither supplies this runtime policy.
+
+Source review after the user's audition also rules out a simple downstream
+gain workaround: `GraphEdgeValidator` permits pitch envelopes only into
+`VoiceContext.pitch`, and `GraphCompiler` prepares that route from a direct
+Envelope source. An Add/Multiply inserted after the envelope is not a supported
+live pitch-depth path. Establish the depth/rate mapping explicitly in the
+follow-up; live morph adoption and independent control composition are separate
+requirements even when one authored envelope can represent both dimensions.
 
 Owner/design: [Dynamic Envelope Modulation](cycle-v2-dynamic-envelope-modulation.md)
 and [Realtime Note-On Envelope Preparation](cycle-v2-realtime-note-on-envelope-preparation.md).
