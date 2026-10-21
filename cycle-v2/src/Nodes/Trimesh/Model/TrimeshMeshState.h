@@ -38,6 +38,8 @@ public:
     int currentVersion() const override;
     NodeModelStatePtr createDefault() const override;
     NodeModelStatePtr readJSON(const var& value, String& error) const override;
+    bool supportsAuthoring() const override { return true; }
+    NodeModelStatePtr readAuthoringJSON(const var& value, String& error) const override;
 };
 
 }

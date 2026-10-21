@@ -2,11 +2,14 @@
 
 ## Status
 
-The first wave is implemented in independent PRs:
+The first wave is merged:
 [preset/node explanations](https://github.com/DavenH/Amaranth/pull/185),
 [synthesis capabilities](https://github.com/DavenH/Amaranth/pull/183),
 [performance suites](https://github.com/DavenH/Amaranth/pull/184), and
-[reference studies](cycle-v2-reference-studies.md). Remaining slices are proposed.
+[reference studies](https://github.com/DavenH/Amaranth/pull/186).
+[Semantic candidate authoring](https://github.com/DavenH/Amaranth/pull/188) and
+[audition reports](https://github.com/DavenH/Amaranth/pull/187) are implemented in
+independent draft PRs. Remaining slices are proposed.
 Expand each nontrivial slice with the exact files, rough size envelope, lifecycle
 contract, and negative tests required by [the TDD policy](README.md) before
 implementing it. Dependencies below describe required behavior, not a mandatory

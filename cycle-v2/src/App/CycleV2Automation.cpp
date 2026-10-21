@@ -374,6 +374,10 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return workspaceCommands->clearGuideHeatmap(commandValue);
         case Command::Undo:
             return workspaceCommands->undo();
+        case Command::Redo:
+            return workspaceCommands->redo();
+        case Command::ApplyNodeEdits:
+            return workspaceCommands->applyNodeEdits(commandValue);
         case Command::SetNodeParameter:
             return workspaceCommands->setNodeParameter(commandValue);
         case Command::SetGuideParameter:

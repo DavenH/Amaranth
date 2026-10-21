@@ -5,6 +5,8 @@
 #include <App/Doc/PresetJson.h>
 #include <Definitions.h>
 
+#include <algorithm>
+
 EnvelopeMesh::EnvelopeMesh(const String& name) :
         Mesh(name) {
 }
@@ -196,6 +198,7 @@ bool EnvelopeMesh::equals(const EnvelopeMesh& other) const {
             result.push_back((size_t) std::distance(
                     allCubes.begin(), std::find(allCubes.begin(), allCubes.end(), cube)));
         }
+        std::sort(result.begin(), result.end());
         return result;
     };
     return indices(loopCubes, cubes) == indices(other.loopCubes, other.cubes)

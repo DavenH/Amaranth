@@ -77,6 +77,8 @@ public:
     virtual int currentVersion() const = 0;
     virtual NodeModelStatePtr createDefault() const = 0;
     virtual NodeModelStatePtr readJSON(const var& value, String& error) const = 0;
+    virtual bool supportsAuthoring() const { return false; }
+    virtual NodeModelStatePtr readAuthoringJSON(const var& value, String& error) const;
 };
 
 enum class ParameterImpact : uint32_t {
@@ -127,6 +129,7 @@ struct ParameterDefinition {
     ControlTiming controlTiming { ControlTiming::StaticAuthoring };
 
     bool accepts(const String& value) const;
+    bool acceptsAuthoringValue(const String& value) const;
     String normalized(const String& value) const;
 };
 

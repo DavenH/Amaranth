@@ -599,6 +599,7 @@ void GraphCommandDispatcher::beginCompoundEdit() {
     compoundActive = true;
     compoundChanged = false;
     compoundDepth = 1;
+    compoundGraphRevision = document.graph().getRevision();
 }
 
 bool GraphCommandDispatcher::commitCompoundEdit() {
@@ -632,8 +633,9 @@ void GraphCommandDispatcher::cancelCompoundEdit() {
         if (compoundBefore.has_value()) {
             document.graphForCommand() = std::move(*compoundBefore);
         } else {
-            compoundDelta.restore(document.graphForCommand());
+            compoundDelta.restore(document.graphForCommand(), compoundChanges);
         }
+        document.graphForCommand().revision = compoundGraphRevision;
     }
     compoundBefore.reset();
     compoundDelta = {};
@@ -698,7 +700,7 @@ GraphEditResult GraphCommandDispatcher::apply(
     }
     if (compoundActive && !compoundBefore.has_value()) {
         NodeGraph before = document.graph();
-        compoundDelta.restore(before);
+        compoundDelta.restore(before, compoundChanges);
         compoundBefore.emplace(std::move(before));
     }
     const NodeGraph before = compoundActive ? NodeGraph() : document.graph();
@@ -726,6 +728,8 @@ GraphEditResult GraphCommandDispatcher::applyIncremental(
     if (transientEdit.has_value()) {
         capture(transientEdit->delta, transientEdit->graph);
         GraphEditResult result = command(transientEdit->graph);
+        transientEdit->delta.finishCommand(
+                transientEdit->graph, result.changes, result.succeeded() && result.changed);
         if (result.succeeded() && result.changed) {
             transientEdit->changed = true;
             accumulateChange(transientEdit->changes, result.changes);
@@ -736,6 +740,8 @@ GraphEditResult GraphCommandDispatcher::applyIncremental(
     if (compoundActive) {
         capture(compoundDelta, document.graph());
         GraphEditResult result = command(document.graphForCommand());
+        compoundDelta.finishCommand(
+                document.graph(), result.changes, result.succeeded() && result.changed);
         if (result.succeeded() && result.changed) {
             compoundChanged = true;
             accumulateCompoundChange(result.changes);
@@ -746,6 +752,7 @@ GraphEditResult GraphCommandDispatcher::applyIncremental(
     GraphDeltaBuilder delta;
     capture(delta, document.graph());
     GraphEditResult result = command(document.graphForCommand());
+    delta.finishCommand(document.graph(), result.changes, result.succeeded() && result.changed);
     if (result.succeeded() && result.changed) {
         document.recordDelta(delta.finish(document.graph(), result.changes));
         document.publishChange(result.changes);

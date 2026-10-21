@@ -49,6 +49,8 @@ enum class CycleV2AutomationCommand {
     LoadGuideHeatmap,
     ClearGuideHeatmap,
     Undo,
+    Redo,
+    ApplyNodeEdits,
     SetNodeParameter,
     SetGuideParameter,
     InspectNodeControls,
@@ -70,6 +72,8 @@ enum class CycleV2AutomationCommand {
     Ping,
     Quit
 };
+
+juce::String automationCommandName(CycleV2AutomationCommand command);
 
 std::optional<CycleV2AutomationCommand> automationCommandForName(
         const juce::String& name);

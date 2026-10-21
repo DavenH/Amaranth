@@ -29,10 +29,16 @@ enum class GraphEditCode {
     InvalidControlValue
 };
 
+struct IndexedEdgeState {
+    size_t index {};
+    Edge edge;
+};
+
 struct GraphChangeSet {
     std::vector<String> nodeIds;
-    std::vector<Edge> removedEdges;
-    std::vector<GuideCurveAssignment> removedGuideAssignments;
+    // Recorded in removal order; inverse application restores them in reverse.
+    std::vector<IndexedEdgeState> removedEdges;
+    std::vector<IndexedGuideAssignmentState> removedGuideAssignments;
     bool topologyChanged {};
     bool layoutChanged {};
     bool probesChanged {};
@@ -54,12 +60,29 @@ struct NodeAudioResourceEdit {
     uint64_t expectedModelRevision {};
 };
 
+constexpr size_t maximumNodeAuthoringEdits = 64;
+constexpr size_t maximumNodeAuthoringParameters = 1024;
+
+struct NodeAuthoringEdit {
+    String nodeId;
+    std::vector<NodeParameter> parameters;
+    std::optional<uint64_t> expectedModelRevision;
+    var model;
+};
+
+struct NodeAuthoringEdits {
+    uint64_t expectedDocumentRevision {};
+    std::vector<NodeAuthoringEdit> edits;
+};
+
 struct GraphEditResult {
     GraphEditCode code { GraphEditCode::Connected };
     String nodeId;
     std::vector<GraphValidationIssue> validationIssues;
     GraphChangeSet changes;
     bool changed { true };
+    String message;
+    int editIndex { -1 };
 
     bool succeeded() const { return code == GraphEditCode::Connected; }
 };
