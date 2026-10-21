@@ -4,7 +4,8 @@
 
 In Progress. Roadmap PR 2. Implementation, focused tests and app-render review
 are complete; native AppKit/JUCE input acceptance is pending an unlocked Mac
-session. The branch started from merged master `984d1ff9`.
+session. The branch started from merged master `984d1ff9` and includes the canonical
+fixture repair from merged master `609e1bea`.
 
 ## Product contract
 

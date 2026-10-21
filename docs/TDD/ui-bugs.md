@@ -1,5 +1,19 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved: Information-card text lost style and clipped its last line
+
+On 2026-10-20, the group-card app-render regression showed default black text
+because font/colour were applied to an empty JUCE AttributedString before text
+was appended. A long note also exposed a partial final line and malformed raw
+UTF-8 continuation glyphs in the card and existing console. The card now appends
+text with its 14-pixel font/palette colour, clips at complete TextLayout line
+bounds, and constructs the continuation through JUCE Unicode conversion; the
+console uses the same conversion. Glyph-style/eight-line geometry regressions
+pass in the 21-case annotation group (588 assertions). Final app-render proof is
+`.context/group-information-{normal,long,narrow}.png` in the group-cards worktree.
+Native delivery remains separately pending the locked Mac session; no native
+claim is inferred from these app renders.
+
 ## Resolved: Shipped graph fixtures drifted from canonical serialization
 
 On 2026-10-20, the merged authoring-tools run stopped in "Every shipped graph
