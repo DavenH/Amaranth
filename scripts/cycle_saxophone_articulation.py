@@ -110,6 +110,7 @@ def articulation_plan(graph, voice_duration_seconds):
                 "kind": "trimeshCubeComponent", "cubeIndex": 1, "field": "time"}}
             for assignment in graph["guideAssignments"]):
         raise ValueError("Expected the existing noisy component guide")
+    cube["gains"]["time"] = .8
     for identifier in cube["vertexIds"]:
         vertex = named(time_model["mesh"]["vertices"], identifier)
         vertex["weight"] = 1.0 if vertex["key"] == 1 else 0

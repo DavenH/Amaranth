@@ -93,6 +93,8 @@ class SaxophoneArticulationTest(unittest.TestCase):
             if vertex["id"] in range(8, 16):
                 self.assertEqual(vertex["weight"], 1.0 if vertex["key"] == 1 else 0)
                 vertex["weight"] = original["weight"]
+        self.assertEqual(actual["mesh"]["cubes"][1]["gains"]["time"], .8)
+        actual["mesh"]["cubes"][1]["gains"]["time"] = source["mesh"]["cubes"][1]["gains"]["time"]
         actual["revision"] = source["revision"]
         self.assertEqual(actual, source)
         routed = dict((item["id"], item["value"]) for item in self.edit("modulationOverride1")["parameters"])
