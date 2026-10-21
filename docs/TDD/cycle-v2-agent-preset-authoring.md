@@ -11,7 +11,7 @@ The first wave is merged:
 [audition reports](https://github.com/DavenH/Amaranth/pull/187) are merged, along
 with [factory preset refinements](https://github.com/DavenH/Amaranth/pull/189).
 [Group explanations and cards](https://github.com/DavenH/Amaranth/pull/192) are
-in a draft PR, with native input verification pending an unlocked macOS session.
+implemented, with native input verification and screenshot review complete.
 [Explained exemplars](https://github.com/DavenH/Amaranth/pull/191) are merged with
 controlled audition evidence.
 Remaining slices are proposed.

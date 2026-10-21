@@ -2,10 +2,10 @@
 
 ## Status
 
-In Progress. Roadmap PR 2. Implementation, focused tests and app-render review
-are complete; native AppKit/JUCE input acceptance is pending an unlocked Mac
-session. The branch started from merged master `984d1ff9` and includes the canonical
-fixture repair from merged master `609e1bea`.
+Implemented. Roadmap PR 2. Implementation, focused tests, app-render review and
+native AppKit/JUCE input acceptance are complete. The branch started from merged
+master `984d1ff9` and includes the canonical fixture repair from `609e1bea` and
+explained exemplars from `7280ccb1`.
 
 ## Product contract
 
@@ -196,16 +196,28 @@ construction, correcting the raw UTF-8 literal exposed by the long-note capture.
 reverse overlap order, stable world anchoring across collapse/zoom, movement and
 cached text layout after unrelated node movement.
 
-Native evidence remains outstanding. The exact-PID native harness stopped before
-sending any pointer/key input when its activation guard found front PID 392
-(loginwindow); `ioreg` confirmed `CGSSessionScreenIsLocked=Yes`. Its log is
-`.context/native-group-final.log`. After unlock, run the host integration check once to seed the focused group,
-then rerun the local
-`.context/native-group-explanations.py` via the exact coordinator with
-`--foreground` to verify native multiline draft/Save, undo/redo, two held-drag
-updates/commit, Escape, focused-card versus ordinary-node Delete, same-ID reload
-focus clearing, stale-editor dismissal, collapse and group movement. Do not mark
-this TDD complete from routed in-app gestures alone.
+After the user unlocked macOS, the exact-PID native harness passed twice on its
+owned app (PID 55307), through the canonical coordinator's foreground lease and
+an activation guard before native input. It verified multiline draft/Save,
+undo/redo, two held-drag previews followed by one placement commit, Escape,
+focused-card versus ordinary-node Delete, same-ID reload focus clearing,
+stale-editor dismissal, collapse and group movement/undo. Independent review
+tightened the second pass to assert both preview screen displacements, collapse
+without a card-position jump, and native close/undo retaining the rationale.
+No production fix was required. Each pass began with a fresh successful
+70-command host fixture; evidence is in `.context/group-native-seed-unlocked/`
+and `.context/group-native-seed-complete/` in the implementation worktree.
+
+The local native source is `.context/native-group-explanations.py`; its command
+log and final result are `.context/native-group-commands.jsonl` and
+`.context/native-group-report.json`. The actual OS capture
+`.context/group-information-os-collapsed.png` was inspected with the composited
+grid/cables present. A separate exact-PID window capture of the compact scratch
+layout is `.context/group-information-os-normal.png`; this verifies the card's
+normal-size text, not a production graph layout. Root copies of the native
+report and collapsed screenshot are `.context/group-information-native-report.json`
+and `.context/group-information-native.png`. Only the owned test app was stopped.
+The earlier lock rejection remains recorded in `.context/native-group-final.log`.
 
 ## Size and responsibility review
 
