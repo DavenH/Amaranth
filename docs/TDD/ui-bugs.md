@@ -1,5 +1,18 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved: Cube drags focus the Blue lock and draw its focus ring
+
+On 2026-10-21, native Trimesh cube dragging showed a cyan outline around the
+Blue lock. The cube mouse target did not accept focus, so JUCE climbed to the
+controls parent and chose its first focusable child, the Blue lock. The host
+regression reproduced `trimesh.link.blue` instead of `trimesh.morphSpace`.
+The existing cube target now accepts focus. Native before/after held-drag
+captures confirm that the lock ring disappears while both axes continue moving;
+genuine lock focus and keyboard/link behavior remain covered by focused tests.
+Evidence: `.context/cube-lock-{before,after}/cube-lock-during-drag.png`,
+`.context/cube-lock-{before-tests,tests,after-native}.log`. Native fixed run:
+`189238dc84d0`; five focused cases / 405 assertions pass.
+
 ## P2: Envelope overlay hover can retain the curve's native crosshair
 
 On 2026-10-21, hovering Linear/Logarithmic over a Pitch or Scratch curve showed

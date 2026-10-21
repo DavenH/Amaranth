@@ -909,3 +909,29 @@ Final fixture checks pass: Envelope purpose 32 commands and IR properties
 37-command IR fixture. Reports: `.context/volume-scale-{purpose,ir}-report.json`.
 The first IR run inherited the purpose fixture's preset without an `ir` node;
 replaying with that explicit precondition passes. No product failure was found.
+
+
+### Follow-up: Cube gestures must not focus an unrelated lock
+
+Native reproduction 5dce27092ca8 shows a cyan ring on the Blue lock while the
+pointer drags the cube's Red/Blue face. The cube ControlTarget did not accept
+keyboard focus; JUCE's normal focus acquisition climbed to the parent and
+selected its default focusable child, the spatially first Blue lock. The routed
+host regression fails before the fix with `trimesh.link.blue` instead of
+`trimesh.morphSpace`. Make the existing cube target focusable, like the other
+interactive controls. JUCE retains ownership of focus; existing morph keyboard
+routing and genuine lock focus feedback remain authoritative. No new focus
+manager, hidden styling override or input algorithm. Verify all faces, links,
+keyboard shortcuts and Undo, then compare a native held-drag screenshot.
+
+Completion: CycleV2/tests build with --parallel 10. Five focused cases / 405
+assertions pass, covering cube focus ownership, every face, two updates, held
+coordinates, endpoint behavior, zero live graph/mesh copies or serialization,
+Undo, both families' keyboard shortcuts and explicit lock focus/link toggles.
+The native held-drag replay passes in 189238dc84d0 with both axes changing and
+no lock focus ring. Before/after captures at identical production geometry:
+`.context/cube-lock-{before,after}/cube-lock-during-drag.png`; evidence logs:
+`.context/cube-lock-{before-tests,tests,after-native}.log`. The production fix is
+one focus flag in the existing ControlTarget (758 → 759 lines), using JUCE's
+existing focus lifecycle. Architecture, code-map, style and whitespace checks
+pass; no new source boundary or rendering/gesture algorithm.

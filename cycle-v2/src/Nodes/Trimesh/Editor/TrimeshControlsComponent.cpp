@@ -40,6 +40,7 @@ public:
         if (region.kind == TrimeshExpandedHitRegionKind::MorphSpace) {
             setComponentID("trimesh.morphSpace");
             setTitle("Drag a cube face to move its two morph axes");
+            setWantsKeyboardFocus(true);
         }
         if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
             setComponentID("trimesh.morph." + region.parameterId);

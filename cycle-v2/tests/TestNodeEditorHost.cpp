@@ -5370,6 +5370,10 @@ TEST_CASE("Both mesh editors publish one undoable gesture for each visible cube 
         for (int held = 0; held < 3; ++held) {
             Component owner;
             owner.setSize(1100, 800);
+            if (kind == NodeKind::TrilinearMesh) {
+                owner.addToDesktop(ComponentPeer::windowIsTemporary);
+                owner.setVisible(true);
+            }
             NodeGraph graph;
             graph.addNode(GraphNodeFactory().createNode(kind, "subject", {}));
             const char* ids[] { "yellow", "red", "blue" };
@@ -5405,6 +5409,12 @@ TEST_CASE("Both mesh editors publish one undoable gesture for each visible cube 
             auto* input = kind == NodeKind::TrilinearMesh
                     ? editor->getComponentAt(source.roundToInt()) : editor;
             REQUIRE(input != nullptr);
+            if (kind == NodeKind::TrilinearMesh) {
+                input->grabKeyboardFocus();
+                auto* focused = Component::getCurrentlyFocusedComponent();
+                REQUIRE(focused != nullptr);
+                REQUIRE(focused->getComponentID() == input->getComponentID());
+            }
             const auto inputSource = input->getLocalPoint(editor, source);
             input->mouseDown(curvePanelMouseEvent(*input, inputSource, ModifierKeys::leftButtonModifier, inputSource, false));
             REQUIRE(parameters() == before);
