@@ -213,6 +213,8 @@ TEST_CASE("Attached Mod Triple parameter edits refresh implicit voice modulation
             graph,
             { "voice", "context", false },
             { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
@@ -255,6 +257,10 @@ TEST_CASE("Preview wheel morph follows its compiled source mapping",
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "unmappedMesh", {}));
     graph.addNode(factory.createNode(NodeKind::ModulationSource, "inverse", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "unmappedMesh", "dimensionCount", "Dimensions", "3").succeeded());
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "morph", "blueSource", "Blue Source", "inverseVelocity").succeeded());
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
@@ -327,6 +333,8 @@ TEST_CASE("Mapped wheel movement cost ignores unrelated nodes",
         GraphNodeFactory factory;
         NodeGraph graph;
         graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
         for (int index = 0; index < unrelatedNodeCount; ++index) {
             graph.addNode(factory.createNode(
                     NodeKind::Delay, "unrelated" + String(index), {}));
@@ -432,6 +440,8 @@ TEST_CASE("Preview mod wheel refreshes modulation source without publishing audi
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
     graph.addEdge({
             "mod", "value", "mesh", "blue",
             PortDomain::ControlSignal, ConnectionKind::Signal
@@ -501,6 +511,8 @@ TEST_CASE("Mapped CC73 refreshes modulation previews and its bound morph axis",
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
     graph.addEdge({ "cc73", "value", "mesh", "red",
             PortDomain::ControlSignal, ConnectionKind::Signal });
     graph.addEdge({ "voice", "context", "mesh", "context",
@@ -594,6 +606,8 @@ TEST_CASE("Mapped CC envelope morph survives consecutive transient updates",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "env", "dimensionCount", "Dimensions", "2").succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     const std::vector<PreviewMorphTarget> targets {

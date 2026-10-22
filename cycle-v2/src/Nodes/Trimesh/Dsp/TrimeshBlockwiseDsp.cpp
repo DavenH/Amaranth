@@ -268,6 +268,9 @@ Rasterization::RasterizationRequest TrimeshBlockwiseDsp::createRequest(
     Rasterization::RasterizationRequest request;
     const bool spectral = domain == PortDomain::SpectralMagnitudeSignal
             || domain == PortDomain::SpectralPhaseSignal;
+    request.dimensionCount = dimensionCount;
+    request.twoDimensionalPlane = MorphDimensions::Plane::YellowRed;
+    request.preparedSlice = staticSlice;
     request.cyclic = cyclic;
     request.xMinimum = cyclic || spectral ? -0.05f : 0.f;
     request.xMaximum = cyclic || spectral ? 1.05f : 1.f;

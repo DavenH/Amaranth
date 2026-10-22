@@ -47,7 +47,7 @@ not add a fourth Trimesh modulation axis.
   invalidation. Do not serialize or clone a graph to implement an edit.
 - `GuideGraphEditor` and `MeshGuideAttachmentTarget` retain creation and rail
   attachment policy. The socket translates addresses rather than copying it.
-- `App/GuideCurveAutomation` decodes JSON and exports current data; a narrow
+- `App/Automation/GuideCurveAutomation` decodes JSON and exports current data; a narrow
   canvas entry settles preview workers and refreshes after changed commands.
   Workspace and automation orchestration only forward requests.
 

@@ -496,9 +496,11 @@ overall gain and a loss of loud D3 character; no per-note spectra were added.
 
 ## M15 — Send live controllers through the interactive MIDI command
 
-Status: Confirmed automation gap. Offline capture and embedded patterns accept
-controllers, and the native keyboard exposes the mod wheel; `sendMidi` accepts
-only noteOn, noteOff and allNotesOff.
+Status: Resolved by [direct live authoring](cycle-v2-live-shape-authoring.md).
+`sendMidi` accepts channel-addressed controller events; `setPreviewController`
+updates the canonical audition channel and previews with the keyboard hidden.
+The inspector exposes all 128 ephemeral values without changing preset bytes,
+undo history or the compiled audio plan. The original limitation follows.
 
 Musical task: hold a native note while an agent moves breath, vibrato depth/rate
 or reed instability without restarting a capture or editing a pattern. The
@@ -531,6 +533,22 @@ Owner/direction: shared AutoModeller/import preparation. Establish which fitter
 inputs or random state vary; offer a deterministic authoring recipe or retain
 the canonical fitted result when replaying an experiment. Do not change mature
 fitting behavior or add a parallel modeller merely to stabilize this preset.
+
+## M17 — Refine current mesh and Envelope geometry through a live socket
+
+Status: Resolved by [direct live authoring](cycle-v2-live-shape-authoring.md).
+Trimesh vertex values, cube curvature, Guide strengths, Envelope values/markers
+and pole insertion/removal now have revision-checked semantic commands. Guide
+point edits retain stable IDs. These use the existing domain command owners and
+undo; refinement no longer requires generating and reopening a replacement
+preset. Whole-model import remains a compatibility operation.
+
+Integration with the newer Envelope dimensionality requires caching all three
+morph coordinates during live adoption and following the effective Envelope
+profile when selecting controller preview roots. Focused regressions cover
+Yellow adoption and distinct Envelope-only controller mappings. Continue
+modelling through the persistent socket and record the next concrete missing
+operation rather than reverting to generator/reload authoring.
 
 ## Related defects, tracked separately
 

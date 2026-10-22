@@ -1,0 +1,178 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/with-spies.cyclegraph"
+    },
+    {
+      "command": "addNode",
+      "kind": "modTriple",
+      "x": 330,
+      "y": 150
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "modTriple",
+      "parameterId": "yellowSource",
+      "label": "yellowSource",
+      "value": "constant"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "modTriple",
+      "parameterId": "envelopeYellowSource",
+      "label": "envelopeYellowSource",
+      "value": "midiCC"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "modTriple",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.yellow.constantVisible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.yellow.constantControl.compact",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.envelope.yellow.controllerVisible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.envelope.yellow.controllerControl.compact",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.yellow.controllerVisible",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.envelope.yellow.constantVisible",
+      "equals": false
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/inspector-usability-modulation-fixture.png"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "modTriple",
+      "parameterId": "yellowSource",
+      "label": "yellowSource",
+      "value": "midiCC"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "modTriple",
+      "parameterId": "envelopeYellowSource",
+      "label": "envelopeYellowSource",
+      "value": "constant"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.yellow.controllerVisible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.envelope.yellow.constantVisible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.yellow.constantVisible",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.envelope.yellow.controllerVisible",
+      "equals": false
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "modTriple",
+      "parameterId": "yellowController",
+      "label": "yellowController",
+      "value": "74"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.yellow.controller",
+      "equals": 74
+    },
+    {
+      "command": "undo"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.yellow.controller",
+      "equals": 1
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "modTriple",
+      "parameterId": "envelopeYellowConstant",
+      "label": "envelopeYellowConstant",
+      "value": "0.7"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.envelope.yellow.constant",
+      "equals": 0.7
+    },
+    {
+      "command": "undo"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.envelope.yellow.constant",
+      "equals": 0.5
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "modTriple",
+      "parameterId": "yellowSource",
+      "label": "yellowSource",
+      "value": "unmapped"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "modTriple",
+      "parameterId": "envelopeYellowSource",
+      "label": "envelopeYellowSource",
+      "value": "unmapped"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.yellow.constantVisible",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.yellow.controllerVisible",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.envelope.yellow.constantVisible",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.modulationTriple.envelope.yellow.controllerVisible",
+      "equals": false
+    }
+  ],
+  "quit": true
+}

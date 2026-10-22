@@ -16,7 +16,7 @@ const ModulationSourceConfiguration* sourceFor(
         const auto triple = std::dynamic_pointer_cast<
                 const ModulationTripleConfiguration>(buffer.defaultModulation);
         if (triple != nullptr && isPositiveAndBelow(slot, (int) triple->sources.size())) {
-            return &triple->sources[(size_t) slot];
+            return &triple->source((size_t) slot, buffer.envelopeModulationProfile);
         }
     }
     if (!isPositiveAndBelow(input.sourceStepIndex, (int) plan.steps.size())) {

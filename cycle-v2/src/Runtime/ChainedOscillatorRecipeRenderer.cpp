@@ -241,7 +241,8 @@ void ChainedOscillatorRecipeRenderer::renderCycle(
                         request.blockSampleOffset,
                         elapsedSamples,
                         request.processContext->timing.sampleRate,
-                        operation.configuration->scratchSourceEnabled);
+                        operation.configuration->scratchSourceEnabled,
+                        operation.configuration->dimensionCount);
                 operation.lastMorphFrontier = std::max(
                         operation.lastMorphFrontier,
                         frontier);

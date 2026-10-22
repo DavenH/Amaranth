@@ -74,8 +74,7 @@ private:
     int attackSamplePosition {};
     int releaseSamplePosition {};
     float level { 1.f };
-    float preparedRed {};
-    float preparedBlue {};
+    MorphPosition preparedMorph;
     uint64_t preparedGeneration {};
     uint64_t adoptedRevision {};
     uint64_t pendingRevision {};

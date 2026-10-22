@@ -150,6 +150,10 @@ public:
     void setControllerGestureStartedCallback(std::function<void(int)> callback);
     void setControllerGestureEndedCallback(std::function<void(int)> callback);
     void setModWheelValue(int value);
+    void reflectControllerValue(int controller, int value);
+    void setControllerValueProvider(std::function<int(int)> provider) {
+        controllerValueProvider = std::move(provider);
+    }
     void setPlaybackDurationSeconds(float seconds);
     bool startPlayback(double nowMilliseconds);
     void togglePlayback();
@@ -236,6 +240,7 @@ private:
     std::function<void()> flushRecordingInput;
 
     std::function<void(int)> modWheelValueChanged;
+    std::function<int(int)> controllerValueProvider;
     std::function<void()> modWheelGestureStarted;
     std::function<void()> modWheelGestureEnded;
     std::function<void(int, int)> controllerValueChanged;

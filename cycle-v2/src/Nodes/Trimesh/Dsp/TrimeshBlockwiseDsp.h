@@ -2,6 +2,7 @@
 
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
 #include <Obj/MorphPosition.h>
+#include <Curve/Rasterization/PreparedMeshSlice.h>
 
 #include <vector>
 #include <memory>
@@ -23,6 +24,8 @@ struct TrimeshConfiguration final : public INodeDspConfiguration {
     std::shared_ptr<const TrimeshMeshDeltaOverlay> deltaOverlay;
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis { Vertex::Time };
+    int dimensionCount { 3 };
+    std::shared_ptr<const Rasterization::PreparedMeshSlice> staticSlice;
     float gain { 1.f };
     float range { 0.5f };
     bool phaseVelocity {};
@@ -42,6 +45,10 @@ public:
             bool shouldWrap,
             PortDomain domain);
     void prepareSampling(size_t maximumFrameCount);
+    void setDimensionality(int count, const Rasterization::PreparedMeshSlice* prepared = nullptr) {
+        dimensionCount = count;
+        staticSlice = prepared;
+    }
     void setMesh(Mesh* meshToRender);
     void setDeltaOverlay(std::shared_ptr<const TrimeshMeshDeltaOverlay> overlay);
     void setMorphPosition(const MorphPosition& morphPosition);
@@ -99,6 +106,8 @@ private:
     Buffer<float> frequencyPositionsFor(int size);
     Buffer<float> outputBuffer(SignalPayload& output) const;
 
+    int dimensionCount { 3 };
+    const Rasterization::PreparedMeshSlice* staticSlice {};
     bool cyclic { true };
     bool bipolar {};
     int frequencyMidiNote { 48 };

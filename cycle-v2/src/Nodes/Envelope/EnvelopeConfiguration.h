@@ -18,8 +18,9 @@ struct EnvelopeConfiguration final : public INodeDspConfiguration {
     Rasterization::RealtimeEnvelopePlan realtimePlan;
     Rasterization::RealtimeEnvelopePlan cycleRealtimePlan;
     float level { 1.f };
-    float redMorph { 0.5f };
-    float blueMorph { 0.5f };
+    std::shared_ptr<const Rasterization::PreparedMeshSlice> staticSlice;
+    MorphPosition morph { 0.f, 0.5f, 0.5f };
+    int dimensionCount { 3 };
     float neutralValue {};
     bool logarithmic {};
     bool enabled { true };

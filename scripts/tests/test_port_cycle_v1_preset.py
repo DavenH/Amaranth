@@ -78,6 +78,20 @@ def supported_source():
     return source
 
 
+def authored_envelope_mesh():
+    vertices = []
+    cubes = []
+    for phase in (0.1, 0.9):
+        first = len(vertices)
+        for corner in range(8):
+            vertices.append({"id": len(vertices), "time": float(bool(corner & 4)),
+                             "key": float(bool(corner & 2)), "mod": float(bool(corner & 1)),
+                             "phase": phase, "amp": 0.5, "weight": 0.5})
+        cubes.append({"vertexIds": list(range(first, first + 8))})
+    return {"mainMesh": {"version": 2, "vertices": vertices, "cubes": cubes},
+            "loopIndices": [], "sustainIndices": [1]}
+
+
 def convertible_source():
     def mesh_layer(active=True, mode=0):
         return {
@@ -250,11 +264,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         source = convertible_source()
         volume = {
             "properties": {"active": True, "dynamic": False},
-            "mesh": {
-                "mainMesh": {"vertices": [], "cubes": []},
-                "loopIndices": [],
-                "sustainIndices": [],
-            },
+            "mesh": authored_envelope_mesh(),
         }
         source["preset"]["meshLibrary"]["groups"][0]["layers"] = [volume]
         source["preset"]["modMatrix"]["mappings"] = \
@@ -264,6 +274,9 @@ class PortCycleV1PresetTest(unittest.TestCase):
         converted = port_cycle_v1_preset.convert(source)
         nodes = {entry["id"]: entry for entry in converted["nodes"]}
 
+        self.assertEqual(converted["formatVersion"], 9)
+        self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["dimensionCount"], 2)
+        self.assertEqual(nodes["morph"]["parameters"]["envelopeYellowSource"], "unmapped")
         self.assertNotIn("legacyEnvelopeMorph", nodes)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["red"], 0.5)
         self.assertEqual(nodes["volumeEnvelope1"]["parameters"]["blue"], 0.75)
@@ -357,9 +370,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
         groups[6]["layers"][0]["mesh"]["vertices"] = [1]
         groups[2]["layers"] = [{
             "properties": {"active": True, "logarithmic": False},
-            "mesh": {
-                "mainMesh": {"vertices": [], "cubes": [{}, {}]},
-            },
+            "mesh": authored_envelope_mesh(),
         }]
         source["preset"]["effects"]["Delay"]["enabled"] = True
         source["preset"]["modMatrix"]["mappings"] = \
@@ -404,9 +415,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
                 layer["mesh"]["vertices"] = [1]
         groups[2]["layers"] = [{
             "properties": {"active": True, "logarithmic": False},
-            "mesh": {
-                "mainMesh": {"vertices": [], "cubes": [{}, {}]},
-            },
+            "mesh": authored_envelope_mesh(),
         }]
         source["preset"]["modMatrix"]["mappings"] = \
             port_cycle_v1_preset.default_modulation_mappings_for_preset(
@@ -458,12 +467,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
     def test_voice_context_attachments_form_an_ordered_left_column(self):
         source = convertible_source()
-        envelope_mesh = {
-            "mainMesh": {
-                "vertices": [],
-                "cubes": [{}, {}],
-            },
-        }
+        envelope_mesh = authored_envelope_mesh()
         groups = source["preset"]["meshLibrary"]["groups"]
         groups[1]["layers"] = [{
             "properties": {"active": True, "logarithmic": False},
@@ -834,12 +838,7 @@ class PortCycleV1PresetTest(unittest.TestCase):
 
     def test_scratch_channels_attach_their_authored_envelopes(self):
         source = convertible_source()
-        scratch_mesh = {
-            "mainMesh": {
-                "vertices": [],
-                "cubes": [{}, {}],
-            },
-        }
+        scratch_mesh = authored_envelope_mesh()
         source["preset"]["meshLibrary"]["groups"][2]["layers"] = [
             {
                 "properties": {"active": True, "logarithmic": False},

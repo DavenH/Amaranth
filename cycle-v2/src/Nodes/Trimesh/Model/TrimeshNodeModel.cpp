@@ -4,6 +4,8 @@
 #include "Nodes/Trimesh/Model/TrimeshVertexEditCore.h"
 
 #include "Graph/NodeParameterMap.h"
+#include "Graph/MeshDimensionality.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 
 #include <Curve/Mesh/CollisionDetector.h>
 #include <Curve/Mesh/Mesh.h>
@@ -56,6 +58,7 @@ TrimeshNodeModel::TrimeshNodeModel(TrimeshNodeModel&& other) noexcept :
         ownedMesh            (std::move(other.ownedMesh))
     ,   morph                (other.morph)
     ,   primaryViewAxis      (other.primaryViewAxis)
+    ,   dimensionCount       (other.dimensionCount)
     ,   selectedVertexIndex  (other.selectedVertexIndex)
     ,   revision             (other.revision)
     ,   appliedModelRevision (other.appliedModelRevision)
@@ -69,6 +72,7 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
         ownedMesh = std::move(other.ownedMesh);
         morph = other.morph;
         primaryViewAxis = other.primaryViewAxis;
+        dimensionCount = other.dimensionCount;
         selectedVertexIndex = other.selectedVertexIndex;
         revision = other.revision;
         appliedModelRevision = other.appliedModelRevision;
@@ -82,21 +86,30 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
 
 bool TrimeshNodeModel::syncFromNode(
         const Node& node,
-        TrimeshSelectionSyncPolicy selectionPolicy) {
+        TrimeshSelectionSyncPolicy selectionPolicy,
+        std::optional<MorphPosition> previewMorph) {
     const NodeParameterMap parameters(node);
-    const MorphPosition nextMorph {
+    const int nextDimensionCount = parameters.intValue("dimensionCount", 0);
+    if (nextDimensionCount != dimensionCount) {
+        dimensionCount = nextDimensionCount;
+        bumpMeshContentRevision();
+    }
+    const auto dimensions = MorphDimensions::trimesh(dimensionCount);
+    const MorphPosition authoredMorph {
             parameters.floatValue("yellow", 0.5f),
             parameters.floatValue("red", 0.5f),
             parameters.floatValue("blue", 0.5f)
     };
+    const MorphPosition nextMorph = previewMorph.has_value()
+            ? dimensions.constrain(*previewMorph, authoredMorph) : authoredMorph;
     const int nextPrimaryAxis = primaryAxisFromParameter(
             parameters.stringValue("primaryAxis", "yellow"));
     const int nextSelectedVertexIndex = (int) node.editorState.getProperty(
             "selectedVertexId", -1);
 
-    const bool yellowChanged = nextMorph.time.getTargetValue() != morph.time.getTargetValue();
-    const bool redChanged = nextMorph.red.getTargetValue() != morph.red.getTargetValue();
-    const bool blueChanged = nextMorph.blue.getTargetValue() != morph.blue.getTargetValue();
+    const bool yellowChanged = dimensions.active(Vertex::Time) && nextMorph.time.getTargetValue() != morph.time.getTargetValue();
+    const bool redChanged = dimensions.active(Vertex::Red) && nextMorph.red.getTargetValue() != morph.red.getTargetValue();
+    const bool blueChanged = dimensions.active(Vertex::Blue) && nextMorph.blue.getTargetValue() != morph.blue.getTargetValue();
     if (yellowChanged || redChanged || blueChanged) {
         morph = nextMorph;
         const bool affectsSurface = (nextPrimaryAxis != Vertex::Time && yellowChanged)
@@ -122,6 +135,9 @@ bool TrimeshNodeModel::syncFromNode(
                     || typedModel->revision() != appliedModelRevision)) {
         const bool meshReplaced = !mesh().equals(typedModel->mesh());
         if (meshReplaced) {
+            InteractionComplexityDiagnostics::recordMeshCopy(
+                    (size_t) typedModel->mesh().getNumVerts(),
+                    (size_t) typedModel->mesh().getNumCubes());
             mesh().deepCopy(&typedModel->mesh());
             bumpMeshContentRevision();
         }
@@ -167,7 +183,7 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getVertexParametersForInde
     };
 
     return {
-            parameter("vertex.time", "time", Vertex::Time),
+            parameter("vertex.time", "yellow", Vertex::Time),
             parameter("vertex.red", "red", Vertex::Red),
             parameter("vertex.blue", "blue", Vertex::Blue),
             parameter("vertex.phase", "phase", Vertex::Phase),
@@ -190,7 +206,7 @@ std::vector<TrimeshVertexParameter> TrimeshNodeModel::getSelectedVertexParameter
     }
 
     return {
-            { "vertex.time", "time", 0.f, 0.f, 1.f, 0.5f, false },
+            { "vertex.time", "yellow", 0.f, 0.f, 1.f, 0.5f, false },
             { "vertex.red", "red", 0.f, 0.f, 1.f, 0.5f, false },
             { "vertex.blue", "blue", 0.f, 0.f, 1.f, 0.5f, false },
             { "vertex.phase", "phase", 0.f, 0.f, 1.f, 0.5f, false },
@@ -440,7 +456,7 @@ bool TrimeshNodeModel::setVertexParameter(
         }
     }
     const auto delta = TrimeshVertexEditCore::prepareVertexValue(
-            mesh(), vertexIndex, parameterId, value);
+            mesh(), vertexIndex, parameterId, value, dimensionCount);
     if (!delta.has_value() || !TrimeshVertexEditCore::apply(mesh(), *delta)) {
         return false;
     }
@@ -516,6 +532,10 @@ void TrimeshNodeModel::clearMesh() {
         ownedMesh->destroy();
         ownedMesh = nullptr;
     }
+}
+
+std::unique_ptr<Mesh> TrimeshNodeModel::releaseMesh() {
+    return std::move(ownedMesh);
 }
 
 }

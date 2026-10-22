@@ -209,12 +209,13 @@ void CurveExpandedEditorComponent::mouseUp(const MouseEvent& event) {
 }
 
 Rectangle<float> CurveExpandedEditorComponent::panelBoundsForAutomation() const {
-    return editorPanelBounds();
+    return widget.panelContentBounds(editorPanelBounds().toNearestInt().toFloat());
 }
 
 var CurveExpandedEditorComponent::automationState() const {
     auto* root = new DynamicObject();
-    root->setProperty("panelBounds", rectangleToVar(editorPanelBounds()));
+    root->setProperty("panelBounds", rectangleToVar(panelBoundsForAutomation()));
+    root->setProperty("panelFrameBounds", rectangleToVar(editorPanelBounds()));
     root->setProperty("controlBounds", rectangleToVar(editorControlBounds()));
     root->setProperty(
             "headerActionBounds",
@@ -298,6 +299,7 @@ void CurveExpandedEditorComponent::beginTransaction() {
         transactionBaseRevision = editorModel != nullptr ? editorModel->revision() : 0;
         delegate->beginCurveTransaction();
         transactionActive = true;
+        widget.setEditGestureActive(true);
         transientStateChanged = false;
     }
 }
@@ -311,12 +313,14 @@ void CurveExpandedEditorComponent::commitTransaction() {
         if (transientStateChanged && !publishModelState()) {
             delegate->commitCurveTransaction();
             transactionActive = false;
+            widget.setEditGestureActive(false);
             transientStateChanged = false;
             return;
         }
         delegate->commitCurveTransaction();
     }
     transactionActive = false;
+    widget.setEditGestureActive(false);
     transientStateChanged = false;
 }
 
@@ -326,6 +330,7 @@ bool CurveExpandedEditorComponent::cancelTransaction() {
         return false;
     }
     transactionActive = false;
+    widget.setEditGestureActive(false);
     transientStateChanged = false;
     widget.restoreFromNode(node);
     syncInteractionControls();

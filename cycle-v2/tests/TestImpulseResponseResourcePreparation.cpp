@@ -1,7 +1,7 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "App/ImpulseResponseImportAutomation.h"
+#include "App/Automation/ImpulseResponseImportAutomation.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphDocument.h"

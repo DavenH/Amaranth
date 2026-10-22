@@ -30,9 +30,7 @@ std::vector<std::vector<float>> EnvelopePitchPreview::renderLanes(
             ? configuration->cycleRealtimePlan
             : configuration->realtimePlan;
     if (!materializer.prepare(plan)
-            || !materializer.materialize(
-                    configuration->redMorph,
-                    configuration->blueMorph)) {
+            || !materializer.materialize(configuration->morph)) {
         return {};
     }
 

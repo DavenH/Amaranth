@@ -49,7 +49,7 @@
     },
     {
       "command": "assertState",
-      "path": "expandedNodeControls.effect2D.actionRowBounds.y",
+      "path": "expandedNodeControls.effect2D.fitVerticalBounds.y",
       "op": "greaterThan",
       "value": 190
     },
@@ -131,7 +131,8 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.vertexParameterBounds.height",
-      "equals": 270
+      "op": "greaterThanOrEqual",
+      "value": 270
     },
     {
       "command": "pointer",

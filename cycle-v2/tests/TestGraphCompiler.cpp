@@ -409,6 +409,8 @@ TEST_CASE("Voice Context defaults resolve per axis with explicit override preced
     graph.addNode(std::move(triple));
     graph.addNode(factory.createNode(NodeKind::ModulationSource, "explicitRed", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
     REQUIRE(GraphEditor().connect(
             graph, { "triple", "modulation", false }, { "voice", "modulation", true }).succeeded());
     REQUIRE(GraphEditor().connect(
@@ -525,6 +527,10 @@ TEST_CASE("Voice Context defaults reach volume and scratch Envelope sidechains",
             { "scratch", "env", false },
             { "mesh", "scratch", true }).succeeded());
 
+    for (const String id : { "mesh", "volume", "scratch" }) {
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, id, "dimensionCount", "Dimensions", id == "mesh" ? "3" : "2").succeeded());
+    }
     const GraphCompileResult compiled = GraphCompiler().compile(graph);
 
     REQUIRE(compiled.succeeded());

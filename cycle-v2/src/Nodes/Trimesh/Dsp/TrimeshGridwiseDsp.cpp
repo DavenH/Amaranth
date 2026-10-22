@@ -135,7 +135,9 @@ bool TrimeshGridwiseDsp::renderColumnsInto(
                         destination.section((int) index * rowCount, rowCount),
                         domain,
                         noiseSeedOffsetForColumn(index, domain));
-                ++renderCounters.sliceCount;
+                if (!hasStaticSlice) {
+            ++renderCounters.sliceCount;
+        }
                 ++renderCounters.bakeCount;
             });
 
@@ -177,7 +179,9 @@ bool TrimeshGridwiseDsp::renderPitchColumnsInto(
                         destination.section((int) index * rowCount, rowCount),
                         domain,
                         noiseSeedOffsetForColumn(index, domain));
-                ++renderCounters.sliceCount;
+                if (!hasStaticSlice) {
+            ++renderCounters.sliceCount;
+        }
                 ++renderCounters.bakeCount;
             });
 
@@ -205,7 +209,9 @@ bool TrimeshGridwiseDsp::renderMorphColumnsInto(
                 destination.section((int) index * rowCount, rowCount),
                 domain,
                 noiseSeedOffsetForColumn(index, domain));
-        ++renderCounters.sliceCount;
+        if (!hasStaticSlice) {
+            ++renderCounters.sliceCount;
+        }
         ++renderCounters.bakeCount;
     }
     return true;

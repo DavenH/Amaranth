@@ -1,0 +1,59 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/stengah.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "magnitudeLayer1",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:magnitudeLayer1.meshDimensions.static",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.surfaceColumnCount",
+      "equals": 1
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.panelSampleCount",
+      "op": "greaterThan",
+      "value": 1
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/shared-mesh-static-partials.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:magnitudeLayer1.meshDimensions.three",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.surfaceColumnCount",
+      "op": "greaterThan",
+      "value": 1
+    },
+    {
+      "command": "undo"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.surfaceColumnCount",
+      "equals": 1
+    }
+  ],
+  "quit": true
+}

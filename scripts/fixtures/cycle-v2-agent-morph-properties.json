@@ -1,0 +1,449 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/with-spies.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveMesh",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:waveMesh.meshDimensions.three",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
+      "equals": "guide.time"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.guideOnly",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.1.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.2.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.5.id",
+      "equals": "vertex.curve"
+    },
+    {
+      "command": "requestCanvasOpenGLFrame",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-properties-3.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:waveMesh.meshDimensions.two",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
+      "equals": "guide.time"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.guideOnly",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.1.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.2.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.5.id",
+      "equals": "vertex.curve"
+    },
+    {
+      "command": "requestCanvasOpenGLFrame",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-properties-2.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:waveMesh.meshDimensions.one",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
+      "equals": "guide.time"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.guideOnly",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.1.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.2.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.5.id",
+      "equals": "vertex.curve"
+    },
+    {
+      "command": "requestCanvasOpenGLFrame",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-properties-1.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:waveMesh.meshDimensions.static",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.id",
+      "equals": "guide.time"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.6.guideOnly",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.0.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.1.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.2.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.trimesh.selectedVertexParameters.5.id",
+      "equals": "vertex.curve"
+    },
+    {
+      "command": "requestCanvasOpenGLFrame",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-properties-0.png"
+    },
+    {
+      "command": "resizeWindow",
+      "width": 1100,
+      "height": 800,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-properties-static-compact.png"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "env",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.meshDimensions.three",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
+      "equals": "guide.time"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.guideOnly",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.1.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.2.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.5.id",
+      "equals": "vertex.curve"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-properties-envelope-3.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.meshDimensions.two",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
+      "equals": "guide.time"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.guideOnly",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.1.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.2.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.5.id",
+      "equals": "vertex.curve"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-properties-envelope-2.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.meshDimensions.one",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
+      "equals": "guide.time"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.guideOnly",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.1.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.2.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.5.id",
+      "equals": "vertex.curve"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-properties-envelope-1.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.meshDimensions.static",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.id",
+      "equals": "guide.time"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.enabled",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.6.guideOnly",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.0.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.1.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.2.enabled",
+      "equals": false
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.selectedVertexParameters.5.id",
+      "equals": "vertex.curve"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-properties-envelope-0.png"
+    }
+  ],
+  "quit": true
+}

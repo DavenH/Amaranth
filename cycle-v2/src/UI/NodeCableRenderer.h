@@ -12,6 +12,7 @@ struct NodeCableStyle {
     bool selected {};
     bool spliceTarget {};
     bool modulationBundle {};
+    bool inactive {};
 };
 
 struct PendingNodeConnection {
@@ -41,7 +42,8 @@ public:
             Point<float> centre,
             float diameter,
             bool output,
-            bool yellowEnabled = true);
+            bool yellowEnabled = true,
+            int activeMask = 7);
 };
 
 }

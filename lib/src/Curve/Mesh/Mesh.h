@@ -47,6 +47,9 @@ public:
     void addCube(VertCube* cube) { cubes.insert(cubes.end(), cube); }
     void addVertex(Vertex* vert) { verts.insert(verts.end(), vert); }
 
+    // Detach without deleting: interactive undo may retain the removed objects.
+    bool detachCube(VertCube* cube, vector<Vertex*>& detachedVertices);
+
     bool removeCube(VertCube* cube) {
         return removeCube(std::find(cubes.begin(), cubes.end(), cube));
     }

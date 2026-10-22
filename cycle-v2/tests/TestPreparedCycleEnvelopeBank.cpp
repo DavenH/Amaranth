@@ -81,7 +81,8 @@ TEST_CASE("Pitch bank reconciles live generations without changing configuration
     mesh.sustainCubes.insert(mesh.getCubes()[1]);
     REQUIRE(model.synchronizeFromMesh(nullptr));
     const auto configuration = EnvelopeSignalProcessor::buildConfiguration(
-            { { "purpose", "Purpose", "pitch" }, { "red", "Red", "0" } },
+            { { "purpose", "Purpose", "pitch" }, { "red", "Red", "0" },
+                    { "dimensionCount", "Dimensions", "2" } },
             CurveNodeModelState::copyOf(model, 0.f, 0.5f, model.revision()));
     REQUIRE(configuration != nullptr);
     EnvelopeSignalProcessor processor;
@@ -184,7 +185,7 @@ TEST_CASE("Pitch Envelope Guide phase is distinct per Unison lane and stable per
     EnvRasterizer legacy(
             configuration->guideCurveProvider.get(), "BrassPitchComparison");
     legacy.setMesh(configuration->mesh.get());
-    legacy.setMorphPosition({ 0.f, configuration->redMorph, configuration->blueMorph });
+    legacy.setMorphPosition(configuration->morph);
     legacy.setLowresCurves(configuration->lowResolution);
     legacy.setCalcDepthDimensions(false);
     legacy.setWantOneSamplePerCycle(true);

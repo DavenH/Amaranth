@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "Graph/NodeParameterMap.h"
+#include "UI/Editors/MeshDimensionOptions.h"
 #include "Nodes/Trimesh/Model/TrimeshMorphValue.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EditorChromeLayout.h"
@@ -55,6 +56,7 @@ std::vector<PropertySegmentOption> phaseModeOptions() {
 TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& targetWidget) :
         widget      (targetWidget)
     ,   controls    (targetWidget)
+    ,   dimensionSelector(meshDimensionOptions())
     ,   signalTypeSelector(signalTypeOptions())
     ,   polaritySelector(polarityOptions())
     ,   phaseModeSelector(phaseModeOptions()) {
@@ -62,6 +64,18 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
     setName("TrimeshExpandedEditor");
     setInterceptsMouseClicks(true, true);
     addAndMakeVisible(controls);
+    dimensionSelector.setComponentID("trimeshEditor.dimensions");
+    dimensionSelector.onChange = [this](const String& count) {
+        if (delegate != nullptr) {
+            delegate->setTrimeshDimensionCount(count.getIntValue());
+        }
+    };
+    dimensionSelector.setHoverMessageProvider([this](const String& target) {
+        return meshDimensionTooltip(NodeParameterMap(node).intValue("dimensionCount", 0), target.getIntValue());
+    });
+    addAndMakeVisible(dimensionSelector);
+    stylePropertyLabel(dimensionLabel, "Curve morphing");
+    addAndMakeVisible(dimensionLabel);
     enabled.setComponentID("trimeshEditor.enabled");
     enabled.onClick = [this] {
         if (delegate != nullptr) {
@@ -117,8 +131,13 @@ void TrimeshExpandedEditorComponent::setDelegate(TrimeshExpandedEditorDelegate* 
     controls.setDelegate(this);
 }
 
+Rectangle<float> TrimeshExpandedEditorComponent::morphDiagramBounds() const {
+    return widget.morphDiagramBounds(contentBounds());
+}
+
 void TrimeshExpandedEditorComponent::setNode(const Node& nextNode) {
     node = nextNode;
+    dimensionSelector.setSelectedValue(NodeParameterMap(node).stringValue("dimensionCount", "0"));
     enabled.setToggleState(
             NodeParameterMap(node).boolValue("enabled", true),
             dontSendNotification);
@@ -184,8 +203,8 @@ String TrimeshExpandedEditorComponent::outputScaleParameterId() const {
 void TrimeshExpandedEditorComponent::paint(Graphics& g) {
     Rectangle<float> panel = getLocalBounds().toFloat();
     const Rectangle<float> content = contentBounds();
-    const Rectangle<int> gridHole = TrimeshWidget::expandedGridPanelContentBounds(content).toNearestInt();
-    const Rectangle<int> waveHole = TrimeshWidget::expandedWavePanelContentBounds(content).toNearestInt();
+    const Rectangle<int> gridHole = TrimeshWidget::expandedGridPanelContentBounds(content, NodeParameterMap(node).intValue("dimensionCount", 0)).toNearestInt();
+    const Rectangle<int> waveHole = TrimeshWidget::expandedWavePanelContentBounds(content, NodeParameterMap(node).intValue("dimensionCount", 0)).toNearestInt();
 
     g.saveState();
     g.excludeClipRegion(gridHole);
@@ -213,7 +232,7 @@ void TrimeshExpandedEditorComponent::paint(Graphics& g) {
             : phaseModeLabel.isVisible()
                     ? phaseModeLabel.getX()
                     : signalTypeLabel.getX();
-    titleBounds.setRight((float) controlsLeft - kControlGap);
+    titleBounds.setRight((float) dimensionLabel.getX() - kControlGap);
     g.drawText(labelForNodeKind(node.kind), titleBounds, Justification::centredLeft);
 
     Rectangle<float> closeButton = closeButtonBounds();
@@ -321,12 +340,40 @@ void TrimeshExpandedEditorComponent::updateTrimeshMorphControlEdit(float value) 
     }
 }
 
+void TrimeshExpandedEditorComponent::beginTrimeshMorphPairControlEdit(
+        const std::array<String, 2>& ids, Point<float> values) {
+    widget.setMorphEditGestureActive(true);
+    if (delegate != nullptr && delegate->beginTrimeshMorphPairEdit(ids, values)) {
+        activeMorphPairIds = ids;
+        setLocalMorphPairValues(values);
+        return;
+    }
+    widget.setMorphEditGestureActive(false);
+}
+
+void TrimeshExpandedEditorComponent::updateTrimeshMorphPairControlEdit(Point<float> values) {
+    if (delegate != nullptr && delegate->updateTrimeshMorphPairEdit(values)) {
+        setLocalMorphPairValues(values);
+    }
+}
+
+void TrimeshExpandedEditorComponent::setLocalMorphPairValues(Point<float> values) {
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == activeMorphPairIds[0] || parameter.id == activeMorphPairIds[1]) {
+            parameter.value = formatTrimeshMorphValue(parameter.id == activeMorphPairIds[0] ? values.x : values.y);
+        }
+    }
+    widget.syncExpandedFromNode(node);
+    repaint();
+}
+
 void TrimeshExpandedEditorComponent::endTrimeshMorphControlEdit() {
     if (delegate != nullptr) {
         delegate->endTrimeshMorphEdit();
     }
     widget.setMorphEditGestureActive(false);
     activeMorphParameterId = {};
+    activeMorphPairIds = {};
 }
 
 void TrimeshExpandedEditorComponent::beginTrimeshOutputScaleControlEdit(
@@ -484,7 +531,7 @@ void TrimeshExpandedEditorComponent::updatePanelHosts() {
     Component* panel3D = widget.getExpandedPanel3DComponentIfCreated();
     Component* panel2D = widget.getExpandedPanel2DComponentIfCreated();
 
-    if (panel3D == nullptr) {
+    if (panel3D == nullptr && NodeParameterMap(node).intValue("dimensionCount", 0) > 0) {
         panel3D = widget.prepareExpandedPanel3DComponent(node, content);
     }
 
@@ -492,13 +539,14 @@ void TrimeshExpandedEditorComponent::updatePanelHosts() {
         panel2D = widget.prepareExpandedPanel2DComponent(node, content);
     }
 
-    if (panel3D == nullptr || panel2D == nullptr) {
+    if (panel2D == nullptr) {
         return;
     }
 
-    const Rectangle<int> panel3DBounds = TrimeshWidget::expandedGridPanelContentBounds(content).toNearestInt();
-    const Rectangle<int> panel2DBounds = TrimeshWidget::expandedWavePanelContentBounds(content).toNearestInt();
+    const Rectangle<int> panel3DBounds = TrimeshWidget::expandedGridPanelContentBounds(content, NodeParameterMap(node).intValue("dimensionCount", 0)).toNearestInt();
+    const Rectangle<int> panel2DBounds = TrimeshWidget::expandedWavePanelContentBounds(content, NodeParameterMap(node).intValue("dimensionCount", 0)).toNearestInt();
 
+    if (panel3D != nullptr) {
     if (panel3D->getParentComponent() != this) {
         addAndMakeVisible(panel3D);
     }
@@ -507,8 +555,10 @@ void TrimeshExpandedEditorComponent::updatePanelHosts() {
         panel3D->setBounds(panel3DBounds);
     }
 
-    panel3D->setVisible(true);
+    panel3D->setVisible(NodeParameterMap(node).intValue("dimensionCount", 0) > 0);
     panel3D->toFront(false);
+
+    }
 
     if (panel2D->getParentComponent() != this) {
         addAndMakeVisible(panel2D);
@@ -523,6 +573,7 @@ void TrimeshExpandedEditorComponent::updatePanelHosts() {
 
     controls.toFront(false);
     enabled.toFront(false);
+    dimensionSelector.toFront(false);
 }
 
 void TrimeshExpandedEditorComponent::updateControlsHost() {
@@ -532,9 +583,15 @@ void TrimeshExpandedEditorComponent::updateControlsHost() {
     controls.setVisible(node.kind == NodeKind::TrilinearMesh);
     controls.toFront(false);
     enabled.toFront(false);
+    dimensionSelector.toFront(false);
 }
 
 void TrimeshExpandedEditorComponent::updateSignalControls() {
+    const auto header = embeddedEditorHeaderLayout(getLocalBounds().toFloat(), true);
+    dimensionLabel.setBounds(Rectangle<float>(92.f, 26.f)
+            .withPosition(header.title.getX() + 116.f, header.header.getCentreY() - 13.f).toNearestInt());
+    dimensionSelector.setBounds(header.title.getX() + 208.f,
+            header.header.getCentreY() - 13.f, 188.f, 26.f);
     signalTypeLabel.setBounds(signalTypeLabelBounds());
     signalTypeSelector.setBounds(signalTypeSelectorBounds());
     const bool showPolarity = signalTypeSelector.selectedValue() == "spectralMagnitude";
@@ -564,6 +621,7 @@ void TrimeshExpandedEditorComponent::updateSignalControls() {
     phaseModeLabel.toFront(false);
     phaseModeSelector.toFront(false);
     enabled.toFront(false);
+    dimensionSelector.toFront(false);
 }
 
 Rectangle<int> TrimeshExpandedEditorComponent::polaritySelectorBounds() const {

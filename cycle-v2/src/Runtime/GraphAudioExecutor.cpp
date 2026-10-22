@@ -807,7 +807,7 @@ void GraphAudioExecutor::prepareExecutionInternal(
             const int sourceIndex = (int) buffer.defaultModulationSlot - 1;
             preparedVoice.modulationBindings.push_back({
                     bufferIndex,
-                    &configuration->sources[(size_t) sourceIndex],
+                    &configuration->source((size_t) sourceIndex, buffer.envelopeModulationProfile),
                     buffer.defaultModulationNoteOffset
             });
         }

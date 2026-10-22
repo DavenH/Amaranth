@@ -125,6 +125,7 @@ public:
     bool redoForAutomation();
     GraphEditResult applyNodeEditsForAutomation(const NodeAuthoringEdits& edits);
     juce::var guideCurveCommandForAutomation(const juce::var& command);
+    juce::var shapeCommandForAutomation(const juce::var& command);
     uint64_t documentRevisionForAutomation() const { return document.revision(); }
     bool setGuideParameterForAutomation(
             const String& guideId,
@@ -193,6 +194,9 @@ public:
     bool updatePreviewModWheelGesture(int value);
     void endPreviewModWheelGesture(int finalValue);
     bool setPreviewControllerValue(int controller, int value);
+    bool setAuditionControllerValue(int controller, int value);
+    int previewControllerValue(int controller) const { return presentation.previewControllerValue(controller); }
+    var inspectPreviewControllersForAutomation() const;
     void beginPreviewControllerGesture(int controller);
     bool updatePreviewControllerGesture(int controller, int value);
     void endPreviewControllerGesture(int controller, int finalValue);

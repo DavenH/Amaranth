@@ -36,6 +36,7 @@ public:
     virtual var automationState() const = 0;
     virtual std::vector<CurvePanelGridLine> verticalMajorGridLines() const { return {}; }
     virtual std::vector<TrimeshVertexParameter> selectedVertexParameters() const = 0;
+    virtual std::vector<TrimeshCubePreviewVertex> morphPreviewVertices() const { return {}; }
     virtual bool setSelectedVertexParameter(const String& parameterId, float normalizedValue) = 0;
 };
 
@@ -69,6 +70,7 @@ public:
     virtual void setEnvelopeBipolar(bool bipolar) = 0;
     virtual void setEnvelopeLogarithmic(bool logarithmic) = 0;
     virtual void setEnvelopeAxisLinks(bool redLinked, bool blueLinked) = 0;
+    virtual void setEnvelopeDimensions(int count, bool yellowLinked) = 0;
     virtual void fitEnvelopeVerticalRange() = 0;
     virtual void resetEnvelopeVerticalRange() = 0;
     virtual bool hasSingleSelectedEnvelopeVertex() = 0;

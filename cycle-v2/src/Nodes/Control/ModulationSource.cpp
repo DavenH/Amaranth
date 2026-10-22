@@ -103,6 +103,9 @@ public:
 }
 
 ModulationSourceMode ModulationSource::modeFromId(const String& id) {
+    if (id == "unmapped") {
+        return ModulationSourceMode::Unmapped;
+    }
     if (id == "voiceTime") {
         return ModulationSourceMode::VoiceTime;
     }
@@ -129,6 +132,8 @@ ModulationSourceMode ModulationSource::modeFromId(const String& id) {
 
 String ModulationSource::idForMode(ModulationSourceMode mode) {
     switch (mode) {
+        case ModulationSourceMode::Unmapped:
+            return "unmapped";
         case ModulationSourceMode::VoiceTime:
             return "voiceTime";
         case ModulationSourceMode::Velocity:
@@ -164,6 +169,8 @@ float ModulationSource::evaluate(
         const ModulationSourceConfiguration& configuration,
         const PreviewControlContext& context) {
     switch (configuration.mode) {
+        case ModulationSourceMode::Unmapped:
+            return 0.f;
         case ModulationSourceMode::VoiceTime:
             return jlimit(0.f, 1.f, context.voiceTime);
         case ModulationSourceMode::Velocity:

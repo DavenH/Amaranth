@@ -1,26 +1,19 @@
 # Audio Bug Notes
 
-## P2: Reference comparison Spies use a legacy note as standard MIDI
+## P2: Reusing a scheduled WAV capture path kept the preceding recording
 
-On 2026-10-22 the saxophone reference audit found that a 293.665 Hz D recording
-exports `fundNote=74` from `ReferenceSampleAnalyzer`. That is correct for the
-mature `PitchedSample` convention (A440 = 81), but `ComparisonDock::updateCards`
-passed it unchanged to `PresentationPreviewRenderer`, whose oscillator clock
-uses standard MIDI (A440 = 69). A pinned comparison Spy therefore rendered
-587.330 Hz, one octave above the recorded reference. The pitch editor also
-labelled the legacy number as standard MIDI. Comparing source and recorded
-synthesis as two wave references is unaffected; both retain their correct
-period-derived cyclograms.
+On 2026-10-22, saxophone modelling found that `captureAudio` returned metrics
+for newly rendered PCM while a reused WAV path still played its first capture.
+`File::createOutputStream` appends by default; the scheduled writer added a new
+RIFF stream after the previous file. A 100 ms then 30 ms regression grows the
+file from 28,904 to 37,648 bytes before the fix, rather than replacing it.
 
-Status: corrected at the Cycle V2 comparison/presentation boundary; focused
-reference tests and the rebuilt comparison fixture pass. Native D3 cards and
-the pitch editor report standard note 62; exported pitch frames and all 40,960
-cyclogram values are identical before and after the fix. Sample pitch storage,
-reduced paths, persisted edits and existing schema 1 export fields retain their
-legacy values; explicit standard MIDI export fields are additive. The focused test
-imports a generated 293.665 Hz recording and checks its period, preview clock,
-pitch edit, undo and reload. The existing comparison fixture checks the note
-passed to both sample and pinned Spy cards.
+Status: resolved. The scheduled WAV writer now seeks to zero and truncates
+before constructing the JUCE writer, with explicit stream-error handling.
+The raw writer already follows that contract. `[capture-replacement]` checks
+that repeated-path WAV length and decoded PCM match a fresh shorter capture
+at a different pitch, and that raw float output is replaced exactly. The
+failing-before log is `.context/return-to-sax/capture-replacement-red.log`.
 
 ## P2: IR imports cap source samples before canonical-rate conversion
 
@@ -154,6 +147,54 @@ they do not recover the omitted tail. Source headers and lengths are recorded
 in `.context/sax-reference-downloads/iowa/collection.json` and
 `youtube/acquisition.json`. Region workflow requirements are in modelling
 feature queue M02; this is separate from adding a second decoder or tracker.
+
+## P2: Expressive articulation validation exposes resampler assertions and unused-axis allocation
+
+On 2026-10-21, the new opted-in legato path retained a 2048-sample spectral
+frame across high-to-low slurs. Its large frame/period ratios violated the
+streaming Hermite resampler's small-padding assumption (`Resampling.cpp:281`),
+with 20 counted allocations including assertion reporting. Evidence:
+`.context/articulation-domain-second.log` in the articulation implementation
+worktree. The fix reuses the shared periodic Hermite sampler for this path;
+ordinary polyphonic playback keeps its original streaming behavior.
+
+The eight-voice factory benchmark then exposed a separate pre-existing
+allocation: ModulationTriple rendered its disconnected yellow axis through
+`makeOutputPayload`, creating one fallback SignalBuffer per voice/callback.
+The allocation stack is `.context/legato-allocation-trace.log`; 32 callbacks
+over eight voices counted 256 allocations. Realtime execution now retains
+empty placeholders for explicitly disconnected output views. Diagnostic and
+direct processing retain all axes. A timed connected-axis regression checks
+that skipping unused axes preserves the controller response.
+
+Status: resolved. Final clean allocation, assertion and performance verification
+is recorded in the articulation TDD, including the eight-voice factory graph.
+## Investigation: Baroque offline audition ignores a first-pole change
+
+During the 2026-10-22 live-authoring audit, loading
+`content/presets/old/baroque-flute.cyclegraph` and setting all eight corners of
+`timeLayer1` cube 0 to amplitude .15 published successfully but left the seeded
+offline PCM identical. Repro: seed 7143, 44.1 kHz, 8192 frames, blocks of 173,
+note 60 at velocity 100 on channel 1. The downstream spectral graph may explain
+the lack of sensitivity; this has not been assigned to an engine defect.
+
+The direct mesh-to-output regression does change PCM and restores it exactly
+through undo/redo. Use that isolated path as the addressed-edit proof until the
+factory graph's sensitivity is understood. This observation preceded the
+isolated `TestLiveShapeAudio` regression; no factory content was changed.
+
+## P2: Reference comparison Spies use a legacy note as standard MIDI
+
+The saxophone audit found a 293.665 Hz recording correctly stored as note 74
+under the mature sample convention (standard MIDI plus 12). Passing that value
+unchanged into the standard MIDI preview oscillator rendered one octave high.
+Cycle V2 now translates only the comparison/presentation boundary. Pitch
+storage, pitch paths and folding retain their established convention.
+
+The focused generated-recording test covers the actual period, standard note
+62, edit/undo/reload and preview clock. Native verification on the preceding
+study branch confirmed identical pitch frames and folded values after the fix.
+The comparison fixture checks both reference and pinned Spy note values.
 
 ## P2: Reference analysis exports Cycle note numbers under MIDI field names
 
@@ -1217,24 +1258,19 @@ capture, display-domain persistence, and output visibility tests pass.
 Status: open; reconcile these fixture and preview expectations independently
 of Spy card presentation.
 
-## P2: Expressive articulation validation exposes resampler assertions and unused-axis allocation
 
-On 2026-10-21, the new opted-in legato path retained a 2048-sample spectral
-frame across high-to-low slurs. Its large frame/period ratios violated the
-streaming Hermite resampler's small-padding assumption (`Resampling.cpp:281`),
-with 20 counted allocations including assertion reporting. Evidence:
-`.context/articulation-domain-second.log` in the articulation implementation
-worktree. The fix reuses the shared periodic Hermite sampler for this path;
-ordinary polyphonic playback keeps its original streaming behavior.
+## Open: legacy scratch ControlSignal and strict pitch-guide comparison fixtures
 
-The eight-voice factory benchmark then exposed a separate pre-existing
-allocation: ModulationTriple rendered its disconnected yellow axis through
-`makeOutputPayload`, creating one fallback SignalBuffer per voice/callback.
-The allocation stack is `.context/legato-allocation-trace.log`; 32 callbacks
-over eight voices counted 256 allocations. Realtime execution now retains
-empty placeholders for explicitly disconnected output views. Diagnostic and
-direct processing retain all axes. A timed connected-axis regression checks
-that skipping unused axes preserves the controller response.
-
-Status: resolved. Final clean allocation, assertion and performance verification
-is recorded in the articulation TDD, including the eight-voice factory graph.
+During mesh dimensionality verification on 2026-10-20, the case
+`Scratch Envelope drives every attached Trimesh from one prepared trajectory`
+still reports `blockDifference == 0` with explicitly restored 3D Trimeshes and
+2D authored scratch geometry. Its mesh operands resolve through ControlSignal;
+`TrimeshMorphResolver::domainFor` accepts TimeSignal/spectral domains only
+(the same boundary exists in HEAD). Inspect the older fixture's materialization
+boundary separately; do not treat this result as native audio acceptance.
+The preset case `Pitch Envelope Guide phase is distinct per Unison lane and
+stable per note seed` also reports a strict `first == legacyValues` mismatch.
+This run has not established whether that failure predates this change.
+Evidence: `.context/dimensions-tests.log`, `.context/dimensions-regression.log`.
+Focused guided migration through sustain/release and reduced interpolation
+parity pass independently in TestMeshDimensionality.cpp.

@@ -8,6 +8,7 @@
 namespace CycleV2 {
 
 class GraphValidationContext;
+class GraphEdgeIndex;
 
 struct ModulationCableBundleRoute {
     PortAddress source;
@@ -24,6 +25,7 @@ struct ModulationCableBundle {
     static bool isSource(const NodeGraph& graph, const PortAddress& address);
     static bool isDestination(const NodeGraph& graph, const PortAddress& address);
     static bool supportsDestination(const Node& node);
+    static bool socketVisible(const Node& node, const GraphEdgeIndex& edges);
     static bool destinationIncludesYellow(const Node& node);
     static std::vector<ModulationCableBundleRoute> routes(
             const NodeGraph& graph,

@@ -6,6 +6,8 @@
 #include <Curve/Mesh/Mesh.h>
 
 #include "Graph/GraphNodeStateEditor.h"
+#include "Graph/GraphMeshGuideRemap.h"
+#include "Graph/MeshDimensionality.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
@@ -158,7 +160,11 @@ GraphEditResult GraphNodeStateEditor::setNodeParameter(
             ? parameterDefinition->normalized(value)
             : value;
     const String resolvedLabel = parameterDefinition != nullptr ? parameterDefinition->label : label;
-    const ParameterImpact impacts = parameterDefinition != nullptr
+    const ParameterImpact impacts = MeshDimensionality::applies(node->kind)
+                    && MeshDimensionality::axisForPort(parameterId) >= 0
+                    && !MeshDimensionality::inputActive(*node, parameterId)
+            ? ParameterImpact::Presentation
+            : parameterDefinition != nullptr
             ? parameterDefinition->impacts
             : ParameterImpact::Preview | ParameterImpact::DspConfiguration;
 
@@ -269,7 +275,8 @@ GraphEditResult GraphNodeStateEditor::replaceNodeModel(
         NodeGraph& graph,
         const String& nodeId,
         uint64_t expectedRevision,
-        NodeModelStatePtr model) const {
+        NodeModelStatePtr model,
+        const std::vector<int>* retainedCubeIndices) const {
     Node* node = findMutableNode(graph, nodeId);
     if (node == nullptr) {
         return { GraphEditCode::MissingNode, nodeId, {} };
@@ -297,7 +304,9 @@ GraphEditResult GraphNodeStateEditor::replaceNodeModel(
     GraphEditResult result;
     result.nodeId = nodeId;
     result.changed = graph.replaceNodeModel(nodeId, std::move(model));
-    if (result.changed && nextCubeCount < previousCubeCount) {
+    if (result.changed && retainedCubeIndices != nullptr) {
+        remapMeshGuideAssignments(graph, nodeId, *retainedCubeIndices, result);
+    } else if (result.changed && nextCubeCount < previousCubeCount) {
         reconcileTrimeshGuideAssignments(graph, nodeId, result);
     }
     result.changes.nodeIds.push_back(nodeId);

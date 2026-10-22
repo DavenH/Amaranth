@@ -51,6 +51,9 @@ public:
     virtual bool hasVisiblePreviewSnapshot() const = 0;
     virtual uint64_t previewSnapshotRevision() const = 0;
     virtual void resetDocumentPresentation() = 0;
+    virtual void setEditGestureActive(bool) {}
+    virtual bool setPreviewMorphPosition(std::optional<MorphPosition>) { return false; }
+    virtual Rectangle<float> panelContentBounds(Rectangle<float> bounds) const { return bounds; }
     virtual void releaseSharedGlResources() = 0;
     virtual int vertexCountForAutomation() const = 0;
     virtual var automationState() const = 0;
@@ -63,6 +66,8 @@ public:
     virtual uint64_t modelRevision() const = 0;
     virtual uint64_t contentRevision() const = 0;
     virtual std::vector<TrimeshVertexParameter> selectedVertexParameters() const = 0;
+    virtual std::vector<TrimeshCubePreviewVertex> morphPreviewVertices() const { return {}; }
+    virtual std::optional<MorphPosition> effectiveMorphPosition() const { return std::nullopt; }
     virtual bool setSelectedVertexParameter(const String& parameterId, float value) = 0;
 };
 
@@ -73,6 +78,10 @@ public:
     virtual void setBipolar(bool bipolar) = 0;
     virtual void setLogarithmic(bool logarithmic) = 0;
     virtual void setAxisLinks(bool redLinked, bool blueLinked) = 0;
+    virtual void setDimensions(int count, bool yellowLinked) = 0;
+    virtual Component* morphSurfaceComponent() = 0;
+    virtual void prepareMorphSurface(int axis, const MorphPosition& morph) = 0;
+    virtual void renderMorphSurface(Rectangle<float> bounds, float scaleFactor) = 0;
     virtual void fitVerticalRange() = 0;
     virtual void resetVerticalRange() = 0;
     virtual bool hasSingleSelectedVertex() = 0;

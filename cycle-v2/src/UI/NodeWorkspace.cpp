@@ -95,14 +95,13 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
         canvas.setPreviewMidiNote(midiNote);
     });
     keyboard.setControllerValueChangedCallback([this](int controller, int value) {
-        canvas.updatePreviewControllerGesture(controller, value);
+        String error;
+        if (!setPreviewControllerForAutomation(controller, value, error)) {
+            keyboard.reflectControllerValue(controller, canvas.previewControllerValue(controller));
+        }
     });
-    keyboard.setControllerGestureStartedCallback([this](int controller) {
-        canvas.beginPreviewControllerGesture(controller);
-    });
-    keyboard.setControllerGestureEndedCallback([this](int controller) {
-        canvas.endPreviewControllerGesture(
-                controller, keyboard.controllerValue(controller));
+    keyboard.setControllerValueProvider([this](int controller) {
+        return canvas.previewControllerValue(controller);
     });
     startTimerHz(30);
     timerCallback();
@@ -805,33 +804,43 @@ bool NodeWorkspace::performanceSelectPreviewNoteForAutomation(int noteNumber) {
 }
 
 bool NodeWorkspace::performanceSetModWheelForAutomation(int value) {
-    if (!keyboard.isVisible()) {
-        return false;
-    }
-    keyboard.setModWheelValue(value);
-    return true;
+    String error;
+    return setPreviewControllerForAutomation(1, value, error);
 }
 
 bool NodeWorkspace::performanceBeginModWheelGestureForAutomation(int value) {
-    if (!keyboard.isVisible()) {
-        return false;
-    }
-    canvas.beginPreviewModWheelGesture();
-    keyboard.setModWheelValue(value);
-    return true;
+    return performanceSetModWheelForAutomation(value);
 }
 
 bool NodeWorkspace::performanceUpdateModWheelGestureForAutomation(int value) {
-    if (!keyboard.isVisible()) {
-        return false;
-    }
-    keyboard.setModWheelValue(value);
-    return true;
+    return performanceSetModWheelForAutomation(value);
 }
 
 bool NodeWorkspace::performanceEndModWheelGestureForAutomation() {
-    canvas.endPreviewModWheelGesture(keyboard.modWheelValue());
     return true;
+}
+
+bool NodeWorkspace::setPreviewControllerForAutomation(int controller, int value, String& error) {
+    if (!isPositiveAndBelow(controller, 128) || !isPositiveAndBelow(value, 128)) {
+        error = "Controller and value must be integers in 0..127";
+        return false;
+    }
+    if (!audioEngine.enqueueMidiMessage(MidiMessage::controllerEvent(1, controller, value),
+                MidiEventSource::PerformanceKeyboard)) {
+        error = "The realtime MIDI queue is full";
+        return false;
+    }
+    if (!canvas.setAuditionControllerValue(controller, value)) {
+        error = "The controller was queued, but its preview refresh failed";
+        return false;
+    }
+    keyboard.reflectControllerValue(controller, value);
+    error.clear();
+    return true;
+}
+
+var NodeWorkspace::inspectPreviewControllersForAutomation() const {
+    return canvas.inspectPreviewControllersForAutomation();
 }
 
 bool NodeWorkspace::togglePreviewPlayback() {

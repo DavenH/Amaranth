@@ -188,7 +188,7 @@ NodeModelStatePtr curveModel(std::vector<FlatCurveVertex> vertices) {
 
 std::vector<NodeParameter> envelopeParameters(const String& payload = EnvelopeMeshState::defaultSnapshot()) {
     (void) payload;
-    return {};
+    return { { "dimensionCount", "Dimensions", "3" } };
 }
 
 SignalPayload payload(std::initializer_list<float> samples) {
@@ -256,6 +256,10 @@ void prepareProcessor(
     }
     if (model == nullptr && role == AudioModuleRole::ImpulseResponse) {
         model = CurveNodeDomainCodec(NodeKind::ImpulseResponse).createDefault();
+    }
+    if (model == nullptr && role == AudioModuleRole::Envelope) {
+        EnvelopeNodeModel envelope;
+        model = CurveNodeModelState::copyOf(envelope, 0.5f, 0.5f, 1);
     }
     AudioExecutionSpec spec;
     spec.maximumFrameCount = maximumFrameCount == 0 ? context.frameCount : maximumFrameCount;
@@ -871,7 +875,9 @@ TEST_CASE("Envelope latches absolute morph inputs per note",
     auto parameters = envelopeParameters();
     parameters.push_back({ "red", "Red", "0.5" });
     parameters.push_back({ "blue", "Blue", "0.5" });
-    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    EnvelopeNodeModel model;
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(
+            parameters, CurveNodeModelState::copyOf(model, 0.5f, 0.5f, 1));
     REQUIRE(configuration != nullptr);
 
     EnvelopeSignalProcessor processor;
@@ -1006,6 +1012,55 @@ TEST_CASE("Voice-authorized Envelope morph adopts once at block start and freeze
             process({ 0.8f });
             REQUIRE(processor.realtimePreparationDiagnostics().attempts == 3);
         }
+    }
+}
+
+TEST_CASE("Live Envelope Yellow changes adopt without restarting and inactive axes do no work",
+        "[cycle-v2][runtime][envelope][modulation][live][mesh-dimensions]") {
+    EnvelopeNodeModel model;
+    for (auto* cube : model.getMesh().getCubes()) {
+        for (int corner = 0; corner < (int) VertCube::numVerts; ++corner) {
+            auto* vertex = cube->getVertex(corner);
+            vertex->values[Vertex::Time] = corner >= 4 ? 1.f : 0.f;
+            vertex->values[Vertex::Amp] = corner >= 4 ? 0.8f : 0.2f;
+        }
+    }
+    const auto state = CurveNodeModelState::copyOf(model, 0.5f, 0.5f, 1);
+    for (const int dimensions : { 2, 3 }) {
+        CAPTURE(dimensions);
+        const auto configuration = EnvelopeSignalProcessor::buildConfiguration(
+                { { "dimensionCount", "Dimensions", String(dimensions) } }, state);
+        REQUIRE(configuration != nullptr);
+        EnvelopeSignalProcessor processor;
+        processor.adoptConfiguration({ 1, "live-yellow", configuration });
+        AudioExecutionSpec spec;
+        spec.sampleRate = 48000.;
+        spec.maximumFrameCount = 8;
+        processor.prepareExecution(spec);
+        const auto process = [&](float yellow, bool noteOn) {
+            AudioProcessContext context;
+            context.frameCount = spec.maximumFrameCount;
+            context.liveEnvelopeMorph = true;
+            context.captureTraversalGrid = false;
+            context.timing.sampleRate = spec.sampleRate;
+            context.inputs = { {}, {}, payload({ yellow }) };
+            context.outputPorts = { { "env", PortDomain::ControlSignal, ChannelLayout::Mono } };
+            if (noteOn) {
+                context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+            }
+            processor.process(context);
+            return output(context).block.samples.front();
+        };
+        REQUIRE(process(0.f, true) == Catch::Approx(0.2f).margin(0.002f));
+        const double position = processor.playbackPosition();
+        REQUIRE(process(1.f, false)
+                == Catch::Approx(dimensions == 3 ? 0.8f : 0.2f).margin(0.002f));
+        REQUIRE(processor.playbackPosition() > position);
+        REQUIRE(processor.cycleEnvelopeConfiguration() == configuration.get());
+        REQUIRE(processor.cycleEnvelopeGeneration() == (dimensions == 3 ? 2 : 1));
+        REQUIRE(processor.realtimePreparationDiagnostics().attempts == (dimensions == 3 ? 2 : 1));
+        process(1.f, false);
+        REQUIRE(processor.realtimePreparationDiagnostics().attempts == (dimensions == 3 ? 2 : 1));
     }
 }
 

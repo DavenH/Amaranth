@@ -638,22 +638,10 @@ void Interactor::eraseSelected() {
         }
 
         for (auto cube : linesToDelete) {
-            if (mesh->removeCube(cube)) {
-                for (int i = 0; i < VertCube::numVerts; ++i) {
-                    Vertex* vert = cube->getVertex(i);
-
-                    if (vert->getNumOwners() == 1) {
-                        mesh->removeVert(vert);
-
-                        // remove now so that only free vert are left
-                        auto selectedIter = std::find(selected.begin(), selected.end(), vert);
-
-                        if (selectedIter != selected.end()) {
-                            selected.erase(selectedIter);
-                        }
-                    } else {
-                        vert->removeOwner(cube);
-                    }
+            vector<Vertex*> detachedVertices;
+            if (mesh->detachCube(cube, detachedVertices)) {
+                for (auto* vertex : detachedVertices) {
+                    selected.erase(std::remove(selected.begin(), selected.end(), vertex), selected.end());
                 }
             } else {
                 cout << "tried to erase line but it wasn't in array" << "\n";
@@ -2403,12 +2391,7 @@ void Interactor::initVertsWithDepthDims(
         float phase,
         float amp,
         const MorphPosition& box) {
-    cube->initVerts(box);
-
-    for (int i = 0; i < VertCube::numVerts; ++i) {
-        cube->getVertex(i)->values[Vertex::Phase]     = phase;
-        cube->getVertex(i)->values[Vertex::Amp]     = amp;
-    }
+    cube->initLine(box, phase, amp);
 }
 
 MorphPosition Interactor::getCube() {

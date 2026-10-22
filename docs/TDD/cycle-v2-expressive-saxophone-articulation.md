@@ -283,3 +283,41 @@ was preserved; the isolated app remains open on the new preset with the Voice
 Context editor showing Legato, Portamento and Live. Independent runtime and
 completion reviews found no remaining material core-contract gap. Human
 audition remains the acoustic/taste handoff, not a claimed qualification.
+
+## Integration with direct live authoring (2026-10-22)
+
+The study branch now includes master through the merged live-authoring harness
+(PR #197), including newer dimensionality and Envelope editing. Format-7 study
+presets migrate through the canonical loader to three Trimesh axes and two
+Envelope axes. Keep Voice Context's legato, glide and live-adoption policies;
+removing their parameters to make a preset load would discard the experiment.
+
+Conflict review retained the newer shared morph representation and atomic staged
+Envelope adoption. The live cache now includes Yellow; a focused test verifies
+Yellow-only changes, held traversal and inactive-axis suppression. Controller
+preview roots now follow each compiled input's effective default profile and
+consumer, so Envelope-only CCs refresh the actual Envelope and downstream Spy.
+The regression also protects explicit overrides and unrelated mesh work.
+
+The merge adds no new domain ownership: shared materialization/playback own
+geometry and traversal; runtime presentation owns causal preview roots;
+App/Automation owns transport adapters, including the study's IR importer.
+Large canvas/compiler orchestration retains the existing collaborators; no new
+node-family policy or DSP algorithm was added there. Historical generators are
+reproduction artifacts. Continue sound design through the persistent socket.
+
+Current native modelling evidence is under `.context/return-to-sax/`. One
+four-corner high-breath H1 reduction improves the loud D3 harmonic ratio while
+making its centroid too high; it is saved as an audition candidate and rejected
+as the shared model. The original rail is restored. Existing C2/C4 evidence also
+needs much less H1 correction than D3. This is an unsuccessful acoustic trial,
+not completion of the saxophone identity goal. Next investigate a common
+physical closure-duration relationship before adding spectral landmarks.
+
+Integration verification: the exact standalone app and test target build. The
+focused gate passes 82 cases covering legato, live adoption, saxophone shapes,
+IR resources, Guide reopen, preview controllers, direct authoring, topology and
+MIDI sequence persistence. The additional capture replacement regression
+passes 23 assertions. Isolated native fixtures pass all 55 shape/controller
+commands and all 13 Guide commands. This is scoped feature evidence, not a claim
+that the repository's previously recorded aggregate UI failures are resolved.

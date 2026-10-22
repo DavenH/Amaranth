@@ -117,7 +117,9 @@ public:
                 outputDomain,
                 bipolar,
                 guideProvider,
-                deltaOverlay);
+                deltaOverlay,
+                configuration != nullptr ? configuration->dimensionCount : 3,
+                configuration != nullptr ? configuration->staticSlice.get() : nullptr);
         renderGrid(
                 context,
                 *mesh,
@@ -128,7 +130,9 @@ public:
                 columnCount,
                 bipolar,
                 guideProvider,
-                deltaOverlay);
+                deltaOverlay,
+                configuration != nullptr ? configuration->dimensionCount : 3,
+                configuration != nullptr ? configuration->staticSlice.get() : nullptr);
     }
 
 private:
@@ -164,9 +168,12 @@ private:
             PortDomain outputDomain,
             bool bipolar,
             GuideCurveProvider* guideProvider,
-            const std::shared_ptr<const TrimeshMeshDeltaOverlay>& deltaOverlay) {
+            const std::shared_ptr<const TrimeshMeshDeltaOverlay>& deltaOverlay,
+            int dimensionCount,
+            const Rasterization::PreparedMeshSlice* staticSlice) {
         TrimeshBlockwiseDsp blockwiseDsp;
         SignalPayload slice;
+        blockwiseDsp.setDimensionality(dimensionCount, staticSlice);
         blockwiseDsp.setGuideCurveProvider(guideProvider);
         blockwiseDsp.setDeltaOverlay(deltaOverlay);
         blockwiseDsp.setBipolar(bipolar);
@@ -193,8 +200,17 @@ private:
             size_t columnCount,
             bool bipolar,
             GuideCurveProvider* guideProvider,
-            const std::shared_ptr<const TrimeshMeshDeltaOverlay>& deltaOverlay) {
+            const std::shared_ptr<const TrimeshMeshDeltaOverlay>& deltaOverlay,
+            int dimensionCount,
+            const Rasterization::PreparedMeshSlice* staticSlice) {
         TrimeshGridwiseDsp gridwiseDsp;
+        if (dimensionCount == 0) {
+            context.primary = context.secondary;
+            context.gridColumns = 1;
+            context.gridRows = context.pointCount;
+            return;
+        }
+        gridwiseDsp.setDimensionality(dimensionCount, staticSlice);
         gridwiseDsp.setCyclic(cyclic);
         gridwiseDsp.setGuideCurveProvider(guideProvider);
         gridwiseDsp.setDeltaOverlay(deltaOverlay);

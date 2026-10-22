@@ -1,4 +1,5 @@
 #include "Graph/GraphCompiler.h"
+#include "Graph/MeshDimensionality.h"
 
 #include "Graph/DefaultOutputProbeResolver.h"
 
@@ -902,7 +903,9 @@ void compileDefaultScratchAttachments(
             plan.attachments.end());
 
     for (const auto& step : plan.steps) {
-        if (step.kind != NodeKind::TrilinearMesh) {
+        const Node* destination = findNode(graph, step.nodeId);
+        if (step.kind != NodeKind::TrilinearMesh || destination == nullptr
+                || !MeshDimensionality::inputActive(*destination, "scratch")) {
             continue;
         }
         if (targetsWithLocalScratch.find(step.nodeId) != targetsWithLocalScratch.end()) {
@@ -981,7 +984,8 @@ void compileDefaultModulationInputs(
         }
         for (int portIndex = 0; portIndex < (int) node->inputs.size(); ++portIndex) {
             const Port& port = node->inputs[(size_t) portIndex];
-            if (port.defaultModulationSlot == DefaultModulationSlot::None) {
+            if (port.defaultModulationSlot == DefaultModulationSlot::None
+                    || !MeshDimensionality::inputActive(*node, port.id)) {
                 continue;
             }
             const bool explicitInput = std::any_of(
@@ -993,7 +997,20 @@ void compileDefaultModulationInputs(
             if (explicitInput) {
                 continue;
             }
-            const String sourcePort = "default."
+            const auto mapping = std::dynamic_pointer_cast<const ModulationTripleConfiguration>(
+                    context->defaultModulation);
+            const bool envelope = node->kind == NodeKind::Envelope;
+            const size_t axis = (size_t) ((int) port.defaultModulationSlot - 1);
+            if (mapping == nullptr
+                    || mapping->source(axis, envelope).mode == ModulationSourceMode::Unmapped) {
+                continue;
+            }
+            const auto& source = mapping->source(axis, envelope);
+            const auto& ordinary = mapping->source(axis);
+            const bool distinctProfile = envelope && (source.mode != ordinary.mode
+                    || (source.mode == ModulationSourceMode::MidiController && source.controller != ordinary.controller)
+                    || (source.mode == ModulationSourceMode::Constant && source.constant != ordinary.constant));
+            const String sourcePort = String(distinctProfile ? "default.envelope." : "default.")
                     + String((int) port.defaultModulationSlot);
             const bool bufferExists = std::any_of(
                     plan.buffers.begin(),
@@ -1013,7 +1030,8 @@ void compileDefaultModulationInputs(
                         -1,
                         port.defaultModulationSlot,
                         context->defaultModulation,
-                        context->octave * 12
+                        context->octave * 12,
+                        distinctProfile
                 });
             }
             step.inputs.push_back({
@@ -1354,6 +1372,12 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
 
     const std::vector<Edge> inferredContextEdges = implicitVoiceContextEdges(graph);
     std::vector<Edge> orderingEdges = graph.getEdges();
+    orderingEdges.erase(std::remove_if(orderingEdges.begin(), orderingEdges.end(),
+            [&](const Edge& edge) {
+                const auto* destination = graph.findNode(edge.destNodeId);
+                return destination != nullptr
+                        && !MeshDimensionality::inputActive(*destination, edge.destPortId);
+            }), orderingEdges.end());
     orderingEdges.insert(
             orderingEdges.end(),
             inferredContextEdges.begin(),
@@ -1369,6 +1393,13 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 graph,
                 result.plan.nodeOrder,
                 domainResolution);
+        result.plan.signalEdges.erase(std::remove_if(
+                result.plan.signalEdges.begin(), result.plan.signalEdges.end(),
+                [&](const Edge& edge) {
+                    const auto* destination = graph.findNode(edge.destNodeId);
+                    return destination != nullptr
+                            && !MeshDimensionality::inputActive(*destination, edge.destPortId);
+                }), result.plan.signalEdges.end());
         result.plan.signalEdges.insert(
                 result.plan.signalEdges.end(),
                 inferredContextEdges.begin(),
@@ -1380,7 +1411,9 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
                 domainResolution);
 
         for (const auto& edge : graph.getEdges()) {
-            if (edge.isProcessingAttachment()) {
+            const auto* destination = graph.findNode(edge.destNodeId);
+            if (edge.isProcessingAttachment() && (destination == nullptr
+                    || MeshDimensionality::inputActive(*destination, edge.destPortId))) {
                 result.plan.attachments.push_back(edge);
             } else if (edge.isConfigurationAttachment()) {
                 result.plan.configurationAttachments.push_back(edge);

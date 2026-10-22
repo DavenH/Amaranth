@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 
 namespace CycleV2 {
 
@@ -10,32 +11,27 @@ using juce::Rectangle;
 
 class EnvelopeMorphControls {
 public:
-    static constexpr float controlsHeight = 310.f;
-    static constexpr float vertexParameterHeightScale = 0.82f;
+    void setDimensionCount(int count) { dimensionCount = count; }
+    int getDimensionCount() const { return dimensionCount; }
+    static constexpr float vertexParameterHeightScale = 1.f;
 
     Rectangle<float> planeGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> planeBounds(Rectangle<float> controls) const;
-    Rectangle<float> railColumn(Rectangle<float> controls) const;
+    Rectangle<float> morphInputBounds(Rectangle<float> controls) const;
     Rectangle<float> morphGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> morphRow(Rectangle<float> controls, int axis) const;
     Rectangle<float> morphSliderBounds(Rectangle<float> controls, int axis) const;
     Rectangle<float> keyboardFocusBounds(Rectangle<float> controls, int axis) const;
-    Rectangle<float> actionBarBounds(Rectangle<float> controls) const;
-    Rectangle<float> actionRow(Rectangle<float> controls) const;
-    Rectangle<float> markerGroupLabelBounds(Rectangle<float> controls) const;
-    Rectangle<float> markerGroupBounds(Rectangle<float> controls) const;
-    Rectangle<float> axisScaleGroupLabelBounds(Rectangle<float> controls) const;
-    Rectangle<float> axisScaleBounds(Rectangle<float> controls) const;
-    Rectangle<float> rangeGroupLabelBounds(Rectangle<float> controls) const;
-    Rectangle<float> rangeGroupBounds(Rectangle<float> controls) const;
+    Rectangle<float> markerGroupBounds(Rectangle<float> panel) const;
+    Rectangle<float> axisScaleBounds(Rectangle<float> panel) const;
+    Rectangle<float> rangeGroupBounds(Rectangle<float> panel) const;
     Rectangle<float> axisGroupLabelBounds(Rectangle<float> controls) const;
-    Rectangle<float> linkGroupLabelBounds(Rectangle<float> controls) const;
     Rectangle<float> axisBounds(Rectangle<float> controls, int axis) const;
     Rectangle<float> linkBounds(Rectangle<float> controls, int axis) const;
     Rectangle<float> vertexBounds(Rectangle<float> controls) const;
     Rectangle<float> vertexParameterRowBounds(
             Rectangle<float> controls,
-            int parameterIndex) const;
+            const juce::String& parameterId) const;
 
     void draw(
             Graphics& graphics,
@@ -45,26 +41,13 @@ public:
             int viewAxis,
             bool redLinked,
             bool blueLinked,
-            bool loopSelected,
-            bool sustainSelected) const;
+            float yellow = 0.f,
+            bool yellowLinked = true,
+            const std::vector<TrimeshCubePreviewVertex>& vertices = {}) const;
 
 private:
-    Rectangle<float> squareColumn(Rectangle<float> controls) const;
-    Rectangle<float> actionColumnBounds(Rectangle<float> controls, int column) const;
-    Rectangle<float> actionGroupLabelBounds(
-            Rectangle<float> controls,
-            int column) const;
+    int dimensionCount { 2 };
     Colour axisColour(int axis) const;
-    void drawPlane(
-            Graphics& graphics,
-            Rectangle<float> controls,
-            float red,
-            float blue) const;
-    void drawActionGroups(
-            Graphics& graphics,
-            Rectangle<float> controls,
-            bool loopSelected,
-            bool sustainSelected) const;
 };
 
 }

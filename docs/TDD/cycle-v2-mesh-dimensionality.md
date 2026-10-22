@@ -1,0 +1,959 @@
+# Unified Mesh Dimensionality
+
+Status: Complete — Envelope commit-cached surfaces, normalized colours, zoom hosts and conditional focus verified.
+
+## Contract
+
+Trimesh uses Static, Yellow, Yellow/Red, and Yellow/Red/Blue morphing.
+Envelope retains Static, Yellow, Red/Blue, and Yellow/Red/Blue modes. The shared
+axis policy takes the two-axis plane as domain data. New nodes start Static. Reduction projects dismissed axes
+at authored positions and extrudes orthogonal rails, retaining variation on
+surviving axes. Expansion is initially neutral; undo restores removed content.
+Envelope morph is latched at note-on, independently of playback time.
+
+Modulation Triple configures Trimesh and Envelope default profiles. Defaults
+are voiceTime/keyScale/modWheel and unmapped/keyScale/modWheel respectively.
+Unmapped falls back to authored position; explicit cables take precedence.
+
+## Ownership and reuse
+
+Shared mesh dimensionality owns active-axis and logical-corner policy;
+shared rasterization owns projection and reduced evaluation. Existing
+TrilinearMeshSlicer, guide policies, and curve builders remain authoritative.
+Envelope marker/padding/playback and oscillator continuity remain separate.
+GraphCommandDispatcher owns atomic dimensional conversion and undo. The
+compiler owns default routing and excludes inactive modulation dependencies.
+Editors translate gestures to commands and compose shared morph presentation.
+
+Mode conversion inspects the affected mesh at the mode boundary; corner deduplication
+uses an ordered map. Movement scales with changed
+logical points and incident cells: no graph copies, serialization, unrelated
+resource preparation, or hidden-axis collision constraints. Audio allocation
+is forbidden. Static geometry is prepared outside audio and never sliced at
+note-on or during playback; guide updates reuse prepared geometry.
+
+## Compatibility
+
+Graph format 9 migrates formats 7 and 8 after earlier migration stages. Existing
+Trimeshes retain 3D; Envelopes retain Red/Blue and project Yellow=0 onto full
+orthogonal Yellow poles. Legacy mapping profiles preserve existing sources.
+Cube persistence remains; genuine reduced topology is future shared work.
+
+## Completion and deletion targets
+
+- [x] Shared dimensionality, projection, semantic command, and undo.
+- [x] Versioned graph and Cycle 1 converter migration.
+- [x] Separate mapping profiles, unmapped fallback, eligible dependencies.
+- [x] Shared absolute morph inputs and full Envelope Yellow note-on support.
+- [x] Static preparation and reduced evaluation; no realtime allocations.
+- [x] Dimension-aware controls, ports, logical edits, and collision behavior.
+- [x] Remove forced Envelope Yellow=0, unconditional Yellow pairing, and
+      duplicate input-resolution decisions from Cycle 2 production paths.
+- [x] Semantic/complexity tests, app build, app-side gestures and screenshots,
+      architecture/style/code-map checks and responsibility review.
+- [x] Native morph/keyboard acceptance and composited OpenGL screenshots.
+      Exact-PID activation avoids System Events aliasing parallel CycleV2 instances.
+      Screen Recording is now available; no privacy settings were changed by the agent.
+
+## Verification
+
+- `CycleV2` and `CycleV2_tests` build with `--parallel 10`.
+- 16 focused cases / 1,901 assertions pass, including dynamic Envelope realtime
+  allocation/lock checks; 24 related runtime cases / 309 assertions also pass.
+- All dimensional transitions for both families round-trip and undo/redo.
+  Cancellation restores projected geometry and remapped component guides.
+- Guided migration matches mature playback at nine Red/Blue positions through
+  sustain and release (1e-5 tolerance); marker membership remains durable.
+- Reduced evaluation matches mature interpolation at boundaries in time,
+  magnitude, and phase domains. Static oscillator ordinary/chained playback
+  reports zero slices; Static Envelope note-on reports zero materializations.
+- Yellow note-on offset, retrigger, held-note latching, profile precedence,
+  independent fallback, configuration refresh, equivalent-buffer sharing,
+  inactive dependency omission and cable restoration pass.
+- Two logical vertex updates compose and undo with zero graph/mesh copies or
+  serialization. Incident-owner visit count stays constant after adding 100
+  unrelated cells. Hidden morph-coordinate edits are rejected.
+- 67 Cycle 1 converter tests pass. Five old synthetic fixtures now contain valid
+  envelope geometry so they exercise projection, rather than raw malformed JSON.
+- 55 app commands pass: selector pointer click, reduced rail multi-update/commit/
+  undo, all modes, and normal/compact captures. Artifacts in `.context/` include
+  `dimensions-final-tests.log`, `dimensions-regression-focused.log`,
+  `dimensions-converter.log`, `dimensions-ui-run.json`, and screenshots
+  `envelope-dimensions-{0,1,2,3,compact}.png`, `modulation-profiles*.png`.
+- Code-map and whitespace checks pass. Architecture audit size triggers reviewed
+  below. Initial native permission limitations were resolved during follow-up verification.
+- Broader selections still expose the empty-mesh UI crash recorded in ui-bugs,
+  a scratch ControlSignal regression and strict pitch-guide lane parity failure
+  recorded in audio-bugs. These are not covered by a claim of full-suite success.
+
+## Responsibility review
+
+Baseline -> after lines for the large production files:
+
+| File | Lines | Ownership / stable collaborators |
+|---|---:|---|
+| GraphCompiler.cpp | 1535 -> 1568 | Plan orchestration; shared MeshDimensionality filters eligibility; mappings remain configuration data. |
+| NodeCanvasPresentation.cpp | 1511 -> 1516 | Canvas target/layout presentation; bundle visibility delegates to ModulationCableBundle. |
+| GraphSerializer.cpp | 1322 -> 1328 | Persistence orchestration; geometry migration lives in MeshDimensionalityMigration. |
+| EnvelopeCurvePanel.cpp | 1295 -> 1305 | Mature envelope interaction adapter; shared MorphDimensions owns logical corners. |
+| GraphAudioExecutor.cpp | 1256 -> 1256 | Execution lifecycle; only profile-aware source selection changes. |
+| NodeCanvasAutomationInspector.cpp | 1139 -> 1161 | Existing target serialization; adds selector discovery, no edit policy. |
+| EnvelopeEditorComponent.cpp | 923 -> 1011 | Domain tools and layout; shared morph layout and renderer compose controls; surface cache is separate. |
+| TrimeshWidget.cpp | 888 -> 961 | Existing model/view adapter; shared MorphControlLayout supplies stable geometry; CurvePanelHost owns compact snapshots. |
+| TrimeshSidePanelRenderer.cpp | 912 -> 737 | Painting authority shared by both families; MorphControlLayout owns geometry; the reduced plane/line painter is separate. |
+| CurveNodeModels.cpp | 862 -> 870 | Typed model identities/codecs; shared projection canonicalizes new Static envelopes. |
+| NodeEditorCommandService.cpp | 849 -> 851 | Gesture transaction owner; forwards dimension policy into existing semantic deltas. |
+| NodeDefinition.cpp | 824 -> 848 | Declarative node schemas and defaults only. |
+| GraphCommandDispatcher.cpp | 809 -> 819 | Transaction orchestration; dimensional edit implementation is GraphMeshCommands.cpp. |
+
+The existing large compiler/serializer/executor remain cohesive orchestration
+boundaries. No projection, interpolation, smoothing, or marker algorithm was
+copied into them. Shared library policy depends only on mesh/rasterization;
+graph adapters add typed ownership and undo; editors consume that policy.
+Future compiler growth should extract default-input planning with context
+assignment as its collaborator, rather than adding node-family branches.
+Envelope panel interaction remains the mature authority; future reduced
+persistent topology must replace cube storage for **both** families together,
+while retaining logical edit/undo APIs and the shared rasterization authority.
+
+Deletion review: Cycle 2's forced Yellow=0 note-on interface, Red/Blue-only
+configuration fields, unconditional Yellow pole pairing, and duplicate Envelope
+plane painter are removed. Cycle 1's two-value materializer forwarding remains
+as an explicit compatibility API. Component guide Time slots retain their
+established meaning; no Vertex::Time rename was introduced.
+
+
+## Follow-up: predictable reduction and editor continuity
+
+Use the group label **Curve morphing**, with coloured axis ticks on each pill.
+Trimesh reduction follows YRB -> YR -> Y -> Static. Preserve the current primary
+axis while it remains active; fall back to Yellow only when that axis is dismissed.
+Do not move surviving morph rails, gain, or vertex parameter rows as modes change.
+In 2D show a plane with the cube's colour blending, selected geometry, linked
+corner highlights, projected cursor lines, and axis rails. Keep the cube in 3D.
+Use the established curve panel snapshot host for compact Static Trimesh previews,
+removing the separate glow/trace painter. Host adapters translate lifecycle only.
+
+Hovering an option that dismisses axes warns that the current position will be
+baked and dismissed variation discarded, with ordinary Undo available. No modal
+confirmation. Format 9 promotes format-8 Red/Blue 2D Trimeshes to 3D so their
+existing variation is preserved; new 2D edits use Yellow/Red. Envelope migration
+and playback time stay unchanged.
+
+Follow-up acceptance: surviving controls have identical bounds in every mode;
+Yellow primary and key-scale orientation stay stable through the descending sweep;
+projection retains Yellow/Red variation; preview uses shared panel snapshots;
+mode-specific diagram, ticks, warning hover, pointer/keyboard and undo are verified
+at normal and compact widths.
+
+Follow-up proof:
+
+- 63 focused editor, dimensionality, mapping and runtime cases / 2,736 assertions
+  pass; 67 converter cases pass. CycleV2 and tests build with `--parallel 10`.
+- Both the original 55-command fixture and the 44-command refinement fixture
+  pass. Surviving control bounds match across every mode; Yellow stays primary.
+- Native morph drag and keyboard shortcuts pass for Trimesh and Envelope. Native
+  checks caught and fixed rejected Envelope control publications caused by the
+  omitted dimension setting. Keyboard tests now author their required dimensions
+  explicitly and check durable values, retained dimensionality and Undo.
+- Shared CurvePanelHost replaces Trimesh's duplicate 2D GL lifecycle and compact
+  glow painter. Trimesh retains its gesture callbacks through a typed deletion
+  hook; 3D lifecycle stays in TrimeshPanelHosts. No domain algorithm was copied.
+- Shared selector options own ticks and dismissal text; JUCE BubbleMessageComponent
+  owns callout presentation, with the established keyboard-help pointer polling.
+  Shared axis policy owns both YR Trimesh and RB Envelope planes.
+- Code-map, whitespace, architecture audit and style review pass. Large-file
+  responsibilities remain as above; NodePreviewRenderer only dispatches the new
+  Static preview to the existing shared snapshot host.
+- Evidence: `.context/morph-refinement-{regression,converter,native-smoke}.log`,
+  `morph-refinement-ui-run.json`, `dimensions-ui-regression-run.json`, and native
+  screenshots `morph-refinement-native-{3,2,2-compact,compact-preview,warning}.png`.
+  Warning text is visibly rendered by the JUCE callout in the native capture.
+- Native point dragging passes through the shared curve host. The extended
+  with-spies capture scenario has intermittent fast-drag delivery, recorded in
+  ui-bugs; one complete run passed drag, Undo and captures. This does not establish
+  broad native-suite timing reliability.
+
+## Follow-up: persistent properties and orthographic reduced diagrams
+
+Keep seven stable property slots in both editors: Yellow, Red, Blue, Phase,
+Amplitude, Curve, Component. Coordinate properties outside the active dimensions are
+visible and disabled, including their inapplicable guide controls. Component is
+an independent, always-applicable guide selector using the existing Time-slot
+component-guide semantics. Yellow does not duplicate that selector.
+
+Use the existing shared side-panel painter and MorphControlLayout for both
+families. 2D is a front-facing square, with crisp offset and extended axis rails,
+blended fill, selected authored geometry and cursor projections. 1D occupies the
+same diagram slot with a Yellow line, cursor and linked/selected endpoint state.
+No control changes position as dimensions change. Static uses a smaller editor,
+collapsing the unused lower row and placing the editable curve beside the property
+stack. Preserve the header origin and inspector
+control coordinates through a factory-owned layout adjustment. Canonical panel
+bounds remain shared by painting, input and automation.
+
+Ownership: domain models retain coordinate and guide data; presentation exposes
+applicability without changing stored geometry or input eligibility. Hit routing
+must reject disabled properties and keep Component guide gestures available.
+Delete the Static-only component alias and dimension-based property erasure.
+Verify property persistence, rejection, guide routing, diagrams, normal/compact
+captures, app build and focused tests before completing this slice.
+
+Follow-up completion proof:
+
+- CycleV2 and CycleV2_tests build with `--parallel 10`; 45 focused cases / 2,632
+  assertions pass. The fresh 85-command fixture covers all four modes in both
+  families, including all seven property slots and their applicability.
+- Native macOS input verifies descending modes, unchanged mesh/revision after a
+  disabled Blue click, Yellow link toggling, Component menu access and a real
+  point drag in the compact Static editor. Production-size native captures cover
+  normal and compact windows. Evidence: `.context/morph-properties-native-review.log`,
+  `morph-properties-native-{2,1,1-unlinked,static,static-compact}.png`,
+  `morph-properties-ui-run.json`, and `morph-properties-tests.log`.
+- Removed dimension-based property erasure and the Static-only Component alias.
+  The shared side-panel renderer paints the seven stable slots for both families;
+  disabled input is rejected before routing. The reduced preview replaces the
+  old plane painter and adds the one-axis line. 3D retains its mature cube.
+- Envelope's selected-corner read-through visits only eight authoritative cube
+  vertices. It translates selection for the existing shared renderer; it does
+  not serialize geometry or copy interpolation/selection algorithms. The new
+  factory layout hook keeps Static sizing with its editor, and both runtime
+  placement and automation use the coordinator's canonical bounds.
+- Current slice responsibility review (baseline -> after): EnvelopeCurvePanel
+  1305 -> 1324 remains the mature interaction adapter; EnvelopeEditorComponent
+  1011 -> 1028 composes domain controls and input guards; TrimeshWidget
+  961 -> 957 remains its model/view adapter; side-panel painter 737 -> 745
+  extracts a private row painter. AutomationInspector 1161 -> 1160 delegates
+  placement rather than adding layout policy. NodeEditorHost header 359 -> 360
+  adds one default-identity factory hook. No DSP, transaction, or realtime
+  responsibilities moved. Style, whitespace, code-map and architecture checks pass.
+- A broader Trimesh filter still hits known empty-fixture failures and SIGSEGV;
+  the old lower-right-cube layout assertion is also stale. Reproduction is
+  recorded in `ui-bugs.md` and `.context/morph-properties-tests-broad.log`.
+  Focused success is not a claim of full-suite success.
+
+## Follow-up: slider travel is a layout constraint
+
+Reserve 140–220 px of visible vertex slider travel after label/guide/gain costs.
+The shared property-control design system's 140 px minimum takes precedence over
+surface width, empty space and percentage-based column balance. Maintain the
+same anchors through dimension changes and retain the smaller Static editor.
+For normalized vertex values this gives at least 1.4 px per 1% adjustment;
+the layout does not promise per-pixel thousandth resolution.
+
+Ownership: PropertyControls owns the shared role metrics; MorphControlLayout
+allocates the two columns from those metrics. TrimeshWidget gives that control
+group its required width before assigning the adjacent surface. Painting and
+routed input continue to share the side-panel renderer's row geometry. Remove
+the fixed percentage split that underfunded compact controls and the unrelated
+two-column threshold that could split a usable property column into tiny tracks.
+No gesture mapping, domain edit, undo or audio behavior changes.
+
+Acceptance: geometry assertions for actual travel in all four modes at normal,
+compact and narrower editor widths; endpoint and intermediate native vertex edits
+with Undo; production-size normal/compact screenshots; focused tests, CycleV2
+build with `--parallel 10`, architecture, code-map and style review.
+
+Completion proof:
+
+- Shared role metrics replace the renderer's local label/guide/gain widths.
+  MorphControlLayout reserves the property column and a 16 px group gap before
+  allocating the morph column; TrimeshWidget reserves their combined minimum
+  before the surface. The independent 480 px two-column threshold is gone.
+  Static retains its compact height and controls stay anchored across all modes.
+- 46 focused cases / 3,323 assertions pass, including actual hit-region travel
+  in every mode at 740, 890 and 1,400 px editor widths. Envelope row travel is
+  verified through the same renderer and shared layout. The 85-command UI
+  fixture passes for both node families. CycleV2 and tests build with
+  `--parallel 10`; architecture, code-map, style and whitespace checks pass.
+- Native macOS input confirms a 140 px amplitude track at both reviewed window
+  sizes with identical bounds through 3D, 2D, 1D and Static. Drags to 0, 0.25,
+  0.73 and 1 change the mesh correctly; native Cmd-Z restores the original mesh
+  after each edit. Normal/compact Static and 2D captures and compact Envelope
+  capture reviewed at production size. Evidence: `.context/vertex-travel-tests.log`,
+  `vertex-travel-ui-run.json`, `vertex-travel-native.log`, and
+  `vertex-travel-{normal,compact}-{two,static-verified}.png`.
+- One native attempt stopped before Undo because exact-PID foreground activation
+  failed. A fresh complete run passed; the intermittent automation failure is
+  recorded in `ui-bugs.md` with its separate log.
+- Responsibility review: TrimeshWidget 957 -> 958 lines remains the domain
+  model/view adapter and delegates control width to shared layout. Side-panel
+  painter 745 -> 739 lines consumes shared geometry metrics. MorphControlLayout
+  66 -> 80 lines owns allocation; PropertyControls header 219 -> 233 owns role
+  tokens. No new interaction, transaction, DSP or invalidation responsibilities.
+  The fixed-split and local-width deletion targets are complete.
+
+## Follow-up: Component first and a segment glyph
+
+Put Component curve in the first row above Yellow and the remaining vertex
+properties in both families. Retain the same seven row slots, width budgets,
+guide routing and mode stability. Render a dedicated vector glyph beside its
+label: two bright intercept dots with a blue wave-shaped segment between them,
+distinct from the existing Guide resource icon in the selector.
+
+Use the existing cached NodeIconRenderer/resource pipeline. Glyph canvas is
+32 × 20 px inside the existing row, with an 8 px label gap; SVG viewBox 48 × 30,
+endpoint centres at x=6/42 and a 2.4-unit wave stroke. No new painter or cache
+owner. The shared side-panel renderer owns row order and presentation; domain
+adapters expose Component first without changing stored Time-slot guide data.
+Delete the interposed Component slot. Verify routed selector placement,
+unchanged minimum slider travel, parseable glyph, normal/compact captures and
+native menu interaction before completing this slice.
+
+Completion proof:
+
+- Both presentation lists and the shared slot authority put Component first;
+  routed Trimesh control bounds prove its selector sits above Yellow in all
+  modes. The six coordinate/property sliders retain their 140–220 px travel.
+- The new `componentCurve.svg` uses the existing generated resource list and
+  cached NodeIconRenderer, with the shared Guide glyph kept in the menu control.
+  Parse/render coverage checks both glyphs at production sizes. Normal/compact
+  Trimesh and compact Envelope captures show readable dots, wave and label.
+- 47 focused cases / 3,331 assertions and the updated 85-command fixture pass.
+  CycleV2 and tests build with `--parallel 10`. Native clicks open both Component
+  menus at the top row; screenshots visibly show the Guide options. Automation
+  omits empty Yellow guide rectangles to avoid duplicate Time selector targets.
+  Native target inspection proves the Envelope Component selector is unique.
+- Evidence: `.context/component-curve-{tests,native}.log`,
+  `component-curve-ui-run.json`, `component-curve-{normal-3d,normal-static,compact-static,compact-envelope}.png`,
+  and `component-curve-{trimesh,envelope}-menu.png`. Static capture preparation
+  asserts its selected mode; native acceptance covers the relocated selectors.
+- Architecture/style/code-map/whitespace checks pass. EnvelopeCurvePanel
+  1324 -> 1324 and TrimeshWidget 958 -> 958 remain domain presentation adapters;
+  side-panel painter 739 -> 743 owns shared slot/icon presentation; automation
+  inspector 1160 -> 1163 filters empty geometry only. No domain, guide-mapping,
+  transaction or DSP ownership changed. The interposed slot is removed.
+
+## Follow-up: complete inspector and mapping usability
+
+Component now belongs at the bottom of the seven-row vertex list, superseding
+the preceding first-row decision. Place output Gain/Range/Width
+beneath the properties in that same inspector column in every mode. Static keeps its smaller frame.
+Preserve 140–220 px vertex travel and the existing semantic gesture/undo owners.
+
+Use shared property track/indicator painting instead of scanline slider bodies.
+Keep disabled labels readable, name Guide/Gain columns, and expose exact vertex
+and guide-gain values on hover/drag. Domain adapters track presentation focus;
+the shared side-panel painter owns feedback. Reuse existing JUCE tooltip and
+property-control facilities. Morph diagrams use a common Morph space heading,
+axis letters and distinct cursor/selected endpoint marks at production size.
+
+Modulation source rows compose NodePropertySliderRow for conditional Constant/MIDI
+CC values below their selectors. Reserve compact numeric-entry and track space;
+both profiles remain independent and publish through NodeEditorCommands. Delete
+the zero-width residual layout and raw duplicate slider presentation. Clarify
+Unmapped fallback in hover help. No domain algorithms or realtime paths change.
+
+Verify ordering, inspector containment, minimum travel and mode anchors;
+conditional controls and value/CC edits in both profiles with Undo; exact hover
+and drag feedback; diagram states; normal/compact native captures and gestures;
+focused tests, app build, architecture, style, code-map and whitespace checks.
+
+Completion proof:
+
+- Component is last in both presentation lists and the shared slot authority.
+  Output Gain/Range/Width uses that inspector column, with a named Output group;
+  Static gives the former footer space back to its editable curve. Coordinate
+  slots stay stable and disabled, with 140–220 px of actual vertex travel.
+- Shared property painting replaces the scanline bodies. Guide/Gain headers,
+  readable disabled labels, exact hover/drag readouts and availability tooltips
+  clarify each control. Cube, plane and rail share endpoint/selection primitives
+  and a diamond cursor, with axis letters and the same Morph space heading.
+- Conditional source controls use the existing NodePropertySliderRow and
+  NodePropertyControlBinding transaction, keyboard and numeric-entry owners.
+  Both mapping profiles retain their own values. Each profile pair reserves
+  extra height only when either source needs it; default rows stay compact.
+  No raw slider callbacks or zero-width residual controls remain.
+- Native macOS verification passed from a fresh process at normal and compact
+  widths: all morph modes, first-hover feedback, held vertex drag, output gain,
+  Component menu and guide-gain adjustment with Undo, Envelope hover, Constant
+  drag/Undo and MIDI CC direct numeric entry/Undo. The first guide-gain Undo
+  assertion queried before UI publication; waiting for the restored state
+  passed. Evidence: `.context/inspector-usability-native.log`, run `3d68c3efa87d`,
+  and `inspector-usability-{compact-static,normal-three,normal-two,normal-one,vertex-drag,guide-gain-hover,envelope-hover,modulation-verified}.png`.
+- A fresh native hover initially exposed the OpenGL peer's missed-enter behavior.
+  PropertyHoverTracker now reconciles local pointer position using JUCE Timer
+  at 30 Hz only for showing editors in the foreground process. It supplies
+  presentation feedback; semantic control events and transaction ownership
+  remain unchanged. Each pass scans a fixed inspector list and repaints only
+  when feedback changes. Drag handlers suppress reconciliation. No mesh, graph
+  serialization, audio preparation or realtime work is introduced.
+
+- CycleV2 and tests build with `--parallel 10`. All 48 focused cases / 3,459
+  assertions pass. The 85-command morph-properties fixture passes (run
+  `ad780decb7c6`), including both families and mode stability. The new 32-command
+  conditional-modulation fixture passes (run `40e7d65f3a4f`), checking both
+  profiles, source changes, independent values and Undo. Architecture, code-map,
+  style and whitespace review pass. Logs and fixture reports are under
+  `.context/inspector-usability-*`. This focused proof does not claim resolution
+  of the broader suite's previously recorded fixture and native-timing debt.
+
+Responsibility and size review:
+
+- EnvelopeCurvePanel 1324 → 1324 remains its domain editor/model adapter; only
+  presentation order changes. Its existing collaborators retain geometry,
+  marker and gesture policy. TrimeshWidget 958 → 958 remains the model/view
+  adapter and exposes feedback only. No new domain ownership enters either.
+- EnvelopeEditorComponent 1028 → 1069 and TrimeshControlsComponent 622 → 691
+  retain focus, tooltip and routed-control composition. Shared painter and
+  hover tracker own reused mechanics; dispatcher/delegates still own edits.
+  Side-panel renderer 743 → 762 retains shared row geometry and painting.
+- NodeCanvasAutomationInspector 1163 → 1206 stays a cohesive read-only export
+  facade: the added functions translate bounds already owned by editors into
+  pointer targets. They neither calculate layout nor introduce eligibility,
+  edit or lifecycle policy. An extraction is unnecessary for these small
+  geometry translations; keep future domain decisions out of this facade.
+- ModulationNodeEditors 316 → 341 composes mature property controls rather than
+  duplicating gesture lifecycle. Shared endpoint painters and hover tracking
+  are presentation-only; all old scanline and raw conditional-slider paths
+  are deleted. The UI scope has no DSP or persistent-topology changes.
+
+## Follow-up: shared editor composition and Static partials
+
+Use Trimesh as the layout template for both mesh families: upper-left morph
+surface, upper-right morph/vertex inspector, full-width editable curve below.
+Static compacts to a curve beside vertex properties. Envelope retains its
+panel-wide marker/scaling/zoom toolbar along the bottom. Both families use the
+same popup sizing, column geometry and full-height property rows. Preserve the
+140–220 px vertex travel budget and mature envelope editing/marker policies.
+
+Extract the existing Trimesh body rectangles into MeshEditorLayout; both editor
+adapters consume that authority. Remove Envelope's fixed 310 px control band,
+57% curve/surface split and reduced row-height scale. The shared morph diagram
+slot may grow to 210 px (from 140), bounded by its column and three rail rows.
+Selected endpoints become small solid semantic accents, without oversized rings;
+the diamond cursor stays distinct. No selection or link semantics change.
+
+Static currently returns no grid columns, starving the existing spectral partial
+painter. Prepare exactly one grid-equivalent column at morph zero, reusing
+TrimeshGridwiseDsp, spectral pitch mapping and guide seed policy. No drawable
+surface, multi-column grid or realtime work is required. The same data-source
+column API continues to serve the mature partial painter. Test magnitude/phase,
+pitch-spanning and fixed-pitch cases, guide seeds and model edit refresh against
+a canonical 3D mesh's zero column. Existing zero-live-slice audio checks remain.
+
+Verify actual layout/pointer bounds in all modes at normal and compact widths,
+Envelope curve edits/morph/marker controls with Undo, Static partial availability
+and edit refresh, and production-size captures. Build with --parallel 10; run
+focused tests, UI fixtures, architecture/code-map/style/whitespace checks.
+
+Completion evidence:
+
+- MeshEditorLayout owns the body rectangles previously held by TrimeshWidget.
+  Envelope consumes those same controls/surface/curve rectangles, reserving its
+  own bottom toolbar. Both node view modules use the same scale/aspect policy;
+  the Envelope factory preserves its toolbar when compacting Static. Full-width
+  lower-curve and compact Static layout are asserted on actual editor automation
+  bounds at 1,400/890 px widths across all four modes, with 140–220 px tracks.
+- MorphControlLayout grows the shared diagram slot from 140 to at most 210 px,
+  constrained by the column and rail space. Both families share a 5 px endpoint
+  backplate and 3 px selected/2 px ordinary dot, replacing the 8 px selected disc
+  and 7 px ring. Cursor, face blending and linked-axis semantics are unchanged.
+- Static spectral render data retains one column, so canDrawSurface remains
+  false while the mature partial painter receives data through its existing
+  copyColumnAtMorph API. The zero column reuses GridwiseDsp's ordinary/pitch
+  sampling, column-zero guide seeds and render-profile mapping. Static time
+  rendering continues to omit columns. No realtime paths or allocations change.
+- 50 focused cases / 5,296 assertions pass. The new partial regression compares
+  magnitude/phase against canonical 3D zero-column output with a component guide,
+  for fixed pitch and pitch spanning columns, and checks guide-gain refresh.
+  Existing zero-live-slice runtime checks remain in this focused selection.
+  CycleV2 and tests build with --parallel 10. The 85-command mode/property
+  fixture passes (run 3bffbf701826); the new 10-command spectral fixture passes
+  (fe22667176d8), including Static → 3D → Undo and one-column restoration.
+  Evidence: `.context/shared-mesh-layout-{build,tests}.log`,
+  `shared-mesh-layout-ui-run.json`, `shared-mesh-static-partials-ui-run.json`.
+
+Responsibility review: EnvelopeEditorComponent 1069 → 1063 remains the domain
+editor composition and control-event adapter; geometry now delegates to the
+shared layout and its own toolbar. TrimeshWidget 958 → 940 delegates its former
+body rectangle ownership to that same class. EnvelopeMorphControls 272 → 256
+owns Envelope toolbar composition and uses shared morph geometry/painting;
+obsolete fixed-column geometry is gone. Side-panel renderer 762 → 763 keeps
+shared painting and now consumes the shared footer metric. ConcreteNodeEditors
+490 → 501 adds only Envelope's compact factory adaptation. GridRenderService
+128 → 130 keeps grid/slice orchestration over the mature DSP and mapping owners.
+The two new layout files contain rectangle composition only; no model, gesture,
+selection, transaction, interpolation, invalidation or audio policy moved there.
+Deletion targets (310 px band, 57% split, reduced property-row scale, oversized
+selected ring and Static spectral zero-column return) are complete.
+
+Native completion: run 2604269b5ef1 passed real macOS Envelope vertex movement,
+marker toggle and morph multi-update drags, each with Undo. Normal (1,600 × 900)
+and compact (1,100 × 800) captures cover all modes, selected corners and Static
+spectral partials. Capture preparation verifies modes through semantic pointer
+commands; native input separately verifies the affected editing workflows.
+Evidence: `.context/shared-mesh-native.log`,
+`shared-mesh-{normal,compact}-envelope-selected.png`,
+`shared-mesh-{normal,compact}-envelope-static.png`,
+`shared-mesh-{normal,compact}-static-partials.png` and the intermediate mode captures.
+The final native captures use a height that fits the physical display; an early
+1,050 px request was clamped by macOS and its normal capture was discarded.
+Architecture, code-map, style and whitespace checks pass. This targeted native
+proof does not claim resolution of the previously recorded broader automation
+input-timing debt.
+
+## Follow-up: Envelope surface interaction parity
+
+Hold the last prepared morph surface throughout an Envelope gesture, while the
+local curve continues updating. At gesture commit, rebuild the surface once.
+Use the existing CurveExpandedEditor transaction boundary for curve, parameter
+and morph gestures; do not add another transaction owner or copy the mesh during
+movement. Surface rasterization remains EnvelopeMorphSurfaceRasterizer's shared
+Cycle 1 authority. Convert its HalfBipolar output back to normalized [0,1] with
+Buffer operations before the scalar material consumes it.
+
+Mount the existing ZoomPanel around the Envelope curve. Replace the standalone
+software-only surface painter with the mature Trimesh Panel3D/ZoomPanel hosted
+through CurvePanelHost, so both surface and curve expose established zoom bars,
+wheel mapping, shared-canvas rendering and cache lifecycle. Domain surface code
+supplies columns and commit eligibility only. Reuse scrollbar styling from the
+Trimesh host through one shared presentation authority. Delete the old image
+cache/painter and inner-host-only Envelope mount.
+
+Dimension changes clear the keyboard morph axis and hint only if that axis is
+no longer active. Preserve retained-axis focus in both families.
+
+Verify held multi-update curve/vertex/morph gestures keep the surface rebuild
+count stable, update the local slice, rebuild once on release and restore on
+Undo. Verify endpoint/midpoint normalized surface values, physical colour output,
+actual zoom bars/pan gestures, all modes and retained/dismissed focus. Review
+normal/compact native captures; run focused tests, CycleV2 build --parallel 10,
+architecture/code-map/style and whitespace checks. No audio behavior changes.
+
+Completion evidence:
+
+- CurveExpandedEditorComponent supplies its existing transaction boundaries to
+  the controller's presentation lifecycle. EnvelopeMorphSurfacePreview retains
+  prepared columns while that gesture is active; release requests a repaint
+  and prepares the final revision once. The local Envelope rasterizer and curve
+  remain live. Primary-axis cursor traversal retains its existing prepared grid.
+- The surface now composes TrimeshPanel3D, CurvePanelHost and ZoomPanel. It
+  supplies the mature E3 cross-sections as normalized scalar columns; shared
+  rendering/cache/resource owners replace its independent CPU image painter.
+  Pointer editing is disabled for this preview; established zoom/wheel behavior
+  remains available. The curve mounts its existing ZoomPanel, preserving actual
+  viewport bounds for pointer automation and eight-pixel bars outside content.
+- ZoomPanel's existing scrollbar update block is extracted into updateScrollbars.
+  Envelope framing calls it after constraining its view, synchronizing visible
+  ranges without another rasterization or zoom lifecycle. Trimesh and Envelope
+  now consume the same scrollbar style authority. Existing Trimesh render bounds
+  remain unchanged; Envelope adapters supply their actual inner viewport.
+- HalfBipolar surface output is restored with Buffer.add(0.5).clip(0,1), retaining
+  the mature rasterizer's Cycle 1 request semantics. Endpoint, midpoint and
+  intermediate constant-amplitude probes pass (0, 0.2, 0.5, 0.8, 1). No scalar
+  sample/pixel mapping or new DSP algorithm is introduced.
+- Focus tests exercise both families: Red survives 3D → 2D and disappears in
+  1D; Yellow survives re-expansion and disappears in Static. Both remembered
+  focus and visible shortcut hint follow those conditions. Envelope now clears
+  the inactive hint; Trimesh's established behavior passes unchanged.
+- All 58 focused cases / 5,488 assertions pass, including six existing Trimesh
+  viewport/trackpad cases. CycleV2 and tests build with --parallel 10. The new
+  22-command surface interaction fixture passes (66f767096447): real zoom target
+  geometry, full scalar range, wheel zoom and retained/dismissed focus. The
+  85-command mode/property fixture also passes (9932a35e503b); report:
+  `.context/envelope-surface-ui-run.json`.
+- Native macOS run 3e82760a206f passed two held curve updates, vertex-parameter
+  and orthogonal morph drags: local values/curve change, surface rebuild count
+  stays fixed until release, and commit increments it exactly once. Undo,
+  both zoom hosts, native scrollbar panning and shortcut focus transitions pass.
+  Normal/compact screenshots reviewed at production size. Evidence:
+  `.context/envelope-surface-{build,tests,native}.log`,
+  `envelope-surface-interaction-ui-run.json`, and
+  `envelope-surface-{compact-before,compact-released,compact-zoomed,compact-final,normal-final}.png`.
+
+Responsibility review:
+
+- EnvelopeCurvePanel 1324 → 1325 retains mature envelope interaction and grid
+  policy; the added call synchronizes its existing zoom owner. Envelope editor
+  1063 → 1081 composes the hosted preview and releases invalid keyboard focus;
+  domain geometry, transaction and rendering policy stay with collaborators.
+- CurvePanelController 769 → 809 remains the existing family-controller
+  composition boundary. The Envelope adapter supplies its mesh, guides and
+  commit eligibility; base controller exposes host composition and repaint
+  translation. No interpolation or transaction state machine moves into it.
+- EnvelopeMorphSurfacePreview 51 → 161 is now a column/data-and-host adapter,
+  with CurvePanelHost owning GL context resources, snapshots and invalidation,
+  TrimeshPanel3D owning scalar display, and ZoomPanel owning camera interaction.
+  It does not own document mutation or undo. The old software image/cache path
+  is removed, rather than retained alongside the mature host.
+- CurvePanelInfrastructure 496 → 555 owns the optional zoom wrapper, role-owned
+  viewport/scrollbar export and shared styling. NodeCanvasAutomationInspector
+  1206 → 1230 remains a cohesive read-only facade: it translates those exported
+  rectangles into targets, without calculating layout or adding domain policy.
+  Keep future interaction/edit policy out of this facade.
+- No audio path or realtime preparation changes. Gesture movement introduces
+  no mesh/graph copies or surface preparation; surface work remains outside
+  audio and occurs only at the existing gesture boundary. The old live-image
+  rebuild, centred scalar feed, hidden zoom wrappers and stale focus paths are
+  deleted. Architecture, code-map, style and whitespace checks pass.
+
+## Follow-up: Axis-attached pole-edit locks
+
+Implement the approved mockup in both mesh families. Open/closed locks indicate
+independent/together opposite-pole edits; place them outside uninterrupted axis
+bars with short connectors. Use 28 px hit targets, 20 × 22 px badges and a
+12 × 14 px glyph canvas. A shared morph-space layout owns projection, rails,
+labels and lock targets; existing renderers retain surface/cursor/highlight
+painting. Delete duplicate projection/rail-placement calculations and the Link
+column. Keep slider anchors stable across dimensions, and retain the Axis
+selector and row keyboard hint without enclosing the relocated locks.
+
+Reuse existing Trimesh delegate and Envelope session-link state, linked-corner
+selection, parameter commands and L shortcut. Envelope locks remain session-only;
+Trimesh locks retain their existing parameter persistence and undo. Lock clicks
+do not change authored morph positions or primary view. Pointer-down remains
+constant-size routing; no new live edit or document lifecycle is introduced.
+Tooltips explain edit-together semantics.
+
+Verify targets stay inside the diagram and clear of bars and each other at
+normal/compact widths, inactive locks disappear, primary axis and slider
+geometry remain stable, and both families preserve linked edits, independent
+edits and undo. Review native captures and hover/focus states in all modes;
+build CycleV2/tests --parallel 10 and run focused fixtures, architecture,
+code-map and whitespace checks.
+
+Implementation and ownership:
+
+- MorphSpaceLayout extracts the existing cube projection and owns all diagram
+  rails, label placement and lock targets. Both families' painting, hit regions
+  and automation consume it. The old cube fitting/axis placement and reduced
+  rail placement are removed. Shared vector control painting replaces the
+  rectangular dash toggle; the Link heading and its geometry API are removed.
+- Each 28 × 28 px target contains a 20 × 22 px badge. The glyph uses a 12 × 14
+  px canvas with a 9 × 13 px live area and 1.4 px strokes. Closed and open
+  shackles differ structurally; colour reinforces state. Existing tooltip and
+  hover owners explain the edit relationship. Trimesh's existing target owns
+  Return/tab focus; both families retain L and the row's keyboard hint.
+- MorphControlLayout reserves the same surviving slider/Axis slots in every
+  mode. The diagram uses previously unused vertical space. Envelope removes
+  the unused output-footer reservation, retaining readable diagram scale and
+  full vertex-slider travel. Its 1D/2D input bounds now match the rendered
+  line/plane; 1D edits Yellow alone, 2D edits Red/Blue. The established 3D drag
+  policy remains with Envelope. Multi-update gestures commit once and undo.
+- Source responsibility review: TrimeshSidePanelRenderer 763 → 674 delegates
+  projection/axis layout to MorphSpaceLayout (113 cpp / 31 header lines).
+  EnvelopeEditorComponent 1081 → 1106 keeps session state, input translation
+  and composition; no document or interpolation policy is introduced.
+  PropertyControls 795 → 810 replaces its existing generic link painter with
+  lock presentation and hover wording; formatting/layout remain cohesive
+  collaborators. NodeCanvasAutomationInspector 1230 → 1232 only exports
+  owner-provided Yellow lock and morph-input rectangles. No domain policy or
+  geometry calculation enters that facade.
+
+Completion evidence:
+
+- All 54 focused cases / 5,902 assertions pass. Geometry checks cover both 2D
+  planes and 170/190/210/230 px diagrams: labels and 28 px targets stay inside,
+  targets clear all rails and each other, and inactive axes have no target.
+  Existing slider-travel, mode-stability, focus, guide and link-undo cases pass.
+- The new reduced-Envelope gesture case checks two updates, exact endpoints,
+  held local values, unchanged inactive coordinates, committed parameters and
+  undo for both the Yellow line and Red/Blue plane.
+- The 49-command axis-lock fixture verifies all axes, reduced views, Trimesh
+  parameter undo, Envelope session-only links and focus dismissal. The existing
+  85-command morph-property fixture passes. Reports:
+  `.context/axis-lock-{fixture,properties}-run.json`.
+- Native run f1f8573cca9a verifies every physical lock target/click, unchanged
+  mesh and non-link parameters, L, reduced Envelope plane/line drags and undo.
+  Normal 1600 × 900 and compact 1100 × 800 captures cover all modes and both
+  families; hover/open/closed/focus states reviewed at production size. Earlier
+  one-shot inspections occasionally preceded the updated control state; the
+  final proof waits for that state within 500 ms, without retrying input.
+  Evidence: `.context/axis-lock-native-final.log` and `axis-lock-*.png`.
+- CycleV2 and tests build with --parallel 10. Architecture, code-map, manual
+  style review and whitespace checks pass. The old Link column, dash painter
+  and duplicate diagram geometry are deleted; all follow-up criteria complete.
+
+## Follow-up: Rail caps, component row and marker overlays
+
+Extend the shared near-black rail equally around the value track, preserving
+its endpoints, hit mapping and slider travel. Put the Component curve label
+before its more detailed intercept/curve glyph, aligned to the vertex labels;
+reuse the semantic SVG resource and existing attachment/gain controls.
+
+Move existing Envelope Loop/Sustain buttons into the curve's top-right corner,
+using the actual drawable viewport and the IR Modeller overlay button chrome.
+Share that chrome painter rather than cloning it. Retain marker eligibility,
+selection, command/undo and keyboard owners; promote buttons above the panel
+host so clicks cannot edit the underlying curve. Remove the obsolete footer
+marker heading/group and recenter the remaining Scaling/Zoom groups.
+
+Verify normal/compact and Static layouts, real marker clicks/undo, disabled and
+selected states, shared SVG coverage, slider endpoints, focused tests and
+native captures. Build CycleV2/tests --parallel 10 and run architecture,
+code-map, style and whitespace checks. No audio or mesh algorithm changes.
+
+The native check exposed a selection defect: the old marker helper followed
+`currentVertex/currentCube`, so leaving the curve could target a hovered release
+cube and have its loop removed by validation. Marker state/actions and parameter
+editing now share the existing `selectedEnvelopeCubeForModel()` authority.
+The hover-based intercept scan is deleted. Envelope seam matching and marker
+validation remain unchanged; setting a Loop may legitimately match Sustain's
+amplitude/sharpness, and Undo restores the complete model.
+
+Responsibility/size review:
+
+- EnvelopeCurvePanel 1325 → 1302 keeps mesh interaction and envelope presentation;
+  existing rasterizer/marker policies own lifecycle rules and the controller owns
+  publication. This slice deletes a duplicate selection policy rather than adding
+  another one. Existing curve-panel contracts remain the extraction boundary;
+  no broader panel decomposition is required for these presentation changes.
+- EnvelopeEditorComponent 1106 → 1113 coordinates controls, transactions and
+  composition with EnvelopeMorphControls and the shared curve editor. The overlay
+  introduces no new graph or rasterization policy. EnvelopeMorphControls shrinks
+  by 37 lines as the obsolete footer marker heading/highlight/group is deleted.
+- PropertyControlLookAndFeel 297 → 310 owns shared control paint. IR's existing
+  overlay chrome is extracted here and IR delegates to it; Envelope supplies
+  only hover/focus/enabled/marker facts. TrimeshSidePanelRenderer keeps the shared
+  component row composition. No audio or allocation path changes.
+
+Completion evidence:
+
+- CycleV2 and CycleV2_tests build with --parallel 10. All 49 focused cases /
+  5,948 assertions pass, covering slider geometry, icon coverage, all mode/width
+  layouts, purpose/guide interactions and overlay containment/spacing.
+- Native run 6eff43e002c5 checks real Loop/Sustain clicks and Undo and captures
+  normal 1600 × 900, compact 1100 × 800 and Static layouts. All captures reviewed
+  at production size against IR's overlay chrome; disabled, focused and selected
+  states remain legible. Evidence: `.context/marker-overlay-native.log` and
+  `marker-overlay-{normal-envelope,compact-static,compact-loop,ir-reference}.png`.
+- The durable native `envelope-markers` sequence checks pointer departure,
+  both marker publications and exact model restoration on Undo. Initial run
+  504a1c06e00c passes; evidence: `.context/marker-overlay-native-regression.log`.
+- The 28-command marker fixture, 37-command IR property fixture and existing
+  85-command morph-property fixture pass. Reports are under
+  `.context/marker-overlay-{fixture,ir,properties}-run.json`. Marker pointer
+  departure is proven by the native sequence; synthetic pointer movement is not
+  used as evidence for native hover/selection state.
+- Architecture audit, semantic code map, SVG parse, Python syntax, manual style
+  and production-diff review, and whitespace checks pass. Shared overlay paint,
+  deleted footer marker chrome and deleted hover-selection scan complete the
+  ownership/deletion targets for this follow-up.
+
+## Follow-up: Complete the Envelope curve overlay
+
+Move the existing Scaling and Zoom controls beside the marker overlays, keeping
+markers at the right and a 16 px separation between the three pairs. Reuse the
+shared overlay chrome for every button, retain the Linear/Logarithmic selection
+underline and purpose eligibility, and preserve the existing zoom callbacks.
+The actual curve viewport remains the geometry authority.
+
+Delete the footer painter, label/group geometry, footer-height reservation and
+Static factory compensation. MeshEditorLayout receives the complete body, so the
+curve gains space and Static uses the same compact sizing rule as Trimesh.
+EnvelopeMorphControls owns only mesh presentation/overlay bounds; the selector
+owns its state and button painting, and editor/command owners remain unchanged.
+Verify all modes at normal/compact widths, native scale/zoom/marker clicks,
+selection/undo, pitch-disabled scale controls, and the reclaimed curve extent.
+
+Review: EnvelopeEditorComponent 1113 → 1080 continues to compose controls and
+translate edits through its existing delegate; no domain policy moves into the
+editor. EnvelopeMorphControls 220 → 123 loses footer paint/layout responsibilities
+and retains mesh controls plus viewport-relative overlay placement. The scale
+selector 140 → 130 retains the established diagrams/state and delegates button
+chrome to the shared painter. The footer height, heading geometry, segmented
+Zoom paint, conditional action-button paint and Static footer compensation are
+deleted. No new source boundary, realtime path or gesture complexity change.
+
+Completion evidence:
+
+- CycleV2 and tests build with --parallel 10. All 47 focused cases / 5,961
+  assertions pass, including all mode/width layouts, icon/control dimensions,
+  overlay containment and pair spacing, full curve extent, purpose eligibility,
+  guide interactions and existing Full/Fit range behavior.
+- Native run 5aec8fb7f2cb verifies both scaling choices and Undo, Loop/Sustain
+  publication and exact model Undo, Full/Fit zoom on a narrow Pitch envelope,
+  unchanged model during zoom, and disabled Pitch scaling. Full range is 1;
+  fitting the narrow fixture produces approximately 0.133 with established
+  padding. Evidence: `.context/envelope-tools-native.log`.
+- Production-size captures cover Static/1D/2D/3D at 1100 × 800 and 3D at
+  1600 × 900. Reviewed selection, disabled states, spacing and reclaimed curve
+  area: `.context/envelope-tools-{compact-static,compact-one,compact-two,
+  compact-three,normal-three,pitch-disabled}.png`.
+
+Size refinement: all six overlay buttons now match IR Modeller's 24 × 24
+controls with a 4 px gap within each pair. CanvasChromeMetrics owns the size,
+gap, border inset and 4.75 px icon inset for both editors. Envelope SVG canvases
+are 14.5 px; the procedural scale diagrams use the matching SVG live-area inset
+and preserve their 4:3 proportion. Purpose remains its existing 30 px header
+selector. The former 34 × 30 action and 42 × 30 scale targets are removed.
+
+Final size verification: the 47 focused cases / 5,961 assertions and the IR
+presentation zoom case / 30 assertions pass. Native run a224fa3e391d repeats
+all overlay clicks, Undo, Full/Fit behavior and all mode/width captures at the
+shared 24 px size, including a direct IR reference capture. All buttons retain
+their existing callbacks and purpose eligibility. Shared metrics and overlay
+paint now agree for both families. Architecture, code-map, style/size review
+and whitespace checks pass; footer and legacy-size deletion targets complete.
+The final 26-command marker, 37-command IR property and 32-command purpose
+fixtures pass at the shared size. Evidence:
+`.context/envelope-tools-{markers,ir,purpose}-run.json`.
+
+Overlay spacing refinement: separate Scaling, Zoom and Marker pairs by 16 px,
+while retaining IR's 4 px gap within each pair and 8 px viewport inset. One
+presentation constant owns the group gap; the marker/right anchor is unchanged.
+Existing mode/width geometry checks cover containment, gap and curve extent.
+CycleV2/tests build with --parallel 10; five focused cases / 665 assertions,
+architecture, code-map and whitespace checks pass. Native run 53f6e90ac8c9
+captures compact Static and normal 3D; both reviewed at production size.
+Evidence: `.context/envelope-group-spacing-{tests,native}.log` and
+`envelope-group-spacing-{static,three}.png`.
+
+## Follow-up: Scale meaning, pointer ownership and cube-face input
+
+Replace the reduced tick diagrams with response-curve SVGs (straight Linear,
+concave Logarithmic), remove the misleading selection underline, and explain
+why Pitch/Scratch scale controls are disabled. NativeCursorRefresh currently
+checks only panel screen bounds before asynchronously forcing the curve cursor;
+it must respect the actual component under the pointer so overlay cursors win.
+Envelope's domain label for vertex.phase becomes time; Yellow keeps its meaning.
+
+Cube gestures currently use the Envelope's rectangular Red/Blue mapping for all
+3D clicks and Trimesh has no cube input. Give shared MorphSpaceLayout face hit
+and inverse-projection geometry, then let each editor retain its existing
+session/publication/transaction owners. Choose one visible face on press, hold
+the third coordinate fixed and keep that face through the gesture. Check full
+ranges, two updates, retained coordinates, primary axis, Undo and native input.
+
+Ownership and deletion review: MorphSpaceLayout owns constant-size face geometry;
+both editors own gesture state and retain their existing publication services.
+Trimesh reuses ControlTarget for native cube hit-testing and its existing morph
+transaction for a paired edit. NodeEditorCommandService owns commit/Undo and
+primary-axis publication. The mature Cycle 1 cube is paint-only; no domain
+algorithm was copied. Removed flat 3D Red/Blue mapping, tick bars, selection
+underline and bounds-only asynchronous cursor forcing. No realtime paths changed.
+
+Size review (before → after): EnvelopeEditorComponent 1080 → 1117 retains local
+control/session composition; the new inverse projection lives in shared geometry.
+TrimeshControlsComponent 709 → 758 owns input routing; expanded editor 649 → 681
+owns local feedback; Widget 940 → 952 adds only canonical layout/hit regions.
+Command service 851 → 876 extends its existing morph transaction rather than
+introducing a second publication path. Automation inspector 1232 → 1260 only
+encodes authoritative face geometry in its existing expanded-target encoder.
+Its cohesive role remains serialization of the automation schema; subsequent
+decomposition should move the complete expanded-editor target encoder and remove
+that responsibility from the inspector, rather than relocating face math there. MorphSpaceLayout 113 → 163 is the sole
+new face authority. No orchestration file gained a rendering/domain algorithm.
+
+CycleV2 and tests build with --parallel 10. The focused property/Envelope/face
+suite passes 27 cases / 1,913 assertions. Face tests exercise two live updates,
+exact endpoints, no press jump, held coordinates, one Undo and zero graph/mesh
+copies or model serialization; Trimesh routes through its actual child target.
+Architecture, semantic code-map, SVG XML and whitespace checks pass.
+
+Native evidence: Envelope's three faces pass in d9bf5fe894bc; Trimesh's three
+faces pass in c7267cb896f7. Mesh geometry, primary-axis selection and Undo are
+preserved. Available Volume/Control scale clicks and hand cursors pass in
+dcd2ddde0e25; disabled Pitch/Scratch actions leave state unchanged and show an
+arrow plus explanatory tooltip in 0637296ceb1d. Actual cursor screenshots were
+reviewed, including the failed crosshair capture before the final cursor fix.
+Artifacts: `.context/morph-face-{focused-tests,mesh-native}.log`,
+`.context/scale-response-{enabled,disabled}-native.log`,
+`.context/cube-{env,waveMesh}-{yellow,red,blue}.png`,
+`.context/scale-{volume,control,pitch,scratch}-{linear,logarithmic}-cursor.png`.
+Static scale captures cover the 1100 × 800 window; cube captures cover normal
+width. All keep Envelope's domain label time and the shared Yellow morph axis.
+
+Final native replay: all six cube gestures pass in 59a695d3392a. The combined
+run then exposed a stale hover target during its scale sequence; no scale action
+was attempted. The retained scale smoke now settles hover with small native
+movements before asserting the cursor. Its complete four-purpose/eight-action
+replay passes in 220204b8f788, with actual hand/arrow screenshots reviewed at
+normal width. No action retry is used. Evidence:
+`.context/morph-face-native-final.log` and `.context/scale-response-native-final.log`.
+The normal and compact captures show the same response-curve icon family and
+stable inspector geometry. The purpose fixture also passes all 32 commands.
+
+Final shared-control fixtures pass: purpose 32 commands, markers 26 commands,
+and morph properties 26 commands. Reports are
+`.context/morph-face-{purpose,markers,properties}-report.json`. The final build,
+27 focused cases, architecture/code-map and whitespace checks pass. Follow-up
+ownership and deletion targets above are complete.
+
+
+### Follow-up: Purpose-specific scale tools and quieter overlay selection
+
+Show Linear/Logarithmic only for Volume. Envelope's existing purpose application
+owns visibility; logarithmic playback eligibility and saved values retain their
+existing owners. Hidden controls must have no automation hit targets. Zoom and
+markers retain their positions as purposes change. The shared overlay painter
+owns one-pixel neutral borders and a muted slate selected fill for Envelope and
+IR, with a brighter neutral border for keyboard focus. Delete the redundant
+scale enablement update in document synchronization and the cyan/two-pixel
+overlay focus treatment. Verify live purpose changes and restoration to Volume,
+existing layout/scale/marker behavior, and native screenshots at both widths.
+
+Completion: CycleV2/tests build with --parallel 10; 32 focused cases / 2,458
+assertions pass, including live purpose changes, return to Volume, stable peer
+overlay placement, IR zoom and existing scale/grid behavior. Native replay
+8a9b3abae5ad verifies Volume scale clicks, hidden controls/targets for the other
+three purposes, and return to working Volume controls. Native cursor/selected
+captures show the thinner neutral border. Review 71f6a3b7ae42 covers Static and
+3D Volume/Control plus IR at 1100 × 800 and 1600 × 900. Evidence:
+`.context/volume-scale-{build,tests,native-final,review}.log`,
+`.context/volume-scale-{1100,1600}-{static,three}-{volume,control}.png`,
+`.context/scale-volume-{linear,logarithmic}-selected.png` and
+`.context/scale-{control,pitch,scratch}-hidden.png`.
+
+Size/ownership review: Envelope editor 1117 → 1118 owns purpose visibility;
+shared overlay painter 310 → 309 owns the one-pixel neutral chrome; automation
+inspector 1260 → 1264 only honors the editor's visibility. No new algorithms,
+state owners, framework utilities or realtime work. The existing complete
+expanded-target encoder extraction remains the inspector's decomposition
+boundary. Redundant enablement and cyan/two-pixel overlay focus are removed.
+Architecture, code-map and whitespace checks pass.
+
+Final fixture checks pass: Envelope purpose 32 commands and IR properties
+38 commands, including an explicit default-graph preparation before the
+37-command IR fixture. Reports: `.context/volume-scale-{purpose,ir}-report.json`.
+The first IR run inherited the purpose fixture's preset without an `ir` node;
+replaying with that explicit precondition passes. No product failure was found.
+
+
+### Follow-up: Cube gestures must not focus an unrelated lock
+
+Native reproduction 5dce27092ca8 shows a cyan ring on the Blue lock while the
+pointer drags the cube's Red/Blue face. The cube ControlTarget did not accept
+keyboard focus; JUCE's normal focus acquisition climbed to the parent and
+selected its default focusable child, the spatially first Blue lock. The routed
+host regression fails before the fix with `trimesh.link.blue` instead of
+`trimesh.morphSpace`. Make the existing cube target focusable, like the other
+interactive controls. JUCE retains ownership of focus; existing morph keyboard
+routing and genuine lock focus feedback remain authoritative. No new focus
+manager, hidden styling override or input algorithm. Verify all faces, links,
+keyboard shortcuts and Undo, then compare a native held-drag screenshot.
+
+Completion: CycleV2/tests build with --parallel 10. Five focused cases / 405
+assertions pass, covering cube focus ownership, every face, two updates, held
+coordinates, endpoint behavior, zero live graph/mesh copies or serialization,
+Undo, both families' keyboard shortcuts and explicit lock focus/link toggles.
+The native held-drag replay passes in 189238dc84d0 with both axes changing and
+no lock focus ring. Before/after captures at identical production geometry:
+`.context/cube-lock-{before,after}/cube-lock-during-drag.png`; evidence logs:
+`.context/cube-lock-{before-tests,tests,after-native}.log`. The production fix is
+one focus flag in the existing ControlTarget (758 → 759 lines), using JUCE's
+existing focus lifecycle. Architecture, code-map, style and whitespace checks
+pass; no new source boundary or rendering/gesture algorithm.
+
+
+### PR integration with current master
+
+Merge master c0adc94c for PR #196. Preserve ordered edge/guide undo records from
+master while retaining dimensional guide remapping. Record removed component
+guides with their original indices in reverse removal order; inverse application
+removes remapped guides first and restores the originals in serialized order.
+The projection/cancellation test now verifies Time/Red ordering after both
+cancellation and Undo. Yellow joins Red/Blue in the new note-on-latched input and
+parameter capability metadata, matching the existing Envelope runtime policy;
+the capability test checks all three axes. Retain the new explanation inspector
+alongside dimensional targets. Consolidate two overlapping code-map entries to
+keep its 100-entry budget. No new algorithm or ownership boundary.
+
+Merged CycleV2 and tests build with --parallel 10. Dimensionality, face input,
+capabilities and explanation tests pass: 54 cases / 7,010 assertions. The six
+ordered graph-transaction cases pass separately. Native held cube dragging also
+passes in b2705cf265cd with both axes changing and correct lock focus. Evidence:
+`.context/pr-integration-{build,tests,routing-tests,native,architecture}.log`.
+Architecture, code-map and whitespace checks pass. The local itch preset edit
+was backed up and restored byte-for-byte, and is excluded from the PR commits.

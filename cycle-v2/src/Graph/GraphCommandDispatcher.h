@@ -10,6 +10,10 @@
 
 namespace CycleV2 {
 
+struct TrimeshAuthoringEdits;
+struct EnvelopeAuthoringEdits;
+struct MeshTopologyEdits;
+
 struct CurveNodeStatePublication {
     juce::String nodeId;
     // Captured once from GraphDocument::graph() when the gesture begins.
@@ -85,6 +89,9 @@ public:
             const juce::String& name);
     GraphEditResult publishGuideCurveState(const GuideCurveStatePublication& publication);
     GraphEditResult editGuideCurve(const GuideCurveEdits& edits);
+    GraphEditResult editTrimesh(const TrimeshAuthoringEdits& edits);
+    GraphEditResult editEnvelope(const EnvelopeAuthoringEdits& edits);
+    GraphEditResult editMeshTopology(const MeshTopologyEdits& edits);
     GraphEditResult setGuideHeatmap(
             const juce::String& guideId,
             uint64_t expectedRevision,
@@ -92,6 +99,7 @@ public:
     GraphEditResult clearGuideHeatmap(
             const juce::String& guideId,
             uint64_t expectedRevision);
+    GraphEditResult setMeshDimensions(const String& nodeId, int count);
     GraphEditResult setNodeParameter(
             const juce::String& nodeId,
             const juce::String& parameterId,

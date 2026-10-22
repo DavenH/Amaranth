@@ -15,11 +15,14 @@ struct PreparedMeshGuideAssignments {
 
 class GuideCurveMeshPreparation {
 public:
+    enum class Scope { AllResources, TargetNode };
+
     static PreparedMeshGuideAssignments apply(
             Mesh& mesh,
             const NodeGraph& graph,
             const String& nodeId,
-            GuideCurveTargetKind targetKind);
+            GuideCurveTargetKind targetKind,
+            Scope scope = Scope::AllResources);
     static String configurationKey(const NodeGraph& graph, const String& nodeId);
 };
 

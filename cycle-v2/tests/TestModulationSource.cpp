@@ -6,6 +6,7 @@
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
+#include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphSerializer.h"
 #include "Runtime/AudioProcessContextUtils.h"
 #include "Runtime/GraphAudioExecutor.h"
@@ -623,6 +624,8 @@ TEST_CASE("Envelope coalesces the red and blue triple routes with yellow disable
             NodeKind::Envelope,
             "envelope",
             { 420.f, 20.f }));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "envelope", "dimensionCount", "Dimensions", "2").succeeded());
     const Node* triple = graph.findNode("triple");
     const Node* envelope = graph.findNode("envelope");
     REQUIRE(triple != nullptr);

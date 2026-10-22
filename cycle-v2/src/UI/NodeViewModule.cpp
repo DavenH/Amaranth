@@ -81,10 +81,10 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
     add(NodeKind::ImageSource, preview);
     NodeViewCapabilities modulation = preview;
     modulation.hostedEditor = true;
-    modulation.expandedEditorSize = Point<float>(260.f, 116.f);
+    modulation.expandedEditorSize = Point<float>(260.f, 166.f);
     add(NodeKind::ModulationSource, modulation);
     modulation.previewable = false;
-    modulation.expandedEditorSize = Point<float>(370.f, 230.f);
+    modulation.expandedEditorSize = Point<float>(430.f, 370.f);
     add(NodeKind::ModulationTriple, modulation);
 
     NodeViewCapabilities voice = preview;
@@ -124,7 +124,7 @@ NodeViewModuleRegistry::NodeViewModuleRegistry() {
         curve.expandedEditorSize = editorSize;
         add(kind, curve);
     };
-    addCurve(NodeKind::Envelope, { 840.f, 684.f }, true);
+    add(NodeKind::Envelope, mesh);
     addCurve(NodeKind::ImpulseResponse, { 1296.f, 430.f });
     addCurve(NodeKind::Waveshaper, { 766.f, 464.f });
 

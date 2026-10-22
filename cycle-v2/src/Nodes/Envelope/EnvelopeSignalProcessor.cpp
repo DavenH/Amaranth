@@ -1,4 +1,6 @@
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Runtime/MorphInputs.h"
+#include <Curve/Rasterization/PreparedMeshSlice.h>
 
 #include <algorithm>
 
@@ -16,8 +18,8 @@ namespace {
 std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
         const String& name,
         const EnvelopeMesh& meshState,
-        float red,
-        float blue,
+        const MorphPosition& morph,
+        int dimensionCount,
         float level,
         bool logarithmic,
         bool enabled,
@@ -50,7 +52,12 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->rasterizer = std::make_shared<EnvRasterizer>(
             result->guideCurveProvider.get(), name + "Rasterizer");
     result->rasterizer->setMesh(result->mesh.get());
-    result->rasterizer->setMorphPosition({ 0.f, red, blue });
+    if (dimensionCount == 0) {
+        result->staticSlice = std::make_shared<const Rasterization::PreparedMeshSlice>(
+                Rasterization::PreparedMeshSlice::forMesh(*result->mesh, morph, Vertex::Time));
+    }
+    result->rasterizer->setDimensionality(dimensionCount, result->staticSlice.get());
+    result->rasterizer->setMorphPosition(morph);
     result->rasterizer->setLowresCurves(lowResolution);
     result->rasterizer->setCalcDepthDimensions(false);
     result->rasterizer->renderWaveformOnly(result->mesh.get(), 0.f);
@@ -61,8 +68,8 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     }
 
     result->level = level;
-    result->redMorph = red;
-    result->blueMorph = blue;
+    result->morph = morph;
+    result->dimensionCount = dimensionCount;
     result->logarithmic = logarithmic;
     result->enabled = enabled;
     result->lowResolution = lowResolution;
@@ -72,7 +79,9 @@ std::shared_ptr<const EnvelopeConfiguration> prepareEnvelopeConfiguration(
     result->declick = declick;
 
     result->realtimePlan.mesh = result->mesh.get();
-    result->realtimePlan.request.morph = MorphPosition(0.f, red, blue);
+    result->realtimePlan.request.morph = morph;
+    result->realtimePlan.request.dimensionCount = dimensionCount;
+    result->realtimePlan.request.preparedSlice = result->staticSlice.get();
     result->realtimePlan.request.cyclic = false;
     result->realtimePlan.request.xMinimum = 0.f;
     result->realtimePlan.request.xMaximum = 10.f;
@@ -130,8 +139,10 @@ std::shared_ptr<const EnvelopeConfiguration> EnvelopeSignalProcessor::buildConfi
     return prepareEnvelopeConfiguration(
             "CycleV2EnvelopeConfiguration",
             envelope->getMesh(),
-            parameterMap.floatValue("red", 0.5f),
-            parameterMap.floatValue("blue", 0.5f),
+            { parameterMap.floatValue("yellow", 0.f),
+                    parameterMap.floatValue("red", 0.5f),
+                    parameterMap.floatValue("blue", 0.5f) },
+            parameterMap.intValue("dimensionCount", 0),
             parameterMap.floatValue("level", 1.f),
             parameterMap.boolValue("logarithmic", false),
             parameterMap.boolValue("enabled", true),
@@ -163,6 +174,12 @@ void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     if (!materializer.prepare(configuration->realtimePlan)
             || (configuration->cycleGuideRequired
                     && !cycleMaterializer.prepare(configuration->cycleRealtimePlan))) {
+        activeConfiguration.reset();
+        active = false;
+        return;
+    }
+    if (configuration->dimensionCount == 0 && configuration->cycleGuideRequired
+            && !cycleMaterializer.materialize(configuration->morph)) {
         activeConfiguration.reset();
         active = false;
         return;
@@ -210,28 +227,23 @@ bool EnvelopeSignalProcessor::prepareEnvelope(
         return false;
     }
 
-    const auto valueAt = [sampleOffset](const SignalPayload* input, float fallback) {
-        if (input == nullptr || input->block.samples.empty()) {
-            return fallback;
-        }
-        if (input->block.samples.size() == 1) {
-            return jlimit(0.f, 1.f, input->block.samples.front());
-        }
-        const size_t index = std::min(sampleOffset, input->block.samples.size() - 1);
-        return jlimit(0.f, 1.f, input->block.samples[index]);
-    };
-    const SignalPayload* redInput = inputAt(context, 0);
-    const SignalPayload* blueInput = inputAt(context, 1);
-    const float red = valueAt(redInput, activeConfiguration->redMorph);
-    const float blue = valueAt(blueInput, activeConfiguration->blueMorph);
+    if (activeConfiguration->dimensionCount == 0) {
+        return !activeConfiguration->cycleGuideRequired
+                || cycleMaterializer.hasPreparedEnvelope();
+    }
+    const MorphInputs inputs { { inputAt(context, 2), inputAt(context, 0), inputAt(context, 1) } };
+    const auto morph = inputs.resolve(activeConfiguration->morph,
+            MorphDimensions(activeConfiguration->dimensionCount), sampleOffset);
     if (preservePlayback && hasPreparedMorph
-            && red == preparedRed && blue == preparedBlue) {
+            && morph.time == preparedMorph.time
+            && morph.red == preparedMorph.red
+            && morph.blue == preparedMorph.blue) {
         return true;
     }
     const auto previous = preparedPlaybackView();
-    if (!materializer.stage(red, blue)
+    if (!materializer.stage(morph)
             || (activeConfiguration->cycleGuideRequired
-                    && !cycleMaterializer.stage(red, blue))) {
+                    && !cycleMaterializer.stage(morph))) {
         return false;
     }
     materializer.adoptStaged();
@@ -241,8 +253,7 @@ bool EnvelopeSignalProcessor::prepareEnvelope(
     if (preservePlayback) {
         playback.adopt(previous, preparedPlaybackView());
     }
-    preparedRed = red;
-    preparedBlue = blue;
+    preparedMorph = morph;
     hasPreparedMorph = true;
     ++preparedGeneration;
     return true;

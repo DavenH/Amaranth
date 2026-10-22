@@ -8,6 +8,7 @@
 #include "UI/EffectEnableButton.h"
 #include "UI/Editors/ProcessingScopeSelector.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UiIconData.h"
 
 #include <Audio/CycleDsp/IrModel.h>
@@ -23,8 +24,6 @@ constexpr float kControlRailWidth = 348.f;
 constexpr int kValueWidth = 72;
 constexpr int kActionButtonHeight = 24;
 constexpr int kActionButtonWidth = 72;
-constexpr int kViewButtonSize = 24;
-constexpr int kViewButtonGap = 4;
 constexpr int kScopeWidth = 160;
 constexpr int kScopeHeight = 28;
 constexpr float kSampleLabelWidth = 56.f;
@@ -56,22 +55,12 @@ public:
     }
 
     void paintButton(Graphics& graphics, bool highlighted, bool down) override {
-        const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
-        const Colour accent { 0xff65b8ff };
-        graphics.setColour(Colour(0xff0e1318).brighter(
-                down ? 0.12f : highlighted ? 0.06f : 0.f));
-        graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
-        graphics.setColour(hasKeyboardFocus(false) ? accent : Colour(0xff536171));
-        graphics.drawRoundedRectangle(
-                bounds,
-                CanvasChromeMetrics::controlCornerRadius,
-                hasKeyboardFocus(false)
-                        ? CanvasChromeMetrics::focusRingWidth
-                        : CanvasChromeMetrics::restingBorderWidth);
+        paintPanelOverlayButton(graphics, getLocalBounds().toFloat(),
+                highlighted, down, hasKeyboardFocus(false));
         if (icon != nullptr) {
             icon->drawWithin(
                     graphics,
-                    bounds.reduced(4.f),
+                    getLocalBounds().toFloat().reduced(CanvasChromeMetrics::panelOverlayIconInset),
                     RectanglePlacement::centred,
                     1.f);
         }
@@ -450,15 +439,18 @@ void ImpulseResponseEditorComponent::layoutEditor() {
     const Rectangle<int> panel = editorPanelBounds().toNearestInt();
     constexpr int viewButtonInset = 8;
     const int viewButtonX = panel.getRight()
-            - viewButtonInset - 2 * kViewButtonSize - kViewButtonGap;
+            - viewButtonInset - 2 * CanvasChromeMetrics::panelOverlayButtonSize
+            - CanvasChromeMetrics::panelOverlayButtonGap;
     const int viewButtonY = panel.getY() + viewButtonInset;
     impl->zoomAttack.setBounds(
-            viewButtonX, viewButtonY, kViewButtonSize, kViewButtonSize);
+            viewButtonX, viewButtonY,
+            CanvasChromeMetrics::panelOverlayButtonSize,
+            CanvasChromeMetrics::panelOverlayButtonSize);
     impl->zoomFull.setBounds(
-            viewButtonX + kViewButtonSize + kViewButtonGap,
+            viewButtonX + CanvasChromeMetrics::panelOverlayButtonSize + CanvasChromeMetrics::panelOverlayButtonGap,
             viewButtonY,
-            kViewButtonSize,
-            kViewButtonSize);
+            CanvasChromeMetrics::panelOverlayButtonSize,
+            CanvasChromeMetrics::panelOverlayButtonSize);
     impl->zoomAttack.toFront(false);
     impl->zoomFull.toFront(false);
 

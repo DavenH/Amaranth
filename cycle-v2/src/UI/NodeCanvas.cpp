@@ -13,7 +13,7 @@
 #include <UI/Panels/OpenGLDiagnostics.h>
 #include <UI/Panels/TimeSurfaceStyles.h>
 
-#include "App/ImpulseResponseImportAutomation.h"
+#include "App/Automation/ImpulseResponseImportAutomation.h"
 #include "UI/NodeCanvas.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
@@ -256,6 +256,7 @@ NodeCanvas::NodeCanvas() :
                     [this](const String& guideId) { requestDeleteGuideCurve(guideId); },
                     [this]() { requestCanvasRepaint(); }
             });
+    editorCoordinator.previewResources().setPreviewControls(presentation);
     refreshCompiledState();
 
     setOpaque(true);

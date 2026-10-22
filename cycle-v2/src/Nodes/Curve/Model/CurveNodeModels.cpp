@@ -3,8 +3,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include <Curve/Mesh/MorphDimensions.h>
 
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Graph/NodeModelDecodeDiagnostics.h"
@@ -397,19 +399,37 @@ bool EnvelopeNodeModel::readJSON(const var& root) {
         validated.destroy();
         return false;
     }
+    constexpr auto maximumIdentity = (EnvelopeCubeId) std::numeric_limits<int64>::max();
+    EnvelopeCubeId nextIdentity = 1;
     std::vector<EnvelopeCubeId> nextIds;
     nextIds.reserve((size_t) encodedIds->size());
     for (const auto& encodedId : *encodedIds) {
-        nextIds.push_back((EnvelopeCubeId) (int64) encodedId);
+        if ((!encodedId.isInt() && !encodedId.isInt64()) || (int64) encodedId <= 0
+                || (EnvelopeCubeId) (int64) encodedId >= maximumIdentity) {
+            validated.destroy();
+            return false;
+        }
+        const auto identity = (EnvelopeCubeId) (int64) encodedId;
+        nextIds.push_back(identity);
+        nextIdentity = jmax(nextIdentity, identity + 1);
     }
     std::unordered_set<EnvelopeCubeId> uniqueIds;
     uniqueIds.reserve(nextIds.size());
-    const bool idsValid = !nextIds.empty() && std::all_of(nextIds.begin(), nextIds.end(), [&](EnvelopeCubeId id) {
+    const bool idsValid = std::all_of(nextIds.begin(), nextIds.end(), [&](EnvelopeCubeId id) {
         return id != 0 && uniqueIds.emplace(id).second;
     });
     if (!idsValid) {
         validated.destroy();
         return false;
+    }
+    if (root.hasProperty("nextCubeIdentity")) {
+        const auto encodedNext = root["nextCubeIdentity"];
+        if ((!encodedNext.isInt() && !encodedNext.isInt64()) || (int64) encodedNext <= 0
+                || (EnvelopeCubeId) (int64) encodedNext < nextIdentity) {
+            validated.destroy();
+            return false;
+        }
+        nextIdentity = (EnvelopeCubeId) (int64) encodedNext;
     }
     validated.destroy();
 
@@ -418,6 +438,7 @@ bool EnvelopeNodeModel::readJSON(const var& root) {
         return false;
     }
     cubeIds = std::move(nextIds);
+    nextCubeIdentity = nextIdentity;
     rebuildIdentityMap();
     committedMesh.deepCopy(&mesh);
     logarithmic = (bool) object->getProperty("logarithmic");
@@ -459,6 +480,7 @@ var EnvelopeNodeModel::writeJSON() const {
         encodedIds.add((int64) cubeId);
     }
     root->setProperty("cubeIds", var(encodedIds));
+    root->setProperty("nextCubeIdentity", (int64) nextCubeIdentity);
     return var(root.release());
 }
 
@@ -482,6 +504,7 @@ bool EnvelopeNodeModel::equals(const EnvelopeNodeModel& other) const {
 bool EnvelopeNodeModel::equalsGeometryAndTopology(const EnvelopeNodeModel& other) const {
     return mesh.equals(other.mesh)
             && cubeIds == other.cubeIds
+            && nextCubeIdentity == other.nextCubeIdentity
             && selection == other.selection
             && logarithmic == other.logarithmic;
 }
@@ -508,6 +531,14 @@ VertCube* EnvelopeNodeModel::selectedMeshCube() const {
 }
 
 bool EnvelopeNodeModel::synchronizeFromMesh(VertCube* selectedCube) {
+    constexpr auto maximumIdentity = (EnvelopeCubeId) std::numeric_limits<int64>::max();
+    const auto newCubeCount = (EnvelopeCubeId) std::count_if(
+            mesh.getCubes().begin(), mesh.getCubes().end(), [&](VertCube* cube) {
+                return identitiesByCube.find(cube) == identitiesByCube.end();
+            });
+    if (nextCubeIdentity > maximumIdentity || newCubeCount > maximumIdentity - nextCubeIdentity) {
+        return false;
+    }
     std::vector<EnvelopeCubeId> nextIds;
     nextIds.reserve((size_t) mesh.getNumCubes());
     auto nextIdentityByCube = identitiesByCube;
@@ -681,6 +712,22 @@ std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::copyOf(
             revision, std::move(copy), red, blue, std::move(editorState)));
 }
 
+std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::takeEnvelope(
+        std::unique_ptr<EnvelopeNodeModel> model,
+        float red,
+        float blue,
+        uint64_t revision,
+        var editorState) {
+    if (model == nullptr) {
+        return {};
+    }
+    model->setPublicationRevision(revision);
+    std::shared_ptr<const EnvelopeNodeModel> owned(std::move(model));
+    return std::shared_ptr<const CurveNodeModelState>(new CurveNodeModelState(
+            "envelope", EnvelopeNodeModel::currentVersion,
+            revision, std::move(owned), red, blue, std::move(editorState)));
+}
+
 std::shared_ptr<const CurveNodeModelState> CurveNodeModelState::withEnvelopeMorph(
         float red,
         float blue,
@@ -775,7 +822,14 @@ int CurveNodeDomainCodec::currentVersion() const {
 }
 
 NodeModelStatePtr CurveNodeDomainCodec::createDefault() const {
-    const var state = defaultCurveModelState(kind);
+    var state = defaultCurveModelState(kind);
+    if (kind == NodeKind::Envelope) {
+        EnvelopeNodeModel model;
+        if (model.readJSON(state)) {
+            MorphDimensions::project(model.getMesh(), MorphDimensions(0), { 0.f, 0.5f, 0.5f });
+            state = model.writeJSON();
+        }
+    }
     String error;
     return readJSON(NodeModelEnvelopeCodec::write(
             schemaId(), currentVersion(), 1, "state", state), error);

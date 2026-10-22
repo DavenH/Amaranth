@@ -358,6 +358,12 @@ GraphEditResult GraphCommandDispatcher::setNodeParameter(
         const juce::String& parameterId,
         const juce::String& label,
         const juce::String& value) {
+    if (parameterId == "dimensionCount") {
+        if (value.length() != 1 || !value.containsOnly("0123")) {
+            return { GraphEditCode::InvalidParameterValue, nodeId, {} };
+        }
+        return setMeshDimensions(nodeId, value.getIntValue());
+    }
     return applyIncremental(
             [&](GraphDeltaBuilder& delta, const NodeGraph& graph) {
                 delta.captureNodeParameter(graph, nodeId, parameterId);
@@ -781,6 +787,10 @@ void GraphCommandDispatcher::accumulateChange(
             destination.removedGuideAssignments.end(),
             change.removedGuideAssignments.begin(),
             change.removedGuideAssignments.end());
+    destination.addedGuideAssignments.insert(
+            destination.addedGuideAssignments.end(),
+            change.addedGuideAssignments.begin(),
+            change.addedGuideAssignments.end());
     destination.topologyChanged = destination.topologyChanged || change.topologyChanged;
     destination.layoutChanged = destination.layoutChanged || change.layoutChanged;
     destination.probesChanged = destination.probesChanged || change.probesChanged;

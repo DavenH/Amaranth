@@ -65,7 +65,8 @@ public:
                 request.blockSampleOffset,
                 request.elapsedSamples,
                 request.context != nullptr ? request.context->timing.sampleRate : 44100.0,
-                configuration->scratchSourceEnabled);
+                configuration->scratchSourceEnabled,
+                configuration->dimensionCount);
     }
 
     void captureRaster(
@@ -116,6 +117,8 @@ public:
         if (!core.prepare(plan, step)) {
             return false;
         }
+        rasterizer.setDimensionality(
+                core.configuration->dimensionCount, core.configuration->staticSlice.get(), MorphDimensions::Plane::YellowRed);
         rasterizer.setCalcDepthDimensions(false);
         rasterizer.setPrepareIntegrals(false);
         rasterizer.setGuideCurveProvider(core.configuration->guideCurveProvider.get());
@@ -226,6 +229,8 @@ public:
         auto* mesh = const_cast<Mesh*>(core.configuration->mesh.get());
         activeMesh = core.configuration->enabled
                 && mesh->hasEnoughCubesForCrossSection();
+        rasterizer.setDimensionality(
+                core.configuration->dimensionCount, core.configuration->staticSlice.get());
         rasterizer.setGuideCurveProvider(core.configuration->guideCurveProvider.get());
         rasterizer.setDeltaOverlay(core.configuration->deltaOverlay);
         rasterizer.prepare(

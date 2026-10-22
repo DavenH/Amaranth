@@ -59,9 +59,10 @@ Rectangle<float> NodeCanvasEditorCoordinator::boundsFor(
                 .withCentre(available.getCentre());
     }
 
-    return NodeViewModuleRegistry::instance().moduleFor(node->kind).expandedEditorBounds(
-            canvasBounds,
-            kMinimumEditorMargin);
+    const auto& module = NodeViewModuleRegistry::instance().moduleFor(node->kind);
+    const auto bounds = module.expandedEditorBounds(canvasBounds, kMinimumEditorMargin);
+    const auto* factory = module.editorFactory();
+    return factory != nullptr ? factory->layoutBounds(*node, bounds) : bounds;
 }
 
 bool NodeCanvasEditorCoordinator::blocksCanvas(const Node* node) {

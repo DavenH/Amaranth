@@ -2,6 +2,7 @@
 #include <limits>
 
 #include "UI/NodeCanvasScene.h"
+#include "Graph/MeshDimensionality.h"
 #include "Graph/GraphEdgeIndex.h"
 #include "UI/ModulationCableBundle.h"
 #include "UI/NodeInputQuickCreate.h"
@@ -550,7 +551,9 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
                 return;
             }
             for (const auto& port : ports) {
-                if (ModulationCableBundle::hidesIndividualPort(node, port)
+                if ((port.input && !MeshDimensionality::inputActive(node, port.id)
+                            && indexedEdges.edgesToInput(node.id, port.id).empty())
+                        || ModulationCableBundle::hidesIndividualPort(node, port)
                         || (configurationOnly
                             && port.connectionKind != ConnectionKind::ConfigurationAttachment)) {
                     continue;
@@ -587,7 +590,7 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
             appendPorts(node.outputs, NodeSceneTargetKind::OutputPort);
         }
         if (node.kind == NodeKind::ModulationTriple
-                || ModulationCableBundle::supportsDestination(node)) {
+                || ModulationCableBundle::socketVisible(node, indexedEdges)) {
             const bool input = node.kind != NodeKind::ModulationTriple;
             const auto centre = viewport.toScreen(
                     ModulationCableBundle::worldCentre(node, input));
@@ -728,6 +731,25 @@ const NodeCanvasSceneSnapshot& NodeCanvasScene::build(
         });
     }
 
+    for (auto& presented : current.edges) {
+        if (!isPositiveAndBelow(presented.edgeIndex, (int) graph.getEdges().size())) {
+            continue;
+        }
+        const Edge& edge = graph.getEdges()[(size_t) presented.edgeIndex];
+        const Node* destination = graph.findNode(edge.destNodeId);
+        if (destination == nullptr || !MeshDimensionality::applies(destination->kind)) {
+            continue;
+        }
+        presented.destinationMorphMask = MeshDimensionality::dimensions(*destination).cornerMask();
+        presented.inactive = !MeshDimensionality::inputActive(*destination, edge.destPortId);
+        if (presented.modulationBundle) {
+            presented.inactive = std::all_of(presented.edgeIndices.begin(), presented.edgeIndices.end(),
+                    [&](int index) {
+                        return !MeshDimensionality::inputActive(*destination,
+                                graph.getEdges()[(size_t) index].destPortId);
+                    });
+        }
+    }
     routeObstructedCables(graph, indexedEdges, viewport, current);
     return current;
 }

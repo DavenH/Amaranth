@@ -7,10 +7,11 @@
 #include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Util/LogRegionMapping.h>
 
-#include "App/OfflineAudioCaptureAutomation.h"
+#include "App/Automation/OfflineAudioCaptureAutomation.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphSerializer.h"
 #include "Runtime/OfflineGraphAudioRenderer.h"
+#include "TrimeshAuthoringTestSupport.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -490,6 +491,76 @@ TEST_CASE("Legacy diagnostic capture is not mistaken for scheduled capture",
     command.getDynamicObject()->setProperty("frames", 1024);
 
     REQUIRE_FALSE(OfflineAudioCaptureAutomation::isScheduledCapture(command));
+}
+
+TEST_CASE("Scheduled audio capture replaces existing WAV and raw recordings",
+        "[cycle-v2][automation][offline-audio][capture-replacement]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    TemporaryFile reusedWav(".wav");
+    TemporaryFile freshWav(".wav");
+    TemporaryFile reusedRaw(".f32");
+    TemporaryFile freshRaw(".f32");
+    auto graph = TestSupport::authoredTrimeshGraph(0);
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "mesh", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    const auto& plan = compiled.plan;
+    var command = new DynamicObject();
+    auto* object = command.getDynamicObject();
+    object->setProperty("sampleRate", 48000.0);
+    object->setProperty("channels", 2);
+    object->setProperty("randomSeed", (int64) 193157);
+    object->setProperty("durationMs", 100.0);
+    object->setProperty("note", 60);
+    object->setProperty("rawPath", reusedRaw.getFile().getFullPathName());
+    const auto capture = [&](const File& path) {
+        var data;
+        String error;
+        const bool succeeded = OfflineAudioCaptureAutomation::capture(
+                command, path, plan, 1, data, error);
+        INFO(error);
+        REQUIRE(succeeded);
+    };
+    capture(reusedWav.getFile());
+    const int64 originalWavSize = reusedWav.getFile().getSize();
+    object->setProperty("durationMs", 30.0);
+    object->setProperty("note", 72);
+    capture(reusedWav.getFile());
+    object->setProperty("rawPath", freshRaw.getFile().getFullPathName());
+    capture(freshWav.getFile());
+
+    REQUIRE(reusedWav.getFile().getSize() < originalWavSize);
+    REQUIRE(reusedWav.getFile().getSize() == freshWav.getFile().getSize());
+    AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<AudioFormatReader> replaced(formats.createReaderFor(reusedWav.getFile()));
+    std::unique_ptr<AudioFormatReader> fresh(formats.createReaderFor(freshWav.getFile()));
+    REQUIRE(replaced != nullptr);
+    REQUIRE(fresh != nullptr);
+    REQUIRE(replaced->lengthInSamples == 1440);
+    REQUIRE(replaced->lengthInSamples == fresh->lengthInSamples);
+    REQUIRE(replaced->numChannels == 2);
+    REQUIRE(replaced->sampleRate == 48000.0);
+    AudioBuffer<float> replacedSamples(2, 1440);
+    AudioBuffer<float> freshSamples(2, 1440);
+    REQUIRE(replaced->read(&replacedSamples, 0, 1440, 0, true, true));
+    REQUIRE(fresh->read(&freshSamples, 0, 1440, 0, true, true));
+    REQUIRE(replacedSamples.getMagnitude(0, 1440) > 0.f);
+    for (int channel = 0; channel < 2; ++channel) {
+        REQUIRE(std::equal(replacedSamples.getReadPointer(channel),
+                replacedSamples.getReadPointer(channel) + 1440,
+                freshSamples.getReadPointer(channel)));
+    }
+    MemoryBlock replacedBytes;
+    MemoryBlock freshBytes;
+    REQUIRE(reusedRaw.getFile().loadFileAsData(replacedBytes));
+    REQUIRE(freshRaw.getFile().loadFileAsData(freshBytes));
+    REQUIRE(replacedBytes.getSize() == 2 * 1440 * sizeof(float));
+    REQUIRE(replacedBytes == freshBytes);
+#else
+    SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
+#endif
 }
 
 TEST_CASE("Strictly ported subbass fixture renders through the realtime path",
