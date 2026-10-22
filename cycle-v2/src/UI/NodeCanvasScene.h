@@ -58,6 +58,8 @@ struct NodeSceneEdge {
     bool sourceEndpointVisible { true };
     bool destinationEndpointVisible { true };
     bool inlinePan {};
+    int destinationMorphMask { 7 };
+    bool inactive {};
 };
 
 struct NodeCanvasSceneSnapshot {

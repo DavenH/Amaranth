@@ -21,6 +21,12 @@ Cyclogram values are authoritative raw values, with their existing folding
 gain and peak normalization documented. Absolute recording level is unavailable
 after the existing decoder normalization and must not be inferred.
 
+Schema 1's existing `effectiveMidiNote` and `pitchPath[].midiNote` fields retain
+the Cycle sample convention (standard MIDI plus 12) for compatibility.
+`midiNoteConvention` explicitly identifies that convention, while the additive
+`standardMidiNote` and `pitchPath[].standardMidiNote` fields use standard MIDI.
+`pitchFrames[].frequencyHz` remains the authoritative effective period frequency.
+
 ## Ownership And Reuse
 
 - `ReferenceLibrary` owns import, prepared analysis, selected reference and

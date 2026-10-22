@@ -6,6 +6,7 @@
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 
 #include <Curve/Mesh/VertCube.h>
+#include <Curve/Mesh/MorphDimensions.h>
 #include <Obj/MorphPosition.h>
 
 #include <algorithm>
@@ -39,8 +40,10 @@ bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
     syncedNodeId = node.id;
     syncedModel = node.model;
     const NodeParameterMap parameters(node);
-    morphRed = parameters.floatValue("red", 0.5f);
-    morphBlue = parameters.floatValue("blue", 0.5f);
+    dimensions = parameters.intValue("dimensionCount", 0);
+    authoredMorph = { parameters.floatValue("yellow", 0.f),
+            parameters.floatValue("red", 0.5f), parameters.floatValue("blue", 0.5f) };
+    refreshEffectiveMorph();
     if (differentNode) {
         morphRedLinked = true;
         morphBlueLinked = true;
@@ -73,14 +76,14 @@ NodeModelStatePtr EnvelopePanelAdapter::modelPublication(
         editor->setProperty("selectedCubeId", (int64) *model.selectedCubeId());
     }
     return CurveNodeModelState::copyOf(
-            model, morphRed, morphBlue, publicationRevision, var(editor.release()));
+            model, authoredMorph.red, authoredMorph.blue, publicationRevision, var(editor.release()));
 }
 
 std::vector<CurvePreviewVertex> EnvelopePanelAdapter::previewVertices() {
     std::vector<CurvePreviewVertex> result;
     result.reserve((size_t) mesh().getNumCubes());
     MorphPosition position;
-    position.time.setValueDirect(0.f);
+    position.time.setValueDirect(morphYellow);
     position.red.setValueDirect(morphRed);
     position.blue.setValueDirect(morphBlue);
     position.timeDepth = 0.001f;
@@ -111,9 +114,24 @@ bool EnvelopePanelAdapter::registerMeshEdit() {
     return true;
 }
 
-void EnvelopePanelAdapter::setMorph(float red, float blue) {
-    morphRed = red;
-    morphBlue = blue;
+void EnvelopePanelAdapter::setMorph(const MorphPosition& position) {
+    authoredMorph = position;
+    refreshEffectiveMorph();
+}
+
+bool EnvelopePanelAdapter::setPreviewMorphPosition(std::optional<MorphPosition> position) {
+    const MorphPosition previous = effectiveMorphPosition();
+    previewMorph = std::move(position);
+    refreshEffectiveMorph();
+    return previous.time != morphYellow || previous.red != morphRed || previous.blue != morphBlue;
+}
+
+void EnvelopePanelAdapter::refreshEffectiveMorph() {
+    const MorphPosition position = previewMorph.has_value()
+            ? MorphDimensions(dimensions).constrain(*previewMorph, authoredMorph) : authoredMorph;
+    morphYellow = position.time;
+    morphRed = position.red;
+    morphBlue = position.blue;
 }
 
 void EnvelopePanelAdapter::setLogarithmic(bool logarithmicToUse) {

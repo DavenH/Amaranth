@@ -1,5 +1,134 @@
 # Audio Bug Notes
 
+## P2: Reusing a scheduled WAV capture path kept the preceding recording
+
+On 2026-10-22, saxophone modelling found that `captureAudio` returned metrics
+for newly rendered PCM while a reused WAV path still played its first capture.
+`File::createOutputStream` appends by default; the scheduled writer added a new
+RIFF stream after the previous file. A 100 ms then 30 ms regression grows the
+file from 28,904 to 37,648 bytes before the fix, rather than replacing it.
+
+Status: resolved. The scheduled WAV writer now seeks to zero and truncates
+before constructing the JUCE writer, with explicit stream-error handling.
+The raw writer already follows that contract. `[capture-replacement]` checks
+that repeated-path WAV length and decoded PCM match a fresh shorter capture
+at a different pitch, and that raw float output is replaced exactly. The
+failing-before log is `.context/return-to-sax/capture-replacement-red.log`.
+
+## P2: IR imports cap source samples before canonical-rate conversion
+
+Source review on 2026-10-21 confirms that
+`ImpulseResponseResourcePreparation::prepare` calls the mature
+`CycleDsp::irTrimmedSampleCount` before resampling to 44.1 kHz. That helper
+retains at most 16,384 source samples: about 171 ms at 96 kHz and 42.7 ms at
+384 kHz, although the canonical Size can represent about 371 ms. The same
+100 ms resonant response therefore fits at 44.1/48/96 kHz but is truncated
+when imported at 384 kHz.
+
+Status: existing import-duration limitation, confirmed by source; no shared
+trim policy changed in M11. Its supported-rate validation is not a guarantee
+of equal maximum retained source duration. A follow-up should compare the
+same physical response at high source rates and retain the mature audible-tail
+criterion while applying the maximum duration in the canonical timebase.
+The current reed body's 160 retained source samples are unaffected. See
+[IR audio resources](cycle-v2-ir-audio-resources.md) for the separate resolved
+playback-rate conversion and compiled-runtime coverage.
+
+## P3: Disabled noisy Guides may retain generated noise (unconfirmed)
+
+During the 2026-10-21 reed/aspiration authoring study, source review found that
+`GuideCurveSnapshotProvider::addGuide` copies noise, vertical-offset and phase
+parameters before its disabled-resource branch. That branch zeros only the
+curve table, prepares it and still publishes the Guide slot. Both
+`getTableValue` and `sampleDownAddNoise` then call `GuideCurveTableDsp` with the
+retained parameters; the latter adds noise and vertical offset after reading
+the zero table. `GuideCurveMeshPreparation` still applies the typed assignment
+for this slot. Disabling a noisy Guide may therefore leave generated texture.
+
+Status: unconfirmed by rendered app audio; no runtime policy changed. Reproduce
+with a neutral flat component Guide at noise 1, disable it, then compare seeded
+PCM against the same resource at enabled=true/noise=0. Also check a nonzero
+vertical-offset resource. A focused provider/PCM test should establish the
+intended enable contract before a fix. Current reed tonal ablations explicitly
+set noise=0 on both `reedGrain` and `reedAspiration` and do not rely on the enable
+flag. Investigation notes are in
+`.context/sax-reed-proud/capabilities/README.md`.
+
+## P2: Repeated Guide edits after reopening can retain the preceding audio plan
+
+On 2026-10-21, the shared-body reed preset under
+`.context/sax-reed-core/shared-body/` retained bit-identical noisy PCM after
+setting `reedGrain.noise=0`, although the exported resource correctly stored
+zero. Reopening the original and repeating that edit still did not reliably
+prepare the new audio. The command/capture sequence is retained in
+`verification-commands.jsonl`; the original PCM hash begins `5d16bd5e`.
+
+The focused `[guide-reopen]` regression reproduces original graph → noise zero
+→ reopen original → noise zero using actual offline PCM. Before the fix it
+fails because the repeated edit's PCM is unchanged, with 21 of 22 assertions
+passing before the failure (`.context/guide-reopen-before.txt`). Guide component
+assignments and the canonical noise renderer are valid.
+
+Source diagnosis: full compilation cleared prepared-product cache entries but
+retained semantic source fingerprints, allowing the second identical request
+to be suppressed against a newly loaded plan. Committed Guide automation also
+scheduled an asynchronous refresh before returning, permitting capture to copy
+the prior plan. The fix resets request/product caches together at compilation
+and uses the existing synchronous refresh for committed Guide automation.
+It preserves graph-gesture ownership and cancellation baselines. Status:
+resolved; focused checks pass 67 assertions in three cases and adjacent checks
+pass 502 assertions in 38 cases. Rebuilt app verification captures identical
+zero-noise PCM immediately after the edit and after reopening/repeating it,
+while the noisy baseline differs. Evidence is
+`.context/sax-reed-core/ready/verification.json`; details are recorded in the
+[presentation lifecycle TDD](cycle-v2-presentation-cache-lifecycle.md). Queue M12
+tracks the modelling obstacle and its resolution, rather than a new noise DSP.
+
+## P3: Flat-curve persistence rounds sharp IR control coordinates
+
+On 2026-10-21, the new IR import automation test imported a normalized 48 kHz
+impulse with nonzero samples at indices 0 and 100, modelled it through the
+existing fitter, saved it and reloaded without the source file. The rendered
+128-sample kernel changes by less than 0.0002 absolute; one observed sample
+changes by about 0.000093. The unsmoothed display curve's maximum change is
+0.002058. Undo/redo of the same imported state is exact.
+
+Source diagnosis: `GraphSerializer` writes ordinary scalar model coordinates
+to five decimal places. Its shortest-round-trip float path recognizes Trimesh
+vertices but does not include flat-curve vertices. The new importer uses the
+existing curve and codec, rather than introducing this rounding behavior.
+
+Status: open, low-level numerical drift; audible impact is not established.
+Reproduce with `[ir-import-automation]` and compare the prepared kernel before
+and after serialization. Assess longer/steeper curves before choosing a
+serialization-precision change. The focused test bounds the actual kernel
+error for its fixture and retains canonical content and exact undo/redo checks.
+
+## P2: Unipolar sustain floor attenuates a measured release below half scale
+
+On 2026-10-21, the layer-2 saxophone anchor in
+`.context/sax-anchor-fit/iteration-07/tenor-anchor-layer-2.cyclegraph` matches
+the reference body but its captured output drops roughly 6–8 dB immediately
+after the selected 6.75-second note-off. The reference has a gradual tail.
+The paired layer-3 anchor retains its release at 5.82 seconds. Raw audio and
+comparison plots are in the same iteration directory.
+
+Source review explains the difference: the layer-2 volume envelope has sustain
+amplitude 0.22281961; shared `EnvelopeSustainPointPolicy` inserts a point just
+after sustain with amplitude at least 0.5. Unipolar `EnvelopeReleasePolicy`
+starts at that inserted point, and `EnvelopePlaybackEngine::beginRelease`
+scales the following tail by sustain level divided by its sampled release
+level. The predicted later-tail factor is 0.44563922 (−7.0203 dB). Layer 3's
+sustain amplitude 0.7656227 exceeds the floor, so its scale remains one.
+The inserted point may preserve the very first release sample while the later
+authored tail acquires the lower scale.
+
+Status: open; this is a suspicious interaction with an existing shared/legacy
+guard, not a proposed policy removal. Reproduce with a focused envelope
+contract before changing playback or compatibility. The content workaround
+factors each anchor's gain so its sustain exceeds half scale, then recaptures
+the endpoints/bridge. Queue item M08 records discovery and invariance criteria.
+
 ## P2: Long reference imports omit the tail without an explicit truncation flag
 
 On 2026-10-21, preparation of the downloaded saxophone references found
@@ -18,6 +147,54 @@ they do not recover the omitted tail. Source headers and lengths are recorded
 in `.context/sax-reference-downloads/iowa/collection.json` and
 `youtube/acquisition.json`. Region workflow requirements are in modelling
 feature queue M02; this is separate from adding a second decoder or tracker.
+
+## P2: Expressive articulation validation exposes resampler assertions and unused-axis allocation
+
+On 2026-10-21, the new opted-in legato path retained a 2048-sample spectral
+frame across high-to-low slurs. Its large frame/period ratios violated the
+streaming Hermite resampler's small-padding assumption (`Resampling.cpp:281`),
+with 20 counted allocations including assertion reporting. Evidence:
+`.context/articulation-domain-second.log` in the articulation implementation
+worktree. The fix reuses the shared periodic Hermite sampler for this path;
+ordinary polyphonic playback keeps its original streaming behavior.
+
+The eight-voice factory benchmark then exposed a separate pre-existing
+allocation: ModulationTriple rendered its disconnected yellow axis through
+`makeOutputPayload`, creating one fallback SignalBuffer per voice/callback.
+The allocation stack is `.context/legato-allocation-trace.log`; 32 callbacks
+over eight voices counted 256 allocations. Realtime execution now retains
+empty placeholders for explicitly disconnected output views. Diagnostic and
+direct processing retain all axes. A timed connected-axis regression checks
+that skipping unused axes preserves the controller response.
+
+Status: resolved. Final clean allocation, assertion and performance verification
+is recorded in the articulation TDD, including the eight-voice factory graph.
+## Investigation: Baroque offline audition ignores a first-pole change
+
+During the 2026-10-22 live-authoring audit, loading
+`content/presets/old/baroque-flute.cyclegraph` and setting all eight corners of
+`timeLayer1` cube 0 to amplitude .15 published successfully but left the seeded
+offline PCM identical. Repro: seed 7143, 44.1 kHz, 8192 frames, blocks of 173,
+note 60 at velocity 100 on channel 1. The downstream spectral graph may explain
+the lack of sensitivity; this has not been assigned to an engine defect.
+
+The direct mesh-to-output regression does change PCM and restores it exactly
+through undo/redo. Use that isolated path as the addressed-edit proof until the
+factory graph's sensitivity is understood. This observation preceded the
+isolated `TestLiveShapeAudio` regression; no factory content was changed.
+
+## P2: Reference comparison Spies use a legacy note as standard MIDI
+
+The saxophone audit found a 293.665 Hz recording correctly stored as note 74
+under the mature sample convention (standard MIDI plus 12). Passing that value
+unchanged into the standard MIDI preview oscillator rendered one octave high.
+Cycle V2 now translates only the comparison/presentation boundary. Pitch
+storage, pitch paths and folding retain their established convention.
+
+The focused generated-recording test covers the actual period, standard note
+62, edit/undo/reload and preview clock. Native verification on the preceding
+study branch confirmed identical pitch frames and folded values after the fix.
+The comparison fixture checks both reference and pinned Spy note values.
 
 ## P2: Reference analysis exports Cycle note numbers under MIDI field names
 
@@ -1080,3 +1257,20 @@ failure at `TestNodeCanvasAuthoring.cpp:232` is already tracked in
 capture, display-domain persistence, and output visibility tests pass.
 Status: open; reconcile these fixture and preview expectations independently
 of Spy card presentation.
+
+
+## Open: legacy scratch ControlSignal and strict pitch-guide comparison fixtures
+
+During mesh dimensionality verification on 2026-10-20, the case
+`Scratch Envelope drives every attached Trimesh from one prepared trajectory`
+still reports `blockDifference == 0` with explicitly restored 3D Trimeshes and
+2D authored scratch geometry. Its mesh operands resolve through ControlSignal;
+`TrimeshMorphResolver::domainFor` accepts TimeSignal/spectral domains only
+(the same boundary exists in HEAD). Inspect the older fixture's materialization
+boundary separately; do not treat this result as native audio acceptance.
+The preset case `Pitch Envelope Guide phase is distinct per Unison lane and
+stable per note seed` also reports a strict `first == legacyValues` mismatch.
+This run has not established whether that failure predates this change.
+Evidence: `.context/dimensions-tests.log`, `.context/dimensions-regression.log`.
+Focused guided migration through sustain/release and reduced interpolation
+parity pass independently in TestMeshDimensionality.cpp.

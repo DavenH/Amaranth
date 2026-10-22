@@ -188,7 +188,7 @@ NodeModelStatePtr curveModel(std::vector<FlatCurveVertex> vertices) {
 
 std::vector<NodeParameter> envelopeParameters(const String& payload = EnvelopeMeshState::defaultSnapshot()) {
     (void) payload;
-    return {};
+    return { { "dimensionCount", "Dimensions", "3" } };
 }
 
 SignalPayload payload(std::initializer_list<float> samples) {
@@ -256,6 +256,10 @@ void prepareProcessor(
     }
     if (model == nullptr && role == AudioModuleRole::ImpulseResponse) {
         model = CurveNodeDomainCodec(NodeKind::ImpulseResponse).createDefault();
+    }
+    if (model == nullptr && role == AudioModuleRole::Envelope) {
+        EnvelopeNodeModel envelope;
+        model = CurveNodeModelState::copyOf(envelope, 0.5f, 0.5f, 1);
     }
     AudioExecutionSpec spec;
     spec.maximumFrameCount = maximumFrameCount == 0 ? context.frameCount : maximumFrameCount;
@@ -871,7 +875,9 @@ TEST_CASE("Envelope latches absolute morph inputs per note",
     auto parameters = envelopeParameters();
     parameters.push_back({ "red", "Red", "0.5" });
     parameters.push_back({ "blue", "Blue", "0.5" });
-    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(parameters);
+    EnvelopeNodeModel model;
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(
+            parameters, CurveNodeModelState::copyOf(model, 0.5f, 0.5f, 1));
     REQUIRE(configuration != nullptr);
 
     EnvelopeSignalProcessor processor;
@@ -955,6 +961,107 @@ TEST_CASE("Envelope materializes routed morph at a nonzero note-on sample offset
             samples.begin() + 4,
             samples.end(),
             output(expectedContext).block.samples.begin()));
+}
+
+TEST_CASE("Voice-authorized Envelope morph adopts once at block start and freezes on release",
+        "[cycle-v2][runtime][envelope][modulation][live]") {
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(envelopeParameters());
+    REQUIRE(configuration != nullptr);
+    for (const double sampleRate : { 44100., 96000. }) {
+        for (const size_t frameCount : { 16u, 256u }) {
+            EnvelopeSignalProcessor processor;
+            processor.adoptConfiguration({ 1, "live-envelope", configuration });
+            AudioExecutionSpec spec;
+            spec.maximumFrameCount = frameCount;
+            spec.sampleRate = sampleRate;
+            processor.prepareExecution(spec);
+            const auto process = [&](std::vector<float> red,
+                                     std::vector<NoteLifecycleEvent> events = {}) {
+                AudioProcessContext context;
+                context.frameCount = frameCount;
+                context.liveEnvelopeMorph = true;
+                context.captureTraversalGrid = false;
+                context.timing.sampleRate = sampleRate;
+                context.inputs = { payload(red), payload({ 0.25f }) };
+                context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+                context.voice.events = std::move(events);
+                processor.process(context);
+            };
+            process({ 0.1f }, { { NoteLifecycleType::NoteOn, 3, 0 } });
+            const uint64_t firstGeneration = processor.cycleEnvelopeGeneration();
+            REQUIRE(firstGeneration == 1);
+            const double firstPosition = processor.playbackPosition();
+            std::vector<float> timedControl(frameCount, 0.9f);
+            timedControl.front() = 0.1f;
+            process(timedControl);
+            REQUIRE(processor.cycleEnvelopeGeneration() == firstGeneration);
+            REQUIRE(processor.realtimePreparationDiagnostics().attempts == 1);
+            process({ 0.9f });
+            REQUIRE(processor.cycleEnvelopeGeneration() == firstGeneration + 1);
+            REQUIRE(processor.realtimePreparationDiagnostics().attempts == 2);
+            REQUIRE(processor.playbackPosition() > firstPosition);
+            REQUIRE(processor.cycleEnvelopeConfiguration() == configuration.get());
+            process({ 0.9f });
+            REQUIRE(processor.realtimePreparationDiagnostics().attempts == 2);
+            process({ 0.2f }, { { NoteLifecycleType::NoteOff, 0, 0 } });
+            process({ 0.3f });
+            REQUIRE(processor.realtimePreparationDiagnostics().attempts == 2);
+            process({ 0.4f }, { { NoteLifecycleType::NoteOn, 2, 0 } });
+            REQUIRE(processor.cycleEnvelopeGeneration() == firstGeneration + 2);
+            process({ 0.7f }, { { NoteLifecycleType::Reset, 0, 0 } });
+            process({ 0.8f });
+            REQUIRE(processor.realtimePreparationDiagnostics().attempts == 3);
+        }
+    }
+}
+
+TEST_CASE("Live Envelope Yellow changes adopt without restarting and inactive axes do no work",
+        "[cycle-v2][runtime][envelope][modulation][live][mesh-dimensions]") {
+    EnvelopeNodeModel model;
+    for (auto* cube : model.getMesh().getCubes()) {
+        for (int corner = 0; corner < (int) VertCube::numVerts; ++corner) {
+            auto* vertex = cube->getVertex(corner);
+            vertex->values[Vertex::Time] = corner >= 4 ? 1.f : 0.f;
+            vertex->values[Vertex::Amp] = corner >= 4 ? 0.8f : 0.2f;
+        }
+    }
+    const auto state = CurveNodeModelState::copyOf(model, 0.5f, 0.5f, 1);
+    for (const int dimensions : { 2, 3 }) {
+        CAPTURE(dimensions);
+        const auto configuration = EnvelopeSignalProcessor::buildConfiguration(
+                { { "dimensionCount", "Dimensions", String(dimensions) } }, state);
+        REQUIRE(configuration != nullptr);
+        EnvelopeSignalProcessor processor;
+        processor.adoptConfiguration({ 1, "live-yellow", configuration });
+        AudioExecutionSpec spec;
+        spec.sampleRate = 48000.;
+        spec.maximumFrameCount = 8;
+        processor.prepareExecution(spec);
+        const auto process = [&](float yellow, bool noteOn) {
+            AudioProcessContext context;
+            context.frameCount = spec.maximumFrameCount;
+            context.liveEnvelopeMorph = true;
+            context.captureTraversalGrid = false;
+            context.timing.sampleRate = spec.sampleRate;
+            context.inputs = { {}, {}, payload({ yellow }) };
+            context.outputPorts = { { "env", PortDomain::ControlSignal, ChannelLayout::Mono } };
+            if (noteOn) {
+                context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+            }
+            processor.process(context);
+            return output(context).block.samples.front();
+        };
+        REQUIRE(process(0.f, true) == Catch::Approx(0.2f).margin(0.002f));
+        const double position = processor.playbackPosition();
+        REQUIRE(process(1.f, false)
+                == Catch::Approx(dimensions == 3 ? 0.8f : 0.2f).margin(0.002f));
+        REQUIRE(processor.playbackPosition() > position);
+        REQUIRE(processor.cycleEnvelopeConfiguration() == configuration.get());
+        REQUIRE(processor.cycleEnvelopeGeneration() == (dimensions == 3 ? 2 : 1));
+        REQUIRE(processor.realtimePreparationDiagnostics().attempts == (dimensions == 3 ? 2 : 1));
+        process(1.f, false);
+        REQUIRE(processor.realtimePreparationDiagnostics().attempts == (dimensions == 3 ? 2 : 1));
+    }
 }
 
 TEST_CASE("Envelope processor preserves active position across snapshot edits", "[cycle-v2][runtime][envelope]") {

@@ -1,4 +1,6 @@
 #include "Nodes/Trimesh/Editor/TrimeshControlsComponent.h"
+#include "Graph/NodeParameterMap.h"
+#include "Graph/MeshDimensionality.h"
 
 #include <algorithm>
 #include <array>
@@ -8,10 +10,12 @@
 #include "UI/Editors/MorphKeyboardShortcutHelp.h"
 #include "UI/Editors/MorphKeyboardShortcuts.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/Editors/PropertyHoverTracker.h"
+#include "UI/Editors/PropertyControls.h"
 
 namespace CycleV2 {
 
-class TrimeshControlsComponent::ControlTarget : public Component {
+class TrimeshControlsComponent::ControlTarget : public Component, public TooltipClient {
 public:
     ControlTarget(
             TrimeshControlsComponent& targetOwner,
@@ -30,7 +34,12 @@ public:
                 : MouseCursor::PointingHandCursor);
         if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
             setComponentID("trimesh.link." + region.axisValue);
-            setTitle("Link " + region.axisValue);
+            setTitle("Edit both " + region.axisValue + " poles together");
+            setWantsKeyboardFocus(true);
+        }
+        if (region.kind == TrimeshExpandedHitRegionKind::MorphSpace) {
+            setComponentID("trimesh.morphSpace");
+            setTitle("Drag a cube face to move its two morph axes");
             setWantsKeyboardFocus(true);
         }
         if (region.kind == TrimeshExpandedHitRegionKind::MorphControl) {
@@ -62,6 +71,37 @@ public:
         setName(region.kind == TrimeshExpandedHitRegionKind::OutputScale
                 ? "TrimeshOutputScaleTarget"
                 : "TrimeshControlTarget");
+    }
+
+    bool hitTest(int x, int y) override {
+        return region.kind == TrimeshExpandedHitRegionKind::MorphSpace
+                ? owner.morphSpace().cubeFaceAt(ownerPosition({ (float) x, (float) y })) >= 0
+                : Component::hitTest(x, y);
+    }
+
+    String getTooltip() override { return owner.tooltipFor(region); }
+
+    void paint(Graphics& graphics) override {
+        if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
+            const bool linked = NodeParameterMap(owner.node).boolValue("link." + region.axisValue, true);
+            const MorphDimension dimension = region.axisValue == "yellow" ? MorphDimension::Yellow
+                    : region.axisValue == "red" ? MorphDimension::Red : MorphDimension::Blue;
+            const Colour colour = colourForMorphDimension(dimension);
+            paintMorphAxisLock(graphics, getLocalBounds().toFloat(), colour, linked,
+                    isMouseOverOrDragging(), hasKeyboardFocus(false));
+        }
+    }
+
+    void mouseEnter(const MouseEvent&) override {
+        owner.showPropertyFeedback(region.parameterId);
+        repaint();
+    }
+
+    void mouseExit(const MouseEvent&) override {
+        repaint();
+        if (owner.dragTarget == DragTarget::None) {
+            owner.showPropertyFeedback({});
+        }
     }
 
     void mouseDown(const MouseEvent& event) override {
@@ -128,15 +168,82 @@ TrimeshControlsComponent::TrimeshControlsComponent(TrimeshWidget& targetWidget) 
             *this,
             "trimesh.morph.shortcuts",
             true);
+    propertyHover = std::make_unique<PropertyHoverTracker>(*this, [this](Point<float> position) {
+        if (dragTarget != DragTarget::None) {
+            return;
+        }
+        String feedback;
+        for (const auto& region : controlHitRegions) {
+            if (region.bounds.contains(position) && isControlEnabled(region)
+                    && (region.kind == TrimeshExpandedHitRegionKind::VertexParameter
+                            || region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain)) {
+                feedback = region.parameterId;
+                break;
+            }
+        }
+        showPropertyFeedback(feedback);
+    });
 }
 
 TrimeshControlsComponent::~TrimeshControlsComponent() = default;
+
+void TrimeshControlsComponent::showPropertyFeedback(const String& id) {
+    if (widget.propertyFeedbackId() != id) {
+        widget.setPropertyFeedback(id);
+        if (auto* parent = getParentComponent()) {
+            parent->repaint();
+        }
+    }
+}
+
+String TrimeshControlsComponent::tooltipFor(const TrimeshExpandedHitRegion& region) {
+    if (region.kind == TrimeshExpandedHitRegionKind::LinkToggle) {
+        return morphAxisLinkTooltip(region.axisValue.substring(0, 1).toUpperCase() + region.axisValue.substring(1),
+                NodeParameterMap(node).boolValue("link." + region.axisValue, true));
+    }
+    const bool vertex = region.kind == TrimeshExpandedHitRegionKind::VertexParameter
+            || region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
+            || region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment;
+    if (vertex && widget.selectedVertexIndexForPanel() < 0) {
+        return "Select a curve point to edit its properties.";
+    }
+    if (vertex && !TrimeshWidget::vertexPropertyActive(region.parameterId,
+            NodeParameterMap(node).intValue("dimensionCount", 0))) {
+        return "Unavailable in the current Curve morphing mode.";
+    }
+    if (region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
+            && !widget.hasGuideAttachmentForParameter(region.parameterId)) {
+        return "Attach a Guide curve to adjust its gain.";
+    }
+    if (region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment) {
+        return "Choose a Guide curve for this component.";
+    }
+    return TrimeshSidePanelRenderer::propertyTooltip(widget.selectedVertexParameters(), region.parameterId);
+}
+
+String TrimeshControlsComponent::getTooltip() {
+    const auto position = getMouseXYRelative().toFloat();
+    for (const auto& region : controlHitRegions) {
+        if (region.bounds.contains(position)) {
+            return tooltipFor(region);
+        }
+    }
+    return {};
+}
 
 void TrimeshControlsComponent::setDelegate(TrimeshControlsDelegate* nextDelegate) {
     delegate = nextDelegate;
 }
 
 void TrimeshControlsComponent::setNode(const Node& nextNode) {
+    if (NodeParameterMap(node).intValue("dimensionCount", 0)
+            != NodeParameterMap(nextNode).intValue("dimensionCount", 0)) {
+        lastHitRegionContentBounds = {};
+    }
+    if (!keyboardMorphAxis.isEmpty()
+            && !MeshDimensionality::inputActive(nextNode, keyboardMorphAxis)) {
+        keyboardMorphAxis.clear();
+    }
     if (node.id != nextNode.id) {
         keyboardMorphAxis.clear();
     }
@@ -202,7 +309,8 @@ void TrimeshControlsComponent::paint(Graphics& graphics) {
             TrimeshWidget::expandedMorphKeyboardFocusBounds(
                     contentBounds,
                     axisIndex,
-                    widget.showsOutputScale()));
+                    widget.showsOutputScale(),
+                    MeshDimensionality::dimensions(node).axisCount()));
 }
 
 void TrimeshControlsComponent::resized() {
@@ -227,6 +335,10 @@ bool TrimeshControlsComponent::keyPressed(const KeyPress& key) {
         return toggleFocusedMorphLink();
     }
     return false;
+}
+
+MorphSpaceLayout TrimeshControlsComponent::morphSpace() const {
+    return MorphSpaceLayout(widget.morphDiagramBounds(contentBounds), MorphDimensions(3));
 }
 
 MouseCursor TrimeshControlsComponent::cursorFor(Point<float> position) {
@@ -274,6 +386,25 @@ void TrimeshControlsComponent::beginPointerInteraction(
     }
 }
 
+void TrimeshControlsComponent::beginMorphFaceDrag(Point<float> position) {
+    if (delegate == nullptr || NodeParameterMap(node).intValue("dimensionCount", 0) != 3) {
+        return;
+    }
+    cubeFace = morphSpace().cubeFaceAt(position);
+    if (cubeFace < 0) {
+        return;
+    }
+    constexpr const char* ids[] { "yellow", "red", "blue" };
+    cubeDragOrigin = position;
+    for (int axis = 0; axis < 3; ++axis) {
+        cubeDragInitial[(size_t) axis] = delegate->trimeshMorphControlValue(ids[axis]);
+    }
+    const auto axes = MorphSpaceLayout::cubeFaceAxes(cubeFace);
+    dragTarget = DragTarget::MorphFace;
+    delegate->beginTrimeshMorphPairControlEdit({ ids[axes[0]], ids[axes[1]] },
+            { cubeDragInitial[(size_t) axes[0]], cubeDragInitial[(size_t) axes[1]] });
+}
+
 void TrimeshControlsComponent::continuePointerInteraction(Point<float> position) {
     dragControl(position);
 }
@@ -306,7 +437,8 @@ void TrimeshControlsComponent::updateHitRegions() {
     controlHitRegions = widget.expandedControlHitRegions(
             contentBounds,
             widget.showsOutputScale(),
-            widget.outputScaleParameterId());
+            widget.outputScaleParameterId(),
+            NodeParameterMap(node).intValue("dimensionCount", 0));
 
     for (const auto& region : controlHitRegions) {
         auto component = std::make_unique<ControlTarget>(*this, region);
@@ -332,7 +464,9 @@ const TrimeshExpandedHitRegion* TrimeshControlsComponent::findControlRegion(Poin
             controlHitRegions.begin(),
             controlHitRegions.end(),
             [this, position](const TrimeshExpandedHitRegion& region) {
-                return isControlEnabled(region) && region.bounds.contains(position);
+                return isControlEnabled(region) && region.bounds.contains(position)
+                        && (region.kind != TrimeshExpandedHitRegionKind::MorphSpace
+                                || morphSpace().cubeFaceAt(position) >= 0);
             });
 
     if (found == controlHitRegions.end()) {
@@ -348,6 +482,10 @@ bool TrimeshControlsComponent::isControlEnabled(
             || region.kind == TrimeshExpandedHitRegionKind::VertexGuideGain
             || region.kind == TrimeshExpandedHitRegionKind::VertexGuideAttachment;
     if (isVertexControl && widget.selectedVertexIndexForPanel() < 0) {
+        return false;
+    }
+    if (isVertexControl && !TrimeshWidget::vertexPropertyActive(
+                region.parameterId, NodeParameterMap(node).intValue("dimensionCount", 0))) {
         return false;
     }
 
@@ -366,9 +504,14 @@ void TrimeshControlsComponent::beginControlDrag(
         Point<float> position,
         Rectangle<int> screenArea) {
     rememberMorphFocus(region);
+    showPropertyFeedback(region.parameterId);
     float value {};
 
     switch (region.kind) {
+        case TrimeshExpandedHitRegionKind::MorphSpace:
+            beginMorphFaceDrag(position);
+            break;
+
         case TrimeshExpandedHitRegionKind::PrimaryAxis:
             if (delegate != nullptr) {
                 delegate->setTrimeshPrimaryAxis(region.axisValue);
@@ -440,6 +583,16 @@ void TrimeshControlsComponent::dragControl(Point<float> position) {
     float value {};
 
     switch (dragTarget) {
+        case DragTarget::MorphFace:
+            if (delegate != nullptr) {
+                const auto next = morphSpace().dragCubeFace(
+                        cubeFace, position - cubeDragOrigin, cubeDragInitial);
+                const auto axes = MorphSpaceLayout::cubeFaceAxes(cubeFace);
+                delegate->updateTrimeshMorphPairControlEdit(
+                        { next[(size_t) axes[0]], next[(size_t) axes[1]] });
+            }
+            break;
+
         case DragTarget::Morph:
             if (widget.morphValueForParameterAt(contentBounds, activeParameterId, position, value)
                     && delegate != nullptr) {
@@ -478,7 +631,7 @@ void TrimeshControlsComponent::dragControl(Point<float> position) {
 }
 
 void TrimeshControlsComponent::endControlDrag() {
-    if (dragTarget == DragTarget::Morph && delegate != nullptr) {
+    if ((dragTarget == DragTarget::Morph || dragTarget == DragTarget::MorphFace) && delegate != nullptr) {
         delegate->endTrimeshMorphControlEdit();
     } else if (dragTarget == DragTarget::OutputScale && delegate != nullptr) {
         delegate->endTrimeshOutputScaleControlEdit();
@@ -549,11 +702,12 @@ bool TrimeshControlsComponent::selectAdjacentMorphControl(int direction) {
     const int currentIndex = current == axes.end()
             ? (direction < 0 ? static_cast<int>(axes.size()) : -1)
             : static_cast<int>(std::distance(axes.begin(), current));
-    const int nextIndex = jlimit(
-            0,
-            static_cast<int>(axes.size()) - 1,
-            currentIndex + direction);
-    return selectMorphControl(axes[(size_t) nextIndex]);
+    for (int index = currentIndex + direction; index >= 0 && index < 3; index += direction) {
+        if (selectMorphControl(axes[(size_t) index])) {
+            return true;
+        }
+    }
+    return current != axes.end();
 }
 
 bool TrimeshControlsComponent::setFocusedMorphTo(float value) {
@@ -597,7 +751,8 @@ void TrimeshControlsComponent::updateKeyboardShortcutHint() {
     const Rectangle<float> focus = TrimeshWidget::expandedMorphKeyboardFocusBounds(
             contentBounds,
             axisIndex,
-            widget.showsOutputScale());
+            widget.showsOutputScale(),
+            MeshDimensionality::dimensions(node).axisCount());
     keyboardShortcutHelp->setAnchorBounds(focus);
 }
 

@@ -1315,11 +1315,15 @@ TEST_CASE("Trimesh vertex deformer controls cover every guide-capable dimension"
         "[cycle-v2][nodes][trimesh][geometry][guide]") {
     const Rectangle<float> parameterArea { 20.f, 40.f, 620.f, 150.f };
 
+    const std::array<String, 6> ids { "guide.time", "vertex.red", "vertex.blue",
+            "vertex.phase", "vertex.amp", "vertex.curve" };
+    REQUIRE_FALSE(TrimeshSidePanelRenderer::showsGuideControlsForParameter("vertex.time"));
     for (int i = 0; i < 6; ++i) {
         const Rectangle<float> row =
                 TrimeshSidePanelRenderer::vertexParameterRowBounds(parameterArea, i);
         const bool showsGuideControls =
-                TrimeshSidePanelRenderer::showsGuideControlsForParameter(i);
+                TrimeshSidePanelRenderer::showsGuideControlsForParameter(
+                        ids[(size_t) i]);
         const Rectangle<float> rail = TrimeshSidePanelRenderer::vertexParameterRailBounds(
                 row,
                 showsGuideControls
@@ -1382,13 +1386,14 @@ TEST_CASE("Trimesh side panel renderer keeps all control surfaces in panel bound
         REQUIRE(morphRail.getWidth() >= 96.f);
         REQUIRE(sideArea.contains(primary));
         REQUIRE(sideArea.contains(link));
-        REQUIRE(primary.getWidth() == Catch::Approx(link.getWidth()));
-        REQUIRE(primary.getHeight() == Catch::Approx(link.getHeight()));
+        REQUIRE(link.getWidth() == Catch::Approx(28.f));
+        REQUIRE(link.getHeight() == Catch::Approx(28.f));
         REQUIRE(focus.contains(primary));
-        REQUIRE(focus.contains(link));
+        REQUIRE(cube.contains(link));
+        REQUIRE_FALSE(focus.intersects(link));
         REQUIRE(focus.getHeight() == Catch::Approx(
                 PropertyControlMetrics::morphRowHeight - 2.f));
-        REQUIRE(icon.getX() > link.getRight());
+        REQUIRE(icon.getX() > primary.getRight());
         REQUIRE(icon.getRight() <= sideArea.getRight());
     }
 
@@ -2215,6 +2220,36 @@ TEST_CASE("Trimesh guide attachment target resolves vertex owners directly", "[c
     REQUIRE(targets.front().field == GuideCurveField::Phase);
     REQUIRE(TrimeshGuideAttachmentTarget::guideField("amp") == GuideCurveField::Amplitude);
     REQUIRE(TrimeshGuideAttachmentTarget::guideField("curve") == GuideCurveField::Curve);
+}
+
+TEST_CASE("Unknown Guide attachment fields cannot detach a Trimesh Curve guide",
+        "[cycle-v2][nodes][trimesh][guide][validation]") {
+    NodeGraph graph;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "waveMesh", {});
+    auto authoredMesh = TrimeshMeshFactory::createDefaultMesh("GuideFieldValidation");
+    node.model = TrimeshNodeModelState::copyOf(*authoredMesh, 1);
+    authoredMesh->destroy();
+    graph.addNode(std::move(node));
+    GuideGraphEditor editor;
+    REQUIRE(editor.createGuideCurve(graph).succeeded());
+    REQUIRE(editor.assignGuideCurveToMeshComponent(
+            graph, "guide1", "waveMesh", 2, "curve").succeeded());
+    const Node* mesh = graph.findNode("waveMesh");
+    REQUIRE(mesh != nullptr);
+    REQUIRE(graph.getGuideAssignments().size() == 1);
+    const uint64_t revision = graph.getRevision();
+
+    for (const String field : { String(), String("unknown"), String("vertex.curve") }) {
+        CAPTURE(field);
+        REQUIRE(TrimeshGuideAttachmentTarget::cubeTargetsForVertex(*mesh, 2, field).empty());
+        REQUIRE(MeshGuideAttachmentTarget::cubeTargetsForSelection(*mesh, 2, field).empty());
+        REQUIRE_FALSE(editor.detachGuideCurveFromMeshComponent(
+                graph, "waveMesh", 2, field).succeeded());
+        REQUIRE(graph.getRevision() == revision);
+        REQUIRE(graph.getGuideAssignments().size() == 1);
+        REQUIRE(graph.getGuideAssignments().front().guideId == "guide1");
+        REQUIRE(graph.getGuideAssignments().front().target.field == GuideCurveField::Curve);
+    }
 }
 
 TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-v2][nodes][trimesh]") {
@@ -3474,7 +3509,7 @@ TEST_CASE("Trimesh controls component mounts expanded editor control regions", "
     REQUIRE(shortcutBubble->getBounds().getCentreX()
             == shortcutHint->getBounds().getCentreX());
     REQUIRE(shortcutBubble->getDescription().startsWith("Y / R / B"));
-    REQUIRE(shortcutBubble->getDescription().contains("Toggle link"));
+    REQUIRE(shortcutBubble->getDescription().contains("Toggle pole lock"));
     shortcutHint->mouseExit(panelMouseEvent(
             *shortcutHint, { 25.f, 12.f }, {}, { 12.f, 12.f }, false));
     REQUIRE_FALSE(shortcutBubble->isVisible());

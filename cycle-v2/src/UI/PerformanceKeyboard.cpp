@@ -281,12 +281,13 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
         keyboard.shiftOctave(1);
     };
     modWheel.onValueChanged = [this](int value) {
-        sendModWheelValue();
-        if (modWheelValueChanged) {
-            modWheelValueChanged(value);
-        }
         if (controllerValueChanged) {
             controllerValueChanged(1, value);
+        } else {
+            sendModWheelValue();
+        }
+        if (modWheelValueChanged) {
+            modWheelValueChanged(value);
         }
     };
     modWheel.onGestureStarted = [this] {
@@ -364,6 +365,9 @@ Rectangle<float> PerformanceKeyboardPanel::controllerBounds(int controller) cons
 }
 
 int PerformanceKeyboardPanel::controllerValue(int controller) const {
+    if (controllerValueProvider) {
+        return controllerValueProvider(controller);
+    }
     if (controller == 1) {
         return modWheel.value();
     }
@@ -435,6 +439,19 @@ void PerformanceKeyboardPanel::setModWheelValue(int value) {
     modWheel.setValue(value, true);
 }
 
+void PerformanceKeyboardPanel::reflectControllerValue(int controller, int value) {
+    if (controller == 1) {
+        modWheel.setValue(value, false);
+        return;
+    }
+    for (const auto& wheel : extraWheels) {
+        if (wheel->controller() == controller) {
+            wheel->setValue(value, false);
+            return;
+        }
+    }
+}
+
 void PerformanceKeyboardPanel::setPlaybackDurationSeconds(float seconds) {
     playbackDuration = jmax(0.001f, seconds);
 }
@@ -478,9 +495,10 @@ void PerformanceKeyboardPanel::setMappedControllers(std::vector<int> controllers
         wheel->setValue(controllerValue(controller), false);
         wheel->setTooltip("Preview MIDI CC " + String(controller));
         wheel->onValueChanged = [this, controller](int value) {
-            sendControllerValue(controller, value);
             if (controllerValueChanged) {
                 controllerValueChanged(controller, value);
+            } else {
+                sendControllerValue(controller, value);
             }
         };
         wheel->onGestureStarted = [this, controller] {
@@ -549,7 +567,7 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     playButton.setButtonText("STOP");
     sendModWheelValue();
     for (const auto& wheel : extraWheels) {
-        sendControllerValue(wheel->controller(), wheel->value());
+        sendControllerValue(wheel->controller(), controllerValue(wheel->controller()));
     }
     if (!scheduleControlEventsUntil(automationLookaheadSeconds,
             nowMilliseconds / 1000.0)) {
@@ -971,7 +989,7 @@ void PerformanceKeyboardPanel::timerCallback() {
 }
 
 void PerformanceKeyboardPanel::sendModWheelValue() {
-    sendControllerValue(1, modWheel.value());
+    sendControllerValue(1, controllerValue(1));
 }
 
 void PerformanceKeyboardPanel::sendControllerValue(int controller, int value) {

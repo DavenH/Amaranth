@@ -2,6 +2,7 @@
 
 #include "Graph/NodeGraph.h"
 #include "Nodes/Trimesh/Editor/TrimeshWidget.h"
+#include "UI/Editors/MorphSpaceLayout.h"
 
 #include <JuceHeader.h>
 
@@ -11,6 +12,7 @@
 namespace CycleV2 {
 
 class MorphKeyboardShortcutHelp;
+class PropertyHoverTracker;
 
 class TrimeshControlsDelegate {
 public:
@@ -20,6 +22,9 @@ public:
     virtual float trimeshMorphControlValue(const juce::String& id) const = 0;
     virtual void beginTrimeshMorphControlEdit(const juce::String& id, float value) = 0;
     virtual void updateTrimeshMorphControlEdit(float value) = 0;
+    virtual void beginTrimeshMorphPairControlEdit(
+            const std::array<juce::String, 2>& ids, juce::Point<float> values) {}
+    virtual void updateTrimeshMorphPairControlEdit(juce::Point<float> values) {}
     virtual void endTrimeshMorphControlEdit() = 0;
     virtual void beginTrimeshOutputScaleControlEdit(const juce::String& id, float value) = 0;
     virtual void updateTrimeshOutputScaleControlEdit(float value) = 0;
@@ -33,7 +38,7 @@ public:
     virtual void selectTrimeshVertex(int index) = 0;
 };
 
-class TrimeshControlsComponent : public juce::Component {
+class TrimeshControlsComponent : public juce::Component, public juce::TooltipClient {
 public:
     explicit TrimeshControlsComponent(TrimeshWidget& widget);
     ~TrimeshControlsComponent() override;
@@ -60,6 +65,7 @@ public:
     void continuePointerInteraction(juce::Point<float> position);
     void endPointerInteraction();
 
+    juce::String getTooltip() override;
     void paint(juce::Graphics& graphics) override;
     void resized() override;
     bool keyPressed(const juce::KeyPress& key) override;
@@ -70,11 +76,14 @@ private:
     enum class DragTarget {
         None,
         Morph,
+        MorphFace,
         OutputScale,
         VertexParameter,
         VertexGuideGain
     };
 
+    void showPropertyFeedback(const juce::String& id);
+    juce::String tooltipFor(const TrimeshExpandedHitRegion& region);
     void updateHitRegions();
     int countControlRegions(TrimeshExpandedHitRegionKind kind) const;
     const TrimeshExpandedHitRegion* findControlRegion(juce::Point<float> position) const;
@@ -82,6 +91,8 @@ private:
             const TrimeshExpandedHitRegion& region,
             juce::Point<float> position,
             juce::Rectangle<int> screenArea);
+    void beginMorphFaceDrag(juce::Point<float> position);
+    MorphSpaceLayout morphSpace() const;
     void dragControl(juce::Point<float> position);
     void endControlDrag();
     bool adjustGuideGainFromKeyboard(
@@ -103,11 +114,15 @@ private:
     DragTarget dragTarget { DragTarget::None };
     juce::String keyboardMorphAxis;
     juce::String activeParameterId;
+    int cubeFace { -1 };
+    juce::Point<float> cubeDragOrigin;
+    std::array<float, 3> cubeDragInitial {};
     float guideGainDragStartY {};
     float guideGainDragStartValue {};
     juce::Rectangle<float> contentBounds;
     juce::Rectangle<int> lastHitRegionContentBounds;
     std::unique_ptr<MorphKeyboardShortcutHelp> keyboardShortcutHelp;
+    std::unique_ptr<PropertyHoverTracker> propertyHover;
     std::vector<TrimeshExpandedHitRegion> controlHitRegions;
     std::vector<std::unique_ptr<ControlTarget>> controlRegions;
 

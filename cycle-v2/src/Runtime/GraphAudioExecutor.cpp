@@ -807,7 +807,7 @@ void GraphAudioExecutor::prepareExecutionInternal(
             const int sourceIndex = (int) buffer.defaultModulationSlot - 1;
             preparedVoice.modulationBindings.push_back({
                     bufferIndex,
-                    &configuration->sources[(size_t) sourceIndex],
+                    &configuration->source((size_t) sourceIndex, buffer.envelopeModulationProfile),
                     buffer.defaultModulationNoteOffset
             });
         }
@@ -902,6 +902,7 @@ void GraphAudioExecutor::prepareStepContext(
         const GraphExecutionStep& step,
         PreparedVoice::Step& preparedStep) const {
     AudioProcessContext& context = preparedStep.context;
+    context.liveEnvelopeMorph = step.liveEnvelopeMorph;
     context.traversalDurationSeconds = 0.0;
     if (step.oscillatorRegionIndex >= 0
             && (size_t) step.oscillatorRegionIndex < plan.oscillatorRegions.size()) {

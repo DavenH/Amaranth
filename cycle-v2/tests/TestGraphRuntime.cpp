@@ -27,6 +27,7 @@
 #include "Nodes/Waveshaper/WaveshaperSignalProcessor.h"
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphRuntime.h"
+#include "Runtime/OfflineGraphAudioRenderer.h"
 
 using namespace CycleV2;
 
@@ -212,6 +213,8 @@ TEST_CASE("Attached Mod Triple parameter edits refresh implicit voice modulation
             graph,
             { "voice", "context", false },
             { "mesh", "context", true }).succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
@@ -254,6 +257,10 @@ TEST_CASE("Preview wheel morph follows its compiled source mapping",
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "unmappedMesh", {}));
     graph.addNode(factory.createNode(NodeKind::ModulationSource, "inverse", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "unmappedMesh", "dimensionCount", "Dimensions", "3").succeeded());
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "morph", "blueSource", "Blue Source", "inverseVelocity").succeeded());
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
@@ -326,6 +333,8 @@ TEST_CASE("Mapped wheel movement cost ignores unrelated nodes",
         GraphNodeFactory factory;
         NodeGraph graph;
         graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
         for (int index = 0; index < unrelatedNodeCount; ++index) {
             graph.addNode(factory.createNode(
                     NodeKind::Delay, "unrelated" + String(index), {}));
@@ -431,6 +440,8 @@ TEST_CASE("Preview mod wheel refreshes modulation source without publishing audi
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
     graph.addEdge({
             "mod", "value", "mesh", "blue",
             PortDomain::ControlSignal, ConnectionKind::Signal
@@ -500,6 +511,8 @@ TEST_CASE("Mapped CC73 refreshes modulation previews and its bound morph axis",
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
     graph.addEdge({ "cc73", "value", "mesh", "red",
             PortDomain::ControlSignal, ConnectionKind::Signal });
     graph.addEdge({ "voice", "context", "mesh", "context",
@@ -593,6 +606,8 @@ TEST_CASE("Mapped CC envelope morph survives consecutive transient updates",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "env", "dimensionCount", "Dimensions", "2").succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     const std::vector<PreviewMorphTarget> targets {
@@ -827,6 +842,65 @@ TEST_CASE("Two live Guide updates refresh an attached downstream Spy before one 
     REQUIRE(document.undo());
     REQUIRE(document.graph().findGuideCurve("guide1")->enabled);
     REQUIRE(document.graph().findGuideCurve("guide1")->dcOffset == 0.f);
+}
+
+TEST_CASE("Repeating a Guide edit after graph replacement prepares current audio",
+        "[cycle-v2][runtime][guides][guide-reopen]") {
+    GraphDocument document(demoGraphWithPopulatedWaveMesh());
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.createGuideCurve().succeeded());
+    REQUIRE(commands.assignGuideCurve("guide1", "waveMesh", 2, "time").succeeded());
+    const auto setNoise = [&](const String& noise) {
+        const GuideCurveResource* guide = document.graph().findGuideCurve("guide1");
+        commands.beginTransientEdit();
+        REQUIRE(commands.publishGuideCurveState({
+                "guide1", guide->revision, guide->model,
+                {
+                    { "enabled", "Enabled", "1" },
+                    { "noise", "Noise", noise },
+                    { "dcOffset", "DC Offset", "0" },
+                    { "phase", "Phase", "0" }
+                }
+        }).succeeded());
+        commands.commitTransientEdit();
+    };
+    setNoise("0.5");
+    const String original = document.toJson();
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    OfflineGraphAudioRequest request;
+    request.sampleCount = 4096;
+    request.hasRandomSeed = true;
+    request.randomSeed = 1729;
+    request.events.push_back({ 0, MidiMessage::noteOn(1, 62, 1.f) });
+    const auto render = [&] {
+        const auto audio = OfflineGraphAudioRenderer::render(
+                presentation.compileResult().plan, presentation.audioPlanRevision(), request);
+        REQUIRE(audio.succeeded);
+        return audio.channels[0];
+    };
+    const auto originalAudio = render();
+    auto currentOriginalAudio = originalAudio;
+    for (int iteration = 0; iteration < 2; ++iteration) {
+        if (iteration > 0) {
+            REQUIRE(document.loadJson(original));
+            REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+            currentOriginalAudio = render();
+        }
+        const size_t compilationCount = presentation.compilationCount();
+        setNoise("0");
+        REQUIRE(document.lastChange().guidesChanged);
+        REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+        const auto editedAudio = render();
+        REQUIRE(bool(editedAudio != currentOriginalAudio));
+        REQUIRE(presentation.snapshot().graphRevision == document.revision());
+        REQUIRE(presentation.compilationCount() == compilationCount);
+        const auto compiled = GraphCompiler().compile(document.graph());
+        REQUIRE(compiled.succeeded());
+        const auto expected = OfflineGraphAudioRenderer::render(compiled.plan, document.revision(), request);
+        REQUIRE(expected.succeeded);
+        REQUIRE(bool(editedAudio == expected.channels[0]));
+    }
 }
 
 TEST_CASE("Two live image-backed Guide path updates refresh downstream before one undo",

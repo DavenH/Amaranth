@@ -85,7 +85,8 @@ private:
             float voiceTime,
             float oscPhase,
             GuideCurveApplier& applyGuide,
-            std::vector<Intercept>& intercepts);
+            std::vector<Intercept>& intercepts,
+            const VertCube::ReductionData* prepared);
     void markChainedWaveformUnsampleable();
     void restrictIntercepts(std::vector<Intercept>& intercepts);
     bool hasPreparedCapacity(const Mesh* candidate) const;

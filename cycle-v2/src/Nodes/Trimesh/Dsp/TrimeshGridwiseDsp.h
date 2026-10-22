@@ -19,6 +19,10 @@ public:
         size_t bakeCount {};
     };
 
+    void setDimensionality(int count, const Rasterization::PreparedMeshSlice* prepared = nullptr) {
+        blockwiseDsp.setDimensionality(count, prepared);
+        hasStaticSlice = prepared != nullptr;
+    }
     void setCyclic(bool shouldWrap);
     void setBipolar(bool shouldUseBipolarScaling);
     void setGuideCurveProvider(GuideCurveProvider* provider);
@@ -98,6 +102,7 @@ private:
 
     TrimeshBlockwiseDsp blockwiseDsp;
     RenderCounters renderCounters;
+    bool hasStaticSlice {};
     std::vector<float> preparationScratch;
 };
 

@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "Runtime/PreparedOscillatorRegion.h"
 #include "Runtime/ChainedOscillatorRecipeRenderer.h"
 #include "Runtime/ChainedOscillatorRegionRuntime.h"
@@ -15,6 +17,14 @@ const SignalPayload* PreparedOscillatorProcessContext::signalAt(
     return bufferIndex >= 0 && (size_t) bufferIndex < signalBufferCount
             ? signalBuffers + bufferIndex
             : nullptr;
+}
+
+double PreparedOscillatorProcessContext::midiPitchAt(size_t blockSampleOffset) const {
+    if (voice == nullptr || voice->oscillatorPitchOffsets.empty()) {
+        return midiNote;
+    }
+    const auto offsets = voice->oscillatorPitchOffsets;
+    return midiNote + offsets[(int) std::min(blockSampleOffset, (size_t) offsets.size() - 1)];
 }
 
 namespace {
@@ -99,7 +109,9 @@ public:
                         spec.sampleRate,
                         context.lanes,
                         context.controlIntervalSamples,
-                        context.pitchIndependentSpectralControl);
+                        context.pitchIndependentSpectralControl,
+                        context.monophonicLegato
+                                ? plan.steps[(size_t) region.materializationStepIndex].cycleFrames : 0);
     }
 
     void reset() override {

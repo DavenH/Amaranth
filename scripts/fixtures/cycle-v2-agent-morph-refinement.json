@@ -1,0 +1,249 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/with-spies.cyclegraph"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "primaryAxis",
+      "label": "primaryAxis",
+      "value": "yellow"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "yellow",
+      "label": "yellow",
+      "value": "0.36"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "red",
+      "label": "red",
+      "value": "0.68"
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "blue",
+      "label": "blue",
+      "value": "0.43"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveMesh",
+      "waitForIdle": true,
+      "idleDelayMs": 300
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "primaryAxis",
+      "equals": "yellow"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.dimensionCount",
+      "equals": 3
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "requestCanvasOpenGLFrame",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-refinement-3.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:waveMesh.meshDimensions.two",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "primaryAxis",
+      "equals": "yellow"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.dimensionCount",
+      "equals": 2
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "requestCanvasOpenGLFrame",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-refinement-2.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:waveMesh.meshDimensions.one",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "primaryAxis",
+      "equals": "yellow"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.dimensionCount",
+      "equals": 1
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "requestCanvasOpenGLFrame",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-refinement-1.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:waveMesh.meshDimensions.static",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "assertNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "primaryAxis",
+      "equals": "yellow"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.dimensionCount",
+      "equals": 0
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "requestCanvasOpenGLFrame",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-refinement-0.png"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.compactPreviewMechanism",
+      "equals": "curvePanelSnapshot"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:waveMesh.close",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "requestCanvasOpenGLFrame",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "requestCanvasOpenGLFrame",
+      "waitForIdle": true,
+      "idleDelayMs": 250
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-refinement-compact-preview.png"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "waveMesh",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.compactPreviewSnapshotRevision",
+      "op": "greaterThan",
+      "value": 0
+    },
+    {
+      "command": "undo",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "resizeWindow",
+      "width": 1100,
+      "height": 800,
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "waveMesh",
+      "parameterId": "dimensionCount",
+      "label": "Curve morphing",
+      "value": "2",
+      "waitForIdle": true,
+      "idleDelayMs": 200
+    },
+    {
+      "command": "selectVertex",
+      "nodeId": "waveMesh",
+      "vertexIndex": 0
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/morph-refinement-2-compact.png"
+    },
+    {
+      "command": "snapshotState"
+    }
+  ],
+  "quit": true
+}

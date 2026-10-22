@@ -13,6 +13,7 @@
 #include <UI/Panels/OpenGLDiagnostics.h>
 #include <UI/Panels/TimeSurfaceStyles.h>
 
+#include "App/Automation/ImpulseResponseImportAutomation.h"
 #include "UI/NodeCanvas.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
@@ -255,6 +256,7 @@ NodeCanvas::NodeCanvas() :
                     [this](const String& guideId) { requestDeleteGuideCurve(guideId); },
                     [this]() { requestCanvasRepaint(); }
             });
+    editorCoordinator.previewResources().setPreviewControls(presentation);
     refreshCompiledState();
 
     setOpaque(true);
@@ -2439,6 +2441,7 @@ bool NodeCanvas::undoForAutomation() {
     applyAuthoringResult(result);
     if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
+        refreshComparisonAfterCommit();
     }
     return result.succeeded;
 }
@@ -2449,6 +2452,7 @@ bool NodeCanvas::redoForAutomation() {
     applyAuthoringResult(result);
     if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
+        refreshComparisonAfterCommit();
     }
     return result.succeeded;
 }
@@ -2457,11 +2461,25 @@ GraphEditResult NodeCanvas::applyNodeEditsForAutomation(const NodeAuthoringEdits
     presentation.cancelPendingRefreshes();
     const auto result = commands.applyNodeEdits(edits);
     if (result.succeeded() && result.changed) {
-        presentation.refresh(document.graph(), document.revision(), document.lastChange());
-        applyAuthoringResult({ true, true, true, result.code, {}, { true, true } });
-        rebindGuideEditor();
+        refreshAfterAutomationEdit();
     }
     return result;
+}
+
+var NodeCanvas::importImpulseResponseForAutomation(const var& command, const File& file, String& error) {
+    presentation.cancelPendingRefreshes();
+    const auto data = ImpulseResponseImportAutomation::apply(document, commands, command, file, error);
+    if (error.isEmpty()) {
+        refreshAfterAutomationEdit();
+    }
+    return data;
+}
+
+void NodeCanvas::refreshAfterAutomationEdit() {
+    presentation.refresh(document.graph(), document.revision(), document.lastChange());
+    applyAuthoringResult({ true, true, true, GraphEditCode::Connected, {}, { true, true } });
+    rebindGuideEditor();
+    refreshComparisonAfterCommit();
 }
 
 bool NodeCanvas::setGuideParameterForAutomation(
@@ -2489,6 +2507,7 @@ bool NodeCanvas::setGuideParameterForAutomation(
     }
     found->value = value;
 
+    presentation.cancelPendingRefreshes();
     commands.beginTransientEdit();
     const GraphEditResult result = commands.publishGuideCurveState({
             guideId,
@@ -2501,8 +2520,7 @@ bool NodeCanvas::setGuideParameterForAutomation(
         return false;
     }
     commands.commitTransientEdit();
-    rebindGuideEditor();
-    refreshCompiledStateAsync();
+    refreshAfterAutomationEdit();
     requestCanvasRepaint();
     return true;
 }

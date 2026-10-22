@@ -11,6 +11,7 @@ namespace {
 
 const Colour kTrack { 0xff384351 };
 const Colour kTrackHover { 0xff465363 };
+const Colour kRail { 0xff080b10 };
 const Colour kFill { 0xffdce3ec };
 
 struct SliderPaintGeometry {
@@ -41,12 +42,16 @@ SliderPaintGeometry sliderPaintGeometry(
 void paintSliderTrack(
         Graphics& graphics,
         const SliderPaintGeometry& geometry,
+        Colour fill,
         bool hovered,
         bool enabled) {
+    graphics.setColour(kRail.withMultipliedAlpha(enabled ? 1.f : 0.55f));
+    graphics.fillRoundedRectangle(geometry.track.expanded(
+            (PropertyControlMetrics::visibleRailHeight - geometry.track.getHeight()) * 0.5f), 2.5f);
     graphics.setColour((hovered ? kTrackHover : kTrack).withMultipliedAlpha(enabled ? 1.f : 0.55f));
-    graphics.fillRoundedRectangle(geometry.track, 2.f);
-    graphics.setColour(kFill.withMultipliedAlpha(enabled ? 0.78f : 0.35f));
-    graphics.fillRoundedRectangle(geometry.track.withRight(geometry.indicatorX), 2.f);
+    graphics.fillRoundedRectangle(geometry.track, 1.f);
+    graphics.setColour(fill.withMultipliedAlpha(enabled ? 0.78f : 0.35f));
+    graphics.fillRoundedRectangle(geometry.track.withRight(geometry.indicatorX), 1.f);
 }
 
 void paintSliderIndicator(
@@ -63,13 +68,10 @@ class PropertyControlLookAndFeel final : public LookAndFeel_V4 {
 public:
     Slider::SliderLayout getSliderLayout(Slider& slider) override {
         Slider::SliderLayout layout = LookAndFeel_V4::getSliderLayout(slider);
-        if (slider.isHorizontal()) {
-            const auto* precision = dynamic_cast<const PrecisionSlider*>(&slider);
-            const float inset = precision != nullptr
-                    ? precision->getTrackEndInset()
-                    : PropertyControlMetrics::thumbWidth * 0.5f;
+        const auto* precision = dynamic_cast<const PrecisionSlider*>(&slider);
+        if (slider.isHorizontal() && precision != nullptr) {
             layout.sliderBounds = slider.getLocalBounds().reduced(
-                    roundToInt(inset),
+                    roundToInt(precision->getTrackEndInset()),
                     0);
         }
         return layout;
@@ -102,7 +104,9 @@ public:
         const bool hovered = slider.isMouseOverOrDragging();
         const bool focused = slider.hasKeyboardFocus(false);
 
-        paintSliderTrack(graphics, geometry, hovered, enabled);
+        const Colour fill = slider.isColourSpecified(Slider::trackColourId)
+                ? slider.findColour(Slider::trackColourId) : kFill;
+        paintSliderTrack(graphics, geometry, fill, hovered, enabled);
         paintSliderIndicator(graphics, geometry, focused, enabled);
 
         if (focused) {
@@ -241,11 +245,7 @@ void paintPropertySlider(
             bounds,
             track,
             position);
-    paintSliderTrack(graphics, geometry, hovered, enabled);
-    if (fill != kFill) {
-        graphics.setColour(fill.withMultipliedAlpha(enabled ? 0.78f : 0.35f));
-        graphics.fillRoundedRectangle(geometry.track.withRight(geometry.indicatorX), 2.f);
-    }
+    paintSliderTrack(graphics, geometry, fill, hovered, enabled);
     paintSliderIndicator(graphics, geometry, focused, enabled);
 }
 
@@ -262,10 +262,8 @@ void paintMorphSlider(
     const Rectangle<float> marker = morphSliderIndicatorBounds(bounds, normalizedValue);
     const float alpha = enabled ? 1.f : 0.5f;
 
-    graphics.setColour((hovered ? kTrackHover : kTrack).withMultipliedAlpha(alpha));
-    graphics.fillRoundedRectangle(track, 2.f);
-    graphics.setColour(accent.withAlpha(0.76f * alpha));
-    graphics.fillRoundedRectangle(track.withRight(marker.getCentreX()), 2.f);
+    paintSliderTrack(graphics, sliderPaintGeometry(bounds, track, marker.getCentreX()),
+            accent, hovered, enabled);
     graphics.setColour(accent.withAlpha(0.98f * alpha));
     graphics.fillRect(marker);
 }
@@ -274,5 +272,38 @@ LookAndFeel& propertyControlLookAndFeel() {
     static PropertyControlLookAndFeel result;
     return result;
 }
+
+void paintPanelOverlayButton(Graphics& graphics, Rectangle<float> bounds,
+        bool hovered, bool down, bool focused, bool selected, bool enabled) {
+    bounds = bounds.reduced(CanvasChromeMetrics::panelOverlayBorderInset);
+    graphics.setColour(selected ? Colour(0xff29323e) : Colour(0xff0e1318).brighter(
+            down ? 0.12f : hovered ? 0.06f : 0.f));
+    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
+    const Colour border = focused ? kFill : selected ? Colour(0xff929ca8) : Colour(0xff536171);
+    graphics.setColour(border.withMultipliedAlpha(enabled ? 1.f : 0.55f));
+    graphics.drawRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius,
+            CanvasChromeMetrics::restingBorderWidth);
+}
+
+void paintMorphPreviewVertex(Graphics& graphics, Point<float> point, bool selected) {
+    graphics.setColour(Colours::black);
+    graphics.fillEllipse(Rectangle<float>(5.f, 5.f).withCentre(point));
+    graphics.setColour(selected ? Colour(0xffdf9292) : Colour(0xffc3cbd5));
+    graphics.fillEllipse(Rectangle<float>(selected ? 3.f : 2.f, selected ? 3.f : 2.f).withCentre(point));
+}
+
+void paintMorphPreviewCursor(Graphics& graphics, Point<float> point) {
+    Path diamond;
+    diamond.startNewSubPath(point.x, point.y - 4.f);
+    diamond.lineTo(point.x + 4.f, point.y);
+    diamond.lineTo(point.x, point.y + 4.f);
+    diamond.lineTo(point.x - 4.f, point.y);
+    diamond.closeSubPath();
+    graphics.setColour(Colours::black);
+    graphics.fillPath(diamond);
+    graphics.setColour(Colours::white);
+    graphics.strokePath(diamond, PathStrokeType(1.f));
+}
+
 
 }

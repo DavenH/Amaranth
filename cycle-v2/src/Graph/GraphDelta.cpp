@@ -111,7 +111,13 @@ void GraphDelta::apply(NodeGraph& graph, bool forward) const {
             graph.removeGuideAssignment(
                     assignment.assignment.targetNodeId, assignment.assignment.target);
         }
+        for (const auto& assignment : changes.addedGuideAssignments) {
+            graph.assignGuideCurve(assignment);
+        }
     } else {
+        for (const auto& assignment : changes.addedGuideAssignments) {
+            graph.removeGuideAssignment(assignment.targetNodeId, assignment.target);
+        }
         for (auto assignment = changes.removedGuideAssignments.rbegin();
                 assignment != changes.removedGuideAssignments.rend(); ++assignment) {
             const size_t index = std::min(assignment->index, graph.guideAssignments.size());

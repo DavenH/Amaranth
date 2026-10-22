@@ -14,8 +14,11 @@
 class CommonGL;
 class GLPanelRenderer;
 class Panel;
+class ZoomPanel;
 
 namespace CycleV2 {
+
+void stylePanelZoomScrollbars(ZoomPanel& panel);
 
 std::optional<juce::Rectangle<int>> curvePanelFramebufferReadBounds(
         juce::Rectangle<float> bounds,
@@ -89,6 +92,8 @@ public:
 class CurvePanelHostDelegate : public CurvePanelInteractionAdapter {
 public:
     virtual ~CurvePanelHostDelegate() = default;
+    virtual bool allowsCurvePanelEditing() const { return true; }
+    virtual bool deleteCurvePanelSelection() { return false; }
     virtual void initialiseCurvePanel(Component* component) = 0;
     virtual void updateCurvePanelZoom(bool resetView) = 0;
     virtual void prepareCurvePanel() = 0;
@@ -104,6 +109,10 @@ public:
 
     Component* component();
     Component* componentIfCreated();
+    Component* zoomComponent();
+    Component* zoomComponentIfCreated();
+    Rectangle<float> contentBounds(Rectangle<float> frame) const;
+    var zoomControlsState() const;
     void render(Rectangle<float> bounds, Rectangle<float> clipBounds, float scaleFactor);
     bool renderPreview(
             Rectangle<float> bounds,

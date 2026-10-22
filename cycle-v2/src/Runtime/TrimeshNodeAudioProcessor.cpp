@@ -113,6 +113,8 @@ public:
         trimeshGridDsp.setGuideCurveProvider(configuration->guideCurveProvider.get());
         trimeshDsp.setDeltaOverlay(configuration->deltaOverlay);
         trimeshGridDsp.setDeltaOverlay(configuration->deltaOverlay);
+        trimeshDsp.setDimensionality(configuration->dimensionCount, configuration->staticSlice.get());
+        trimeshGridDsp.setDimensionality(configuration->dimensionCount, configuration->staticSlice.get());
         trimeshDsp.prepare(
                 const_cast<Mesh*>(configuration->mesh.get()),
                 configuration->morph,
@@ -199,7 +201,8 @@ public:
                 0,
                 context.frameCount,
                 context.timing.sampleRate,
-                configuration == nullptr || configuration->scratchSourceEnabled);
+                configuration == nullptr || configuration->scratchSourceEnabled,
+                configuration != nullptr ? configuration->dimensionCount : 3);
         const MorphPosition& morph = morphResolver.current();
 
         renderBlock(

@@ -11,7 +11,8 @@ bool cableStyleEqual(const NodeCableStyle& first, const NodeCableStyle& second) 
             && first.invalid == second.invalid
             && first.selected == second.selected
             && first.spliceTarget == second.spliceTarget
-            && first.modulationBundle == second.modulationBundle;
+            && first.modulationBundle == second.modulationBundle
+            && first.inactive == second.inactive;
 }
 
 uint64_t addGeometryValue(uint64_t hash, float value) {
@@ -58,6 +59,7 @@ bool NodeCanvasCableLayerCache::Entry::matches(
         float scale) const {
     return geometryFingerprint == cableGeometryFingerprint(edge)
             && destinationPortLike == edge.destinationPortLike
+            && destinationMorphMask == edge.destinationMorphMask
             && modulationBundle == edge.modulationBundle
             && destinationBundleIncludesYellow == edge.destinationBundleIncludesYellow
             && sourceEndpointVisible == edge.sourceEndpointVisible
@@ -136,6 +138,7 @@ void NodeCanvasCableLayerCache::replaceEntry(
     entry.zoom = zoom;
     entry.physicalScale = physicalScale;
     entry.destinationPortLike = sceneEdge.destinationPortLike;
+    entry.destinationMorphMask = sceneEdge.destinationMorphMask;
     entry.modulationBundle = sceneEdge.modulationBundle;
     entry.destinationBundleIncludesYellow = sceneEdge.destinationBundleIncludesYellow;
     entry.sourceEndpointVisible = sceneEdge.sourceEndpointVisible;

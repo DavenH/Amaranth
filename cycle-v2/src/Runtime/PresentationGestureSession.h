@@ -54,6 +54,7 @@ public:
     EditIdentity commit(const String& sourceStreamId);
     void cancel(const String& sourceStreamId);
     void invalidateSource(const String& sourceStreamId);
+    void invalidateRequests();
     String activeStreamOr(const String& fallback) const;
 
 private:

@@ -10,8 +10,10 @@ obsolete worker preparation exchange was removed. The
 original Envelope-owned `Dynamic while live`
 policy was removed on 2026-07-31 after ownership review: live adoption is a
 voice traversal policy and may only be exposed through Voice Context (or a
-shared voice-policy object owned by it). Until that contract exists, Envelope
-morph is deliberately latched at note-on.
+shared voice-policy object owned by it). Voice Context now owns an opt-in
+`envelopeModulation=live` contract; the default
+remains note-on latching. The bounded implementation and musical acceptance are
+tracked by `cycle-v2-expressive-saxophone-articulation.md`, section A.
 
 Depends on the implemented preparation slices of
 `envelope-renderer-playback-separation.md` and
@@ -56,13 +58,13 @@ curve, morph, loop, and scaling semantics to diverge.
 - Preserve one authoritative envelope preparation and sampling core.
 - Separate persistent base controls from per-voice effective modulation.
 - Keep live-adoption policy out of Envelope authoring state; Voice Context owns
-  any future per-voice live traversal policy.
-- If Voice Context later permits live adoption, preserve active note, sustain,
+  its per-voice live traversal policy.
+- When Voice Context permits live adoption, preserve active note, sustain,
   loop, and release state when an envelope replacement is adopted.
 - Keep allocation, graph mutation, and snapshot publication off the realtime
-  audio thread. Initial note-on materialization follows the separate bounded
-  realtime contract; future active-note preparation remains outside this TDD
-  until Voice Context defines its adoption policy.
+  audio thread. Both note-on and authorized block-start live materialization
+  use the shared fixed-capacity realtime core; general rasterizers remain
+  forbidden on the callback.
 - Let traversal rendering exploit its complete time-axis domain without
   acquiring audio playback machinery.
 - Coalesce live modulation requests so preparation work is bounded.
@@ -100,11 +102,10 @@ Mesh nodes expose top-side yellow, red, and blue `ControlSignal` inputs under
 the same absolute-position contract. Canonical normalization adds these ports
 to previously saved Cycle v2 nodes without a separate migration layer.
 
-With the current latched policy, `effectiveMorph` is captured at note-on and
-remains fixed for that note after its prepared result is adopted. The current
-implementation does not yet guarantee that result is available for the first
-sample; until it does, the latched policy is incomplete. Changes remain
-available to the next note.
+With the default latched policy, `effectiveMorph` is captured and materialized
+synchronously at the exact note-on offset, before the first rendered sample. It
+remains fixed for that note. The opt-in live policy adopts changed morphs at
+subsequent block starts without restarting playback.
 
 The original Guitar 3 G characterization attributed Cycle 1's frame-zero
 `0.00553` scratch coordinate to routed key and velocity. A later source trace
@@ -116,7 +117,7 @@ so newly authored graphs do not begin from a stale persistent preparation.
 General-purpose realtime `EnvRasterizer` use remains forbidden; the contract
 uses the extracted shared core with fixed-capacity voice storage.
 
-If Voice Context later enables live adoption, a meaningful change to
+When Voice Context enables live adoption, a meaningful change to
 `effectiveMorph` requests a new immutable prepared envelope. Once ready, the
 voice adopts it at an explicitly defined audio boundary and validates its
 existing playback state. The adoption does not restart the note.
@@ -156,45 +157,32 @@ cross-section per time column and does not step an audio playback cursor.
 Persistent UI edits continue through the conflict-checked graph mutation and
 immutable node-configuration publication path.
 
-Active-note live modulation uses a distinct runtime control path with these
-properties:
+Active-note live modulation uses a distinct runtime control path. Voice Context
+serializes `envelopeModulation` as `latched` (default) or `live`; Envelope owns
+no competing flag. The compiler resolves that policy for its envelope consumers.
 
-- values are scoped per voice where the source is per voice;
-- modulation does not alter serialized node parameters;
-- initial note-on preparation is not sent through this exchange and is
-  completed synchronously under the realtime note-on TDD;
-- the audio thread may publish or record a small latest-value request, but may
-  not build an envelope or allocate;
-- a non-realtime preparation owner reads the newest request and builds a
-  complete immutable result;
-- superseded pending requests may be discarded before preparation;
-- at most one prepared replacement and one newest pending request are retained
-  per independently modulated envelope/voice;
-- the audio side adopts only complete generations at the selected safe
-  boundary;
-- stale results carry enough request identity to be rejected.
+- Each enabled active envelope samples its connected absolute red/blue controls
+  at block start and prepares at most one changed morph for that block.
+- Changes later in a block become eligible at the next block boundary. Exact
+  note-on sample-offset preparation retains its separate existing contract.
+- The shared realtime materializer stages into preallocated inactive storage.
+  Only a complete successful display/cycle pair is adopted. Failure retains the
+  last valid geometry and unchanged controls perform no preparation.
+- A successful swap increments a voice-local preparation generation. Pitch and
+  scratch consumers reconcile playback when that generation changes, even when
+  immutable configuration identity stays the same.
+- Consumers retain scalar loop bounds across blocks, not borrowed materializer
+  views: oscillator buffering may delay consumption through several swaps.
+- Shared playback preserves normalized loop phase when valid loop bounds change;
+  ordinary validation handles clamping and removal of invalid loops.
+- Note-off freezes the last adopted shape for release. Reset/retrigger retain
+  existing lifecycle semantics and cannot resume a released note accidentally.
 
-The implementation must state whether adoption occurs at audio-block, waveform-
-cycle, or another boundary. Cycle-boundary adoption is preferred where changing
-the prepared envelope mid-cycle would create an avoidable discontinuity.
-
-## Live-Adoption Policy
-
-Envelope owns its authored geometry and persistent base morph, but it does not
-own the policy for replacing traversal state in an already-active voice. The
-Envelope node therefore has no `dynamic`, `live`, or equivalent serialized/UI
-setting.
-
-The current behavior latches effective red/blue morph at note-on. Changes
-during an active note do not prepare replacements and become available to the
-next note. This is the safe fallback while Voice Context has no live-adoption
-contract.
-
-A future Voice Context policy may permit active voices to adopt newly prepared
-effective morphs. That policy must define scope, adoption boundary,
-continuity, loop/release reconciliation, and request cadence once for the voice
-traversal. Envelope may consume the resolved policy at runtime, but may not
-serialize or present its own competing choice.
+There is no worker exchange, pending request queue, graph edit or configuration
+publication at control rate. Response is bounded by one host block plus existing
+consumer sampling; partition-independent cadence is not promised. This explicitly
+supersedes the older non-realtime preparation requirement, using the newer shared
+fixed-capacity core rather than general-purpose `EnvRasterizer` calls.
 
 ## Audio Semantics
 
@@ -202,13 +190,12 @@ serialize or present its own competing choice.
 - A Voice Context-authorized live replacement preserves elapsed envelope
   position where valid.
 - If the new end precedes the cursor, validation clamps consistently.
-- If loop bounds change, an active loop cursor is wrapped into the new loop.
+- If valid loop bounds change, active cursors preserve normalized loop phase.
 - If the loop becomes invalid, playback leaves looping through the established
   state transition.
 - Note-off uses the release section of the most recently adopted generation.
-- A replacement prepared before note-off but adopted after it must obey an
-  explicit stale-generation rule; it may not restore sustain or restart the
-  note.
+- No live replacement is prepared after note-off; release retains its adopted
+  geometry and cannot return to sustain.
 - Each voice may have a different effective morph and prepared generation.
 - Global modulation may share a prepared generation only when effective morph,
   mesh snapshot, and envelope policy are identical.
@@ -245,18 +232,16 @@ voices whose effective morph actually changes, `n` traversal columns, and `S`
 the total traversal samples.
 
 - unchanged audio processing performs no `R`;
-- a coalesced live-adoption update performs at most one useful `R` per distinct
-  effective request eventually adopted, not one `R` per sample;
-- realtime adoption is bounded independently of waveform/intercept vector
-  length, apart from selecting an already owned immutable result;
+- a changed live envelope performs at most one `R` per block, never per sample;
+- materialization is bounded by the accepted plan capacity and playback
+  reconciliation by the prepared voice count;
 - audio sampling remains `O(B)` per active voice;
 - traversal application remains `O(n + S)` after one required preparation;
 - persistent authoring edits may rebuild graph configuration, while live
   modulation must not compile or copy the graph;
-- no active-note replacement preparation, allocation, serialization, UI
-  snapshot publication, mutex wait, or unbounded retry occurs on the realtime
-  thread. Initial note-on materialization is the sole preparation exception and
-  must satisfy its separate fixed-capacity contract.
+- no allocation, serialization, UI publication, mutex wait, unbounded retry or
+  general rasterization occurs on the realtime thread. Note-on and authorized
+  block-start replacement both use preallocated shared materialization.
 
 ## Semantic Tests
 
@@ -277,7 +262,7 @@ the total traversal samples.
 - No preparation request is emitted solely because a disabled live value
   changes.
 
-### Future Voice Context Live-Adoption Policy
+### Voice Context Live-Adoption Policy
 
 - A routed red or blue change during sustain eventually changes the active
   envelope without restarting it.
@@ -288,8 +273,8 @@ the total traversal samples.
 - Note-off after adoption uses the adopted generation's release curve while
   beginning from the current output level according to mature semantics.
 - Red and blue modulation are isolated per voice.
-- Rapid changes are coalesced; a deterministic test proves bounded pending
-  work and rejection of stale prepared generations.
+- Within-block changes are deferred; tests prove no early adoption and at most
+  one changed-morph preparation per envelope per block.
 
 ### Audio/Graphic Separation
 
@@ -305,13 +290,13 @@ the total traversal samples.
 
 ### Realtime Boundary
 
-- Instrumented ordinary rendering and active-note adoption report no envelope
-  preparation, allocation, serialization, graph edit, or snapshot publication.
+- Instrumented unchanged rendering performs no preparation. Changed live
+  rendering performs bounded preparation without allocation, locks,
+  serialization, graph edits or snapshot publication.
 - Instrumented initial note-on preparation satisfies
   `cycle-v2-realtime-note-on-envelope-preparation.md`.
-- Adoption work remains bounded as prepared-envelope size changes.
-- The producer can run slower than incoming modulation without growing a
-  queue; the newest request ultimately wins.
+- Accepted capacities and eight-voice compact/complex fixtures bound and measure
+  repeated preparation work; no request queue exists.
 
 ## Migration
 
@@ -322,12 +307,12 @@ the total traversal samples.
 3. Extract or formalize the playback consumer and traversal consumer around the
    common prepared representation.
 4. Remove the historical Envelope-owned dynamic policy and legacy serialized
-   parameter; define any future live-adoption control on Voice Context.
+   parameter; define live-adoption control on Voice Context.
 5. Define absolute per-voice effective-morph `ControlSignal` inputs supplied by
    graph edges, without coupling them to graph mutations.
 6. Replace note-start exchange/adoption with the bounded synchronous path in
    `cycle-v2-realtime-note-on-envelope-preparation.md`. Reserve non-realtime
-   preparation and safe generation adoption for a future active-note policy.
+   authoring preparation; live replacement uses the same fixed-capacity core.
 7. Add the audio lifecycle, traversal, coalescing, and realtime-boundary tests.
 8. Route ordinary node-canvas control sources directly to the red/blue inputs;
    keep scaling and combination in upstream control nodes.
@@ -335,15 +320,14 @@ the total traversal samples.
 ## Completion Criteria
 
 - Red/blue modulation is latched per note without mutating the graph.
-- If live adoption is added, its policy is owned and serialized by Voice
-  Context rather than Envelope.
+- Live adoption policy is owned and serialized by Voice Context rather than
+  Envelope; existing documents default to latching.
 - Audio and graphic consumers use one authoritative envelope preparation and
   sampling implementation.
 - Their lifecycle and optimization policies remain separate and domain-shaped.
-- Any future Voice Context-authorized live adoption preserves or validly
+- Voice Context-authorized live adoption preserves or validly
   reconciles note, loop, sustain, and release state.
-- Initial note-on materialization satisfies its bounded realtime contract;
-  active-note replacement preparation and publication remain absent from the
-  realtime audio thread.
+- Initial and Voice Context-authorized live materialization satisfy their
+  fixed-capacity realtime contracts without publishing persistent state.
 - Modulation bursts cannot create an unbounded work queue.
 - Tests prove product semantics, not merely that callbacks or revisions occur.

@@ -54,6 +54,7 @@ struct GraphChangeSet {
     // Recorded in removal order; inverse application restores them in reverse.
     std::vector<IndexedEdgeState> removedEdges;
     std::vector<IndexedGuideAssignmentState> removedGuideAssignments;
+    std::vector<GuideCurveAssignment> addedGuideAssignments;
     bool topologyChanged {};
     bool layoutChanged {};
     bool probesChanged {};
@@ -88,6 +89,29 @@ struct NodeAuthoringEdit {
 struct NodeAuthoringEdits {
     uint64_t expectedDocumentRevision {};
     std::vector<NodeAuthoringEdit> edits;
+};
+
+constexpr size_t maximumGuideCurvePointEdits = 64;
+
+enum class GuideCurvePointEditKind {
+    Set,
+    Insert,
+    Remove
+};
+
+struct GuideCurvePointEdit {
+    GuideCurvePointEditKind kind { GuideCurvePointEditKind::Set };
+    uint64_t vertexId {};
+    std::optional<float> x;
+    std::optional<float> y;
+    std::optional<float> curve;
+};
+
+struct GuideCurveEdits {
+    String guideId;
+    uint64_t expectedDocumentRevision {};
+    uint64_t expectedModelRevision {};
+    std::vector<GuideCurvePointEdit> edits;
 };
 
 struct GraphEditResult {

@@ -52,6 +52,7 @@ private:
         uint64_t imageRevision {};
         float zoom {};
         float physicalScale {};
+        int destinationMorphMask { 7 };
         bool destinationPortLike { true };
         bool modulationBundle {};
         bool destinationBundleIncludesYellow { true };

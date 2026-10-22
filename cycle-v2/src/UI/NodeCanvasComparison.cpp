@@ -35,6 +35,13 @@ void NodeCanvas::requestComparisonRendering() {
     }
 }
 
+void NodeCanvas::refreshComparisonAfterCommit() {
+    if (!document.presentation().comparisonSpyPins.empty() && comparisonRefreshCallback) {
+        comparisonRefreshPending = false;
+        comparisonRefreshCallback();
+    }
+}
+
 bool NodeCanvas::hasTrimeshEditorOpen() const {
     const Node* node = graph.findNode(expandedNodeId);
     return node != nullptr && node->kind == NodeKind::TrilinearMesh;

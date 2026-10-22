@@ -1,8 +1,10 @@
 #include <algorithm>
+#include <App/AppConstants.h>
 
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphPresentationFacts.h"
 #include "Runtime/PreviewMorphBinding.h"
+#include "Graph/MeshDimensionality.h"
 #include "Runtime/PreviewPitchResolver.h"
 #include "Runtime/ReverbLocalPreview.h"
 
@@ -41,12 +43,20 @@ std::array<std::vector<String>, 128> controllerPreviewRoots(
             }
         }
     }
-    for (const auto& context : plan.voiceContexts) {
-        const auto triple = std::dynamic_pointer_cast<
-                const ModulationTripleConfiguration>(context.defaultModulation);
-        if (triple != nullptr) {
-            for (const auto& source : triple->sources) {
-                appendRoot(context.nodeId, source);
+    // Compiled inputs exclude inactive and overridden defaults. Inherited
+    // Envelope controls must invalidate their consumer, not the Voice Context.
+    for (const auto& step : plan.steps) {
+        for (const auto& input : step.inputs) {
+            if (!isPositiveAndBelow(input.sourceBufferIndex, (int) plan.buffers.size())) {
+                continue;
+            }
+            const auto& buffer = plan.buffers[(size_t) input.sourceBufferIndex];
+            const int axis = (int) buffer.defaultModulationSlot - 1;
+            const auto triple = std::dynamic_pointer_cast<
+                    const ModulationTripleConfiguration>(buffer.defaultModulation);
+            if (triple != nullptr && isPositiveAndBelow(axis, (int) triple->sources.size())) {
+                appendRoot(step.nodeId,
+                        triple->source((size_t) axis, buffer.envelopeModulationProfile));
             }
         }
     }
@@ -102,7 +112,7 @@ bool GraphPresentationModel::refresh(
                     Performance::Stage::RuntimeTrace,
                     performance.timestamp() - runtimeStartedAt);
         }
-        scheduler.clearProductCache();
+        scheduler.resetAfterCompilation();
         previewRenderer.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
@@ -255,6 +265,26 @@ bool GraphPresentationModel::refreshPreviewControllerValue(
 
 void GraphPresentationModel::stagePreviewModWheelValue(int value) {
     stagePreviewControllerValue(1, value);
+}
+
+std::optional<MorphPosition> GraphPresentationModel::previewMorphForNode(const Node& node) const {
+    if (!nodeMorphTargets.contains(node.id)) {
+        return std::nullopt;
+    }
+    const auto dimensions = MeshDimensionality::dimensions(node);
+    MorphPosition position = MeshDimensionality::position(node);
+    for (const auto& target : nodeMorphTargets[node.id]) {
+        const int axis = MeshDimensionality::axisForPort(target.parameterId);
+        if (axis < 0 || !dimensions.active(axis)) {
+            continue;
+        }
+        const float value = target.control == PreviewMorphControl::KeyScale
+                ? ModulationSource::normalizeKey(current.previewMidiNote,
+                        Constants::LowestMidiNote, Constants::HighestMidiNote)
+                : (float) previewControllerValue(target.controller) / 127.f;
+        position[axis].setValueDirect(value);
+    }
+    return position;
 }
 
 void GraphPresentationModel::stagePreviewControllerValue(int controller, int value) {
@@ -586,10 +616,12 @@ bool GraphPresentationModel::requiresPreview(const GraphChangeSet& change) const
 void GraphPresentationModel::refreshPreviewMorphBindings() {
     const auto targets = PreviewMorphBinding::fromPlan(current.compileResult.plan);
     keyScaleTargets.clear();
+    nodeMorphTargets.clear();
     for (auto& targets : controllerTargets) {
         targets.clear();
     }
     for (const auto& target : targets) {
+        nodeMorphTargets.getReference(target.nodeId).push_back(target);
         if (target.control == PreviewMorphControl::KeyScale) {
             keyScaleTargets.push_back(target);
         } else {

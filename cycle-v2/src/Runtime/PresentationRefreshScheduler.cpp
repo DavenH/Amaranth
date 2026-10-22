@@ -48,6 +48,11 @@ void PresentationRefreshScheduler::executeSynchronous(
     updateGraph.publish(request, result);
 }
 
+void PresentationRefreshScheduler::resetAfterCompilation() {
+    updateGraph.clearProductCache();
+    gestureSession.invalidateRequests();
+}
+
 void PresentationRefreshScheduler::recordEditorMovement(
         const GraphExecutionPlan& plan,
         const String& nodeId,

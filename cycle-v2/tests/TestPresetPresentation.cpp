@@ -1,3 +1,5 @@
+#include <limits>
+
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <UI/Panels/TimeSurfaceStyles.h>
@@ -221,6 +223,90 @@ TEST_CASE("Invalid preset MIDI is ignored without rejecting the graph",
     REQUIRE(loaded.succeeded());
     REQUIRE_FALSE(loaded.presentation.sequence.has_value());
     REQUIRE(loaded.presentationWarning.isNotEmpty());
+}
+
+TEST_CASE("Preset sequence codec rejects missing and coerced MIDI values before publication",
+        "[cycle-v2][preset][sequence][validation]") {
+    const auto encoded = [] {
+        PresetMidiSequence sequence;
+        sequence.notes.push_back({ 60, 96, 0.0, 1.0 });
+        sequence.controls.push_back({ 11, 100, .5 });
+        return PresetPresentationCodec::writeSequenceJSON(sequence);
+    };
+    for (const String& field : { String("pitch"), String("velocity"),
+            String("startSeconds"), String("durationSeconds") }) {
+        var value = encoded();
+        value.getProperty("notes", {}).getArray()->getReference(0).getDynamicObject()->removeProperty(field);
+        INFO("Missing note field " << field);
+        REQUIRE_FALSE(PresetPresentationCodec::readSequenceJSON(value).has_value());
+    }
+    for (const String& field : { String("controller"), String("value"), String("timeSeconds") }) {
+        var value = encoded();
+        value.getProperty("controls", {}).getArray()->getReference(0).getDynamicObject()->removeProperty(field);
+        INFO("Missing controller field " << field);
+        REQUIRE_FALSE(PresetPresentationCodec::readSequenceJSON(value).has_value());
+    }
+    for (const var& invalid : { var("60"), var(true), var(60.5),
+            var(std::numeric_limits<double>::infinity()), var(1e200) }) {
+        var noteValue = encoded();
+        noteValue.getProperty("notes", {}).getArray()->getReference(0).getDynamicObject()->setProperty("pitch", invalid);
+        REQUIRE_FALSE(PresetPresentationCodec::readSequenceJSON(noteValue).has_value());
+        var controlValue = encoded();
+        controlValue.getProperty("controls", {}).getArray()->getReference(0).getDynamicObject()->setProperty("controller", invalid);
+        REQUIRE_FALSE(PresetPresentationCodec::readSequenceJSON(controlValue).has_value());
+    }
+    for (const var& invalid : { var("4"), var(false), var(std::numeric_limits<double>::quiet_NaN()) }) {
+        var value = encoded();
+        value.getDynamicObject()->setProperty("durationSeconds", invalid);
+        REQUIRE_FALSE(PresetPresentationCodec::readSequenceJSON(value).has_value());
+        value = encoded();
+        value.getProperty("notes", {}).getArray()->getReference(0).getDynamicObject()->setProperty("startSeconds", invalid);
+        REQUIRE_FALSE(PresetPresentationCodec::readSequenceJSON(value).has_value());
+        value = encoded();
+        value.getProperty("controls", {}).getArray()->getReference(0).getDynamicObject()->setProperty("timeSeconds", invalid);
+        REQUIRE_FALSE(PresetPresentationCodec::readSequenceJSON(value).has_value());
+    }
+    for (const String& field : { String("notes"), String("controls") }) {
+        for (const var& malformed : { var(), var("not an array"), var(1) }) {
+            var value = encoded();
+            value.getDynamicObject()->setProperty(field, malformed);
+            REQUIRE_FALSE(PresetPresentationCodec::readSequenceJSON(value).has_value());
+        }
+    }
+    var withoutControls = encoded();
+    withoutControls.getDynamicObject()->removeProperty("controls");
+    const auto parsed = PresetPresentationCodec::readSequenceJSON(withoutControls);
+    REQUIRE(parsed.has_value());
+    REQUIRE(parsed->controls.empty());
+    REQUIRE(parsed->notes.front().pitch == 60);
+}
+
+TEST_CASE("Factory embedded and library sequences retain their canonical numeric round trip",
+        "[cycle-v2][preset][sequence][factory][serialization]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const File content = File(String(CYCLE_V2_SOURCE_DIR)).getChildFile("content");
+    auto files = content.getChildFile("presets").findChildFiles(File::findFiles, true, "*.cyclegraph");
+    files.addArray(content.getChildFile("patterns").findChildFiles(File::findFiles, true, "*.cyclepattern"));
+    int checked = 0;
+    for (const File& file : files) {
+        const var document = JSON::parse(file.loadFileAsString());
+        const var sequence = file.hasFileExtension("cyclepattern")
+                ? document.getProperty("sequence", {})
+                : document.getProperty("presetPresentation", {}).getProperty("sequence", {});
+        if (sequence.isVoid()) {
+            continue;
+        }
+        INFO(file.getFileName());
+        const auto parsed = PresetPresentationCodec::readSequenceJSON(sequence);
+        REQUIRE(parsed.has_value());
+        const var first = PresetPresentationCodec::writeSequenceJSON(*parsed);
+        const auto restored = PresetPresentationCodec::readSequenceJSON(first);
+        REQUIRE(restored.has_value());
+        REQUIRE(JSON::toString(PresetPresentationCodec::writeSequenceJSON(*restored)) == JSON::toString(first));
+        ++checked;
+    }
+    REQUIRE(checked > 0);
+#endif
 }
 
 TEST_CASE("Time surface styles belong to each preset without changing graph or audio revisions",

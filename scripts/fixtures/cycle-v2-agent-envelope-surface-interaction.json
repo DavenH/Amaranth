@@ -1,0 +1,121 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/resources/default.cyclegraph"
+    },
+    {
+      "command": "resizeWindow",
+      "width": 1100,
+      "height": 800
+    },
+    {
+      "command": "setNodeParameter",
+      "nodeId": "env",
+      "parameterId": "dimensionCount",
+      "label": "Curve morphing",
+      "value": "3"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "env",
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.zoomControls.horizontal.visible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.zoomControls.vertical.visible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.morphSurface.zoomControls.horizontal.visible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.morphSurface.zoomControls.vertical.visible",
+      "equals": true
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.morphSurface.maximum",
+      "op": "greaterThan",
+      "value": 0.8
+    },
+    {
+      "command": "pointer",
+      "event": "wheel",
+      "targetId": "expanded:env.envelopeSurface",
+      "deltaY": 0.3,
+      "smooth": false,
+      "waitForIdle": true,
+      "idleDelayMs": 150
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.morphSurface.zoomControls.horizontal.size",
+      "op": "lessThan",
+      "value": 1
+    },
+    {
+      "command": "key",
+      "key": "r"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.meshDimensions.two"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.focusedMorphAxis",
+      "equals": "red"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.meshDimensions.one"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.focusedMorphAxis",
+      "equals": ""
+    },
+    {
+      "command": "key",
+      "key": "y"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.meshDimensions.three"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.focusedMorphAxis",
+      "equals": "yellow"
+    },
+    {
+      "command": "screenshot",
+      "area": "canvas",
+      "path": "../../.context/envelope-surface-fixture.png"
+    },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "expanded:env.meshDimensions.static"
+    },
+    {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.focusedMorphAxis",
+      "equals": ""
+    }
+  ],
+  "quit": true
+}

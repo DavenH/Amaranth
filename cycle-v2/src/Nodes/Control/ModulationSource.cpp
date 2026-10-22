@@ -103,6 +103,9 @@ public:
 }
 
 ModulationSourceMode ModulationSource::modeFromId(const String& id) {
+    if (id == "unmapped") {
+        return ModulationSourceMode::Unmapped;
+    }
     if (id == "voiceTime") {
         return ModulationSourceMode::VoiceTime;
     }
@@ -129,6 +132,8 @@ ModulationSourceMode ModulationSource::modeFromId(const String& id) {
 
 String ModulationSource::idForMode(ModulationSourceMode mode) {
     switch (mode) {
+        case ModulationSourceMode::Unmapped:
+            return "unmapped";
         case ModulationSourceMode::VoiceTime:
             return "voiceTime";
         case ModulationSourceMode::Velocity:
@@ -164,6 +169,8 @@ float ModulationSource::evaluate(
         const ModulationSourceConfiguration& configuration,
         const PreviewControlContext& context) {
     switch (configuration.mode) {
+        case ModulationSourceMode::Unmapped:
+            return 0.f;
         case ModulationSourceMode::VoiceTime:
             return jlimit(0.f, 1.f, context.voiceTime);
         case ModulationSourceMode::Velocity:
@@ -221,6 +228,24 @@ void ModulationSource::renderAudioBlock(
                 jlimit(0.f, 1.f, voice.controls.normalizedVoiceTime),
                 voice.controls.normalizedVoiceTimeIncrement);
         values.clip(0.f, 1.f);
+        return;
+    }
+
+    if (configuration.mode == ModulationSourceMode::KeyScale && !voice.noteRetargets.empty()) {
+        size_t offset {};
+        for (const auto& event : voice.noteRetargets) {
+            const size_t eventOffset = jmin(event.sampleOffset, (size_t) values.size());
+            if (eventOffset > offset) {
+                values.section((int) offset, (int) (eventOffset - offset)).set(
+                        evaluate(configuration, current));
+            }
+            current.noteNumber = event.noteNumber + noteOffset;
+            offset = eventOffset;
+        }
+        if (offset < (size_t) values.size()) {
+            values.section((int) offset, values.size() - (int) offset).set(
+                    evaluate(configuration, current));
+        }
         return;
     }
 

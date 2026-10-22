@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Obj/MorphPosition.h>
+#include <Curve/Mesh/MorphDimensions.h>
 
 #include <cmath>
 
@@ -27,7 +28,7 @@ public:
         position.blue.setTargetValue(targets.blue.getCurrentValue());
     }
 
-    int advance(size_t frameCount, double sampleRate) {
+    int advance(size_t frameCount, double sampleRate, MorphDimensions dimensions = MorphDimensions()) {
         if (frameCount == 0 || sampleRate <= 0.0) {
             return 0;
         }
@@ -37,7 +38,11 @@ public:
         const int elapsedSamples = (int) std::floor(exactSamples);
         sampleRemainder = exactSamples - elapsedSamples;
         if (elapsedSamples > 0) {
-            position.update(elapsedSamples);
+            for (const int axis : MorphDimensions::axes) {
+                if (dimensions.active(axis)) {
+                    position[axis].update(elapsedSamples);
+                }
+            }
         }
         return elapsedSamples;
     }

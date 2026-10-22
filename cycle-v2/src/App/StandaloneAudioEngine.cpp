@@ -216,12 +216,15 @@ void StandaloneAudioEngine::releaseMidiSource(MidiEventSource source) {
     if (source == MidiEventSource::PatternPlayback) {
         midiEvents.cancelSource(source);
     }
-    midiEvents.enqueue(
-            source == MidiEventSource::PatternPlayback
-                    ? MidiMessage::allSoundOff(1)
-                    : MidiMessage::allNotesOff(1),
-            source,
-            currentTimeSeconds());
+    const double timestamp = currentTimeSeconds();
+    for (int channel = 1; channel <= 16; ++channel) {
+        midiEvents.enqueue(
+                source == MidiEventSource::PatternPlayback
+                        ? MidiMessage::allSoundOff(channel)
+                        : MidiMessage::allNotesOff(channel),
+                source,
+                timestamp);
+    }
 }
 
 void StandaloneAudioEngine::audioDeviceIOCallbackWithContext(

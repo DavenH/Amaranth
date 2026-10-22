@@ -94,7 +94,8 @@ public:
     bool syncFromNode(
             const Node& node,
             TrimeshSelectionSyncPolicy selectionPolicy =
-                    TrimeshSelectionSyncPolicy::SynchronizeFromNode);
+                    TrimeshSelectionSyncPolicy::SynchronizeFromNode,
+            std::optional<MorphPosition> previewMorph = std::nullopt);
     bool applyPreparedGuides(
             const Mesh& preparedMesh,
             std::shared_ptr<GuideCurveSnapshotProvider> provider);
@@ -117,6 +118,7 @@ public:
     void markMeshEdited();
 
     const MorphPosition& getMorphPosition() const { return morph; }
+    int getDimensionCount() const { return dimensionCount; }
     int getPrimaryViewAxis() const { return primaryViewAxis; }
     int getSelectedVertexIndex() const { return selectedVertexIndex; }
     uint64_t getRevision() const { return revision; }
@@ -124,6 +126,8 @@ public:
     Mesh& getMeshForPanel() { return mesh(); }
     Mesh& currentMesh() { return mesh(); }
     const Mesh& currentMesh() const { return *ownedMesh; }
+    // Transfers an isolated authoring candidate; the model is not used afterwards.
+    std::unique_ptr<Mesh> releaseMesh();
 
 private:
     friend class TrimeshGridRenderService;
@@ -143,6 +147,7 @@ private:
     std::unique_ptr<Mesh> ownedMesh;
     MorphPosition morph { 0.5f, 0.5f, 0.5f };
     int primaryViewAxis {};
+    int dimensionCount { 3 };
     int selectedVertexIndex { -1 };
     uint64_t revision {};
     uint64_t appliedModelRevision {};

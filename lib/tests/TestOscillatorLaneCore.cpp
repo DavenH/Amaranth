@@ -348,3 +348,23 @@ TEST_CASE("Fixed-time Unison lookup matches the legacy rotated static frame",
             0.25f,
             false) == (double) (frameSize - 3) / frameSize);
 }
+
+TEST_CASE("Periodic frame rendering supports large sampling ratios and a fractional cycle boundary",
+        "[cycle-dsp][oscillator-lane][legato]") {
+    constexpr int frameSize = 2048;
+    float frameData[frameSize] {};
+    float outputData[32] {};
+    Buffer<float> frame(frameData, frameSize);
+    frame.ramp(0.f, juce::MathConstants<float>::twoPi / frameSize).sin();
+    CycleDsp::FixedTimeCyclicFrameCompositor::renderPeriodicFrame(
+            frame, Buffer<float>(outputData, 32), -1. / 128., 1. / 32.);
+    float peak {};
+    for (int sample = 0; sample < 32; ++sample) {
+        const double expected = std::sin(juce::MathConstants<double>::twoPi
+                * (-1. / 128. + sample / 32.));
+        REQUIRE(outputData[sample] == Catch::Approx(expected).margin(1.e-5));
+        peak = std::max(peak, std::abs(outputData[sample]));
+    }
+    REQUIRE(peak > .99f);
+    REQUIRE(peak <= 1.0001f);
+}

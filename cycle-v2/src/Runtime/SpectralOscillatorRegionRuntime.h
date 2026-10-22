@@ -22,7 +22,8 @@ public:
             double sampleRateToUse,
             const CycleDsp::UnisonVoiceLayout& layoutToUse,
             int controlIntervalSamplesToUse = 16,
-            bool pitchIndependentControlToUse = false);
+            bool pitchIndependentControlToUse = false,
+            int minimumFixedFrameSizeToUse = 0);
     void reset();
     bool process(
             const PreparedOscillatorProcessContext& context,
@@ -52,6 +53,7 @@ private:
             SpectralOscillatorFrameRenderer& renderer);
     bool refreshSharedFramesThrough(
             double cycleStart,
+            size_t pitchSampleOffset,
             const PreparedOscillatorProcessContext& context,
             SpectralOscillatorFrameRenderer& renderer);
     bool renderCyclesUntilReady(
@@ -79,6 +81,7 @@ private:
     size_t maximumFrameCount {};
     int maximumCycleSamples {};
     int maximumFixedFrameSize {};
+    int minimumFixedFrameSize {};
     int fixedFrameSize {};
     double sampleRate { 44100.0 };
     int controlIntervalSamples { 16 };

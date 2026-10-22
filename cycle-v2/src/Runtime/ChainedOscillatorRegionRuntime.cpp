@@ -54,7 +54,6 @@ void ChainedOscillatorRegionRuntime::reset() {
 bool ChainedOscillatorRegionRuntime::process(
         const PreparedOscillatorProcessContext& context,
         OscillatorCycleRenderer& renderer) {
-    const int midiNote = context.midiNote;
     const float velocity = context.velocity;
     const Buffer<float> pitchEnvelope = context.pitchEnvelope;
     Buffer<float> left = context.left;
@@ -145,7 +144,7 @@ bool ChainedOscillatorRegionRuntime::renderUntilReady(
             pitch = context.pitchEnvelope[pitchIndex];
         }
         const double angleDelta = CycleDsp::OscillatorLaneCore::angleDeltaForPitchUnit(
-                context.midiNote,
+                context.midiPitchAt(context.blockSampleStart + (size_t) std::max(0L, relativeFrontier)),
                 layout[laneIndex].detuneCents,
                 pitch,
                 sampleRate);

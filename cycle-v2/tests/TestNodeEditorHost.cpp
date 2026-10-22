@@ -17,6 +17,9 @@
 #include "Nodes/Envelope/EnvelopePurpose.h"
 #include "Nodes/Envelope/Editor/EnvelopeAxisScaleSelector.h"
 #include "Nodes/Envelope/Editor/EnvelopeEditorComponent.h"
+#include "Nodes/Envelope/Rendering/EnvelopeMorphSurfacePreview.h"
+#include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
+#include <UI/Panels/ZoomPanel.h>
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
@@ -26,7 +29,6 @@
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
-#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Unison/UnisonNode.h"
 #include "Nodes/Unison/UnisonPreviewPainter.h"
 #include "Nodes/Waveshaper/Editor/WaveshaperEditorComponent.h"
@@ -35,6 +37,9 @@
 #include "UI/EffectEnableButton.h"
 #include "UI/EditorChromeLayout.h"
 #include "UI/Editors/NodePropertyControlBinding.h"
+#include "UI/Editors/MeshEditorLayout.h"
+#include "UI/Editors/MorphSpaceLayout.h"
+#include "Nodes/Envelope/Editor/EnvelopeMorphControls.h"
 #include "UI/Editors/ProcessingScopeSelector.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
 #include "UI/Editors/PropertySegmentedSelector.h"
@@ -1262,7 +1267,7 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     NodeEditorHost host(parent, commands, presentation, resources);
     Node voice = GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {});
 
-    REQUIRE(host.bind(&voice, { 0, 0, 440, 360 }));
+    REQUIRE(host.bind(&voice, { 0, 0, 520, 488 }));
     DynamicObject automation;
     host.appendAutomationState(automation);
     const var state = automation.getProperty("voiceContext");
@@ -1289,6 +1294,11 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     REQUIRE(state.getProperty("voiceLength", {}).getProperty("display", {}).toString() == "1 s");
     REQUIRE(state.getProperty("pitch", {}).getProperty("display", {}).toString() == "0 semis");
     REQUIRE(state.getProperty("controlInterval", {}).toString() == "16");
+    REQUIRE(state.getProperty("noteMode", {}).toString() == "polyphonic");
+    REQUIRE(state.getProperty("envelopeModulation", {}).toString() == "latched");
+    REQUIRE(state.getProperty("portamentoSeconds", {}).getProperty("display", {}).toString() == "0.06 s");
+    REQUIRE_FALSE((bool) state.getProperty("portamentoEnabled", {}));
+    REQUIRE_FALSE((bool) state.getProperty("glideTimeEnabled", {}));
     REQUIRE(!(bool) state.getProperty("pitchIndependentSpectralControl", {}));
     REQUIRE((int) state.getProperty("octave", {}).getProperty("usableTrackWidth", {}) >= 140);
     REQUIRE((int) state.getProperty("voiceLength", {}).getProperty("usableTrackWidth", {}) >= 140);
@@ -1345,6 +1355,16 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     auto* portamento = dynamic_cast<ToggleButton*>(host.component()->findChildWithID(
             "voiceContextEditor.portamento"));
     REQUIRE(portamento != nullptr);
+    REQUIRE_FALSE(portamento->isEnabled());
+    auto* noteMode = host.component()->findChildWithID("voiceContextEditor.noteMode");
+    REQUIRE(noteMode != nullptr);
+    auto* legato = dynamic_cast<TextButton*>(noteMode->findChildWithID(
+            "voiceContextEditor.noteMode.legato"));
+    REQUIRE(legato != nullptr);
+    legato->onClick();
+    REQUIRE(commands.textParameterId == "noteMode");
+    REQUIRE(commands.textValue == "legato");
+    REQUIRE(portamento->isEnabled());
     portamento->setToggleState(true, dontSendNotification);
     portamento->onClick();
     REQUIRE(commands.immediateParameterId == "portamento");
@@ -1379,6 +1399,96 @@ TEST_CASE("Voice Context hosts semantic controls for every visible property",
     REQUIRE(commands.immediateParameterId == "pitchIndependentSpectralControl");
     REQUIRE(commands.numericValues.back()
             == Catch::Approx(CycleDsp::voiceLengthUnitValue(2.01)).margin(0.0001));
+
+    auto* glideTime = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "voiceContextEditor.portamentoSeconds"));
+    REQUIRE(glideTime != nullptr);
+    REQUIRE(glideTime->isEnabled());
+    auto* glideValue = dynamic_cast<Label*>(host.component()->findChildWithID(
+            "voiceContextEditor.portamentoSeconds.value"));
+    REQUIRE(glideValue != nullptr);
+    glideValue->setText("0.125 s", sendNotificationSync);
+    REQUIRE(commands.numericValues.back() == Catch::Approx(.125f));
+    REQUIRE(glideTime->keyPressed(KeyPress(KeyPress::rightKey, ModifierKeys::shiftModifier, 0)));
+    REQUIRE(commands.numericValues.back() == Catch::Approx(.126f));
+    const auto updates = commands.updates;
+    glideValue->setText("0.6 s", sendNotificationSync);
+    REQUIRE(commands.updates == updates);
+    glideValue->setText("0 s", sendNotificationSync);
+    REQUIRE(commands.numericValues.back() == Catch::Approx(0.f));
+    glideValue->setText("0.5 s", sendNotificationSync);
+    REQUIRE(commands.numericValues.back() == Catch::Approx(.5f));
+
+    DynamicObject updated;
+    host.appendAutomationState(updated);
+    const var glideState = updated.getProperty("voiceContext").getProperty("portamentoSeconds", {});
+    const Rectangle<float> glideTrack = rectangleProperty(glideState, "track");
+    REQUIRE(glideTrack.getX() == Catch::Approx(octaveTrack.getX()));
+    REQUIRE(glideTrack.getWidth() == Catch::Approx(octaveTrack.getWidth()));
+    REQUIRE(glideTrack.getCentreY() < synthesisBounds.getY());
+    REQUIRE(noteMode->getX() == 24 + PropertyControlMetrics::labelWidth + PropertyControlMetrics::inlineGap);
+    REQUIRE(noteMode->getRight() == host.component()->getWidth() - 24);
+}
+
+TEST_CASE("Voice Context articulation controls commit semantic policies and one glide gesture",
+        "[cycle-v2][editor][voice-context][articulation][gesture]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component owner;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 520, 488 }));
+
+    const auto select = [&](const String& selectorId, const String& optionId) {
+        auto* selector = host.component()->findChildWithID(selectorId);
+        REQUIRE(selector != nullptr);
+        auto* option = dynamic_cast<TextButton*>(selector->findChildWithID(optionId));
+        REQUIRE(option != nullptr);
+        option->onClick();
+    };
+    select("voiceContextEditor.noteMode", "voiceContextEditor.noteMode.legato");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "noteMode") == "legato");
+    select("voiceContextEditor.envelopeModulation", "voiceContextEditor.envelopeModulation.live");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "envelopeModulation") == "live");
+    auto* portamento = dynamic_cast<ToggleButton*>(host.component()->findChildWithID(
+            "voiceContextEditor.portamento"));
+    REQUIRE(portamento != nullptr);
+    REQUIRE(portamento->isEnabled());
+    portamento->setToggleState(true, dontSendNotification);
+    portamento->onClick();
+    REQUIRE(NodeParameterMap(*document.graph().findNode("voice")).boolValue("portamento"));
+
+    auto* glideTime = dynamic_cast<PrecisionSlider*>(host.component()->findChildWithID(
+            "voiceContextEditor.portamentoSeconds"));
+    REQUIRE(glideTime != nullptr);
+    REQUIRE(glideTime->isEnabled());
+    glideTime->onDragStart();
+    glideTime->setValue(.12, sendNotificationSync);
+    glideTime->setValue(.22, sendNotificationSync);
+    REQUIRE(NodeParameterMap(*document.graph().findNode("voice")).floatValue("portamentoSeconds")
+            == Catch::Approx(.06f));
+    REQUIRE(NodeParameterMap(*dispatcher.editingGraph().findNode("voice")).floatValue("portamentoSeconds")
+            == Catch::Approx(.22f));
+    glideTime->onDragEnd();
+    REQUIRE(NodeParameterMap(*document.graph().findNode("voice")).floatValue("portamentoSeconds")
+            == Catch::Approx(.22f));
+    REQUIRE(document.undo());
+    REQUIRE(NodeParameterMap(*document.graph().findNode("voice")).floatValue("portamentoSeconds")
+            == Catch::Approx(.06f));
+    REQUIRE(presentation.recordedMovements == 2);
+    REQUIRE(presentation.gestureCommits == 1);
+
+    REQUIRE(host.bind(document.graph().findNode("voice"), { 0, 0, 520, 488 }));
+    select("voiceContextEditor.noteMode", "voiceContextEditor.noteMode.polyphonic");
+    REQUIRE_FALSE(portamento->isEnabled());
+    REQUIRE_FALSE(glideTime->isEnabled());
+    select("voiceContextEditor.envelopeModulation", "voiceContextEditor.envelopeModulation.latched");
+    REQUIRE(parameterValueForNode(*document.graph().findNode("voice"), "envelopeModulation") == "latched");
 }
 
 TEST_CASE("Delay and Reverb own shared semantic property rows",
@@ -2946,6 +3056,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "env", "dimensionCount", "Curve morphing", "2").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "env", "purpose", "Purpose", "pitch").succeeded());
     EnvelopeNodeModel envelopeModel;
     for (VertCube* cube : envelopeModel.getMesh().getCubes()) {
@@ -2981,24 +3093,14 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     const auto purposeBounds = rectangleProperty(state, "purposeBounds");
     const auto purposeLabelBounds = rectangleProperty(state, "purposeLabelBounds");
     const auto blueMorphBounds = rectangleProperty(state, "blueMorphBounds");
-    const auto actionBarBounds = rectangleProperty(state, "actionBarBounds");
-    const auto actionRowBounds = rectangleProperty(state, "actionRowBounds");
+    REQUIRE_FALSE(state.hasProperty("actionBarBounds"));
+    REQUIRE_FALSE(state.hasProperty("actionRowBounds"));
     const auto controlBounds = rectangleProperty(state, "controlBounds");
     const auto panelBounds = rectangleProperty(state, "panelBounds");
     REQUIRE(purposeBounds.getWidth() > 0.f);
     REQUIRE(blueMorphBounds.getWidth() > 0.f);
-    REQUIRE(actionRowBounds.getWidth() > 0.f);
-    REQUIRE(purposeBounds.getY() < controlBounds.getY());
-    REQUIRE(purposeLabelBounds.getRight() < purposeBounds.getX());
-    REQUIRE(purposeLabelBounds.getCentreY() == Catch::Approx(purposeBounds.getCentreY()));
-    REQUIRE(blueMorphBounds.getBottom() < actionRowBounds.getY());
-    REQUIRE(actionBarBounds.getX() == Catch::Approx(actionRowBounds.getX()));
-    REQUIRE(actionBarBounds.getRight() == Catch::Approx(actionRowBounds.getRight()));
-    REQUIRE(controlBounds.getX() - actionBarBounds.getX()
-            == Catch::Approx(controlBounds.getX()));
-    REQUIRE(actionBarBounds.getRight() - controlBounds.getRight()
-            == Catch::Approx(controlBounds.getX()));
-    REQUIRE(actionBarBounds.getBottom() == Catch::Approx(panelBounds.getY()));
+    REQUIRE(controlBounds.getWidth() > 0.f);
+    REQUIRE(blueMorphBounds.getBottom() < panelBounds.getY());
     panelState = widget.automationState();
     REQUIRE((bool) panelState.getProperty("bipolar", {}));
     REQUIRE(static_cast<double>(panelState.getProperty("verticalZoomHeight", {})) < 0.1);
@@ -3055,6 +3157,8 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
             editor->getLocalBounds().toFloat(), true).enabled);
     REQUIRE(axisScaleSelector->getNumChildComponents() == 2);
     REQUIRE_FALSE(axisScaleSelector->isEnabled());
+    REQUIRE_FALSE(axisScaleSelector->isVisible());
+    REQUIRE_FALSE((bool) state.getProperty("axisScaleVisible", true));
     REQUIRE((bool) state.getProperty("actionIconsVector", {}));
     REQUIRE_FALSE(loopMarker->isEnabled());
     REQUIRE_FALSE(sustainMarker->isEnabled());
@@ -3064,9 +3168,9 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     const auto fullBounds = rectangleProperty(state, "fullVerticalBounds");
     const auto modeBounds = rectangleProperty(state, "modeBounds");
     REQUIRE(state.getProperty("modeLabel", {}).toString() == "Purpose");
-    REQUIRE(state.getProperty("markerGroupLabel", {}).toString() == "Markers");
-    REQUIRE(state.getProperty("axisScaleGroupLabel", {}).toString() == "Scaling");
-    REQUIRE(state.getProperty("rangeGroupLabel", {}).toString() == "Zoom");
+    REQUIRE_FALSE(state.hasProperty("markerGroupLabel"));
+    REQUIRE_FALSE(state.hasProperty("axisScaleGroupLabelBounds"));
+    REQUIRE_FALSE(state.hasProperty("rangeGroupLabelBounds"));
     REQUIRE_FALSE((bool) state.getProperty("loopEnabled", {}));
     REQUIRE_FALSE((bool) state.getProperty("sustainEnabled", {}));
     REQUIRE(modeBounds == purposeBounds);
@@ -3083,50 +3187,31 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
         REQUIRE(labelBounds.getX() - optionBounds.getX() == Catch::Approx(4.f));
         REQUIRE(labelBounds.getY() - optionBounds.getY() == Catch::Approx(2.f));
     }
-    REQUIRE(fitBounds.getWidth() >= 28.f);
+    REQUIRE(fitBounds.getWidth() == Catch::Approx(24.f));
     REQUIRE(fullBounds.getWidth() == Catch::Approx(fitBounds.getWidth()));
-    REQUIRE(fitBounds.getY() >= actionRowBounds.getY());
-    REQUIRE(fullBounds.getBottom() <= actionRowBounds.getBottom());
-    REQUIRE(fitBounds.getY() == Catch::Approx(actionRowBounds.getY()));
     const auto markerGroupBounds = rectangleProperty(state, "markerGroupBounds");
-    const auto markerLabelBounds = rectangleProperty(
-            state, "markerGroupLabelBounds");
     const auto axisScaleBounds = rectangleProperty(state, "axisScaleBounds");
-    const auto axisScaleLabelBounds = rectangleProperty(
-            state, "axisScaleGroupLabelBounds");
     const auto rangeGroupBounds = rectangleProperty(state, "rangeGroupBounds");
-    const auto rangeLabelBounds = rectangleProperty(
-            state, "rangeGroupLabelBounds");
-    REQUIRE(markerGroupBounds.getRight() < axisScaleBounds.getX());
-    REQUIRE(axisScaleBounds.getRight() < rangeGroupBounds.getX());
-    REQUIRE(axisScaleBounds.getX() - markerGroupBounds.getRight()
-            == Catch::Approx(28.f));
-    REQUIRE(rangeGroupBounds.getX() - axisScaleBounds.getRight()
-            == Catch::Approx(28.f));
-    REQUIRE(actionBarBounds.contains(markerGroupBounds));
-    REQUIRE(actionBarBounds.contains(axisScaleBounds));
-    REQUIRE(actionBarBounds.contains(rangeGroupBounds));
-    REQUIRE(markerGroupBounds.getX() - actionBarBounds.getX()
-            == Catch::Approx(actionBarBounds.getRight() - rangeGroupBounds.getRight()));
-    REQUIRE(markerGroupBounds.getY() == Catch::Approx(actionRowBounds.getY()));
-    REQUIRE(axisScaleBounds.getY() == Catch::Approx(actionRowBounds.getY()));
-    REQUIRE(rangeGroupBounds.getY() == Catch::Approx(actionRowBounds.getY()));
-    REQUIRE(markerLabelBounds.getY() == Catch::Approx(axisScaleLabelBounds.getY()));
-    REQUIRE(rangeLabelBounds.getY() == Catch::Approx(axisScaleLabelBounds.getY()));
-    REQUIRE(markerGroupBounds.getBottom() == Catch::Approx(actionRowBounds.getBottom()));
-    REQUIRE(axisScaleBounds.getBottom() == Catch::Approx(actionRowBounds.getBottom()));
-    REQUIRE(rangeGroupBounds.getBottom() == Catch::Approx(actionRowBounds.getBottom()));
+    for (const auto group : { axisScaleBounds, rangeGroupBounds, markerGroupBounds }) {
+        REQUIRE(panelBounds.contains(group));
+        REQUIRE(group.getY() == Catch::Approx(panelBounds.getY() + 8.f));
+        REQUIRE(group.getHeight() == Catch::Approx(24.f));
+    }
+    REQUIRE(rangeGroupBounds.getX() - axisScaleBounds.getRight() == Catch::Approx(16.f));
+    REQUIRE(markerGroupBounds.getX() - rangeGroupBounds.getRight() == Catch::Approx(16.f));
+    REQUIRE(rangeGroupBounds.contains(fitBounds));
+    REQUIRE(rangeGroupBounds.contains(fullBounds));
     const auto requireActionIconMetrics = [&state](
             const char* controlProperty,
             const char* iconProperty) {
         const auto control = rectangleProperty(state, controlProperty);
         const auto icon = rectangleProperty(state, iconProperty);
-        REQUIRE(control.getWidth() == Catch::Approx(34.f));
-        REQUIRE(control.getHeight() == Catch::Approx(30.f));
-        REQUIRE(icon.getWidth() == Catch::Approx(21.f));
-        REQUIRE(icon.getHeight() == Catch::Approx(21.f));
-        REQUIRE(icon.getX() - control.getX() == Catch::Approx(6.5f));
-        REQUIRE(icon.getY() - control.getY() == Catch::Approx(4.5f));
+        REQUIRE(control.getWidth() == Catch::Approx(24.f));
+        REQUIRE(control.getHeight() == Catch::Approx(24.f));
+        REQUIRE(icon.getWidth() == Catch::Approx(14.5f));
+        REQUIRE(icon.getHeight() == Catch::Approx(14.5f));
+        REQUIRE(icon.getX() - control.getX() == Catch::Approx(4.75f));
+        REQUIRE(icon.getY() - control.getY() == Catch::Approx(4.75f));
     };
     requireActionIconMetrics("loopBounds", "loopIconBounds");
     requireActionIconMetrics("sustainBounds", "sustainIconBounds");
@@ -3138,44 +3223,36 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     for (const auto& option : *axisScaleOptions.getArray()) {
         const auto optionBounds = rectangleProperty(option, "bounds");
         const auto diagramBounds = rectangleProperty(option, "diagramBounds");
-        REQUIRE(optionBounds.getWidth() == Catch::Approx(42.f));
-        REQUIRE(optionBounds.getHeight() == Catch::Approx(30.f));
-        REQUIRE(diagramBounds.getWidth() == Catch::Approx(24.f));
-        REQUIRE(diagramBounds.getHeight() == Catch::Approx(18.f));
-        REQUIRE(diagramBounds.getX() - optionBounds.getX() == Catch::Approx(9.f));
-        REQUIRE(diagramBounds.getY() - optionBounds.getY() == Catch::Approx(6.f));
+        REQUIRE(optionBounds.getWidth() == Catch::Approx(24.f));
+        REQUIRE(optionBounds.getHeight() == Catch::Approx(24.f));
+        REQUIRE(diagramBounds.getWidth() == Catch::Approx(10.875f));
+        REQUIRE(diagramBounds.getHeight() == Catch::Approx(10.875f));
+        REQUIRE(diagramBounds.getX() - optionBounds.getX() == Catch::Approx(6.5625f));
+        REQUIRE(diagramBounds.getY() - optionBounds.getY() == Catch::Approx(6.5625f));
     }
     const auto parameterRails = state.getProperty("vertexParameterRails", {});
     REQUIRE(parameterRails.isArray());
-    REQUIRE(parameterRails.getArray()->size() == 6);
+    REQUIRE(parameterRails.getArray()->size() == 7);
     REQUIRE((bool) state.getProperty("guideControlsVisible", false));
-    REQUIRE(parameterRails.getArray()->getUnchecked(0).getProperty("id", {}) == "guide.time");
+    REQUIRE(parameterRails.getArray()->getLast().getProperty("id", {}) == "guide.time");
     const auto morphLabelBounds = rectangleProperty(state, "morphGroupLabelBounds");
     const auto axisGroupLabelBounds = rectangleProperty(state, "axisGroupLabelBounds");
-    const auto linkGroupLabelBounds = rectangleProperty(state, "linkGroupLabelBounds");
     REQUIRE(axisGroupLabelBounds.getWidth() == Catch::Approx(24.f));
-    REQUIRE(linkGroupLabelBounds.getWidth() == Catch::Approx(24.f));
-    REQUIRE_FALSE(axisGroupLabelBounds.intersects(linkGroupLabelBounds));
     REQUIRE(axisGroupLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
-    REQUIRE(linkGroupLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
+    REQUIRE_FALSE(state.hasProperty("linkGroupLabelBounds"));
     const auto vertexParameterBounds = rectangleProperty(state, "vertexParameterBounds");
-    REQUIRE(vertexParameterBounds.getHeight() == Catch::Approx(270.f));
-    REQUIRE(actionBarBounds.getRight() > vertexParameterBounds.getRight());
+    REQUIRE(vertexParameterBounds.getHeight() >= 210.f);
     const auto planeLabelBounds = rectangleProperty(
             state, "morphPlaneGroupLabelBounds");
     const auto planeBounds = rectangleProperty(state, "morphPlaneBounds");
-    REQUIRE(actionBarBounds.getX() < planeLabelBounds.getX());
-    REQUIRE(planeBounds.getY() - planeLabelBounds.getBottom() == Catch::Approx(10.f));
-    REQUIRE(planeLabelBounds.getY() == Catch::Approx(morphLabelBounds.getY()));
-    REQUIRE(vertexParameterBounds.getY() + 5.f
-            == Catch::Approx(morphLabelBounds.getY()));
+    REQUIRE(planeBounds.contains(planeLabelBounds));
     const auto firstRail = rectangleProperty(parameterRails.getArray()->getReference(0), "bounds");
     const auto secondRail = rectangleProperty(parameterRails.getArray()->getReference(1), "bounds");
     const auto thirdRail = rectangleProperty(parameterRails.getArray()->getReference(2), "bounds");
     const auto lastRail = rectangleProperty(parameterRails.getArray()->getLast(), "bounds");
     REQUIRE(secondRail.getY() - firstRail.getY()
             == Catch::Approx(thirdRail.getY() - secondRail.getY()));
-    REQUIRE(actionBarBounds.getY() - lastRail.getBottom() >= 20.f);
+    REQUIRE(panelBounds.getY() > lastRail.getBottom());
     REQUIRE((bool) panelState.getProperty("previewPreservesInteractiveZoom", {}));
 
     VertCube* selectedCube = envelopeModel.getMesh().getCubes().front();
@@ -3196,7 +3273,7 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(guideTargetRails != nullptr);
     REQUIRE_FALSE(guideTargetRails->isEmpty());
     const auto guideBounds = rectangleProperty(
-            guideTargetRails->getFirst(), "guideBounds");
+            guideTargetRails->getLast(), "guideBounds");
     REQUIRE(guideBounds.getWidth() > 1.f);
     editor->mouseDown(curvePanelMouseEvent(
             *editor,
@@ -3230,6 +3307,16 @@ TEST_CASE("Envelope purpose selector publishes bipolar pitch presentation",
     REQUIRE(pitchMode->getToggleState());
     REQUIRE_FALSE(scratchMode->getToggleState());
     REQUIRE((bool) widget.automationState().getProperty("bipolar", {}));
+    for (const auto purpose : { EnvelopePurpose::Volume, EnvelopePurpose::Control,
+            EnvelopePurpose::Scratch, EnvelopePurpose::Pitch, EnvelopePurpose::Volume }) {
+        modeSelector->setPurpose(purpose, sendNotificationSync);
+        const bool visible = purpose == EnvelopePurpose::Volume;
+        REQUIRE(axisScaleSelector->isVisible() == visible);
+        const var nextState = editor->automationState();
+        REQUIRE((bool) nextState.getProperty("axisScaleVisible", !visible) == visible);
+        REQUIRE(rectangleProperty(nextState, "rangeGroupBounds") == rangeGroupBounds);
+        REQUIRE(rectangleProperty(nextState, "markerGroupBounds") == markerGroupBounds);
+    }
 }
 
 TEST_CASE("Envelope document reload frames the authored vertex bounds",
@@ -3312,7 +3399,7 @@ TEST_CASE("Envelope preview sync defers selection work until host initialization
             Rectangle<float>(0.f, 0.f, 640.f, 400.f)) != nullptr);
     const var initializedState = widget.automationState();
     REQUIRE((bool) initializedState.getProperty("hasCurrentCube", {}));
-    REQUIRE((int) initializedState.getProperty("movingVertexCount", 0) == 4);
+    REQUIRE((int) initializedState.getProperty("movingVertexCount", 0) == 1);
     REQUIRE((int) initializedState.getProperty("physicalMovingVertexCount", 0) == 8);
 }
 
@@ -4015,6 +4102,8 @@ TEST_CASE("Trimesh morph shortcuts focus, reach poles, toggle links, and preserv
             NodeKind::TrilinearMesh,
             "mesh",
             {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Curve morphing", "3").succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
     RecordingPresentation presentation;
@@ -4135,6 +4224,8 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
 
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "env", "dimensionCount", "Curve morphing", "2").succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
     RecordingPresentation presentation;
@@ -4183,7 +4274,7 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
     REQUIRE(editor->getLocalBounds().contains(shortcutBubble->getBounds()));
     REQUIRE(shortcutBubble->getBounds().getCentreX()
             == shortcutHint->getBounds().getCentreX());
-    REQUIRE(shortcutBubble->getDescription().startsWith("R / B"));
+    REQUIRE(shortcutBubble->getDescription().startsWith("Y / R / B"));
     REQUIRE(shortcutBubble->getDescription().contains(
             "Shift + Left / Right"));
     shortcutHint->mouseExit(curvePanelMouseEvent(
@@ -4201,6 +4292,7 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
     REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::leftKey)));
     REQUIRE(NodeParameterMap(*document.graph().findNode("env"))
             .floatValue("red", 0.5f) == Catch::Approx(0.f));
+    REQUIRE(NodeParameterMap(*document.graph().findNode("env")).intValue("dimensionCount", 0) == 2);
     REQUIRE(document.undo());
     REQUIRE(host.bind(
             document.graph().findNode("env"),
@@ -4276,6 +4368,8 @@ TEST_CASE("Trimesh link toggles survive rebind and undo",
             NodeKind::TrilinearMesh,
             "mesh",
             {}));
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "mesh", "dimensionCount", "Curve morphing", "3").succeeded());
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher dispatcher(document);
     RecordingPresentation presentation;
@@ -4778,7 +4872,11 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
     CurveTableScope curveTables;
     Component owner;
     NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("TrimeshDragCommand");
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    graph.addNode(std::move(node));
     auto editorState = std::make_unique<DynamicObject>();
     editorState->setProperty("selectedVertexId", 0);
     REQUIRE(GraphNodeStateEditor().setNodeEditorState(
@@ -4801,6 +4899,7 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
     const auto durableModel = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
             document.graph().findNode("mesh")->model);
     REQUIRE(durableModel != nullptr);
+    REQUIRE_FALSE(durableModel->mesh().getVerts().empty());
     const float originalAmp = durableModel->mesh().getVerts().front()->values[Vertex::Amp];
     InteractionComplexityDiagnostics::reset();
 
@@ -4983,4 +5082,482 @@ TEST_CASE("Envelope enable button commits one undoable edit",
     REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("env"), "enabled") == "1");
     REQUIRE_FALSE(document.canUndo());
+}
+
+TEST_CASE("Trimesh keeps inactive properties disabled and its Component selector available",
+        "[cycle-v2][mesh-dimensions][editor][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    Component owner;
+    owner.setBounds(0, 0, 1100, 800);
+    NodeGraph graph;
+    auto node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("PersistentProperties");
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 1);
+    mesh->destroy();
+    graph.addNode(std::move(node));
+    auto* selection = new DynamicObject();
+    selection->setProperty("selectedVertexId", 0);
+    REQUIRE(GraphNodeStateEditor().setNodeEditorState(graph, "mesh", var(selection)).succeeded());
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher dispatcher(document);
+    RecordingPresentation presentation;
+    NullResources resources;
+    TrimeshWidget widget;
+    resources.activeTrimesh = &widget;
+    NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+    NodeEditorHost host(owner, commands, presentation, resources);
+    Rectangle<int> previousComponentBounds;
+
+    for (const int count : { 3, 2, 1, 0 }) {
+        REQUIRE(dispatcher.setMeshDimensions("mesh", count).succeeded());
+        REQUIRE(commands.selectTrimeshVertexIndex("mesh", 0));
+        widget.syncFromNode(*document.graph().findNode("mesh"));
+        const auto* factory = NodeEditorFactoryRegistry::instance().find(NodeKind::TrilinearMesh);
+        const auto bounds = factory->layoutBounds(*document.graph().findNode("mesh"), owner.getLocalBounds().toFloat());
+        REQUIRE(host.bind(document.graph().findNode("mesh"), bounds.toNearestInt(), document.revision()));
+        const auto parameters = widget.selectedVertexParameters();
+        REQUIRE(parameters.size() == 7);
+        REQUIRE(parameters[6].id == "guide.time");
+        REQUIRE(parameters[6].enabled);
+        REQUIRE(parameters[6].guideOnly);
+        const auto dimensions = MorphDimensions::trimesh(count);
+        REQUIRE(parameters[0].enabled == dimensions.active(Vertex::Time));
+        REQUIRE(parameters[1].enabled == dimensions.active(Vertex::Red));
+        REQUIRE(parameters[2].enabled == dimensions.active(Vertex::Blue));
+        bool foundControls = false;
+        for (auto* child : host.component()->getChildren()) {
+            if (auto* target = child->findChildWithID("trimesh.vertex.time")) {
+                foundControls = true;
+                REQUIRE(target->isEnabled() == dimensions.active(Vertex::Time));
+                REQUIRE(child->findChildWithID("trimesh.vertex.red")->isEnabled()
+                        == dimensions.active(Vertex::Red));
+                REQUIRE(child->findChildWithID("trimesh.vertex.blue")->isEnabled()
+                        == dimensions.active(Vertex::Blue));
+                auto* componentGuide = child->findChildWithID("trimesh.guide.time");
+                REQUIRE(componentGuide != nullptr);
+                REQUIRE(componentGuide->isEnabled());
+                REQUIRE(componentGuide->getY() > child->findChildWithID("trimesh.vertex.curve")->getBottom());
+                auto* amplitude = child->findChildWithID("trimesh.vertex.amp");
+                amplitude->mouseEnter(curvePanelMouseEvent(*amplitude, { 10.f, 10.f }, {}, {}, false));
+                REQUIRE(widget.propertyFeedbackId() == "vertex.amp");
+                auto* tooltip = dynamic_cast<TooltipClient*>(amplitude);
+                REQUIRE(tooltip != nullptr);
+                REQUIRE(tooltip->getTooltip().startsWith("amp: "));
+                amplitude->mouseExit(curvePanelMouseEvent(*amplitude, {}, {}, {}, false));
+                REQUIRE(widget.propertyFeedbackId().isEmpty());
+                if (count < 3) {
+                    REQUIRE(componentGuide->getBounds() == previousComponentBounds);
+                }
+                previousComponentBounds = componentGuide->getBounds();
+            }
+        }
+        REQUIRE(foundControls);
+    }
+}
+
+TEST_CASE("Envelope retains disabled morph properties and an independent Component guide row",
+        "[cycle-v2][mesh-dimensions][editor][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    for (const int count : { 0, 1, 2, 3 }) {
+        NodeGraph graph;
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher dispatcher(document);
+        REQUIRE(dispatcher.setMeshDimensions("env", count).succeeded());
+        CurveEditorWidget widget(NodeKind::Envelope);
+        widget.prepareExpandedPanelComponent(*document.graph().findNode("env"), { 0.f, 0.f, 900.f, 500.f });
+        const auto parameters = widget.selectedVertexParameters();
+        REQUIRE(parameters.size() == 7);
+        REQUIRE(parameters[6].id == "guide.time");
+        REQUIRE(parameters[6].enabled);
+        REQUIRE(parameters[6].guideOnly);
+        const MorphDimensions dimensions(count);
+        for (const int index : { 0, 1, 2 }) {
+            const int axis = index == 0 ? Vertex::Time : index == 1 ? Vertex::Red : Vertex::Blue;
+            REQUIRE(parameters[(size_t) index].enabled == dimensions.active(axis));
+            if (!dimensions.active(axis)) {
+                REQUIRE_FALSE(widget.setSelectedVertexParameter(parameters[(size_t) index].id, 0.3f));
+            }
+        }
+    }
+}
+
+TEST_CASE("Modulation profiles expose usable conditional controls and undo independent edits",
+        "[cycle-v2][property-controls][modulation][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    for (const String prefix : { "yellow", "envelopeYellow" }) {
+        for (const String source : { "constant", "midiCC" }) {
+            Component owner;
+            owner.setBounds(0, 0, 1100, 800);
+            NodeGraph graph;
+            graph.addNode(GraphNodeFactory().createNode(NodeKind::ModulationTriple, "mod", {}));
+            REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "mod", prefix + "Source", "Source", source).succeeded());
+            GraphDocument document(std::move(graph));
+            GraphCommandDispatcher dispatcher(document);
+            RecordingPresentation presentation;
+            NullResources resources;
+            NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+            NodeEditorHost host(owner, commands, presentation, resources);
+            const auto* factory = NodeEditorFactoryRegistry::instance().find(NodeKind::ModulationTriple);
+            const auto bounds = factory->layoutBounds(*document.graph().findNode("mod"), { 0.f, 0.f, 430.f, 370.f });
+            REQUIRE(bounds.getHeight() == 266.f);
+            REQUIRE(host.bind(document.graph().findNode("mod"), bounds.toNearestInt()));
+            const bool constant = source == "constant";
+            PrecisionSlider* slider = nullptr;
+            for (auto* row : host.component()->getChildren()) {
+                slider = dynamic_cast<PrecisionSlider*>(row->findChildWithID(
+                        "modulation." + prefix + (constant ? ".constant" : ".controller")));
+                if (slider != nullptr) {
+                    break;
+                }
+            }
+            REQUIRE(slider != nullptr);
+            REQUIRE(slider->isVisible());
+            REQUIRE(slider->visibleTrackBounds().getWidth() >= PropertyControlMetrics::minimumUsableTrackWidth);
+            REQUIRE(slider->getParentComponent()->getLocalBounds().contains(slider->getBounds()));
+            const String parameter = prefix + (constant ? "Constant" : "Controller");
+            const String before = parameterValueForNode(*document.graph().findNode("mod"), parameter);
+            REQUIRE(slider->keyPressed(KeyPress(KeyPress::rightKey)));
+            REQUIRE(parameterValueForNode(*document.graph().findNode("mod"), parameter) != before);
+            const String other = prefix == "yellow" ? "envelopeYellow" : "yellow";
+            REQUIRE(parameterValueForNode(*document.graph().findNode("mod"), other + "Constant") == "0.5");
+            REQUIRE(document.undo());
+            REQUIRE(parameterValueForNode(*document.graph().findNode("mod"), parameter) == before);
+            slider->onDragStart();
+            slider->setValue(constant ? 0.62 : 62.0, sendNotificationSync);
+            slider->setValue(constant ? 0.74 : 74.0, sendNotificationSync);
+            slider->onDragEnd();
+            REQUIRE(parameterValueForNode(*document.graph().findNode("mod"), parameter) != before);
+            REQUIRE(document.undo());
+            REQUIRE(parameterValueForNode(*document.graph().findNode("mod"), parameter) == before);
+            REQUIRE_FALSE(document.canUndo());
+        }
+    }
+}
+
+TEST_CASE("Envelope uses the Trimesh composition and a full width editable curve",
+        "[cycle-v2][mesh-dimensions][editor][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    for (const auto size : { Point<int>(1400, 920), Point<int>(890, 760) }) {
+        NodeGraph graph;
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher dispatcher(document);
+        CurveEditorWidget widget(NodeKind::Envelope);
+        auto editor = createCurveNodeEditor(NodeKind::Envelope, widget);
+        const auto* factory = NodeEditorFactoryRegistry::instance().find(NodeKind::Envelope);
+        for (const int count : { 3, 2, 1, 0 }) {
+            REQUIRE(dispatcher.setMeshDimensions("env", count).succeeded());
+            const auto& node = *document.graph().findNode("env");
+            const auto bounds = factory->layoutBounds(node, { 0.f, 0.f, (float) size.x, (float) size.y });
+            editor->setBounds(bounds.toNearestInt());
+            editor->setNode(node);
+            const var state = editor->automationState();
+            const auto content = editor->getLocalBounds().toFloat()
+                    .withTrimmedTop(CanvasChromeMetrics::embeddedEditorHeaderHeight).reduced(12.f, 10.f);
+            const MeshEditorLayout layout(content, count);
+            const auto curveBounds = rectangleProperty(state, "panelBounds");
+            REQUIRE(rectangleProperty(state, "panelFrameBounds") == layout.curve());
+            REQUIRE(curveBounds == layout.curve().toNearestInt().toFloat().withTrimmedRight(8.f).withTrimmedBottom(8.f));
+            REQUIRE(rectangleProperty(state, "controlBounds")
+                    == layout.controls());
+            REQUIRE(rectangleProperty(state, "morphSurfaceBounds") == layout.surface());
+            const auto loop = rectangleProperty(state, "loopBounds");
+            const auto sustain = rectangleProperty(state, "sustainBounds");
+            REQUIRE(curveBounds.contains(loop));
+            REQUIRE(curveBounds.contains(sustain));
+            REQUIRE_FALSE(loop.intersects(sustain));
+            REQUIRE(loop.getY() - curveBounds.getY() == Catch::Approx(8.f));
+            REQUIRE(curveBounds.getRight() - sustain.getRight() == Catch::Approx(8.f));
+            REQUIRE(curveBounds.getWidth() >= content.getWidth() * (count == 0 ? 0.55f : 0.99f));
+            REQUIRE_FALSE(state.hasProperty("actionBarBounds"));
+            REQUIRE(curveBounds.getBottom() == Catch::Approx(content.getBottom() - 8.f));
+            const auto scale = rectangleProperty(state, "axisScaleBounds");
+            const auto zoom = rectangleProperty(state, "rangeGroupBounds");
+            REQUIRE(curveBounds.contains(scale));
+            REQUIRE(curveBounds.contains(zoom));
+            REQUIRE(zoom.getX() - scale.getRight() == Catch::Approx(16.f));
+            REQUIRE(loop.getX() - zoom.getRight() == Catch::Approx(16.f));
+            REQUIRE(zoom.getY() == Catch::Approx(loop.getY()));
+            REQUIRE(scale.getY() == Catch::Approx(loop.getY()));
+            const auto panel = state.getProperty("panelState", {});
+            const auto horizontal = panel.getProperty("zoomControls", {}).getProperty("horizontal", {});
+            REQUIRE((bool) horizontal.getProperty("visible", false));
+            REQUIRE((double) horizontal.getProperty("start", {})
+                    == Catch::Approx((double) panel.getProperty("zoom", {}).getProperty("x", {})));
+            REQUIRE((double) horizontal.getProperty("size", {})
+                    == Catch::Approx((double) panel.getProperty("zoom", {}).getProperty("w", {})));
+            const auto rails = state.getProperty("vertexParameterRails", {});
+            REQUIRE(rails.size() == 7);
+            for (const auto& row : *rails.getArray()) {
+                if (row.getProperty("id", {}) == "guide.time") {
+                    continue;
+                }
+                const auto rail = rectangleProperty(row, "bounds");
+                REQUIRE(rail.getWidth() >= PropertyControlMetrics::minimumUsableTrackWidth);
+                REQUIRE(rail.getWidth() <= 220.f);
+                REQUIRE_FALSE(rail.intersects(curveBounds));
+            }
+            if (count > 0) {
+                const auto preview = rectangleProperty(state, "morphPlaneBounds");
+                REQUIRE(preview.getWidth() >= (size.x > 1000 ? 200.f : 140.f));
+            } else {
+                REQUIRE(bounds.getHeight() < (float) size.y * 0.65f);
+            }
+        }
+    }
+}
+
+TEST_CASE("Envelope surface coalesces gesture updates and restores authored scalar amplitudes",
+        "[cycle-v2][mesh-dimensions][envelope][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    TrimeshPanelEnvironment environment;
+    EnvelopeMorphSurfacePreview surface(environment, [] {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh();
+    auto* component = surface.component();
+    component->setBounds(0, 0, 400, 300);
+    const auto amplitude = [&](float value) {
+        for (auto* vertex : mesh->getVerts()) {
+            vertex->values[Vertex::Amp] = value;
+        }
+    };
+    const auto prepare = [&](uint64_t revision, bool active) {
+        surface.prepare(*mesh, nullptr, revision, { 0.5f, 0.5f, 0.5f }, Vertex::Time, 3, active);
+        return surface.automationState();
+    };
+    uint64_t revision = 1;
+    for (const float value : { 0.f, 0.2f, 0.5f, 0.8f, 1.f }) {
+        amplitude(value);
+        const auto state = prepare(revision++, false);
+        REQUIRE((float) state.getProperty("centreValue", {}) == Catch::Approx(value).margin(0.0001f));
+        REQUIRE((float) state.getProperty("minimum", {}) >= 0.f);
+        REQUIRE((float) state.getProperty("maximum", {}) <= 1.f);
+    }
+    const auto before = surface.automationState();
+    for (const float value : { 0.35f, 0.65f }) {
+        amplitude(value);
+        const auto held = prepare(revision++, true);
+        REQUIRE(held.getProperty("rebuildCount", {}) == before.getProperty("rebuildCount", {}));
+        REQUIRE(held.getProperty("centreValue", {}) == before.getProperty("centreValue", {}));
+    }
+    const auto committed = prepare(revision, false);
+    REQUIRE((int64) committed.getProperty("rebuildCount", {}) == (int64) before.getProperty("rebuildCount", {}) + 1);
+    REQUIRE((float) committed.getProperty("centreValue", {}) == Catch::Approx(0.65f).margin(0.0001f));
+    REQUIRE(prepare(revision, false).getProperty("rebuildCount", {}) == committed.getProperty("rebuildCount", {}));
+    const auto zoom = committed.getProperty("zoomControls", {});
+    REQUIRE((bool) zoom.getProperty("horizontal", {}).getProperty("visible", false));
+    REQUIRE((bool) zoom.getProperty("vertical", {}).getProperty("visible", false));
+    REQUIRE(rectangleProperty(zoom, "viewport") == Rectangle<float>(0.f, 0.f, 392.f, 292.f));
+    mesh->destroy();
+}
+
+TEST_CASE("Morph keyboard hints disappear only when their slider disappears",
+        "[cycle-v2][mesh-dimensions][editor][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    for (const auto kind : { NodeKind::Envelope, NodeKind::TrilinearMesh }) {
+        Component owner;
+        owner.setSize(1000, 820);
+        NodeGraph graph;
+        graph.addNode(GraphNodeFactory().createNode(kind, "subject", {}));
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "subject", "dimensionCount", "Dimensions", "3").succeeded());
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher commands(document);
+        RecordingPresentation presentation;
+        EnvelopeEditorResources resources;
+        TrimeshWidget mesh;
+        resources.activeTrimesh = &mesh;
+        NodeEditorCommandService service(owner, document, commands, presentation, resources);
+        NodeEditorHost host(owner, service, presentation, resources);
+        const auto bind = [&] {
+            REQUIRE(host.bind(document.graph().findNode("subject"), owner.getLocalBounds(), document.revision()));
+        };
+        bind();
+        const auto focused = [&]() {
+            if (kind == NodeKind::Envelope) {
+                return dynamic_cast<EnvelopeEditorComponent*>(host.component())->focusedMorphAxis();
+            }
+            return dynamic_cast<TrimeshExpandedEditorComponent*>(host.component())->focusedMorphAxis();
+        };
+        const auto hint = [&]() -> Component* {
+            if (kind == NodeKind::Envelope) {
+                return host.component()->findChildWithID("envelopeEditor.morph.shortcuts");
+            }
+            for (auto* child : host.component()->getChildren()) {
+                if (auto* found = child->findChildWithID("trimesh.morph.shortcuts")) {
+                    return found;
+                }
+            }
+            return nullptr;
+        };
+        REQUIRE(host.component()->keyPressed(KeyPress('r')));
+        REQUIRE(commands.setMeshDimensions("subject", 2).succeeded());
+        bind();
+        REQUIRE(focused() == "red");
+        REQUIRE(hint() != nullptr);
+        REQUIRE(hint()->isVisible());
+        REQUIRE(commands.setMeshDimensions("subject", 1).succeeded());
+        bind();
+        REQUIRE(focused().isEmpty());
+        REQUIRE_FALSE(hint()->isVisible());
+        REQUIRE(host.component()->keyPressed(KeyPress('y')));
+        REQUIRE(commands.setMeshDimensions("subject", 3).succeeded());
+        bind();
+        REQUIRE(focused() == "yellow");
+        REQUIRE(hint()->isVisible());
+        REQUIRE(commands.setMeshDimensions("subject", 0).succeeded());
+        bind();
+        REQUIRE(focused().isEmpty());
+        REQUIRE_FALSE(hint()->isVisible());
+    }
+}
+
+TEST_CASE("Reduced Envelope diagram gestures follow visible axes and preserve inactive positions",
+        "[cycle-v2][editor][envelope][axis-lock]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curveTables;
+    for (const int count : { 1, 2 }) {
+        Component owner;
+        owner.setBounds(0, 0, 1100, 800);
+        NodeGraph graph;
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, "env", "dimensionCount", "Curve morphing", String(count)).succeeded());
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher dispatcher(document);
+        RecordingPresentation presentation;
+        EnvelopeEditorResources resources;
+        NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+        NodeEditorHost host(owner, commands, presentation, resources);
+        REQUIRE(host.bind(document.graph().findNode("env"), owner.getLocalBounds(), document.revision()));
+        auto* editor = dynamic_cast<EnvelopeEditorComponent*>(host.component());
+        REQUIRE(editor != nullptr);
+        const auto values = [&] {
+            const NodeParameterMap parameters(*dispatcher.editingGraph().findNode("env"));
+            return std::array<float, 3> { parameters.floatValue("yellow", 0.5f),
+                    parameters.floatValue("red", 0.5f), parameters.floatValue("blue", 0.5f) };
+        };
+        const auto before = values();
+        const auto input = rectangleProperty(editor->automationState(), "morphInputBounds");
+        REQUIRE_FALSE(input.isEmpty());
+        const auto source = input.getCentre();
+        editor->mouseDown(curvePanelMouseEvent(*editor, source,
+                ModifierKeys::leftButtonModifier, source, false));
+        editor->mouseDrag(curvePanelMouseEvent(*editor, input.getBottomLeft(),
+                ModifierKeys::leftButtonModifier, source, true));
+        const auto held = editor->automationState();
+        REQUIRE((double) held.getProperty(count == 1 ? "yellowMorph" : "redMorph", {}) == Catch::Approx(0.f));
+        if (count == 2) {
+            REQUIRE((double) held.getProperty("blueMorph", {}) == Catch::Approx(0.f));
+        }
+        editor->mouseDrag(curvePanelMouseEvent(*editor, input.getTopRight(),
+                ModifierKeys::leftButtonModifier, source, true));
+        editor->mouseUp(curvePanelMouseEvent(*editor, input.getTopRight(), {}, source, true));
+        const auto after = values();
+        if (count == 1) {
+            REQUIRE(after[0] == Catch::Approx(1.f));
+            REQUIRE(after[1] == Catch::Approx(before[1]));
+            REQUIRE(after[2] == Catch::Approx(before[2]));
+        } else {
+            REQUIRE(after[0] == Catch::Approx(before[0]));
+            REQUIRE(after[1] == Catch::Approx(1.f));
+            REQUIRE(after[2] == Catch::Approx(1.f));
+        }
+        REQUIRE(document.undo());
+        REQUIRE(values() == before);
+    }
+}
+
+TEST_CASE("Both mesh editors publish one undoable gesture for each visible cube face",
+        "[cycle-v2][editor][morph-face]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    for (const auto kind : { NodeKind::Envelope, NodeKind::TrilinearMesh }) {
+        for (int held = 0; held < 3; ++held) {
+            Component owner;
+            owner.setSize(1100, 800);
+            if (kind == NodeKind::TrilinearMesh) {
+                owner.addToDesktop(ComponentPeer::windowIsTemporary);
+                owner.setVisible(true);
+            }
+            NodeGraph graph;
+            graph.addNode(GraphNodeFactory().createNode(kind, "subject", {}));
+            const char* ids[] { "yellow", "red", "blue" };
+            REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "subject", "dimensionCount", "Dimensions", "3").succeeded());
+            for (const char* id : ids) {
+                REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "subject", id, id, "0.5").succeeded());
+            }
+            GraphDocument document(std::move(graph));
+            GraphCommandDispatcher dispatcher(document);
+            RecordingPresentation presentation;
+            EnvelopeEditorResources resources;
+            TrimeshWidget mesh;
+            resources.activeTrimesh = &mesh;
+            NodeEditorCommandService service(owner, document, dispatcher, presentation, resources);
+            NodeEditorHost host(owner, service, presentation, resources);
+            REQUIRE(host.bind(document.graph().findNode("subject"), owner.getLocalBounds(), document.revision()));
+            auto* editor = host.component();
+            Rectangle<float> diagram;
+            if (kind == NodeKind::Envelope) {
+                diagram = rectangleProperty(dynamic_cast<EnvelopeEditorComponent*>(editor)->automationState(), "morphPlaneBounds");
+            } else {
+                const auto content = editor->getLocalBounds().toFloat().withTrimmedTop(34.f).reduced(10.f, 8.f);
+                diagram = mesh.morphDiagramBounds(content);
+            }
+            const MorphSpaceLayout space(diagram, MorphDimensions(3));
+            const auto axes = MorphSpaceLayout::cubeFaceAxes(held);
+            const auto source = space.cubeFacePoint(held, 0.5f, 0.5f);
+            const auto parameters = [&] {
+                const NodeParameterMap values(*dispatcher.editingGraph().findNode("subject"));
+                return std::array<float, 3> { values.floatValue(ids[0]), values.floatValue(ids[1]), values.floatValue(ids[2]) };
+            };
+            const auto before = parameters();
+            auto* input = kind == NodeKind::TrilinearMesh
+                    ? editor->getComponentAt(source.roundToInt()) : editor;
+            REQUIRE(input != nullptr);
+            if (kind == NodeKind::TrilinearMesh) {
+                input->grabKeyboardFocus();
+                auto* focused = Component::getCurrentlyFocusedComponent();
+                REQUIRE(focused != nullptr);
+                REQUIRE(focused->getComponentID() == input->getComponentID());
+            }
+            const auto inputSource = input->getLocalPoint(editor, source);
+            input->mouseDown(curvePanelMouseEvent(*input, inputSource, ModifierKeys::leftButtonModifier, inputSource, false));
+            REQUIRE(parameters() == before);
+            Point<float> destination;
+            for (const float value : { 0.25f, 1.f }) {
+                auto next = before;
+                next[(size_t) axes[0]] = value;
+                next[(size_t) axes[1]] = 1.f - value;
+                destination = source + space.project(next[1], next[2], next[0])
+                        - space.project(before[1], before[2], before[0]);
+                InteractionComplexityDiagnostics::reset();
+                input->mouseDrag(curvePanelMouseEvent(*input, input->getLocalPoint(editor, destination),
+                        ModifierKeys::leftButtonModifier, inputSource, true));
+                REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+                REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+                REQUIRE(InteractionComplexityDiagnostics::counts().modelSerializations == 0);
+                auto actual = parameters();
+                if (kind == NodeKind::Envelope) {
+                    const auto local = dynamic_cast<EnvelopeEditorComponent*>(editor)->automationState();
+                    actual = { (float) local.getProperty("yellowMorph", {}),
+                            (float) local.getProperty("redMorph", {}), (float) local.getProperty("blueMorph", {}) };
+                }
+                for (int axis = 0; axis < 3; ++axis) {
+                    REQUIRE(actual[(size_t) axis] == Catch::Approx(next[(size_t) axis]).margin(1.e-5f));
+                }
+            }
+            input->mouseUp(curvePanelMouseEvent(*input, input->getLocalPoint(editor, destination), {}, inputSource, true));
+            const auto committed = parameters();
+            REQUIRE(committed[(size_t) held] == before[(size_t) held]);
+            REQUIRE(committed[(size_t) axes[0]] == Catch::Approx(1.f));
+            REQUIRE(committed[(size_t) axes[1]] == Catch::Approx(0.f));
+            REQUIRE(document.undo());
+            REQUIRE(parameters() == before);
+        }
+    }
 }

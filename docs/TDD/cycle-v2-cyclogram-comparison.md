@@ -122,6 +122,32 @@ The Cycle 1 pitch fallback remains at tracker insecurity above 50. The
 reference dock flags insecurity above 30 for manual correction without
 changing that fallback.
 
+### Reference pitch boundary (2026-10-22)
+
+`PitchedSample` and its reduced pitch paths retain the mature Cycle note
+convention (A440 = 81). Cycle V2 preview voices and visible note labels use
+standard MIDI (A440 = 69). `ReferenceSampleAnalysis::standardMidiNote` owns
+that boundary translation using the existing `LogRegionMapping` pitch bias;
+the comparison dock passes the translated note to its existing Spy capture.
+The pitch editor translates its label and text input while retaining legacy
+slider/model values, undo and persisted metadata. No tracking, folding,
+oscillator or library migration changes are needed. Schema 1 analysis exports
+retain their existing legacy-valued fields and add explicit convention metadata
+and `standardMidiNote` values. These constant-time translations add no analysis
+or graph capture work. The affected presentation files remain below 800 lines.
+
+The generated 293.665 Hz reference test verifies legacy note 74, standard note
+62, the reconstructed period, the existing preview oscillator clock at 62,
+unchanged pitch path, semitone edit, exact undo and persisted reload. All nine
+focused reference cases pass. The comparison fixture additionally checks that
+both the reference card and pinned Spy receive standard note 45 for the factory
+sax-growl reference, while the performance keyboard's note remains 73.
+The rebuilt native fixture passes. Four imported D3 source/synth cards report
+note 62, and the pitch editor visibly labels it D4/62 rather than interpreting
+legacy 74 as standard MIDI. The canonical pitch frames and every folded grid
+value remain identical; only the analysis revision changes on reload. Native
+state, screenshots and fixture evidence are in `.context/sax-wave-comparison/`.
+
 ## Completion and verification
 
 - WAV, AIFF/AIF, MP3, FLAC, and Ogg imports produce a detected note, editable

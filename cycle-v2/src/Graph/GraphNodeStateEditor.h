@@ -20,7 +20,8 @@ public:
             NodeGraph& graph,
             const String& nodeId,
             uint64_t expectedRevision,
-            NodeModelStatePtr model) const;
+            NodeModelStatePtr model,
+            const std::vector<int>* retainedCubeIndices = nullptr) const;
     GraphEditResult replaceTransientNodeModel(
             NodeGraph& graph,
             const String& nodeId,

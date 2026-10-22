@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "App/CycleV2AutomationCommand.h"
+#include "App/Automation/CycleV2AutomationCommand.h"
 
 using namespace CycleV2;
 
@@ -16,5 +16,7 @@ TEST_CASE("Automation command registry owns aliases",
             == CycleV2AutomationCommand::DeleteGuideCurve);
     REQUIRE(automationCommandForName("recreateCanvasOpenGLContext")
             == CycleV2AutomationCommand::RecreateCanvasOpenGLContext);
+    REQUIRE(automationCommandForName("importImpulseResponse")
+            == CycleV2AutomationCommand::ImportImpulseResponse);
     REQUIRE_FALSE(automationCommandForName("missing").has_value());
 }

@@ -10,6 +10,7 @@ public:
 
     virtual const EnvelopeConfiguration* cycleEnvelopeConfiguration() const = 0;
     virtual Rasterization::PreparedEnvelopePlaybackView cycleEnvelopePlaybackView() const = 0;
+    virtual uint64_t cycleEnvelopeGeneration() const = 0;
 };
 
 }

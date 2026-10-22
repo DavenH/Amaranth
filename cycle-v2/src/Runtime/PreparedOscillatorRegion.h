@@ -30,6 +30,7 @@ struct PreparedOscillatorProcessContext {
     OscillatorRegionPerformanceCounts* performanceCounts {};
 
     const SignalPayload* signalAt(int bufferIndex) const;
+    double midiPitchAt(size_t blockSampleOffset) const;
 };
 
 class PreparedOscillatorRegion {

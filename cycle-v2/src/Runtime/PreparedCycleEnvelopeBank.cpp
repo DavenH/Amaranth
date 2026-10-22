@@ -87,6 +87,8 @@ void PreparedCycleEnvelopeBank::reset() {
         Entry& entry = *ownedEntry;
         entry.playback.noteOn();
         entry.adoptedConfiguration = nullptr;
+        entry.adoptedGeneration = 0;
+        entry.adoptedLoop = {};
         std::fill(
                 entry.values.begin(),
                 entry.values.end(),
@@ -180,11 +182,21 @@ const EnvelopeConfiguration* PreparedCycleEnvelopeBank::adopt(Entry& entry) {
     const EnvelopeConfiguration* configuration = entry.source == nullptr
             ? nullptr
             : entry.source->cycleEnvelopeConfiguration();
+    const uint64_t generation = entry.source == nullptr
+            ? 0 : entry.source->cycleEnvelopeGeneration();
     if (configuration != nullptr
-            && configuration != entry.adoptedConfiguration) {
-        entry.playback.validate(entry.source->cycleEnvelopePlaybackView());
+            && (configuration != entry.adoptedConfiguration
+                    || generation != entry.adoptedGeneration)) {
+        const auto replacement = entry.source->cycleEnvelopePlaybackView();
+        if (configuration == entry.adoptedConfiguration) {
+            entry.playback.adopt(entry.adoptedLoop, replacement);
+        } else {
+            entry.playback.validate(replacement);
+        }
         entry.props.logarithmic = configuration->logarithmic;
         entry.adoptedConfiguration = configuration;
+        entry.adoptedGeneration = generation;
+        entry.adoptedLoop = Rasterization::EnvelopePlaybackEngine::loopSpan(replacement);
     }
     return configuration;
 }

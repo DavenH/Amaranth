@@ -216,6 +216,88 @@ TEST_CASE("Realtime Envelope plans reject unsupported capacity before preparatio
     REQUIRE(materializer.diagnostics().attempts == 0);
 }
 
+TEST_CASE("Envelope replacement preserves normalized loop phase and release state",
+        "[rasterization][env][realtime][adoption]") {
+    CurveTableScope curveTable;
+    TestEnvelope previous;
+    TestEnvelope replacement;
+    for (int index = 0; index < (int) VertCube::numVerts; ++index) {
+        replacement.mesh.getCubes()[1]->getVertex(index)->values[Vertex::Phase] = 0.75f;
+    }
+    EnvRasterizer oldRasterizer;
+    EnvRasterizer newRasterizer;
+    oldRasterizer.renderWaveformOnly(&previous.mesh);
+    newRasterizer.renderWaveformOnly(&replacement.mesh);
+    const auto oldView = oldRasterizer.preparedPlaybackView();
+    const auto newView = newRasterizer.preparedPlaybackView();
+    Rasterization::EnvelopePlaybackEngine playback;
+    playback.ensureVoiceCount(2);
+    playback.setOneSamplePerCycle(true);
+    playback.noteOn();
+    MeshLibrary::EnvProps props;
+    props.active = true;
+    REQUIRE(playback.renderToBuffer(oldView, 80, 0.01, 1, props, 1.f));
+    REQUIRE(playback.renderToBuffer(oldView, 67, 0.01, 2, props, 1.f));
+    REQUIRE(playback.mode() == Rasterization::EnvelopePlaybackMode::Looping);
+    const double first = playback.samplePosition(1);
+    const double second = playback.samplePosition(2);
+    playback.adopt(oldView, newView);
+    REQUIRE(playback.samplePosition(1) == Catch::Approx(first * 0.75 / 0.45));
+    REQUIRE(playback.samplePosition(2) == Catch::Approx(second * 0.75 / 0.45));
+    REQUIRE(playback.mode() == Rasterization::EnvelopePlaybackMode::Looping);
+    REQUIRE(playback.noteOff(newView));
+    const double releasingPosition = playback.samplePosition(1);
+    playback.adopt(newView, oldView);
+    REQUIRE(playback.mode() == Rasterization::EnvelopePlaybackMode::Releasing);
+    REQUIRE(playback.samplePosition(1) == Catch::Approx(releasingPosition));
+}
+
+TEST_CASE("Staged Envelope materialization remains invisible until adoption",
+        "[rasterization][env][realtime][adoption]") {
+    CurveTableScope curveTable;
+    TestEnvelope envelope;
+    Rasterization::RealtimeEnvelopePlan plan;
+    plan.mesh = &envelope.mesh;
+    plan.capacity = Rasterization::envelopeMaterializationCapacity(
+            envelope.mesh, plan.request, nullptr);
+    Rasterization::RealtimeEnvelopeMaterializer materializer;
+    REQUIRE(materializer.prepare(plan));
+    REQUIRE(materializer.stage(0.1f, 0.2f));
+    REQUIRE_FALSE(materializer.hasPreparedEnvelope());
+    materializer.adoptStaged();
+    REQUIRE(materializer.hasPreparedEnvelope());
+    const float* activeWaveform = materializer.preparedPlaybackView().display.waveform.waveY.get();
+    REQUIRE(materializer.stage(0.8f, 0.9f));
+    REQUIRE(materializer.preparedPlaybackView().display.waveform.waveY.get() == activeWaveform);
+    materializer.adoptStaged();
+    REQUIRE(materializer.preparedPlaybackView().display.waveform.waveY.get() != activeWaveform);
+}
+
+TEST_CASE("A failed staged Envelope replacement retains its complete active result",
+        "[rasterization][env][realtime][adoption]") {
+    CurveTableScope curveTable;
+    TestEnvelope envelope;
+    for (auto* vertex : envelope.mesh.getVerts()) {
+        vertex->values[Vertex::Red] *= 0.5f;
+    }
+    Rasterization::RealtimeEnvelopePlan plan;
+    plan.mesh = &envelope.mesh;
+    plan.capacity = Rasterization::envelopeMaterializationCapacity(
+            envelope.mesh, plan.request, nullptr);
+    Rasterization::RealtimeEnvelopeMaterializer materializer;
+    REQUIRE(materializer.prepare(plan));
+    REQUIRE(materializer.materialize(0.25f, 0.5f));
+    const auto active = materializer.preparedPlaybackView();
+    REQUIRE_FALSE(materializer.stage(1.f, 0.5f));
+    materializer.adoptStaged();
+    REQUIRE(materializer.preparedPlaybackView().display.waveform.waveY.get()
+            == active.display.waveform.waveY.get());
+    REQUIRE(materializer.preparedPlaybackView().loopIndex == active.loopIndex);
+    REQUIRE(materializer.diagnostics().failures == 1);
+    REQUIRE(materializer.materialize(0.4f, 0.5f));
+    REQUIRE(materializer.diagnostics().failures == 1);
+}
+
 TEST_CASE("Envelope cleanup publishes one complete empty generation", "[rasterization][env][boundary]") {
     CurveTableScope curveTable;
     TestEnvelope envelope;

@@ -23,6 +23,12 @@ public:
 
         const AudioVoiceContext& voice = processVoice(context);
         for (size_t index = 0; index < 3; ++index) {
+            if (!context.captureTraversalGrid
+                    && index < context.outputViews.size()
+                    && context.outputViews[index] == nullptr) {
+                context.outputs.push_back({});
+                continue;
+            }
             auto output = makeOutputPayload(context, index);
             auto values = payloadBuffer(output, context.frameCount);
             if (configuration == nullptr) {
@@ -50,6 +56,11 @@ std::shared_ptr<const ModulationTripleConfiguration> buildModulationTripleConfig
             ModulationSource::buildConfiguration(parameters, "yellow", "voiceTime"),
             ModulationSource::buildConfiguration(parameters, "red", "keyScale"),
             ModulationSource::buildConfiguration(parameters, "blue", "modWheel")
+    };
+    configuration->envelopeSources = {
+            ModulationSource::buildConfiguration(parameters, "envelopeYellow", "unmapped"),
+            ModulationSource::buildConfiguration(parameters, "envelopeRed", "keyScale"),
+            ModulationSource::buildConfiguration(parameters, "envelopeBlue", "modWheel")
     };
     return configuration;
 }

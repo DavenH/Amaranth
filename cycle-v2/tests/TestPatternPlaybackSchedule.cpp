@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "App/PatternScheduleAutomation.h"
+#include "App/Automation/PatternScheduleAutomation.h"
 #include "Graph/PresetPresentation.h"
 #include "UI/PatternPlaybackSchedule.h"
 

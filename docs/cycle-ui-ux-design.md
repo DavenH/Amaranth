@@ -66,6 +66,34 @@ the existing two-dimensional envelope presentation and interaction language,
 including its curve geometry, selection, controls, and undo. A new miniature
 curve editor inside every comparison card would be a second interaction system.
 
+Both mesh editor families use the same body composition: morph surface above
+left, morph controls and vertex properties above right, and a full-width editable
+curve below. Static compacts to a curve beside the inspector. Envelope Scaling, Zoom and marker pairs
+overlay the curve's top-right corner using the shared IR Modeller button chrome,
+with markers at the right and no footer row. Use IR’s shared 24 px overlay
+button size, 4 px within-pair gap and matching glyph insets. Separate the three
+pairs by 16 px so their distinct purposes remain visible. Reserve useful
+preview scale before decorative space; selected morph corners use small solid
+accents rather than large rings.
+
+In mesh editors, put Component curve below the vertex coordinate/property rows.
+Depict a component as two intercepts with a wave-shaped segment between them;
+keep the Guide resource glyph in the attachment selector. The two concepts
+should remain recognizable together.
+Place output gain directly beneath the property stack, retaining that anchor
+across morph modes. Label Guide and Gain columns, keep disabled labels readable,
+and show exact property values during hover and adjustment.
+
+All Cycle 2 sliders use a thin value track inside a contrasting near-black
+backing rail. Property, morph, vertex, output and MIDI phrase sliders share the
+same painter; panel adapters supply accents and values. Keep the backing rail
+visually distinct from the interactive target and preserve usable travel.
+
+Put opposite-pole editing locks beside the morph diagram's coloured axis bars,
+with short connectors and uninterrupted bars. Use open/closed silhouettes for
+independent/together editing in the cube, plane and line views. Explain the
+editing relationship on hover; keep the Axis selector with the slider row.
+
 ## Make visualizations truthful and comparable
 
 - A Spy shows the observed processed signal; a Trimesh node shows authored mesh
@@ -94,6 +122,13 @@ curve editor inside every comparison card would be a second interaction system.
 2. Treat visible size, hit area, value indication, and manipulation mapping as
    separate properties. A thin slider can have a larger hit target; a compact
    control still needs a precise readout and useful drag range.
+   Usable slider travel is an inviolable layout constraint. Reserve the shared
+   140 px ordinary minimum after label, guide, value, thumb and end-inset costs
+   before allocating space to visualizations or gaps. Reflow or resize the
+   surrounding layout when necessary; a wider hit target does not compensate
+   for a short track. Avoid excessively long tracks as well: mesh vertex rows
+   use 140–220 px of visible travel at normal and compact widths. Verify actual
+   painted travel and routed endpoint/intermediate gestures at both sizes.
 3. Preserve canvas space. Put only the essential controls in a workspace band.
    Expand a resource for detail instead of permanently showing every edit
    control in each card. Keep a dock resizable, but size its cards and vacant

@@ -12,6 +12,7 @@
 #include "Nodes/Delay/DelaySignalProcessor.h"
 #include "Nodes/Effects/EffectSignalProcessors.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
@@ -115,6 +116,10 @@ void applyTrimeshParameters(
             parameterMap.floatValue("red", 0.5f),
             parameterMap.floatValue("blue", 0.5f)
     };
+    configuration.dimensionCount = parameterMap.intValue("dimensionCount", 0);
+    if (configuration.dimensionCount != 0) {
+        configuration.staticSlice.reset();
+    }
     const String axis = parameterMap.stringValue("primaryAxis", "yellow");
     configuration.primaryViewAxis = axis == "red" ? Vertex::Red
             : (axis == "blue" ? Vertex::Blue : Vertex::Time);
@@ -135,7 +140,8 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
         return {};
     }
     applyTrimeshParameters(*configuration, parameters);
-    configuration->scratchSourceEnabled = scratchSourceEnabled(
+    configuration->scratchSourceEnabled = MorphDimensions::trimesh(configuration->dimensionCount).active(Vertex::Time)
+            && scratchSourceEnabled(
             graph,
             nodeId,
             scratchSourceNodeId);
@@ -151,6 +157,11 @@ std::shared_ptr<TrimeshConfiguration> buildTrimeshConfiguration(
             configuration->guideCurveProvider = std::move(guides.provider);
             configuration->guideAssignmentCount = guides.assignmentCount;
         }
+    }
+    if (configuration->dimensionCount == 0) {
+        configuration->staticSlice = std::make_shared<const Rasterization::PreparedMeshSlice>(
+                Rasterization::PreparedMeshSlice::forMesh(*configuration->mesh,
+                        configuration->morph, Vertex::Time));
     }
     return configuration;
 }
@@ -213,7 +224,7 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         AudioModuleRole role,
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model,
-        const AudioExecutionSpec&,
+        const AudioExecutionSpec& spec,
         const NodeGraph* graph,
         const String& nodeId,
         const String& scratchSourceNodeId,
@@ -228,6 +239,9 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                         scratchSourceNodeId));
     }
     if (role == AudioModuleRole::ImpulseResponse) {
+        if (!isSupportedImpulseResponseSampleRate(spec.sampleRate)) {
+            return {};
+        }
         return IrSignalProcessor::buildConfiguration(
                 parameters,
                 model,

@@ -70,6 +70,7 @@ public:
 
     void init();
     void initVerts(const MorphPosition& pos);
+    void initLine(const MorphPosition& pos, float phase, float amp, float curve = -1.f);
     void orphanVerts();
     void resetProperties();
     void setPropertiesFrom(VertCube const* other);

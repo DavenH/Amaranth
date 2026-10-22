@@ -175,6 +175,12 @@ public:
             float blue,
             uint64_t revision,
             var editorState = {});
+    static std::shared_ptr<const CurveNodeModelState> takeEnvelope(
+            std::unique_ptr<EnvelopeNodeModel> model,
+            float red,
+            float blue,
+            uint64_t revision,
+            var editorState = {});
     std::shared_ptr<const CurveNodeModelState> withEnvelopeMorph(
             float red,
             float blue,

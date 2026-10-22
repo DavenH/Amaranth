@@ -3,6 +3,9 @@
 #include <utility>
 
 #include "UI/NodeCanvasAutomationInspector.h"
+#include "UI/Editors/MorphSpaceLayout.h"
+#include "UI/NodeCanvasEditorCoordinator.h"
+#include "Graph/MeshDimensionality.h"
 #include "UI/ExplanationEditor.h"
 
 #include "UI/SignalProbeDetailView.h"
@@ -20,7 +23,6 @@ namespace CycleV2 {
 namespace {
 
 constexpr float kExpandedEditorHeaderHeight = 34.f;
-constexpr float kExpandedEditorMinMargin = 18.f;
 
 String updateProductLabel(UpdateProduct product) {
     switch (product) {
@@ -131,6 +133,23 @@ public:
         }
 
         return object;
+    }
+
+    static void addMorphFaceTargets(Array<var>& targets, const Node& node, Rectangle<float> diagram) {
+        const MorphSpaceLayout space(diagram, MorphDimensions(3));
+        constexpr const char* names[] { "yellow", "red", "blue" };
+        for (int axis = 0; axis < 3; ++axis) {
+            const auto origin = space.cubeFacePoint(axis, 0.f, 0.f);
+            const auto first = space.cubeFacePoint(axis, 1.f, 0.f);
+            const auto second = space.cubeFacePoint(axis, 0.f, 1.f);
+            const Point<float> points[] { origin, first, second, space.cubeFacePoint(axis, 1.f, 1.f) };
+            var target = pointerTargetToVar("expanded:" + node.id + ".morphFace." + names[axis],
+                    "morphCubeFace", Rectangle<float>::findAreaContainingPoints(points, 4), node.id);
+            auto* encoded = target.getDynamicObject();
+            encoded->setProperty("firstVector", pointToVar(first - origin));
+            encoded->setProperty("secondVector", pointToVar(second - origin));
+            targets.add(target);
+        }
     }
 
     static var portToVar(const Port& port) {
@@ -297,6 +316,8 @@ public:
 
     static String trimeshHitRegionKind(TrimeshExpandedHitRegionKind kind) {
         switch (kind) {
+        case TrimeshExpandedHitRegionKind::MorphSpace:
+            return "trimeshMorphSpace";
         case TrimeshExpandedHitRegionKind::MorphControl:
             return "trimeshMorphRail";
         case TrimeshExpandedHitRegionKind::OutputScale:
@@ -319,8 +340,7 @@ public:
     static Rectangle<float> expandedEditorBounds(
             Rectangle<float> canvasContentBounds,
             const Node& node) {
-        return NodeViewModuleRegistry::instance().moduleFor(node.kind).expandedEditorBounds(
-                canvasContentBounds, kExpandedEditorMinMargin);
+        return NodeCanvasEditorCoordinator::boundsFor(&node, canvasContentBounds);
     }
 
     static Rectangle<float> expandedEditorCloseButton(Rectangle<float> panel) {
@@ -363,9 +383,11 @@ public:
             const Node& node,
             Rectangle<float> panel,
             const DynamicObject& curveEditorState) {
-        const std::array<std::pair<const char*, const char*>, 8> actions {{
+        const std::array<std::pair<const char*, const char*>, 10> actions {{
             { "loop", "loopBounds" },
             { "sustain", "sustainBounds" },
+            { "yellowLink", "yellowLinkBounds" },
+            { "morphSpace", "morphInputBounds" },
             { "redLink", "redLinkBounds" },
             { "blueLink", "blueLinkBounds" },
             { "linear", "linearAxisScaleBounds" },
@@ -374,6 +396,10 @@ public:
             { "fullVertical", "fullVerticalBounds" }
         }};
         for (const auto& [id, boundsProperty] : actions) {
+            if ((String(id) == "linear" || String(id) == "logarithmic")
+                    && !(bool) curveEditorState.getProperty("axisScaleVisible")) {
+                continue;
+            }
             const auto bounds = AutomationValueEncoder::rectangleFromVar(
                     curveEditorState.getProperty(boundsProperty)).translated(
                             panel.getX(), panel.getY());
@@ -402,6 +428,34 @@ public:
         }
         addEnvelopeModeTargets(targets, node, panel, *curveEditorState);
         addEnvelopeActionTargets(targets, node, panel, *curveEditorState);
+        if ((int) curveEditorState->getProperty("dimensionCount") == 3) {
+            addMorphFaceTargets(targets, node, AutomationValueEncoder::rectangleFromVar(
+                    curveEditorState->getProperty("morphPlaneBounds")).translated(panel.getX(), panel.getY()));
+        }
+        const auto addZoomTargets = [&](const var& zoom, const var& frame, const String& family) {
+            const auto origin = AutomationValueEncoder::rectangleFromVar(frame).getPosition() + panel.getPosition();
+            for (const String axis : { "horizontal", "vertical" }) {
+                const auto control = zoom.getProperty(axis, {});
+                if ((bool) control.getProperty("visible", false)) {
+                    const auto bounds = AutomationValueEncoder::rectangleFromVar(control).translated(origin.x, origin.y);
+                    targets.add(pointerTargetToVar("expanded:" + node.id + ".envelopeZoom." + family + "." + axis,
+                            "envelopeZoom", bounds, node.id));
+                }
+            }
+            if (family == "surface") {
+                const auto bounds = AutomationValueEncoder::rectangleFromVar(zoom.getProperty("viewport", {}))
+                        .translated(origin.x, origin.y);
+                targets.add(pointerTargetToVar("expanded:" + node.id + ".envelopeSurface",
+                        "envelopeSurface", bounds, node.id));
+            }
+        };
+        const auto panelState = curveEditorState->getProperty("panelState");
+        addZoomTargets(panelState.getProperty("zoomControls", {}), curveEditorState->getProperty("panelFrameBounds"), "curve");
+        if ((int) curveEditorState->getProperty("dimensionCount") > 0) {
+            addZoomTargets(panelState.getProperty("morphSurface", {}).getProperty("zoomControls", {}),
+                    curveEditorState->getProperty("morphSurfaceBounds"), "surface");
+        }
+
         const auto* parameterRails = curveEditorState->getProperty(
                 "vertexParameterRails").getArray();
         if (parameterRails == nullptr) {
@@ -414,6 +468,13 @@ public:
             }
             const String field = parameter->getProperty("id").toString()
                     .fromLastOccurrenceOf(".", false, false);
+            const String parameterId = parameter->getProperty("id").toString();
+            if (parameterId != "guide.time") {
+                const auto bounds = AutomationValueEncoder::rectangleFromVar(parameter->getProperty("bounds"))
+                        .translated(panel.getX(), panel.getY());
+                targets.add(pointerTargetToVar("expanded:" + node.id + ".envelopeVertexParameter." + parameterId,
+                        "envelopeVertexControl", bounds, node.id));
+            }
             const std::array<std::pair<const char*, const char*>, 2> guideControls {{
                     { "envelopeGuide", "guideBounds" },
                     { "envelopeGuideGain", "guideGainBounds" }
@@ -422,12 +483,48 @@ public:
                 const auto bounds = AutomationValueEncoder::rectangleFromVar(
                         parameter->getProperty(property)).translated(
                                 panel.getX(), panel.getY());
+                if (bounds.isEmpty()) {
+                    continue;
+                }
                 targets.add(pointerTargetToVar(
                         "expanded:" + node.id + "." + suffix + "." + field,
                         "envelopeGuideControl",
                         bounds,
                         node.id));
             }
+        }
+    }
+
+    static void addModulationTargets(Array<var>& targets, const Node& node,
+            Rectangle<float> panel, const NodeEditorHost& editorHost) {
+        DynamicObject state;
+        editorHost.appendAutomationState(state);
+        const bool triple = node.kind == NodeKind::ModulationTriple;
+        const auto root = state.getProperty(triple ? "modulationTriple" : "modulationSource");
+        const auto addRow = [&](const var& row, const String& prefix) {
+            const auto rowBounds = AutomationValueEncoder::rectangleFromVar(row.getProperty("rowBounds", {}));
+            for (const String kind : { "constant", "controller" }) {
+                if (!(bool) row.getProperty(kind + "Visible", false)) {
+                    continue;
+                }
+                const auto control = row.getProperty(kind + "Control", {});
+                for (const String part : { "track", "value" }) {
+                    const auto bounds = AutomationValueEncoder::rectangleFromVar(control.getProperty(part, {}))
+                            .translated(panel.getX() + rowBounds.getX(), panel.getY() + rowBounds.getY());
+                    const String suffix = part == "value" ? "Value" : "";
+                    targets.add(pointerTargetToVar("expanded:" + node.id + ".modulation." + prefix + "." + kind + suffix,
+                            "modulationProperty", bounds, node.id));
+                }
+            }
+        };
+        if (!triple) {
+            addRow(root, "source");
+            return;
+        }
+        for (const String axis : { "yellow", "red", "blue" }) {
+            addRow(root.getProperty(axis, {}), axis);
+            addRow(root.getProperty("envelope", {}).getProperty(axis, {}),
+                    "envelope" + axis.substring(0, 1).toUpperCase() + axis.substring(1));
         }
     }
 
@@ -493,21 +590,28 @@ public:
             content.removeFromTop(kExpandedEditorHeaderHeight);
             content = content.reduced(10.f, 8.f);
 
-            targets.add(pointerTargetToVar("expanded:" + node.id + ".panel3D", "trimeshPanel3D",
-                                           TrimeshWidget::expandedGridPanelContentBounds(content), node.id));
+            const int count = MeshDimensionality::dimensions(node).axisCount();
+            if (count > 0) {
+                targets.add(pointerTargetToVar("expanded:" + node.id + ".panel3D", "trimeshPanel3D",
+                        TrimeshWidget::expandedGridPanelContentBounds(content, count), node.id));
+            }
             targets.add(pointerTargetToVar("expanded:" + node.id + ".panel2D", "trimeshPanel2D",
-                                           TrimeshWidget::expandedWavePanelContentBounds(content), node.id));
+                                           TrimeshWidget::expandedWavePanelContentBounds(content, count), node.id));
 
             const auto* trimeshEditor = dynamic_cast<const TrimeshExpandedEditorComponent*>(
                     editorComponent);
             const bool showOutputScale = trimeshEditor != nullptr
                     && trimeshEditor->showsOutputScale();
+            if (count == 3 && trimeshEditor != nullptr) {
+                addMorphFaceTargets(targets, node,
+                        trimeshEditor->morphDiagramBounds().translated(panel.getX(), panel.getY()));
+            }
             for (const auto& region : TrimeshWidget::expandedControlHitRegions(
                     content,
                     showOutputScale,
                     trimeshEditor != nullptr
                             ? trimeshEditor->outputScaleParameterId()
-                            : "range")) {
+                            : "range", count)) {
                 const String kind = trimeshHitRegionKind(region.kind);
                 const String suffix = region.parameterId.isNotEmpty() ? region.parameterId : region.axisValue;
                 const Rectangle<float> targetBounds =
@@ -519,6 +623,9 @@ public:
             }
         } else {
             addEffectParameterTargets(targets, node, panel, editorHost);
+            if (node.kind == NodeKind::ModulationTriple || node.kind == NodeKind::ModulationSource) {
+                addModulationTargets(targets, node, panel, editorHost);
+            }
             if (node.kind == NodeKind::Envelope) {
                 addEnvelopeTargets(targets, node, panel, editorHost);
             }
@@ -531,6 +638,24 @@ public:
                         "effect2DPanel",
                         panelHost,
                         node.id));
+            }
+        }
+
+        if (MeshDimensionality::applies(node.kind) && editorComponent != nullptr) {
+            std::vector<const Component*> pending { editorComponent };
+            while (!pending.empty()) {
+                const auto* child = pending.back();
+                pending.pop_back();
+                const String id = child->getComponentID();
+                if (id.startsWith("meshDimensions.")) {
+                    const auto bounds = editorComponent->getLocalArea(child, child->getLocalBounds())
+                            .toFloat().translated(panel.getX(), panel.getY());
+                    targets.add(pointerTargetToVar("expanded:" + node.id + "." + id,
+                            "meshDimension", bounds, node.id));
+                }
+                for (int index = 0; index < child->getNumChildComponents(); ++index) {
+                    pending.push_back(child->getChildComponent(index));
+                }
             }
         }
 

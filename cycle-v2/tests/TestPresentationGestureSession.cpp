@@ -137,6 +137,53 @@ TEST_CASE("Presentation gesture session owns transient graph lifecycle",
             == 96.f / 127.f);
 }
 
+TEST_CASE("Request invalidation preserves graph gesture commit and cancellation ownership",
+        "[cycle-v2][runtime][presentation-session][guide-reopen]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    PresentationGestureSession session;
+    const uint64_t baseRevision = document.revision();
+    const float originalBlue = NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue");
+    REQUIRE(session.beginGraphGesture(
+            "preview:wheel", commands, document, ProbeRefreshMode::LiveLatest, 0));
+    const auto first = session.recordGraphMovement("preview:wheel", 32);
+    REQUIRE(first.has_value());
+    REQUIRE(commands.setPreviewMorph(0.25f, 32.f / 127.f).changed);
+
+    session.invalidateRequests();
+
+    REQUIRE(session.graphGestureIsActive("preview:wheel"));
+    REQUIRE(commands.hasTransientEdit());
+    REQUIRE(session.activeStreamOr("graph") == "graph");
+    const auto second = session.recordGraphMovement("preview:wheel", 96);
+    REQUIRE(second.has_value());
+    REQUIRE(second->gestureId == first->gestureId);
+    REQUIRE(commands.setPreviewMorph(0.25f, 96.f / 127.f).changed);
+    REQUIRE(document.revision() == baseRevision);
+
+    SECTION("commit remains one undoable graph edit") {
+        const auto finished = session.finishGraphGesture("preview:wheel", commands, document);
+        REQUIRE(finished.durableChanged);
+        REQUIRE_FALSE(commands.hasTransientEdit());
+        REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue")
+                == 96.f / 127.f);
+        REQUIRE(document.undo());
+        REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue")
+                == originalBlue);
+        REQUIRE_FALSE(document.undo());
+    }
+    SECTION("cancel preserves the durable base") {
+        session.cancelGraphGesture("preview:wheel", commands);
+        REQUIRE_FALSE(commands.hasTransientEdit());
+        REQUIRE(document.revision() == baseRevision);
+        REQUIRE(NodeParameterMap(*document.graph().findNode("mesh")).floatValue("blue")
+                == originalBlue);
+        REQUIRE_FALSE(document.undo());
+    }
+}
+
 TEST_CASE("On Release presentation gesture defers durable morph state",
         "[cycle-v2][runtime][presentation-session][gesture]") {
     GraphNodeFactory factory;

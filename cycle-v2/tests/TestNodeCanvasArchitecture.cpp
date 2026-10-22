@@ -1112,21 +1112,20 @@ TEST_CASE("Ignore Scratch is a compact single-output utility",
             == Catch::Approx(58.f));
 }
 
-TEST_CASE("Guide controls render the shared semantic icon at production size",
+TEST_CASE("Curve controls render the shared semantic icons at production size",
         "[cycle-v2][canvas][icons][guide]") {
     ScopedJuceInitialiser_GUI juce;
     MessageManagerLock messageLock;
-    Image rendered(Image::ARGB, 30, 17, true);
-    const uint64_t blankChecksum = imageChecksum(rendered);
-    Graphics graphics(rendered);
+    for (const String semanticId : { "guideCurve", "componentCurve" }) {
+        const bool component = semanticId == "componentCurve";
+        Image rendered(Image::ARGB, component ? 32 : 30, component ? 20 : 17, true);
+        const uint64_t blankChecksum = imageChecksum(rendered);
+        Graphics graphics(rendered);
 
-    REQUIRE(NodeIconRenderer::hasIcon("guideCurve"));
-    NodeIconRenderer::paint(
-            graphics,
-            "guideCurve",
-            rendered.getBounds().toFloat(),
-            0.82f);
-    REQUIRE(imageChecksum(rendered) != blankChecksum);
+        REQUIRE(NodeIconRenderer::hasIcon(semanticId));
+        NodeIconRenderer::paint(graphics, semanticId, rendered.getBounds().toFloat(), 0.82f);
+        REQUIRE(imageChecksum(rendered) != blankChecksum);
+    }
 }
 
 TEST_CASE("Effect enable actions share full and embedded header geometry",

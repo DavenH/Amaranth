@@ -6,6 +6,7 @@
 #include <JuceHeader.h>
 
 #include <vector>
+#include <optional>
 
 class VertCube;
 
@@ -27,7 +28,11 @@ public:
     std::vector<CurvePreviewVertex> previewVertices();
     bool registerMeshEdit();
 
-    void setMorph(float red, float blue);
+    void setMorph(const MorphPosition& position);
+    bool setPreviewMorphPosition(std::optional<MorphPosition> position);
+    MorphPosition effectiveMorphPosition() const { return { morphYellow, morphRed, morphBlue }; }
+    int dimensionCount() const { return dimensions; }
+    void setDimensionCount(int count) { dimensions = count; }
     void setLogarithmic(bool logarithmic);
     void setAxisLinks(bool redLinked, bool blueLinked);
     bool logarithmic() const { return model.logarithmic; }
@@ -36,6 +41,12 @@ public:
 
     const String& lastNodeId() const { return syncedNodeId; }
 private:
+    void refreshEffectiveMorph();
+
+    int dimensions { 2 };
+    MorphPosition authoredMorph { 0.f, 0.5f, 0.5f };
+    std::optional<MorphPosition> previewMorph;
+    float morphYellow {};
     float morphRed { 0.5f };
     float morphBlue { 0.5f };
     bool morphRedLinked { true };

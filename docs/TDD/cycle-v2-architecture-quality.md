@@ -21,7 +21,7 @@ Current physical line counts (`wc -l`, 2026-09-18):
 | Source | Lines | Main concern |
 | --- | ---: | --- |
 | `UI/NodeCanvas.cpp` | 2,572 | Canvas, gestures, document, editor host, automation, and refresh coordination |
-| `App/CycleV2Automation.cpp` | 2,012 | Protocol, routing, UI actions, inspection, and assertions |
+| `App/Automation/CycleV2Automation.cpp` | 2,012 | Protocol, routing, UI actions, inspection, and assertions |
 | `Graph/GraphCompiler.cpp` | 1,559 | Size trigger; inspect cohesion before changing it |
 | `Graph/GraphSerializer.cpp` | 1,217 | Size trigger; inspect cohesion before changing it |
 | `Runtime/GraphAudioExecutor.cpp` | 1,207 | Processing modes, preparation, cache, diagnostics, and voice execution |

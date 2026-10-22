@@ -124,6 +124,8 @@ public:
     bool undoForAutomation();
     bool redoForAutomation();
     GraphEditResult applyNodeEditsForAutomation(const NodeAuthoringEdits& edits);
+    juce::var guideCurveCommandForAutomation(const juce::var& command);
+    juce::var shapeCommandForAutomation(const juce::var& command);
     uint64_t documentRevisionForAutomation() const { return document.revision(); }
     bool setGuideParameterForAutomation(
             const String& guideId,
@@ -141,6 +143,7 @@ public:
     bool setVertexParameterForAutomation(const String& nodeId, const String& parameterId, float value);
     bool getNodeParameterForAutomation(const String& nodeId, const String& parameterId, String& value) const;
     var inspectNodeControlsForAutomation(const String& nodeId) const;
+    var importImpulseResponseForAutomation(const var& command, const File& file, String& error);
     var inspectPointerTargetsForAutomation() const;
     std::vector<std::pair<String, Rectangle<float>>>
             presetSidebarPointerTargetsForAutomation() const;
@@ -191,6 +194,9 @@ public:
     bool updatePreviewModWheelGesture(int value);
     void endPreviewModWheelGesture(int finalValue);
     bool setPreviewControllerValue(int controller, int value);
+    bool setAuditionControllerValue(int controller, int value);
+    int previewControllerValue(int controller) const { return presentation.previewControllerValue(controller); }
+    var inspectPreviewControllersForAutomation() const;
     void beginPreviewControllerGesture(int controller);
     bool updatePreviewControllerGesture(int controller, int value);
     void endPreviewControllerGesture(int controller, int finalValue);
@@ -358,6 +364,8 @@ private:
             int controller = 1,
             int controllerValue = 0);
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
+    void refreshAfterAutomationEdit();
+    void refreshComparisonAfterCommit();
     bool finishExplanationEdit(const GraphEditResult& result);
     void updateInformationCards() const;
     std::optional<GroupInformationCardPreview> informationCardPreview() const;
