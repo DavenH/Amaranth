@@ -1,7 +1,8 @@
 # Saxophone reference anchors and first bridge
 
-Status: Compact reed-source/body-filter instrument and core expressive controls
-implemented and verified; acoustic listening acceptance remains open. The user approved the earlier two-reference fitting
+Status: User listening review on 2026-10-22 rejects the current saxophone timbre.
+Core expressive controls are implemented and mechanically verified; the acoustic
+modelling goal remains unmet. The user approved the earlier two-reference fitting
 experiment, then directed a simpler synthesis model that can generalize across
 notes. Dense harmonic fits remain discovery evidence and comparison captures.
 
@@ -9,7 +10,8 @@ notes. Dense harmonic fits remain discovery evidence and comparison captures.
 
 The user requests sustained refinement into a useful, polished preset. Keep
 one shared pulse/spectrum/body design, rather than accepting a good D3 score
-or adding independently fitted note spectra. The completed slice establishes:
+or adding independently fitted note spectra. Evaluate it against these criteria;
+passing control and runtime checks does not establish the timbral match:
 
 - balanced low/middle/high tone at quiet/full breath, with intermediate notes
   and controller sweeps checked before adopting a candidate;
@@ -90,6 +92,41 @@ Native held-note wheel changes and one-voice legato are verified, with full phra
 PLAY returning to stopped/zero voices. The reference page retains all 32 original
 recordings, six source/synth pairs, the full phrase and four full articulation
 clips. Its row comparisons declare RMS matching; raw captures keep their levels.
+
+### Listening rejection and CC reachability audit
+
+The user reports that this preset sounds nothing like a saxophone. The preceding
+control/runtime checks and descriptor improvements do not resolve that rejection.
+Do not describe this as a successful acoustic model or a problem limited to one
+quiet note.
+
+An actual-app audit retains the saved graph and sweeps eight CC2 values against
+seven CC3 values at MIDI 48/62/72 (168 captures), then checks two additional CC5
+attack values for each of six selected references (12 captures). CC1 stays zero,
+CC76 stays 64. The closest tested clean settings are:
+
+| Reference label | CC2 | CC3 | CC5 |
+| --- | ---: | ---: | ---: |
+| C2 layer 2 | 80 | 0 | 64 |
+| C2 layer 3 | 127 | 0 | 0 |
+| D3 layer 2 | 32 | 0 | 0 |
+| D3 layer 3 | 96 | 0 | 64 |
+| C4 layer 2 | 48 | 0 | 64 |
+| C4 layer 3 | 127 | 0 | 0 |
+
+These are diagnostic nearest settings, without listening acceptance. CC changes
+yield small steady-tone improvements: the same weighted harmonic metric changes
+only 3.219→3.201 dB across the six references. On the tested D3 grid, H2/H1 never exceeds
+1.229 versus the loud reference's 2.152; centroid never drops below 699 Hz versus
+the quiet reference's 558 Hz. The upper loud reference is brighter than the
+maximum reached by the preset. Harmonic-only scoring can favor large CC3 values
+that add unsupported half-harmonic energy. CC5 improves some amplitude attacks,
+but supplies no new sustained spectral structure. Further knob searching does
+not address the main model limitations.
+
+Evidence and six direct listening pairs with exact CC values are under
+`.context/sax-cc-audit/`; `sweep-ranking.json` declares every score, selection and
+limitation. The original 32-recording audit and factory preset remain unchanged.
 
 ## Listening revision: a compact reed pulse and shared body response
 
