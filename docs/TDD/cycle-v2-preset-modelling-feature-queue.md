@@ -113,6 +113,33 @@ cropped notes are not independent takes, and inferred pitch/control labels
 must not silently become observed facts. Retain whole-phrase auditions so
 segmentation cannot hide poor transitions.
 
+Reference comparison extension (2026-10-22): the current dock supplies
+time-domain reference cyclograms, but no reference magnitude-spectrogram mode.
+Spectral Spy cards inspect graph spectral signals separately. The D3 comparison
+required a host artifact using the existing `spectral_trace` to expose missing
+notches, excessive energy in source holes and changing harmonic balance; see
+the [anchor comparison](cycle-v2-saxophone-anchor-bridge.md#canonical-waveform-and-spectral-comparison)
+and `.context/sax-wave-comparison/`. This is a confirmed reference-view gap,
+rather than a missing synthesis operation.
+
+Extend this reference-analysis workflow and roadmap slice 7 instead of adding
+another analysis store or competing time cursor. A reference spectral mode
+should share selected elapsed time/region with the cyclogram and pitch view,
+retain parent offsets, and distinguish waveform phase from spectral frequency.
+Keep `ReferenceLibrary`/`ReferenceSampleAnalysis` responsible for prepared source
+analysis and `ComparisonDock` responsible for view/state translation; reuse the
+mature shared FFT and spectral-display facilities after checking their domain
+and windowing contracts. The host artifact is diagnostic evidence, not a second
+production FFT implementation to copy into the dock.
+
+Acceptance direction: compare source and captured synth at the same elapsed
+time or authored region with declared window, frequency/color scale, channel
+mix and gain normalization. Changing the view or moving its shared cursor must
+not retrack pitch, mutate a preset or perform analysis on the audio callback.
+Keep pitch confidence visible without requiring a reliable fundamental merely
+to inspect a recording's magnitude spectrum. Preserve raw-level and onset
+comparisons; per-frame gain or phase registration must not hide model defects.
+
 ## M03 — Behaviour-checked economy and shape simplification
 
 Status: Already planned in roadmap slice 10; modelling evidence motivates it.

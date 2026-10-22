@@ -128,6 +128,45 @@ Evidence and six direct listening pairs with exact CC values are under
 `.context/sax-cc-audit/`; `sweep-ranking.json` declares every score, selection and
 limitation. The original 32-recording audit and factory preset remain unchanged.
 
+### Canonical waveform and spectral comparison
+
+Four equal 1.5-second excerpts now compare both D3 recordings with their nearest
+tested synth settings through the app's existing reference library. Canonical
+exports contain 160 time columns and 256 phase rows, with confident pitch paths
+and no fallback. One circular phase-origin shift and one gain are fitted over
+0.4–0.8 seconds per pair, then held fixed across attack and body. There is no
+time alignment or per-column phase fitting. Even after registration, held-grid
+residuals are 50% of source RMS for layer 2 and 59% for layer 3. The synth has a
+sharper dominant positive peak and smoother negative trough; the loud source's
+additional late-cycle positive lobe is largely absent. These describe waveform
+differences, without establishing their perceptual importance or a unique cause.
+
+The existing host `spectral_trace` supplies a separate magnitude spectrogram;
+the reference dock currently displays time-domain cyclograms, while spectral
+Spy views belong to graph signal domains. The spectrogram shows changes hidden
+by an average centroid: loud early-held centroids are 873/866 Hz for source/synth,
+but H2/H1 is 2.21/1.20. Synth power in H17–19, about 5.0–5.6 kHz, exceeds the
+source by 18.4 dB. The source envelope has notches and recoveries that the
+model's smoother rolloff fills. Source-thresholded harmonic scores exclude
+some deep source holes and therefore understate unwanted synth energy there.
+
+The quiet recording darkens from 658 Hz at 0.1–0.2 seconds to 531 Hz at
+1.2–1.45 seconds; the synth stays near 704 Hz. Loud H2/H1 rises through the
+attack while the synth stays near 1.20. Texture also differs by time and band:
+quiet later-held 1.5–4 kHz off-harmonic RMS is lower in the synth, while loud
+opening energy in that band is higher. Increasing one grain amount does not
+address both defects. These observations motivate evolving excitation balance
+and review of shared body structure, rather than another knob search or a
+claim that missing grain alone explains the rejection.
+
+Evidence is under `.context/sax-wave-comparison/`: `comparison-findings.json`,
+`canonical-registered-phase-means.png` and `existing-trace-spectrograms.png`.
+Cyclograms use peak-normalized stereo-mid audio; spectrograms use mean channel
+power with one source body-RMS denominator per pair. Their scales are distinct.
+The 85 ms spectral window smears onset detail, and folded-grid variation also
+contains amplitude and pitch-path effects. Neither view uniquely separates reed,
+body, microphone and room response. User listening acceptance remains unmet.
+
 ## Listening revision: a compact reed pulse and shared body response
 
 The first pair follows instantaneous timbre and amplitude reasonably closely,
