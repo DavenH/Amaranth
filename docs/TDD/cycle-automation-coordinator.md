@@ -6,6 +6,36 @@ Implemented. The coordinator, PID launcher, registry, leases, persistent
 sessions, scoped runs, capture, video, LLDB, native-input routing, and product
 aliases passed focused macOS integration acceptance.
 
+Cycle V2 persistent wire sessions are implemented and verified. A connection accepts multiple
+JSON-lines requests, retaining partial UTF-8 lines and request IDs. One JUCE
+transport thread multiplexes bounded nonblocking Unix sockets; idle clients do
+not occupy the accept loop. Commands still use the existing message-thread
+handler. Transport shutdown cancels queued dispatch callbacks before joining the
+socket thread. A disconnected request may already have run; Unix EOF also covers
+legacy clients that half-close their write side and await a reply. Read-closed
+sockets are excluded from polling until their response is ready. No command,
+graph, or UI policy moves into this transport.
+
+The Python `Session` owns one connection, response buffer, and unique request
+IDs. The existing `command()` remains a one-shot adapter. A coordinator `repl`
+exposes the same client through a PTY, with JSON commands and explicit reconnect;
+commands are never automatically replayed after a failed connection. Focused
+tests cover multiple requests on one fd, a second client while the first is idle
+or not reading a large reply, split/coalesced UTF-8 lines, legacy half-close,
+reconnect, request/response bounds, and shutdown with idle or queued clients.
+The focused transport remains one framing/lifecycle owner; its
+growth replaces the former blocking single-request server rather than adding a
+second dispatcher.
+
+On 2026-10-21, the rebuilt app (PID 3368) accepted `ping`, `openGraph`,
+`captureAudio`, and `ping` through one live PTY REPL connection with successive
+IDs `8cacf24419ac4599b18d90b9385fc6b6:1` through `:4`. A second client pinged
+while that connection was idle, and `:exit` left the app running. Evidence:
+`.context/sax-reed-proud/live-session.log` and
+`.context/sax-reed-proud/final-session-tests.log`. The final socket tests passed
+91 assertions across four cases; the Python session/coordinator tests passed
+twenty cases. No domain commands, authentication layer, or MCP adapter were added.
+
 ## Problem
 
 Cycle automation is safe when one caller owns one application instance, but

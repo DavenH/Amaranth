@@ -22,7 +22,7 @@ private:
     CommandHandler handleCommand;
     std::unique_ptr<Server> server;
 
-    juce::var handleRequest(const juce::var& request);
+    static juce::var handleRequest(const juce::var& request, const CommandHandler& handler);
 };
 
 }

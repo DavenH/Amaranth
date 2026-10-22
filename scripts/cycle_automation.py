@@ -16,6 +16,7 @@ from cycle_automation_support.lifecycle import ensure, stop
 from cycle_automation_support.profiles import PRODUCTS, ROOT
 from cycle_automation_support.registry import lease, recover, registry
 from cycle_automation_support.smokes import run_fresh_manifest, run_manifest
+from cycle_automation_support.session import repl
 from cycle_automation_support.operations import (
     capture, collect_crash, debug_fixture, preflight, recorded_fixture,
     report_rect, write_logs
@@ -43,12 +44,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="operation", required=True)
     subparsers.add_parser("status")
-    for name in ("start", "run", "suite", "debug", "capture", "exec", "stop"):
+    for name in ("start", "run", "suite", "debug", "capture", "exec", "repl", "stop"):
         sub = subparsers.add_parser(name)
         sub.add_argument("--product", required=True, choices=PRODUCTS)
         sub.add_argument("--wait", type=float, default=0)
         sub.add_argument("--json", action="store_true")
-        if name in ("start", "run", "suite", "debug", "capture", "exec"):
+        if name in ("start", "run", "suite", "debug", "capture", "exec", "repl"):
             sub.add_argument("--no-build", action="store_true")
             sub.add_argument("--clean", action="store_true")
             sub.add_argument("--app-log", type=Path)
@@ -79,6 +80,8 @@ def main():
         if name == "exec":
             sub.add_argument("--foreground", action="store_true")
             sub.add_argument("command", nargs=argparse.REMAINDER)
+        if name == "repl":
+            sub.add_argument("--timeout", type=float, default=30)
         if name == "stop":
             sub.add_argument("--owned", action="store_true", required=True)
     args = parser.parse_args()
@@ -93,6 +96,8 @@ def main():
     if args.wait < 0 or args.wait > 300:
         parser.error("--wait must be between 0 and 300 seconds")
     profile = PRODUCTS[args.product]
+    if args.operation == "repl" and args.product != "cycle-v2":
+        parser.error("persistent repl currently requires --product cycle-v2")
     run_id = uuid.uuid4().hex[:12]
     artifacts = output_base(profile.name, run_id)
     if args.operation == "suite":
@@ -208,6 +213,9 @@ def main():
                                             "command_count": len(fixture_result["results"])}
                 result["report"] = str(report)
                 result["lldb_log"] = str(transcript)
+            elif args.operation == "repl":
+                print(f"Cycle V2 PID {record['pid']} socket {record['socket']}", flush=True)
+                repl(record["socket"], timeout=args.timeout)
             elif args.operation == "exec":
                 environment = os.environ.copy()
                 environment.update({
