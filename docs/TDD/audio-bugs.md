@@ -1,5 +1,18 @@
 # Audio Bug Notes
 
+## P2: Reference comparison Spies use a legacy note as standard MIDI
+
+The saxophone audit found a 293.665 Hz recording correctly stored as note 74
+under the mature sample convention (standard MIDI plus 12). Passing that value
+unchanged into the standard MIDI preview oscillator rendered one octave high.
+Cycle V2 now translates only the comparison/presentation boundary. Pitch
+storage, pitch paths and folding retain their established convention.
+
+The focused generated-recording test covers the actual period, standard note
+62, edit/undo/reload and preview clock. Native verification on the preceding
+study branch confirmed identical pitch frames and folded values after the fix.
+The comparison fixture checks both reference and pinned Spy note values.
+
 ## P2: Reference analysis exports Cycle note numbers under MIDI field names
 
 On 2026-10-20, saxophone-pilot reference triage found

@@ -2,6 +2,7 @@
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/Panel.h>
 #include <UI/Panels/ZoomPanel.h>
+#include <Util/LogRegionMapping.h>
 
 #include "Nodes/Curve/Panel/ConcreteCurvePanels.h"
 #include "Nodes/Envelope/EnvelopeMeshState.h"
@@ -15,19 +16,24 @@ namespace CycleV2 {
 namespace {
 
 juce::String noteLabel(double value) {
-    const int note = juce::roundToInt(value);
-    return juce::MidiMessage::getMidiNoteName(note, true, true, 4)
-            + "  " + juce::String(note);
+    const int note = juce::roundToInt(value) - LogRegionMapping::legacyMidiNoteBias;
+    const auto name = note >= 0
+            ? juce::MidiMessage::getMidiNoteName(note, true, true, 4) : juce::String("MIDI");
+    return name + "  " + juce::String(note);
 }
 
 std::optional<double> parseNote(const juce::String& text) {
     const juce::String number = text.fromLastOccurrenceOf(" ", false, false).trim();
-    if (number.isEmpty() || !number.containsOnly("0123456789")) {
+    const auto digits = number.startsWithChar('-') ? number.substring(1) : number;
+    if (digits.isEmpty() || !digits.containsOnly("0123456789")) {
         return std::nullopt;
     }
-    const int note = number.getIntValue();
-    return juce::isPositiveAndBelow(note, 128)
-            ? std::optional<double>((double) note) : std::nullopt;
+    const int standardNote = number.getIntValue();
+    if (standardNote < -LogRegionMapping::legacyMidiNoteBias
+            || standardNote >= 128 - LogRegionMapping::legacyMidiNoteBias) {
+        return std::nullopt;
+    }
+    return (double) (standardNote + LogRegionMapping::legacyMidiNoteBias);
 }
 
 }
@@ -52,7 +58,7 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
     fundamental.configureValuePresentation(
             noteLabel,
             parseNote,
-            60,
+            60 + LogRegionMapping::legacyMidiNoteBias,
             1,
             1,
             "The reference's detected fundamental and comparison MIDI note");
@@ -145,7 +151,8 @@ juce::var ReferencePitchEditor::exportAutomationState() const {
     result->setProperty("referenceId", openedId);
     result->setProperty("visible", isVisible());
     result->setProperty("pointCount", (int) mesh.getCubes().size());
-    result->setProperty("note", (int) fundamental.slider.getValue());
+    result->setProperty("note", (int) fundamental.slider.getValue()
+            - LogRegionMapping::legacyMidiNoteBias);
     if (const auto* analysis = library.analysisFor(openedId)) {
         result->setProperty("cyclogramRevision", (int64) analysis->cyclogramRevision);
     }

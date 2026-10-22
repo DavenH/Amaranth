@@ -57,6 +57,8 @@ juce::var selectedAnalysis(const ReferenceLibrary& library, bool includeGrid) {
     object->setProperty("channels", sample.audio.numChannels);
     object->setProperty("durationSeconds", duration);
     object->setProperty("effectiveMidiNote", sample.fundNote);
+    object->setProperty("midiNoteConvention", "legacy Cycle note numbers; standard MIDI plus 12");
+    object->setProperty("standardMidiNote", analysis->standardMidiNote());
     object->setProperty("trackingInsecurity", analysis->pitchInsecurity);
     object->setProperty("lowConfidence", analysis->lowConfidence);
     object->setProperty("trackingUsedFallback", analysis->pitchInsecurity > 50.f);
@@ -71,6 +73,8 @@ juce::var selectedAnalysis(const ReferenceLibrary& library, bool includeGrid) {
         item->setProperty("timeSeconds", point.x * duration);
         item->setProperty("midiNote",
                 sample.fundNote + NumberUtils::unitPitchToSemis(point.y));
+        item->setProperty("standardMidiNote",
+                analysis->standardMidiNote() + NumberUtils::unitPitchToSemis(point.y));
         path.add(juce::var(item.release()));
     }
     object->setProperty("pitchPath", std::move(path));
