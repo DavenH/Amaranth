@@ -461,6 +461,10 @@ GraphEditResult NodeWorkspace::applyNodeEditsForAutomation(const NodeAuthoringEd
     return canvas.applyNodeEditsForAutomation(edits);
 }
 
+var NodeWorkspace::guideCurveCommandForAutomation(const var& command) {
+    return canvas.guideCurveCommandForAutomation(command);
+}
+
 bool NodeWorkspace::setGuideParameterForAutomation(
         const String& guideId,
         const String& parameterId,

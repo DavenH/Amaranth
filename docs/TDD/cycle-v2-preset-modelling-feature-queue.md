@@ -364,23 +364,22 @@ changes, with listening examples. This is not yet a new DSP implementation.
 
 ## M10 — Assign a Guide to authored components through automation
 
-Status: Confirmed automation gap; validated content import is the current
-workaround, alongside M07's complete-topology import.
+Status: Resolved by the [direct live Guide commands](cycle-v2-live-guide-authoring.md).
 
 Musical task: attach the existing factory grain Guide to four closing-edge
-segments of the compact reed mesh. Guide property editing and assignment
-inspection exist, but the automation command surface has no addressed
-component-assignment command. Assigning the final segment indices before the
-new mesh exists correctly fails Guide validation.
+segments of the compact reed mesh, without reconstructing or reloading it.
 
-Current workaround: import the Guide resource without assignments, replace the
-mesh through `applyNodeEdits`, then import that exported graph with only the
-declared Guide assignments added. The graph loader and existing assignment
-validator remain authoritative; no production graph mutation is introduced.
-Future automation should delegate to the existing Guide-assignment command
-service with node/component identities, validation and undo. Acceptance:
-assign/unassign the same Guide on this mesh without JSON assembly, reject
-invalid or stale targets atomically, and preserve save/reload and audio output.
+`inspectGuideCurve`, `createGuideCurve`, `editGuideCurve`, `assignGuideCurve` and
+`detachGuideCurve` expose the existing curve and attachment owners. Stable point
+IDs and document/model revisions support small, undoable live edits. Attachment
+uses explicit node/selection-index/field addresses and returns actual assignments
+through inspection. Trimesh selection indices refer to vertex array entries;
+Envelope indices refer to cube entries. No editor selection is required.
+
+The former graph-assembly/reload workaround is retired. Focused domain and
+adapter tests cover stale/invalid targets, assignment fanout and undo. A raw
+socket onset-point edit changes recorded audio; undo restores the exact WAV.
+The native comparison fixture also verifies pinned Spy refresh on edit/undo/redo.
 
 ## M11 — Preserve physical body-filter resonances across output sample rates
 
@@ -511,6 +510,9 @@ reusing controller validation and voice delivery. Acceptance: CC1/2/3/5/76
 changes reach an already-held native voice, independent unused CCs leave its
 sound unchanged, and note-off/all-notes-off retain their current behavior.
 Do not implement a second MIDI transport or audio renderer.
+Also expose preview controller values independently of keyboard visibility;
+the current CC pointer targets require wheel-track geometry and an unoccluded
+keyboard. This was encountered directly while validating live Guide edits.
 
 ## M16 — Reproduce modelled IR authoring from the same source
 

@@ -60,6 +60,22 @@ var CycleV2Automation::inspectSynthesisCapabilities(const var& command) const {
     }
     fields.setProperty("lifecycleCommands", lifecycle);
     objectFor(capabilities)->setProperty("authoring", authoring);
+    var guideAuthoring = makeObject();
+    auto& guideFields = *objectFor(guideAuthoring);
+    guideFields.setProperty("inspectCommand", automationCommandName(CycleV2AutomationCommand::InspectGuideCurve));
+    guideFields.setProperty("editCommand", automationCommandName(CycleV2AutomationCommand::EditGuideCurve));
+    guideFields.setProperty("createCommand", automationCommandName(CycleV2AutomationCommand::CreateGuideCurve));
+    guideFields.setProperty("assignCommand", automationCommandName(CycleV2AutomationCommand::AssignGuideCurve));
+    guideFields.setProperty("detachCommand", automationCommandName(CycleV2AutomationCommand::DetachGuideCurve));
+    guideFields.setProperty("maximumPointEdits", (int) maximumGuideCurvePointEdits);
+    guideFields.setProperty("pointOperations", var(StringArray { "set", "insert", "remove" }));
+    guideFields.setProperty("pointIdentityField", "vertexId");
+    guideFields.setProperty("requiresDocumentRevision", true);
+    guideFields.setProperty("requiresModelRevisionForEditsAndAttachments", true);
+    guideFields.setProperty("selectionIndex", "Trimesh vertex array index; Envelope cube array index; resolves all owning rails");
+    guideFields.setProperty("coordinateRange", "x, y and curve in [0, 1]; y=0.5 is neutral displacement");
+    guideFields.setProperty("editorRequired", false);
+    objectFor(capabilities)->setProperty("guideAuthoring", guideAuthoring);
     var impulseImport = makeObject();
     objectFor(impulseImport)->setProperty("command",
             automationCommandName(CycleV2AutomationCommand::ImportImpulseResponse));

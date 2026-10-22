@@ -1,5 +1,36 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Pinned comparison Spies remain stale after direct Guide edits
+
+Confirmed in a native Cycle V2 socket session on 2026-10-22: open the reed
+preset, select a wave reference, pin the output Spy and open the reed editor.
+Change `reedOnsetPhase` point 1 through `editGuideCurve`. Audio capture changes,
+but `comparison.captureCount` stays at 1 through the edit and its undo, even
+with Live refresh selected. The existing comparison callback was reached by
+Trimesh gestures, but not synchronous semantic edits or automation undo/redo.
+
+The fix reuses that callback after the canonical synchronous refresh and
+successful audio undo/redo. The workspace continues to suppress captures for a
+hidden shelf. `cycle-v2-agent-live-guide-authoring.json` covers commit/undo/redo;
+the raw trial and seeded audio proof are in `.context/sax-wave-comparison/`.
+
+## P2: Failed create-and-assign Guide command leaves a new resource
+
+On 2026-10-22, source review found that
+`GuideGraphEditor::createGuideCurveAndAssignToMeshComponent` creates a Guide
+before validating its node, selection index and field through assignment.
+For example, `GraphCommandDispatcher::createAndAssignGuideCurve("missing", 0,
+"phase")` creates the resource, then reports `MissingNode`.
+`GraphCommandDispatcher::apply` returns a failed result without restoring the
+graph or publishing an undo/document change. An invalid request can therefore
+leave an unpublished Guide behind. Expected: failure preserves resources,
+document revision and undo history.
+
+Status: open, established from the command order and failure path; no native
+reproduction was performed. Prevalidate through the shared target resolver
+before creating the resource, or roll back the combined operation. Separate
+create and assign socket operations avoid exposing this combined failure path.
+
 ## P2: Collapsing a tone group hides the cable segment after its inline pan
 
 On 2026-10-21, native review of the saxophone graph on exact app PID 27415

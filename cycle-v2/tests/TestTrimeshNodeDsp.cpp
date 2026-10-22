@@ -2217,6 +2217,36 @@ TEST_CASE("Trimesh guide attachment target resolves vertex owners directly", "[c
     REQUIRE(TrimeshGuideAttachmentTarget::guideField("curve") == GuideCurveField::Curve);
 }
 
+TEST_CASE("Unknown Guide attachment fields cannot detach a Trimesh Curve guide",
+        "[cycle-v2][nodes][trimesh][guide][validation]") {
+    NodeGraph graph;
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "waveMesh", {});
+    auto authoredMesh = TrimeshMeshFactory::createDefaultMesh("GuideFieldValidation");
+    node.model = TrimeshNodeModelState::copyOf(*authoredMesh, 1);
+    authoredMesh->destroy();
+    graph.addNode(std::move(node));
+    GuideGraphEditor editor;
+    REQUIRE(editor.createGuideCurve(graph).succeeded());
+    REQUIRE(editor.assignGuideCurveToMeshComponent(
+            graph, "guide1", "waveMesh", 2, "curve").succeeded());
+    const Node* mesh = graph.findNode("waveMesh");
+    REQUIRE(mesh != nullptr);
+    REQUIRE(graph.getGuideAssignments().size() == 1);
+    const uint64_t revision = graph.getRevision();
+
+    for (const String field : { String(), String("unknown"), String("vertex.curve") }) {
+        CAPTURE(field);
+        REQUIRE(TrimeshGuideAttachmentTarget::cubeTargetsForVertex(*mesh, 2, field).empty());
+        REQUIRE(MeshGuideAttachmentTarget::cubeTargetsForSelection(*mesh, 2, field).empty());
+        REQUIRE_FALSE(editor.detachGuideCurveFromMeshComponent(
+                graph, "waveMesh", 2, field).succeeded());
+        REQUIRE(graph.getRevision() == revision);
+        REQUIRE(graph.getGuideAssignments().size() == 1);
+        REQUIRE(graph.getGuideAssignments().front().guideId == "guide1");
+        REQUIRE(graph.getGuideAssignments().front().target.field == GuideCurveField::Curve);
+    }
+}
+
 TEST_CASE("Trimesh node model selects vertices by phase and amplitude", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",

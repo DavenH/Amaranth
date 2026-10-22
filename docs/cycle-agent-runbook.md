@@ -214,6 +214,49 @@ visually reading a screenshot if a state assertion can prove the behavior.
 
 ## Choosing Commands
 
+### Live preset authoring
+
+Refine presets with targeted semantic commands against the running document.
+Do not use preset generators, patched graph JSON or reload cycles for new sound
+design. Inspect, edit, compare the pinned live Spy/reference, and retain or undo.
+When a needed edit is missing, expose its existing command owner through the
+socket before proceeding. Saved graphs are explicit checkpoints.
+
+The persistent socket also accepts raw JSON lines without a Python authoring
+client. Hold the coordinator's exact-instance lease while using `nc`:
+
+```sh
+python3 scripts/cycle_automation.py exec --product cycle-v2 --no-build -- \
+    /bin/sh -c 'exec /usr/bin/nc -U "$CYCLE_AGENT_SESSION"'
+```
+
+Send one request at a time, with a distinct ID, and inspect its response before
+the next mutation. Transport reconnects must not replay a failed edit:
+
+```json
+{"id":"guide-1","command":{"command":"inspectGuideCurve","guideId":"reedOnsetPhase"}}
+{"id":"guide-2","command":{"command":"editGuideCurve","guideId":"reedOnsetPhase","expectedDocumentRevision":7,"expectedModelRevision":1,"edits":[{"op":"set","vertexId":1,"y":0.507}]}}
+```
+
+Use the revisions from inspection, rather than copying these example values.
+`inspectSynthesisCapabilities.guideAuthoring` advertises commands and limits.
+`inspectGuideCurve` returns resource/model/document revisions, canonical points,
+controls and resolved assignments. `editGuideCurve` supports partial `set`,
+`insert` and `remove` point edits, bounded to 64 per atomic request. Point IDs
+are stable; inserting allocates an ID visible on the next inspection. Coordinates
+and sharpness are in [0,1]; y=0.5 is neutral Guide displacement.
+
+`createGuideCurve` requires the current `expectedDocumentRevision` and returns
+the new Guide ID. `assignGuideCurve` / `detachGuideCurve` additionally take
+`nodeId`, `expectedModelRevision`, `selectionIndex` and `field` (`time`, `red`,
+`blue`, `phase`, `amp` or `curve`); assignment also takes `guideId`. The index
+addresses a Trimesh vertex array entry or an Envelope cube array entry, and
+resolves every owning rail through the same rules as the editor. It does not
+refer to the current selection. Inspect actual assignments after attachment.
+These operations work with all editors closed and use normal undo/redo.
+
+### General automation
+
 Common command families:
 
 - `action`: semantic `CycleTour` action such as `ShowArea`, `HideArea`,

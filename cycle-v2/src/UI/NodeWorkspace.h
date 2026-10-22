@@ -91,6 +91,7 @@ public:
     bool undoForAutomation();
     bool redoForAutomation();
     GraphEditResult applyNodeEditsForAutomation(const NodeAuthoringEdits& edits);
+    juce::var guideCurveCommandForAutomation(const juce::var& command);
     uint64_t documentRevisionForAutomation() const { return canvas.documentRevisionForAutomation(); }
     bool setPresetSequenceForAutomation(PresetMidiSequence sequence);
     bool setGuideParameterForAutomation(

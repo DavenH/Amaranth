@@ -124,6 +124,7 @@ public:
     bool undoForAutomation();
     bool redoForAutomation();
     GraphEditResult applyNodeEditsForAutomation(const NodeAuthoringEdits& edits);
+    juce::var guideCurveCommandForAutomation(const juce::var& command);
     uint64_t documentRevisionForAutomation() const { return document.revision(); }
     bool setGuideParameterForAutomation(
             const String& guideId,
@@ -360,6 +361,7 @@ private:
             int controllerValue = 0);
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     void refreshAfterAutomationEdit();
+    void refreshComparisonAfterCommit();
     bool finishExplanationEdit(const GraphEditResult& result);
     void updateInformationCards() const;
     std::optional<GroupInformationCardPreview> informationCardPreview() const;

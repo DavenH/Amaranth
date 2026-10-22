@@ -2440,6 +2440,7 @@ bool NodeCanvas::undoForAutomation() {
     applyAuthoringResult(result);
     if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
+        refreshComparisonAfterCommit();
     }
     return result.succeeded;
 }
@@ -2450,6 +2451,7 @@ bool NodeCanvas::redoForAutomation() {
     applyAuthoringResult(result);
     if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
+        refreshComparisonAfterCommit();
     }
     return result.succeeded;
 }
@@ -2476,6 +2478,7 @@ void NodeCanvas::refreshAfterAutomationEdit() {
     presentation.refresh(document.graph(), document.revision(), document.lastChange());
     applyAuthoringResult({ true, true, true, GraphEditCode::Connected, {}, { true, true } });
     rebindGuideEditor();
+    refreshComparisonAfterCommit();
 }
 
 bool NodeCanvas::setGuideParameterForAutomation(
