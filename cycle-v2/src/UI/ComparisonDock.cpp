@@ -396,14 +396,14 @@ void ComparisonDock::updateCards() {
         card.surfaceRevision = sampleAnalysis->cyclogramRevision;
         card.columns = (size_t) sampleAnalysis->columns;
         card.rows = (size_t) sampleAnalysis->rows;
-        card.midiNote = sampleAnalysis->sample->fundNote;
+        card.midiNote = sampleAnalysis->standardMidiNote();
         card.sample = true;
         card.connected = true;
         cards.push_back(std::move(card));
     }
 
     const int note = analysis != nullptr
-            ? analysis->sample->fundNote : canvas.previewMidiNote();
+            ? analysis->standardMidiNote() : canvas.previewMidiNote();
     if (!canvas.comparisonSpyPins().empty()) {
         ++captureCount;
     }
@@ -572,7 +572,7 @@ juce::var ComparisonDock::exportAutomationState() const {
     state->setProperty("selectedReferenceId", library.selectedId());
     state->setProperty("pitchEditor", pitchEditor->exportAutomationState());
     if (const auto* analysis = library.selectedAnalysis()) {
-        state->setProperty("comparisonMidiNote", analysis->sample->fundNote);
+        state->setProperty("comparisonMidiNote", analysis->standardMidiNote());
     }
     juce::Array<juce::var> items;
     for (size_t index = 0; index < cards.size(); ++index) {
@@ -582,6 +582,7 @@ juce::var ComparisonDock::exportAutomationState() const {
         item->setProperty("sample", card.sample);
         item->setProperty("connected", card.connected);
         item->setProperty("spectral", card.spectral);
+        item->setProperty("midiNote", card.midiNote);
         item->setProperty("hasSurface", !card.surfaceValues().empty());
         if (index < surfaceViews.size() && surfaceViews[index] != nullptr) {
             item->setProperty("surfaceView",

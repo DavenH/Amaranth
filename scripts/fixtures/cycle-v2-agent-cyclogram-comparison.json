@@ -7,8 +7,14 @@
       "idleDelayMs": 300
     },
     { "command": "resizeWindow", "width": 1000, "height": 700 },
+    {
+      "command": "pointer",
+      "event": "click",
+      "targetId": "PerformanceKeyboard.Note73",
+      "button": "right"
+    },
     { "command": "selectReference", "referenceId": "factory:sax-growl" },
-    { "command": "assertState", "path": "comparison.comparisonMidiNote", "equals": 57 },
+    { "command": "assertState", "path": "comparison.comparisonMidiNote", "equals": 45 },
     { "command": "assertState", "path": "performance.previewNote", "equals": 73 },
     { "command": "pinComparisonSpy", "probeId": "default-output" },
     {
@@ -53,6 +59,8 @@
     { "command": "assertState", "path": "comparison.captureCount", "equals": 2 },
     { "command": "assertState", "path": "comparison.cards.0.hasSurface", "equals": true },
     { "command": "assertState", "path": "comparison.cards.1.hasSurface", "equals": true },
+    { "command": "assertState", "path": "comparison.cards.0.midiNote", "equals": 45 },
+    { "command": "assertState", "path": "comparison.cards.1.midiNote", "equals": 45 },
     {
       "command": "assertState",
       "path": "comparison.cards.0.surfaceView.height",

@@ -1,11 +1,16 @@
 #include <Algo/Pitch/PitchTracker.h>
 #include <Array/Buffer.h>
 #include <Audio/WavePeriodFolding.h>
+#include <Util/LogRegionMapping.h>
 #include <Util/NumberUtils.h>
 
 #include "Reference/ReferenceSampleAnalysis.h"
 
 namespace CycleV2 {
+
+int ReferenceSampleAnalysis::standardMidiNote() const {
+    return sample != nullptr ? sample->fundNote - LogRegionMapping::legacyMidiNoteBias : -1;
+}
 
 ReferenceSampleAnalysis ReferenceSampleAnalyzer::analyze(
         const juce::File& file,

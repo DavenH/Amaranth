@@ -1,5 +1,27 @@
 # Audio Bug Notes
 
+## P2: Reference comparison Spies use a legacy note as standard MIDI
+
+On 2026-10-22 the saxophone reference audit found that a 293.665 Hz D recording
+exports `fundNote=74` from `ReferenceSampleAnalyzer`. That is correct for the
+mature `PitchedSample` convention (A440 = 81), but `ComparisonDock::updateCards`
+passed it unchanged to `PresentationPreviewRenderer`, whose oscillator clock
+uses standard MIDI (A440 = 69). A pinned comparison Spy therefore rendered
+587.330 Hz, one octave above the recorded reference. The pitch editor also
+labelled the legacy number as standard MIDI. Comparing source and recorded
+synthesis as two wave references is unaffected; both retain their correct
+period-derived cyclograms.
+
+Status: corrected at the Cycle V2 comparison/presentation boundary; focused
+reference tests and the rebuilt comparison fixture pass. Native D3 cards and
+the pitch editor report standard note 62; exported pitch frames and all 40,960
+cyclogram values are identical before and after the fix. Sample pitch storage,
+reduced paths, persisted edits and existing schema 1 export fields retain their
+legacy values; explicit standard MIDI export fields are additive. The focused test
+imports a generated 293.665 Hz recording and checks its period, preview clock,
+pitch edit, undo and reload. The existing comparison fixture checks the note
+passed to both sample and pinned Spy cards.
+
 ## P2: IR imports cap source samples before canonical-rate conversion
 
 Source review on 2026-10-21 confirms that
