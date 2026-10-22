@@ -126,7 +126,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `docs/cycle-agent-runbook.md` — Focused UI fixtures, screenshots, state assertions, IPC, GL, and crash workflow.
 - `docs/chats/` — Durable user preferences and workflow decisions; not a substitute for architecture docs.
 - `scripts/cycle_automation.py` — Canonical local Cycle automation entry point for exact-PID lifecycle, fixtures, and capture.
-- `scripts/cycle_automation_support/` — Product profiles, workspace identity, registry leases, process lifecycle, and session client.
+- `scripts/cycle_automation_support/` — Product profiles, identity, leases, lifecycle, and persistent JSON-lines session/REPL.
 - `scripts/fixtures/cycle1-smoke-suite.json` — Cycle 1 smoke fixture catalog and optional visual check.
 - `scripts/fixtures/cycle-v2-smoke-suite.json` — Cycle 2 smoke fixture catalog and optional visual checks.
 - `scripts/launch_cycle_app.swift` — NSWorkspace launcher that returns the new application's PID.

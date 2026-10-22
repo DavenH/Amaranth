@@ -486,6 +486,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/ImpulseResponseImportAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationAssertions.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationProtocol.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationSessionTransport.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/OfflineAudioCaptureAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/PatternScheduleAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/StandaloneAudioEngine.cpp"

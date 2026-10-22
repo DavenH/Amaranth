@@ -48,6 +48,38 @@ PID, and run ID; pass a bounded `--wait` when waiting is intentional. Semantic
 fixtures on separate registered instances can run concurrently. Foreground
 capture takes the machine-wide foreground lease.
 
+For exploratory Cycle V2 work, keep one connection open instead of writing a
+new script for each command:
+
+```sh
+scripts/cycle_automation.py repl --product cycle-v2 --no-build
+```
+
+Run this in a PTY and send successive lines through its stdin. Each line is a
+JSON command or a command name such as `ping` or `snapshotState`. `:exit` closes
+the client; it leaves the app running. `:reconnect` opens a fresh connection and
+never replays a previous command. Command responses include distinct request IDs.
+The REPL holds no foreground lease: native input and capture still use the
+coordinated `exec --foreground` / `capture` routes.
+
+Repeatable Python workflows use the same client and command schema:
+
+```python
+from cycle_automation_support.session import Session
+
+with Session(socket_path, timeout=120) as session:
+    state = session.command({"command": "snapshotState"})["result"]
+    controls = session.command({"command": "inspectNodeControls", "nodeId": "voice"})["result"]
+```
+
+One `Session` is sequential and retains partial response lines between requests.
+Disconnects, timeouts, malformed responses, and mismatched IDs close the
+connection and raise; a command may already have run, so the client never retries
+it automatically. An explicit reconnect or a later command opens a new socket.
+Cycle V2 accepts up to sixteen clients, buffers at most 16 MiB of queued request
+bytes per client, and bounds each response at 64 MiB. Idle or slow clients do not
+block other connections. Existing one-shot clients remain supported.
+
 Inspect artifacts in this order:
 
 1. Report JSON: command success/failure, snapshot, exported command data.
