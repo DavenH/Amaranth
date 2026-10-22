@@ -4767,7 +4767,11 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
     CurveTableScope curveTables;
     Component owner;
     NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {}));
+    Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("TrimeshDragCommand");
+    node.model = TrimeshNodeModelState::copyOf(*mesh, 2);
+    mesh->destroy();
+    graph.addNode(std::move(node));
     auto editorState = std::make_unique<DynamicObject>();
     editorState->setProperty("selectedVertexId", 0);
     REQUIRE(GraphNodeStateEditor().setNodeEditorState(
@@ -4790,6 +4794,7 @@ TEST_CASE("Trimesh drag keeps movement local and publishes one commit snapshot",
     const auto durableModel = std::dynamic_pointer_cast<const TrimeshNodeModelState>(
             document.graph().findNode("mesh")->model);
     REQUIRE(durableModel != nullptr);
+    REQUIRE_FALSE(durableModel->mesh().getVerts().empty());
     const float originalAmp = durableModel->mesh().getVerts().front()->values[Vertex::Amp];
     InteractionComplexityDiagnostics::reset();
 

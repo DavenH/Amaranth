@@ -1,5 +1,30 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Trimesh cursor unit test expects callbacks before render initialization
+
+On 2026-10-22, the full suite reported the cursor assertion in "Trimesh panel
+hosts use component cursors and delegated repaint". A narrow run also failed:
+the 2D cursor request updates the inner input host, while the test inspects the
+ZoomPanel wrapper. CurvePanelHost installs the delegated callbacks through its
+render host context; component creation alone does not install them. The test
+and these owners are unchanged from origin/master. Current status: baseline
+initialization contract unresolved; no production change in live authoring.
+Evidence: `.context/live-authoring-cursor-repro.log`,
+`.context/live-authoring-full-tests.log`.
+
+## Resolved: Trimesh drag unit fixture dereferenced an empty factory mesh
+
+On 2026-10-22, the full suite and a narrow run crashed with SIGSEGV at
+TestNodeEditorHost.cpp in "Trimesh drag keeps movement local and publishes one
+commit snapshot". The test was unchanged from origin/master and assumed a
+populated GraphNodeFactory model; origin/master's TrimeshNodeModelCodec creates
+an empty mesh. The fixture now explicitly authors its populated mesh and checks
+it is nonempty before accessing its first vertex. Its local-update, one-copy,
+one-undo contracts remain intact. Before evidence:
+`.context/live-authoring-drag-repro.log`. The updated fixture passes all 25
+assertions in `.context/live-authoring-drag-fixed.log`; the separate cursor
+initialization failure still prevents a green aggregate gate.
+
 ## Resolved: Pinned comparison Spies remain stale after direct Guide edits
 
 The prior live Guide audit confirmed that addressed Guide commits changed audio
