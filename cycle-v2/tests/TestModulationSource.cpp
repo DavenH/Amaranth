@@ -679,3 +679,20 @@ TEST_CASE("Modulation triple exposes the shared hosted editor",
     REQUIRE(capabilities.hostedEditor);
     REQUIRE_FALSE(capabilities.previewable);
 }
+
+TEST_CASE("Legato key scale follows timed retargets without changing velocity or controllers early",
+        "[cycle-v2][modulation][audio][legato]") {
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = 60;
+    voice.controls.lowestNote = 0;
+    voice.controls.highestNote = 120;
+    voice.controls.velocity = .8f;
+    voice.controls.controllers[1] = .4f;
+    voice.noteRetargets = { { 2, 72 }, { 5, 60 } };
+    REQUIRE(renderAudio(*configuration("keyScale"), voice, 8)
+            == std::vector<float> { .5f, .5f, .6f, .6f, .6f, .5f, .5f, .5f });
+    REQUIRE(renderAudio(*configuration("velocity"), voice, 8) == std::vector<float>(8, .8f));
+    REQUIRE(renderAudio(*configuration("modWheel"), voice, 8) == std::vector<float>(8, .4f));
+    voice.noteRetargets = { { 0, 72 } };
+    REQUIRE(renderAudio(*configuration("keyScale"), voice, 8) == std::vector<float>(8, .6f));
+}

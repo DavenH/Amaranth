@@ -143,6 +143,7 @@ public:
     bool setVertexParameterForAutomation(const String& nodeId, const String& parameterId, float value);
     bool getNodeParameterForAutomation(const String& nodeId, const String& parameterId, String& value) const;
     var inspectNodeControlsForAutomation(const String& nodeId) const;
+    var importImpulseResponseForAutomation(const var& command, const File& file, String& error);
     var inspectPointerTargetsForAutomation() const;
     std::vector<std::pair<String, Rectangle<float>>>
             presetSidebarPointerTargetsForAutomation() const;

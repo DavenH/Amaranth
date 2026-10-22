@@ -43,12 +43,20 @@ std::array<std::vector<String>, 128> controllerPreviewRoots(
             }
         }
     }
-    for (const auto& context : plan.voiceContexts) {
-        const auto triple = std::dynamic_pointer_cast<
-                const ModulationTripleConfiguration>(context.defaultModulation);
-        if (triple != nullptr) {
-            for (const auto& source : triple->sources) {
-                appendRoot(context.nodeId, source);
+    // Compiled inputs exclude inactive and overridden defaults. Inherited
+    // Envelope controls must invalidate their consumer, not the Voice Context.
+    for (const auto& step : plan.steps) {
+        for (const auto& input : step.inputs) {
+            if (!isPositiveAndBelow(input.sourceBufferIndex, (int) plan.buffers.size())) {
+                continue;
+            }
+            const auto& buffer = plan.buffers[(size_t) input.sourceBufferIndex];
+            const int axis = (int) buffer.defaultModulationSlot - 1;
+            const auto triple = std::dynamic_pointer_cast<
+                    const ModulationTripleConfiguration>(buffer.defaultModulation);
+            if (triple != nullptr && isPositiveAndBelow(axis, (int) triple->sources.size())) {
+                appendRoot(step.nodeId,
+                        triple->source((size_t) axis, buffer.envelopeModulationProfile));
             }
         }
     }
@@ -104,7 +112,7 @@ bool GraphPresentationModel::refresh(
                     Performance::Stage::RuntimeTrace,
                     performance.timestamp() - runtimeStartedAt);
         }
-        scheduler.clearProductCache();
+        scheduler.resetAfterCompilation();
         previewRenderer.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {

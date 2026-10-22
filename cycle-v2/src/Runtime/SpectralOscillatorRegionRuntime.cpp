@@ -16,7 +16,8 @@ bool SpectralOscillatorRegionRuntime::prepare(
         double sampleRateToUse,
         const CycleDsp::UnisonVoiceLayout& layoutToUse,
         int controlIntervalSamplesToUse,
-        bool pitchIndependentControlToUse) {
+        bool pitchIndependentControlToUse,
+        int minimumFixedFrameSizeToUse) {
     if (maximumFrameCountToUse == 0
             || maximumCycleSamplesToUse <= 0
             || maximumFixedFrameSizeToUse <= 2
@@ -31,6 +32,9 @@ bool SpectralOscillatorRegionRuntime::prepare(
     maximumFrameCount = maximumFrameCountToUse;
     maximumCycleSamples = maximumCycleSamplesToUse;
     maximumFixedFrameSize = maximumFixedFrameSizeToUse;
+    minimumFixedFrameSize = jlimit(0, maximumFixedFrameSize,
+            minimumFixedFrameSizeToUse > 0
+                    ? Arithmetic::getNextPow2((float) minimumFixedFrameSizeToUse) : 0);
     sampleRate = sampleRateToUse;
     controlIntervalSamples = controlIntervalSamplesToUse;
     pitchIndependentControl = pitchIndependentControlToUse;
@@ -188,7 +192,7 @@ int SpectralOscillatorRegionRuntime::fixedFrameSizeFor(int midiNote) const {
     if (angleDelta <= 0.0) {
         return 0;
     }
-    return Arithmetic::getNextPow2((float) (1.0 / angleDelta));
+    return jmax(minimumFixedFrameSize, Arithmetic::getNextPow2((float) (1.0 / angleDelta)));
 }
 
 bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
@@ -224,7 +228,7 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
             : AudioPerformanceMetrics::timestampMicroseconds();
     const bool frameRendered = renderer.renderFrame(
                     fixedFrameSize,
-                    context.midiNote,
+                    roundToInt(context.midiPitchAt(context.blockSampleStart)),
                     context,
                     context.blockSampleStart,
                     0,
@@ -274,6 +278,7 @@ bool SpectralOscillatorRegionRuntime::initializeSharedFrames(
     }
     return refreshSharedFramesThrough(
             sharedFramePeriod,
+            context.blockSampleStart,
             context,
             renderer);
 }
@@ -345,7 +350,7 @@ bool SpectralOscillatorRegionRuntime::processFixedTime(
             }
             const double angleDelta =
                     CycleDsp::OscillatorLaneCore::angleDeltaForPitchUnit(
-                            context.midiNote,
+                            context.midiPitchAt(context.blockSampleStart + (size_t) sampleIndex),
                             layout[laneIndex].detuneCents,
                             pitch,
                             sampleRate);
@@ -406,7 +411,7 @@ bool SpectralOscillatorRegionRuntime::renderFixedTimeFrontier(
             : AudioPerformanceMetrics::timestampMicroseconds();
     const bool rendered = renderer.renderFrame(
             fixedFrameSize,
-            context.midiNote,
+            roundToInt(context.midiPitchAt(blockSampleOffsetFor(frontier, context))),
             context,
             blockSampleOffsetFor(frontier, context),
             (double) frontier,
@@ -436,6 +441,7 @@ bool SpectralOscillatorRegionRuntime::renderFixedTimeFrontier(
 
 bool SpectralOscillatorRegionRuntime::refreshSharedFramesThrough(
         double cycleStart,
+        size_t pitchSampleOffset,
         const PreparedOscillatorProcessContext& context,
         SpectralOscillatorFrameRenderer& renderer) {
     while (nextSharedFramePosition <= cycleStart) {
@@ -454,7 +460,9 @@ bool SpectralOscillatorRegionRuntime::refreshSharedFramesThrough(
                 : AudioPerformanceMetrics::timestampMicroseconds();
         const bool frameRendered = renderer.renderFrame(
                 fixedFrameSize,
-                context.midiNote,
+                roundToInt(context.midiPitchAt(std::min(
+                        pitchSampleOffset,
+                        blockSampleOffsetFor(frontier, context)))),
                 context,
                 blockSampleOffsetFor(frontier, context),
                 nextSharedFramePosition,
@@ -504,6 +512,7 @@ bool SpectralOscillatorRegionRuntime::renderCyclesUntilReady(
         }
         if (!refreshSharedFramesThrough(
                     nextCycleStart + sharedFramePeriod,
+                    blockSampleOffsetFor((uint64_t) nextCycleStart, context),
                     context,
                     renderer)
                 || !renderLaneCycle(nextLane, context, renderer)) {
@@ -537,6 +546,7 @@ bool SpectralOscillatorRegionRuntime::renderMultiLaneCyclesUntilReady(
                     lastSharedFramePosition)
                 && !refreshSharedFramesThrough(
                         nextSharedFramePosition,
+                        blockSampleOffsetFor((uint64_t) primaryLane.clock.cumulativePosition, context),
                         context,
                         renderer)) {
             return false;
@@ -581,7 +591,7 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
         pitch = context.pitchEnvelope[pitchIndex];
     }
     const double angleDelta = CycleDsp::OscillatorLaneCore::angleDeltaForPitchUnit(
-            context.midiNote,
+            context.midiPitchAt(blockSampleOffsetFor(cycleStart, context)),
             layout[laneIndex].detuneCents,
             pitch,
             sampleRate);
@@ -629,20 +639,30 @@ bool SpectralOscillatorRegionRuntime::renderLaneCycle(
 
         auto output = resampleScratch[(size_t) channel]
                 .withSize(lane.clock.samplesThisCycle);
-        auto& padding = lane.padding[(size_t) channel];
-        Resampling::resample(
-                composed,
-                output,
-                sourceToDestRatio,
-                padding[0],
-                padding[1],
-                padding[2],
-                padding[3],
-                padding[4],
-                padding[5],
-                padding[6],
-                lane.samplingSpillover[(size_t) channel],
-                Resampling::Hermite);
+        if (minimumFixedFrameSize > 0) {
+            CycleDsp::FixedTimeCyclicFrameCompositor::renderPeriodicFrame(
+                    composed,
+                    output,
+                    CycleDsp::CyclicFrameLaneRenderer::periodicLookupPhase(
+                            fixedFrameSize, 0.f, false)
+                            + ((double) cycleStart - cycleStartPosition) * angleDelta,
+                    angleDelta);
+        } else {
+            auto& padding = lane.padding[(size_t) channel];
+            Resampling::resample(
+                    composed,
+                    output,
+                    sourceToDestRatio,
+                    padding[0],
+                    padding[1],
+                    padding[2],
+                    padding[3],
+                    padding[4],
+                    padding[5],
+                    padding[6],
+                    lane.samplingSpillover[(size_t) channel],
+                    Resampling::Hermite);
+        }
         if (context.voice != nullptr
                 && context.voice->spectralStageCapture != nullptr
                 && renderer.frameRenderCount() > 0) {

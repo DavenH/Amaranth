@@ -3,6 +3,7 @@
 #include "App/Automation/NodeAuthoringAutomation.h"
 
 #include "App/Automation/CycleV2AutomationProtocol.h"
+#include "Graph/SynthesisCapabilities.h"
 #include "UI/NodeWorkspace.h"
 
 #include <utility>
@@ -11,6 +12,27 @@ namespace CycleV2 {
 
 using namespace juce;
 using namespace AutomationProtocol;
+
+namespace {
+
+var spectralAuthoring(const var& controls, const var& request, String& error) {
+    const auto note = request["midiNote"];
+    const auto frames = request.getProperty("cycleFrames", 2048);
+    if ((!note.isInt() && !note.isInt64()) || (int64) note < 0 || (int64) note > 127
+            || (!frames.isInt() && !frames.isInt64())
+            || (int64) frames < 2 || (int64) frames > 65536
+            || controls["model"]["schema"].toString() != "trimesh") {
+        error = "Spectral authoring requires a Trimesh, integer midiNote 0 to 127 and cycleFrames 2 to 65536";
+        return {};
+    }
+    std::vector<NodeParameter> parameters;
+    for (const auto& parameter : *controls["parameters"].getArray()) {
+        parameters.push_back({ parameter["id"].toString(), {}, parameter["value"].toString() });
+    }
+    return SynthesisCapabilities::spectralAuthoring(parameters, (int) note, (int) frames, error);
+}
+
+}
 
 CycleV2AutomationWorkspaceCommands::CycleV2AutomationWorkspaceCommands(
         NodeWorkspace& targetWorkspace,
@@ -77,6 +99,19 @@ var CycleV2AutomationWorkspaceCommands::addNode(const var& commandValue) {
     object->setProperty("nodeId", nodeId);
     object->setProperty("kind", kind);
     return okResult("addNode", data);
+}
+
+var CycleV2AutomationWorkspaceCommands::setPresetSequence(const var& commandValue) {
+    const auto* object = commandValue.getDynamicObject();
+    const auto sequence = PresetPresentationCodec::readSequenceJSON(
+            object != nullptr ? object->getProperty("sequence") : var());
+    if (!sequence.has_value()) {
+        return failedResult("setPresetSequence", "Invalid preset MIDI sequence");
+    }
+    if (!workspace.setPresetSequenceForAutomation(*sequence)) {
+        return failedResult("setPresetSequence", "Preset sequence cannot be edited during a gesture");
+    }
+    return okResult("setPresetSequence", snapshot());
 }
 
 var CycleV2AutomationWorkspaceCommands::moveNode(const var& commandValue) {
@@ -233,8 +268,24 @@ var CycleV2AutomationWorkspaceCommands::inspectNodeControls(const var& commandVa
     if (const auto* object = objectFor(data); object == nullptr || !(bool) object->getProperty("resolved")) {
         return failedResult("inspectNodeControls", "Unknown node: " + nodeId);
     }
+    if (commandValue.hasProperty("midiNote")) {
+        String error;
+        const auto authoring = spectralAuthoring(data, commandValue, error);
+        if (error.isNotEmpty()) {
+            return failedResult("inspectNodeControls", error);
+        }
+        objectFor(data)->setProperty("spectralAuthoring", authoring);
+    }
 
     return okResult("inspectNodeControls", data);
+}
+
+var CycleV2AutomationWorkspaceCommands::importImpulseResponse(const var& commandValue) {
+    String error;
+    const auto data = workspace.getCanvas().importImpulseResponseForAutomation(
+            commandValue, resolvePath(stringProperty(commandValue, "path")), error);
+    return error.isEmpty() ? okResult("importImpulseResponse", data)
+            : failedResult("importImpulseResponse", error);
 }
 
 var CycleV2AutomationWorkspaceCommands::setMorphSlider(const var& commandValue) {

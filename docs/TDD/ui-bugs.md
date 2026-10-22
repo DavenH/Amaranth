@@ -1,5 +1,45 @@
 # Cycle V2 UI Bug Notes
 
+## P2: Pinned comparison Spies remain stale after direct Guide edits
+
+Confirmed in a native Cycle V2 socket session on 2026-10-22: open the reed
+preset, select a wave reference, pin the output Spy and open the reed editor.
+Change `reedOnsetPhase` point 1 through `editGuideCurve`. Audio capture changes,
+but `comparison.captureCount` stays at 1 through the edit and its undo, even
+with Live refresh selected. The existing comparison callback was reached by
+Trimesh gestures, but not synchronous semantic edits or automation undo/redo.
+
+The fix reuses that callback after the canonical synchronous refresh and
+successful audio undo/redo. The workspace continues to suppress captures for a
+hidden shelf. `cycle-v2-agent-live-guide-authoring.json` covers commit/undo/redo;
+the raw trial and seeded audio proof are in `.context/sax-wave-comparison/`.
+
+## P2: Collapsing a tone group hides the cable segment after its inline pan
+
+On 2026-10-21, native review of the saxophone graph on exact app PID 27415
+showed a cable descending from each collapsed tone group to its pan handle,
+but the segment from that handle into the stereo Add disappeared. Reproduce
+with `.context/sax-anchor-fit/texture-layout-collapsed.cyclegraph`, or open
+`.context/sax-anchor-fit/texture-layout-expanded.cyclegraph` and collapse the
+existing Left tone and Right tone groups. Each group contains magnitude,
+phase and IFFT nodes; its inline `spectralLayer` pan remains outside the group.
+The graph still compiles with no validation or compile issues. Expected: one
+continuous visible route from the group through the pan into the Add.
+
+Native evidence: `.context/sax-anchor-layout-collapsed.png`, compared with
+`.context/sax-anchor-layout-expanded.png`; actual scene targets and document
+state are in `.context/sax-layout-{collapsed,expanded}-{inspectPointerTargets,snapshotState}.json`.
+The expanded view has all 21 node/pan/spy rectangles visible without overlap.
+
+Source-based hypothesis: `NodeCanvasScene::build` only merges an incoming
+IFFT-to-pan route when both edge endpoints are visible, while its separate
+outgoing-pan skip still runs because the pan and Add are visible. The collapsed
+upstream IFFT prevents the merge but does not prevent the skip. Relevant owners
+are `NodeCanvasScene`'s `inlinePanRoute`/`inlinePanSceneEdge` handling and
+`NodeGroupPresentation`'s boundary routing. Status: open; the saxophone presets
+keep both groups expanded as the verified presentation workaround. No routing
+or audio implementation was changed during this layout review.
+
 ## P3: Broad automation unit filter assumes a non-Static canvas mesh
 
 On 2026-10-22, folder-only automation relocation verification reached "Canvas

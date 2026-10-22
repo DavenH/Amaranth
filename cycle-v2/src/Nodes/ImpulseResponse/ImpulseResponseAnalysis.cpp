@@ -10,12 +10,16 @@
 #include <Curve/Rasterization/Rasterizer/FXRasterizer.h>
 #include <Util/Arithmetic.h>
 
+#include <cmath>
+
 namespace CycleV2 {
 
 namespace {
 
 constexpr int maximumSpectrumRows = 512;
 constexpr float frequencyTensionScale = 1000.f;
+constexpr double minimumImpulseSampleRate = 8000.0;
+constexpr double maximumImpulseSampleRate = 384000.0;
 
 void reduceMagnitudes(Buffer<float> source, std::vector<float>& destination) {
     const int destinationSize = jmin(source.size(), maximumSpectrumRows);
@@ -39,6 +43,45 @@ void reduceMagnitudes(Buffer<float> source, std::vector<float>& destination) {
 
 }
 
+bool isSupportedImpulseResponseSampleRate(double sampleRate) {
+    return std::isfinite(sampleRate)
+            && sampleRate >= minimumImpulseSampleRate
+            && sampleRate <= maximumImpulseSampleRate;
+}
+
+std::vector<float> resampleImpulseResponse(
+        const std::vector<float>& samples,
+        double sourceSampleRate,
+        double destinationSampleRate,
+        int destinationSampleCount) {
+    const int maximumOutputSamples = (int) std::ceil(
+            CycleDsp::irImpulseLength(1.0) * maximumImpulseSampleRate / impulseResponseReferenceSampleRate);
+    if (samples.empty() || destinationSampleCount <= 0 || destinationSampleCount > maximumOutputSamples
+            || !isSupportedImpulseResponseSampleRate(sourceSampleRate)
+            || !isSupportedImpulseResponseSampleRate(destinationSampleRate)) {
+        return {};
+    }
+
+    std::vector<float> result((size_t) destinationSampleCount);
+    if (sourceSampleRate == destinationSampleRate) {
+        VecOps::copy(samples.data(), result.data(),
+                jmin((int) samples.size(), destinationSampleCount));
+        return result;
+    }
+
+    auto* inputChannel = const_cast<float*>(samples.data());
+    juce::AudioBuffer<float> inputBuffer(&inputChannel, 1, (int) samples.size());
+    juce::MemoryAudioSource input(inputBuffer, false);
+    juce::ResamplingAudioSource resampler(&input, false, 1);
+    resampler.setResamplingRatio(sourceSampleRate / destinationSampleRate);
+    resampler.prepareToPlay(destinationSampleCount, destinationSampleRate);
+    auto* outputChannel = result.data();
+    juce::AudioBuffer<float> outputBuffer(&outputChannel, 1, destinationSampleCount);
+    resampler.getNextAudioBlock({ &outputBuffer, 0, destinationSampleCount });
+    resampler.releaseResources();
+    return result;
+}
+
 std::optional<ImpulseResponseSource> prepareImpulseResponseSource(
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model,
@@ -48,14 +91,17 @@ std::optional<ImpulseResponseSource> prepareImpulseResponseSource(
             parameterMap.floatValue("size", 0.5f));
 
     ImpulseResponseSource result;
-    result.rawImpulse.resize((size_t) impulseLength);
-    result.displayImpulse.resize((size_t) impulseLength);
-    Buffer<float> rawImpulseBuffer(result.rawImpulse.data(), impulseLength);
     if (directResource != nullptr) {
-        const int copyCount = jmin(impulseLength, (int) directResource->samples.size());
-        VecOps::copy(directResource->samples.data(), rawImpulseBuffer.get(), copyCount);
+        result.rawImpulse = resampleImpulseResponse(directResource->samples.vector(),
+                directResource->sampleRate, impulseResponseReferenceSampleRate, impulseLength);
+        if (result.rawImpulse.empty()) {
+            return {};
+        }
         result.displayImpulse = result.rawImpulse;
     } else {
+        result.rawImpulse.resize((size_t) impulseLength);
+        result.displayImpulse.resize((size_t) impulseLength);
+        Buffer<float> rawImpulseBuffer(result.rawImpulse.data(), impulseLength);
         std::vector<float> oversampledImpulse((size_t) impulseLength * 2);
         Oversampler oversampler(8);
         oversampler.setOversampleFactor(2);

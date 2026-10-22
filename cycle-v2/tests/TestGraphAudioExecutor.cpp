@@ -10,6 +10,7 @@
 #include "Graph/GraphSerializer.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGridwiseDsp.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
@@ -2881,6 +2882,85 @@ TEST_CASE("Synchronous Envelope note preparation remains allocation-free on the 
     }
 }
 
+TEST_CASE("Eight live Envelope voices prepare without allocation or locks",
+        "[cycle-v2][runtime][realtime][envelope][live][performance]") {
+    std::vector<std::shared_ptr<const EnvelopeConfiguration>> configurations {
+            EnvelopeSignalProcessor::buildConfiguration({ { "dimensionCount", "Dimensions", "2" } })
+    };
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const auto loaded = GraphSerializer().loadJsonString(
+            File(String(CYCLE_V2_SOURCE_DIR)).getChildFile("content/presets/saxophone-3.cyclegraph")
+                    .loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const Node* pitch = loaded.graph.findNode("pitchEnvelope1");
+    REQUIRE(pitch != nullptr);
+    configurations.push_back(EnvelopeSignalProcessor::buildConfiguration(
+            pitch->parameters, pitch->model, &loaded.graph, pitch->id));
+#endif
+    for (const auto& configuration : configurations) {
+        REQUIRE(configuration != nullptr);
+        std::array<EnvelopeSignalProcessor, 8> processors;
+        std::array<AudioProcessContext, 8> contexts;
+        std::array<SignalPayload, 8> outputs;
+        AudioExecutionSpec spec;
+        spec.maximumFrameCount = 256;
+        spec.sampleRate = 48'000.;
+        for (size_t voice = 0; voice < processors.size(); ++voice) {
+            processors[voice].adoptConfiguration({ 1, "measured-envelope", configuration });
+            processors[voice].prepareExecution(spec);
+            auto& context = contexts[voice];
+            context.frameCount = spec.maximumFrameCount;
+            context.liveEnvelopeMorph = true;
+            context.captureTraversalGrid = false;
+            context.timing.sampleRate = spec.sampleRate;
+            context.inputs.push_back({});
+            context.inputs.front().block.samples = SignalBuffer { 0.2f };
+            context.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+            outputs[voice].block.samples.resize(spec.maximumFrameCount);
+            context.outputViews = { &outputs[voice] };
+            context.outputs.reserve(1);
+            context.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
+            processors[voice].process(context);
+            outputs[voice] = std::move(context.outputs.front());
+            context.voice.events.clear();
+        }
+        uint64_t maximumBlockNanoseconds = 0;
+        size_t allocationCount = 0;
+        size_t lockCount = 0;
+        {
+            ScopedRealtimeAllocationCount allocations;
+            ScopedRealtimeLockCount locks;
+            for (int block = 0; block < 32; ++block) {
+                const int64 startedAt = juce::Time::getHighResolutionTicks();
+                for (size_t voice = 0; voice < processors.size(); ++voice) {
+                    contexts[voice].inputs.front().block.samples.front()
+                            = block % 2 == 0 ? 0.8f : 0.2f;
+                    processors[voice].process(contexts[voice]);
+                    outputs[voice] = std::move(contexts[voice].outputs.front());
+                }
+                const uint64_t blockNanoseconds = (uint64_t) (1.e9
+                        * juce::Time::highResolutionTicksToSeconds(
+                                juce::Time::getHighResolutionTicks() - startedAt));
+                maximumBlockNanoseconds = std::max(maximumBlockNanoseconds, blockNanoseconds);
+            }
+            allocationCount = allocations.count();
+            lockCount = locks.count();
+        }
+        INFO("cubes=" << configuration->mesh->getCubes().size()
+                << " eight-voice maximum process ns=" << maximumBlockNanoseconds);
+        REQUIRE(allocationCount == 0);
+        REQUIRE(lockCount == 0);
+        REQUIRE(maximumBlockNanoseconds > 0);
+        for (const auto& processor : processors) {
+            const auto& diagnostics = processor.realtimePreparationDiagnostics();
+            REQUIRE(diagnostics.attempts == 33);
+            REQUIRE(diagnostics.failures == 0);
+            REQUIRE(diagnostics.highWater.waveformSamples
+                    <= configuration->realtimePlan.capacity.waveformSamples);
+        }
+    }
+}
+
 TEST_CASE(
         "Prepared Trimesh traversal rendering performs no heap allocations",
         "[cycle-v2][runtime][realtime][trimesh]") {
@@ -2932,4 +3012,166 @@ TEST_CASE("Realtime observation is optional and fan-out shares compiled slot sto
     REQUIRE(observer.preparedCollections);
     REQUIRE(observer.sourceSamples != nullptr);
     REQUIRE(observer.consumerSamples == observer.sourceSamples);
+}
+
+TEST_CASE("Connected-note retargeting and glide perform no realtime allocations or locks",
+        "[cycle-v2][realtime][legato][allocation]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "voice", "noteMode", "Note Mode", "legato").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "voice", "portamento", "Portamento", "true").succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    juce::AudioBuffer<float> output(2, 256);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    REQUIRE(queue.enqueue(juce::MidiMessage::noteOn(1, 60, (juce::uint8) 100),
+            MidiEventSource::Hardware, 1.));
+    renderer.process(queue, channels, 2, 256, 44100., 1.);
+    REQUIRE(queue.enqueue(juce::MidiMessage::noteOn(1, 72, (juce::uint8) 100),
+            MidiEventSource::Hardware, 1.01 + 111. / 44100.));
+    REQUIRE(queue.enqueue(juce::MidiMessage::noteOff(1, 72),
+            MidiEventSource::Hardware, 1.01 + 199. / 44100.));
+    size_t allocations {};
+    size_t locks {};
+    {
+        ScopedRealtimeAllocationCount allocationCount;
+        ScopedRealtimeLockCount lockCount;
+        renderer.process(queue, channels, 2, 256, 44100., 1.01);
+        allocations = allocationCount.count();
+        locks = lockCount.count();
+    }
+    REQUIRE(allocations == 0);
+    REQUIRE(locks == 0);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
+}
+
+TEST_CASE("Eight connected voices report bounded declared-frame recipe costs",
+        "[cycle-v2][realtime][legato][performance]") {
+    for (const bool factory : { false, true }) {
+        for (const int interval : { 64, 256 }) {
+            NodeGraph graph = NodeGraph::createDemoGraph();
+            if (!factory) {
+                auto mesh = TrimeshMeshFactory::createDefaultMesh("MeasuredLegatoWaveform");
+                const auto* source = graph.findNode("waveMesh");
+                REQUIRE(source != nullptr);
+                REQUIRE(source->model != nullptr);
+                REQUIRE(GraphNodeStateEditor().replaceNodeModel(
+                        graph, "waveMesh", source->model->revision(),
+                        TrimeshNodeModelState::copyOf(*mesh, source->model->revision() + 1)).succeeded());
+                mesh->destroy();
+            }
+          #if defined(CYCLE_V2_SOURCE_DIR)
+            if (factory) {
+                const auto loaded = GraphSerializer().loadJsonString(
+                        juce::File(juce::String(CYCLE_V2_SOURCE_DIR))
+                                .getChildFile("content/presets/saxophone-3.cyclegraph").loadFileAsString());
+                REQUIRE(loaded.succeeded());
+                graph = loaded.graph;
+                REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                        graph, "pitchEnvelope1", "enabled", "Enabled", "false").succeeded());
+            }
+          #endif
+            REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                    graph, "voice", "noteMode", "Note Mode", "legato").succeeded());
+            REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                    graph, "voice", "pitchIndependentSpectralControl", "Spectral Clock", "true").succeeded());
+            REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                    graph, "voice", "controlInterval", "Control Interval", juce::String(interval)).succeeded());
+            const auto compiled = GraphCompiler().compile(graph);
+            REQUIRE(compiled.succeeded());
+            AudioExecutionSpec spec;
+            spec.maximumFrameCount = 512;
+            spec.sampleRate = 48000.;
+            auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+            RealtimeGraphRenderer renderer;
+            RealtimeMidiEventQueue queue;
+            renderer.setPreparedGraph(prepared.get());
+            renderer.setRandomSeedForTesting(1729);
+            for (int channel = 1; channel <= 8; ++channel) {
+                REQUIRE(queue.enqueue(juce::MidiMessage::noteOn(channel, 84, (juce::uint8) 100),
+                        MidiEventSource::Hardware, 1.));
+                REQUIRE(queue.enqueue(juce::MidiMessage::noteOn(channel, 48, (juce::uint8) 100),
+                        MidiEventSource::Hardware, 1. + 623. / 48000.));
+            }
+            juce::AudioBuffer<float> output(2, 512);
+            float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+            renderer.process(queue, channels, 2, 512, 48000., 1.);
+            uint64_t total {}, maximum {}, recipes {};
+            size_t allocations {}, locks {};
+            {
+                ScopedRealtimeAllocationCount allocationCount;
+                ScopedRealtimeLockCount lockCount;
+                for (int block = 1; block <= 32; ++block) {
+                    AudioPerformanceMetrics::RealtimeSample performance;
+                    const uint64_t start = AudioPerformanceMetrics::timestampMicroseconds();
+                    renderer.process(queue, channels, 2, 512, 48000., 1. + block * 512. / 48000., &performance);
+                    const uint64_t duration = AudioPerformanceMetrics::timestampMicroseconds() - start;
+                    total += duration;
+                    maximum = std::max(maximum, duration);
+                    recipes += performance.oscillatorRecipeRenderCount;
+                }
+                allocations = allocationCount.count();
+                locks = lockCount.count();
+            }
+            INFO("factory=" << factory << " interval=" << interval
+                    << " eight-voice mean-us=" << total / 32 << " max-us=" << maximum
+                    << " deadline-us=10666 recipe-renders=" << recipes);
+            REQUIRE(allocations == 0);
+            REQUIRE(locks == 0);
+            REQUIRE(recipes > 0);
+            REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 8);
+        }
+    }
+}
+
+TEST_CASE("Partially connected Modulation Triple outputs retain live controls without allocation",
+        "[cycle-v2][runtime][modulation][allocation]") {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::ModulationTriple, "partialTriple", {}));
+    graph.addEdge({ "partialTriple", "blue", "waveMesh", "blue",
+            PortDomain::ControlSignal, ConnectionKind::Signal });
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 8;
+    GraphAudioExecutor executor;
+    executor.prepareExecution(compiled.plan, spec);
+    AudioVoiceContext voice;
+    voice.controls.controllers[1] = .2f;
+    voice.controlEvents.push_back({ ControlEventKind::Controller, 3, 1, .8f });
+    class Observer final : public GraphProcessObserver {
+    public:
+        void nodeProcessed(const juce::String& id, const AudioProcessContext& context) override {
+            if (id == "partialTriple" && context.outputs.size() == 3
+                    && context.outputs[2].block.samples.size() == 8) {
+                emptyUnusedAxes = context.outputs[0].block.samples.empty()
+                        && context.outputs[1].block.samples.empty();
+                std::copy_n(context.outputs[2].block.samples.begin(), 8, blue.begin());
+                observed = true;
+            }
+        }
+        std::array<float, 8> blue {};
+        bool emptyUnusedAxes {};
+        bool observed {};
+    } observer;
+    REQUIRE(executor.processRealtime(compiled.plan, 8, {}, voice, &observer).isValid());
+    executor.prepareRealtimeVoiceExecution(compiled.plan, spec, 0);
+    executor.beginRealtimeVoiceMix(compiled.plan, 8);
+    size_t allocations {};
+    {
+        ScopedRealtimeAllocationCount count;
+        executor.processRealtimeVoiceToMix(compiled.plan, 8, {}, voice);
+        allocations = count.count();
+    }
+    REQUIRE(allocations == 0);
+    REQUIRE(observer.observed);
+    REQUIRE(observer.emptyUnusedAxes);
+    REQUIRE((observer.blue == std::array<float, 8> { .2f, .2f, .2f, .8f, .8f, .8f, .8f, .8f }));
 }

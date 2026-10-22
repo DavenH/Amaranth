@@ -77,6 +77,9 @@ namespace Rasterization {
         bool prepare(const RealtimeEnvelopePlan& plan);
         bool materialize(const MorphPosition& morph);
         bool materialize(float red, float blue) { return materialize(MorphPosition(0.f, red, blue)); }
+        bool stage(const MorphPosition& morph);
+        bool stage(float red, float blue) { return stage(MorphPosition(0.f, red, blue)); }
+        void adoptStaged();
 
         PreparedEnvelopePlaybackView preparedPlaybackView() const;
         const RealtimeEnvelopeMaterializationDiagnostics& diagnostics() const {
@@ -98,6 +101,7 @@ namespace Rasterization {
         Slot slots[2];
         int activeSlot {};
         bool hasActiveResult {};
+        bool hasStagedResult {};
         RealtimeEnvelopePlan activePlan;
         RealtimeEnvelopeMaterializationDiagnostics instrumentation;
     };

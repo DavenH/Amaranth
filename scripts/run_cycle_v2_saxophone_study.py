@@ -19,43 +19,11 @@ from cycle_performance_suite import content_hash
 from cycle_reference_study import collect_study, file_digest
 from cycle_saxophone_study import (DEFAULT_PLAN, assert_peak_only, assert_unused_cc118,
                                    economy, load_plan, peak_edit)
+from cycle_study_artifacts import freeze_objective, frozen_inputs, reference_inputs, verify, verify_objective, write
 from render_cycle_v2_performance_suite import render_suite
 from report_cycle_auditions import generate_report
 
 ROOT = Path(__file__).resolve().parents[1]
-MUTABLE = {"freeze.json", "results.json", "index.html"}
-
-
-def write(path, value):
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(value, indent=2, allow_nan=False) + "\n")
-    temporary.replace(path)
-
-
-def verify(identities):
-    for name, digest in identities.items():
-        if file_digest(name) != digest:
-            raise ValueError(f"Frozen input changed: {name}")
-
-
-def frozen_inputs(plan, output, engine):
-    if (output / "audit").exists():
-        raise ValueError("Audit output already exists; it cannot be overwritten or resumed")
-    freeze = json.loads((output / "freeze.json").read_text())
-    results = json.loads((output / "results.json").read_text())
-    if (freeze.get("schema") != "cycle-saxophone-freeze.v1"
-            or results.get("status") != "objective-complete"
-            or results.get("freezeSha256") != file_digest(output / "freeze.json")
-            or freeze["planPath"] != plan["path"]
-            or any(freeze["inputs"].get(key) != value for key, value in plan["identities"].items())
-            or freeze["engineSha256"] != engine["executableSha256"]):
-        raise ValueError("Objective freeze, plan or engine identity disagrees")
-    verify(freeze["inputs"])
-    for name, digest in freeze["artifacts"].items():
-        path = (output / name).resolve()
-        if not path.is_relative_to(output.resolve()) or file_digest(path) != digest:
-            raise ValueError(f"Frozen objective artifact changed: {name}")
-    return results
 
 
 def phases(case):
@@ -152,6 +120,8 @@ def run_stage(plan, output, stage, send, engine):
             invoke({"command": "openGraph", "path": str(output / "candidate.cyclegraph"), "includeSnapshot": False})
             if export("reloaded.cyclegraph") != after:
                 raise RuntimeError("Candidate changed on reload")
+            authored_inputs = {str(output / (name + ".cyclegraph")): file_digest(output / (name + ".cyclegraph"))
+                               for name in ("baseline", "candidate")}
             result.update(economy={"baseline": economy(json.loads(before)), "candidate": economy(json.loads(after))},
                           semanticEdit={"recipe": recipe, "oneFactor": True, "undoRedoReloadExact": True})
             reference_path = collect_study(plan["referenceStudy"], output / "reference-analysis", invoke)
@@ -201,19 +171,11 @@ def run_stage(plan, output, stage, send, engine):
             verify(plan["identities"])
             result.update(status="objective-complete", objectiveSummary=intervention["objectiveSummary"])
             write(output / "objective-results.json", result)
-            inputs = dict(plan["identities"])
-            for analysis in (output / "reference-analysis/analyses").glob("*.json"):
-                record = json.loads(analysis.read_text())
-                inputs[record["audioPath"]] = next(observed["sourceAudioSha256"] for observed in references["observations"]
-                                                  if observed["referenceId"] == record["referenceId"])
-            verify(inputs)
-            freeze = {"schema": "cycle-saxophone-freeze.v1", "planPath": plan["path"], "inputs": inputs,
-                "engineSha256": engine["executableSha256"], "artifacts": {
-                    str(path.relative_to(output)): file_digest(path) for path in output.rglob("*")
-                    if path.is_file() and str(path.relative_to(output)) not in MUTABLE}}
-            write(output / "freeze.json", freeze)
-            result["freezeSha256"] = file_digest(output / "freeze.json")
+            inputs = {**plan["identities"], **authored_inputs}
+            inputs.update(reference_inputs(reference_path))
+            result["freezeSha256"] = freeze_objective(plan, output, engine, inputs)
         else:
+            verify_objective(plan, output, engine)
             result.update(status="complete", audit={"selectedCandidateUnchanged": True,
                 "reservedPerformanceCases": [case["id"] for case in suite["cases"]],
                 "engine": engine, "report": "audit/withheld/index.html"})

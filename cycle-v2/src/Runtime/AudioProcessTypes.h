@@ -150,6 +150,11 @@ struct TimedControlEvent {
     float value {};
 };
 
+struct TimedNoteRetarget {
+    size_t sampleOffset {};
+    int noteNumber {};
+};
+
 struct AudioVoiceControls {
     int noteNumber { 60 };
     int lowestNote { Constants::LowestMidiNote };
@@ -173,6 +178,8 @@ struct AudioVoiceControls {
 struct AudioVoiceContext {
     int voiceIndex {};
     int oscillatorNoteNumber { -1 };
+    Buffer<float> oscillatorPitchOffsets;
+    std::vector<TimedNoteRetarget> noteRetargets;
     std::vector<NoteLifecycleEvent> events;
     AudioVoiceControls controls;
     std::vector<TimedControlEvent> controlEvents;
@@ -253,6 +260,7 @@ struct AudioProcessWorkArena {
 
 struct AudioProcessContext {
     size_t frameCount {};
+    bool liveEnvelopeMorph {};
     size_t traversalColumnCount {};
     double traversalDurationSeconds {};
     AudioProcessTiming timing;

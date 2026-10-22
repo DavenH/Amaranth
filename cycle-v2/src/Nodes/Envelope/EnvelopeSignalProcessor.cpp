@@ -2,6 +2,8 @@
 #include "Runtime/MorphInputs.h"
 #include <Curve/Rasterization/PreparedMeshSlice.h>
 
+#include <algorithm>
+
 #include <Curve/Rasterization/Policies/Curves/CurvePolicies.h>
 #include <Util/Arithmetic.h>
 
@@ -168,6 +170,7 @@ void EnvelopeSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
     }
 
     activeConfiguration = configuration;
+    hasPreparedMorph = false;
     if (!materializer.prepare(configuration->realtimePlan)
             || (configuration->cycleGuideRequired
                     && !cycleMaterializer.prepare(configuration->cycleRealtimePlan))) {
@@ -216,9 +219,10 @@ Rasterization::PreparedEnvelopePlaybackView EnvelopeSignalProcessor::cycleEnvelo
     return preparedPlaybackView();
 }
 
-bool EnvelopeSignalProcessor::prepareNoteEnvelope(
+bool EnvelopeSignalProcessor::prepareEnvelope(
         const AudioProcessContext& context,
-        size_t sampleOffset) {
+        size_t sampleOffset,
+        bool preservePlayback) {
     if (activeConfiguration == nullptr) {
         return false;
     }
@@ -230,11 +234,29 @@ bool EnvelopeSignalProcessor::prepareNoteEnvelope(
     const MorphInputs inputs { { inputAt(context, 2), inputAt(context, 0), inputAt(context, 1) } };
     const auto morph = inputs.resolve(activeConfiguration->morph,
             MorphDimensions(activeConfiguration->dimensionCount), sampleOffset);
-    if (!materializer.materialize(morph)) {
+    if (preservePlayback && hasPreparedMorph
+            && morph.time == preparedMorph.time
+            && morph.red == preparedMorph.red
+            && morph.blue == preparedMorph.blue) {
+        return true;
+    }
+    const auto previous = preparedPlaybackView();
+    if (!materializer.stage(morph)
+            || (activeConfiguration->cycleGuideRequired
+                    && !cycleMaterializer.stage(morph))) {
         return false;
     }
-    return !activeConfiguration->cycleGuideRequired
-            || cycleMaterializer.materialize(morph);
+    materializer.adoptStaged();
+    if (activeConfiguration->cycleGuideRequired) {
+        cycleMaterializer.adoptStaged();
+    }
+    if (preservePlayback) {
+        playback.adopt(previous, preparedPlaybackView());
+    }
+    preparedMorph = morph;
+    hasPreparedMorph = true;
+    ++preparedGeneration;
+    return true;
 }
 
 void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
@@ -261,6 +283,16 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         size_t rendered = 0;
 
         const auto& voice = processVoice(context);
+        const bool lifecycleAtStart = std::any_of(
+                voice.events.begin(), voice.events.end(), [&](const auto& event) {
+                    return event.voiceIndex == voice.voiceIndex
+                            && (event.sampleOffset == 0
+                                    || event.type == NoteLifecycleType::NoteOn);
+                });
+        if (context.liveEnvelopeMorph && active && !released
+                && current->enabled && !lifecycleAtStart) {
+            prepareEnvelope(context, 0, true);
+        }
         const double sampleRateIncrement = context.timing.sampleRate > 0.
                 ? 1. / context.timing.sampleRate
                 : 0.;
@@ -381,7 +413,8 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(
 
     switch (event.type) {
         case NoteLifecycleType::NoteOn:
-            if (!prepareNoteEnvelope(context, sampleOffset)) {
+            released = false;
+            if (!prepareEnvelope(context, sampleOffset, false)) {
                 active = false;
                 fadingIn = false;
                 fadingOut = false;
@@ -396,6 +429,7 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(
             break;
 
         case NoteLifecycleType::NoteOff:
+            released = true;
             if (!current->enabled || !playback.noteOff(preparedPlaybackView())) {
                 fadingOut = current->volumePurpose && current->declick;
                 releaseSamplePosition = 0;
@@ -404,6 +438,7 @@ void EnvelopeSignalProcessor::applyLifecycleEvent(
             break;
 
         case NoteLifecycleType::Reset:
+            released = true;
             playback.noteOn();
             active = false;
             fadingIn = false;

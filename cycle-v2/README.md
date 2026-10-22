@@ -65,7 +65,7 @@ The first command surface supports `snapshotState`, `inspectTargets`,
 `assertState`, `exportGraph`, `openGraph`, `saveGraph`, `listMenuItems`,
 `invokeMenuItem`, `listPaletteItems`, `invokePaletteItem`, `captureAudio`,
 `openNodeEditor`, `openMeshPopup`, `addNode`, `moveNode`, `connectPorts`,
-`deleteNode`, `deleteEdge`, `setNodeParameter`, `inspectNodeControls`,
+`deleteNode`, `deleteEdge`, `setNodeParameter`, `inspectNodeControls`, `importImpulseResponse`,
 `setMorphSlider`, `setPrimaryAxis`, `toggleLink`, `selectVertex`,
 `setVertexParameter`, `pointer`, `assertNodeParameter`, `screenshot`,
 `waitForIdle`, and `quit`. Reports are JSON files with per-command results plus
@@ -79,6 +79,13 @@ returned `targetId` directly. `inspectOpenGLDiagnostics` reports the canvas GL
 underlay plus expanded Trimesh 3D/2D panel host creation, visibility, and
 bounds; with OS screenshots enabled, the smoke runner asserts luma stats for
 the diagnostics-discovered GL panel regions.
+
+`importImpulseResponse` requires `nodeId`, `path`, and explicit `mode` (`direct`
+or `modelled`). It reuses the editor's normalized, trimmed, embedded IR import;
+modelled mode uses the existing editable-curve fitter. One undo restores the
+previous resource, size and model. The response includes source rate, retained
+sample count, IR length, actual processing parameters and committed revisions.
+Source samples retain their original rate without output-rate resampling.
 
 ## Synthesis Capability Discovery
 

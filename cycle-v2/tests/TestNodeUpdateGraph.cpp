@@ -146,6 +146,24 @@ TEST_CASE("Standalone commits do not leak their gesture into later movement",
     REQUIRE(movementCommit.gestureId == movement->gestureId);
 }
 
+TEST_CASE("Resetting cached requests preserves an active gesture cancellation baseline",
+        "[cycle-v2][runtime][causal][guide-reopen]") {
+    SemanticEditGate gate;
+    REQUIRE(gate.accept("editor:mesh", 10, EditPhase::Commit).has_value());
+    const auto first = gate.accept("editor:mesh", 11);
+    REQUIRE(first.has_value());
+
+    gate.invalidateSources();
+    const auto refreshed = gate.accept("editor:mesh", 11);
+    REQUIRE(refreshed.has_value());
+    REQUIRE(refreshed->editId > first->editId);
+    REQUIRE(refreshed->gestureId == first->gestureId);
+    gate.cancelGesture("editor:mesh");
+
+    REQUIRE_FALSE(gate.accept("editor:mesh", 10, EditPhase::Commit).has_value());
+    REQUIRE(gate.accept("editor:mesh", 11, EditPhase::Commit).has_value());
+}
+
 TEST_CASE("Commit reuses an already current live product", "[cycle-v2][runtime][causal]") {
     NodeUpdateGraph graph;
     const auto plan = causalDiamondPlan();

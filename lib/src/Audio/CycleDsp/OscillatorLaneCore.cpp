@@ -27,7 +27,7 @@ double OscillatorLaneCore::legacyNeutralAngleDelta(
 }
 
 double OscillatorLaneCore::angleDeltaForPitchUnit(
-        int midiNote,
+        double midiNote,
         float detuneCents,
         float pitchUnitValue,
         double sampleRate) {

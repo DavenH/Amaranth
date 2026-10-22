@@ -241,7 +241,8 @@ bool writeCapture(
 
     path.getParentDirectory().createDirectory();
     std::unique_ptr<FileOutputStream> stream(path.createOutputStream());
-    if (stream == nullptr || !stream->openedOk()) {
+    if (stream == nullptr || !stream->openedOk()
+            || !stream->setPosition(0) || stream->truncate().failed()) {
         error = "Could not open audio capture path: " + path.getFullPathName();
         return false;
     }

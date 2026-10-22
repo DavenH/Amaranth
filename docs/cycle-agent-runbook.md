@@ -479,6 +479,45 @@ not validate saxophone expression across the synthetic test performances. See
 `cycle-v2/content/studies/expressive-sax/README.md` and the pilot TDD for coverage,
 control timing and the still-open acoustic/search gate.
 
+The follow-up VCSL calibration uses downloaded, pinned CC0 originals at native
+48 kHz. Supply the corpus directory containing `download-manifest.json`,
+`selection.json`, `LICENSE` and the original `audio/` tree:
+
+Use `cycle-v2/content/studies/expressive-sax/vcsl-corpus/README.md` to reconstruct
+that corpus from the tracked acquisition records when starting from a fresh
+checkout.
+
+```sh
+python3 scripts/run_cycle_v2_saxophone_calibration.py --stage objective --corpus-root /path/to/vcsl --output-dir .context/sax-calibration
+python3 scripts/run_cycle_v2_saxophone_calibration.py --stage audit --corpus-root /path/to/vcsl --output-dir .context/sax-calibration
+```
+
+The fixed plan reserves four D3 parents before decoding them. Objective hashes
+all twelve files, compares eight sources and freezes a single pitch-envelope
+ablation; audit decodes the reserved four with no candidate edits. Reference,
+intervention and pitch-trace reports retain raw timing and confidence. Pitch
+frames describe the effective library path, not raw detector observations.
+Source velocity and control settings remain unknown. See
+`docs/TDD/cycle-v2-saxophone-reference-calibration.md`; straighter tracked pitch
+alone does not establish timbre, taste, economy or an expressive saxophone.
+
+To author the core articulation preset and its embedded 28-second MIDI/CC phrase,
+use the canonical semantic editor and the existing performance/audition owners:
+
+```sh
+python3 scripts/create_cycle_v2_saxophone_articulation.py --no-build --output-dir .context/sax-articulation
+```
+
+Build `CycleV2` first and install `scripts/requirements-auditions.txt` in the
+invoking Python environment. Each output directory is new. The driver verifies
+shape undo/redo, save/reload, invalid sequence rejection, independent controls,
+connected notes and exact repeated captures. Its saved graph contains the
+controller lanes; load it and use the keyboard's Play button to hear the phrase.
+The report provides raw and RMS-matched comparisons plus the complete phrase.
+These are technical control demonstrations; acoustic growl and human taste
+still require listening. See `cycle-v2-expressive-saxophone-articulation.md` in
+`docs/TDD/` for the live-envelope cadence and legato contract.
+
 ## Crash And Assertion Triage
 
 Use a minimal fixture and inspect its report, `run.json`, and scoped app logs.

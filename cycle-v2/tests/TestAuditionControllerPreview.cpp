@@ -2,10 +2,12 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "NodeGraphTestAccess.h"
+#include "EnvelopeAuthoringTestSupport.h"
 
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphDocument.h"
+#include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/GraphSerializer.h"
@@ -15,6 +17,7 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/Editor/EnvelopePanelAdapter.h"
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/RealtimeGraphRenderer.h"
 #include "UI/PerformanceKeyboard.h"
@@ -100,6 +103,80 @@ TEST_CASE("Audition controllers preserve document history and scope preview work
         REQUIRE(presentation.audioPlanRevision() == audioRevision);
         REQUIRE(presentation.compilationCount() == compilations);
         REQUIRE(presentation.previewAudioProcessCount("unrelated0") == unrelatedProcesses);
+    }
+}
+
+TEST_CASE("Envelope-only default controllers refresh downstream spies through effective routes",
+        "[cycle-v2][preview-controller][preview-cc][envelope][probe][mapping]") {
+    ScopedJuceInitialiser_GUI juce;
+    TestSupport::EnvelopeAuthoringCurveTables tables;
+    GraphNodeFactory factory;
+    GraphNodeStateEditor state;
+    for (const bool explicitOverride : { false, true }) {
+        NodeGraph graph = TestSupport::authoredEnvelopeGraph(2);
+        graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+        graph.addNode(factory.createNode(NodeKind::ModulationTriple, "morph", {}));
+        graph.addNode(factory.createNode(NodeKind::ModulationSource, "constant", {}));
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        REQUIRE(state.setNodeParameter(graph, "constant", "source", "Source", "constant").succeeded());
+        REQUIRE(state.setNodeParameter(graph, "morph", "blueSource", "Blue Source", "constant").succeeded());
+        REQUIRE(state.setNodeParameter(graph, "morph", "envelopeYellowSource", "Envelope Yellow Source", "midiCC").succeeded());
+        REQUIRE(state.setNodeParameter(graph, "morph", "envelopeYellowController", "Envelope Yellow Controller", "77").succeeded());
+        REQUIRE(state.setNodeParameter(graph, "morph", "envelopeRedSource", "Envelope Red Source", "midiCC").succeeded());
+        REQUIRE(state.setNodeParameter(graph, "morph", "envelopeRedController", "Envelope Red Controller", "76").succeeded());
+        REQUIRE(state.setNodeParameter(graph, "morph", "envelopeBlueSource", "Envelope Blue Source", "constant").succeeded());
+        auto mesh = TrimeshMeshFactory::createDefaultMesh("EnvelopeControllerSpy");
+        REQUIRE(graph.replaceNodeModel("mesh", TrimeshNodeModelState::takeOwnership(std::move(mesh), 1)));
+        GraphEditor editor;
+        REQUIRE(editor.connect(graph, { "morph", "modulation", false }, { "voice", "modulation", true }).succeeded());
+        REQUIRE(editor.connect(graph, { "mesh", "out", false }, { "multiply", "left", true }).succeeded());
+        REQUIRE(editor.connect(graph, { "env", "env", false }, { "multiply", "right", true }).succeeded());
+        REQUIRE(editor.connect(graph, { "multiply", "out", false }, { "out", "time", true }).succeeded());
+        REQUIRE(editor.toggleSignalProbe(graph, graph.getEdges().size() - 1, .5f).succeeded());
+        if (explicitOverride) {
+            REQUIRE(editor.connect(graph, { "constant", "value", false }, { "env", "red", true }).succeeded());
+        }
+        GraphPresentationModel presentation;
+        REQUIRE(presentation.refresh(graph, 1));
+        REQUIRE(presentation.hasControllerPreviewRoots(76) == !explicitOverride);
+        REQUIRE_FALSE(presentation.hasControllerPreviewRoots(77));
+        REQUIRE_FALSE(presentation.hasControllerPreviewRoots(1));
+        const auto& targets = presentation.controllerMorphTargets(76);
+        REQUIRE(targets.size() == (explicitOverride ? 0 : 1));
+        if (!explicitOverride) {
+            REQUIRE(targets.front().nodeId == "env");
+            REQUIRE(targets.front().parameterId == "red");
+            const auto& buffers = presentation.compileResult().plan.buffers;
+            REQUIRE(std::any_of(buffers.begin(), buffers.end(), [](const auto& buffer) {
+                return buffer.sourceNodeId == "voice"
+                        && buffer.defaultModulationSlot == DefaultModulationSlot::Red
+                        && buffer.envelopeModulationProfile;
+            }));
+        }
+        const auto spyValues = [&]() {
+            const auto& probes = presentation.previewResult().probes;
+            REQUIRE(probes.size() == 1);
+            return probes.front().values;
+        };
+        const auto compilationCount = presentation.compilationCount();
+        const auto audioRevision = presentation.audioPlanRevision();
+        const auto unrelatedProcesses = presentation.previewAudioProcessCount("constant");
+        const auto meshProcesses = presentation.previewAudioProcessCount("mesh");
+        REQUIRE(presentation.refreshPreviewControllerValue(graph, 1, 76, 16));
+        const auto lowerSpy = spyValues();
+        REQUIRE_FALSE(lowerSpy.empty());
+        REQUIRE(presentation.refreshPreviewControllerValue(graph, 1, 76, 112));
+        const auto higherSpy = spyValues();
+        CHECK((higherSpy != lowerSpy) == !explicitOverride);
+        const auto renders = presentation.previewRenderCount();
+        REQUIRE(presentation.refreshPreviewControllerValue(graph, 1, 77, 100));
+        CHECK(presentation.previewRenderCount() == renders);
+        CHECK(presentation.compilationCount() == compilationCount);
+        CHECK(presentation.audioPlanRevision() == audioRevision);
+        CHECK(presentation.previewAudioProcessCount("constant") == unrelatedProcesses);
+        CHECK(presentation.previewAudioProcessCount("mesh") == meshProcesses);
     }
 }
 

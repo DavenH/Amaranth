@@ -4,6 +4,132 @@
 
 Implemented (2026-08-27).
 
+Automation follow-up (2026-10-21): `importImpulseResponse` accepts `nodeId`,
+`path` and an explicit `mode` (`direct` or `modelled`). The App adapter calls
+the existing `ImpulseResponseResourcePreparation::prepare`, then publishes its
+complete edit through `GraphCommandDispatcher::setNodeAudioResource`. No second
+decoder, trim, modeller, parameter mapping or resource codec is introduced.
+Wrong node types, invalid paths/modes and active gestures reject without edits.
+The result reports the retained normalized sample count and source rate, chosen
+IR length, actual stored processing parameters and committed model/document
+revisions. The resource remains embedded and portable in either mode.
+
+The automation service owns request validation and preparation orchestration;
+the canvas only delegates and refreshes its existing presentation/editor
+collaborators after success. The existing large canvas retains this thin adapter
+to its document/dispatcher owners; IR policy stays outside it. Focused tests
+exercise real WAV import, audible kernel preparation, save/reload after deleting
+the source, one-step undo/redo, and rejection atomicity. The exact app and test
+targets build; focused IR tests pass 162 assertions in five cases. The rebuilt
+owned reed-study app imports a 48 kHz authored body response in modelled mode,
+retains 215 normalized source samples, selects a 256-sample IR and produces a
+37-vertex editable model. Source/filter captures and reload verification pass;
+the command and results are under `.context/sax-reed-core/ready/`.
+
+Graph persistence currently rounds curve coordinates and resource samples to five decimal
+places. This test bounds the audible kernel's reload error at 0.0002 absolute
+for its sharp impulse fixture and requires canonical serialized content to
+stabilize; undo/redo remains exact. This bounded fixture is not a guarantee for
+every long or steep IR. The separately recorded precision limitation in
+`audio-bugs.md` also affects the unsmoothed display curve.
+
+## M11: physical time and playback rate
+
+Status: Implementation, compiled-runtime regressions and rebuilt exact-app
+integration complete (2026-10-21).
+Preserve the mature editor's
+44.1 kHz reference timebase: the existing Size sample count and editable curve
+describe canonical 44.1 kHz samples. Existing curves require no new fields, rate parameters or
+migration. High Pass and preview remain in that same canonical domain.
+
+Imported resources retain their original normalized mono samples and source
+rate. Direct preparation resamples those samples to 44.1 kHz before applying
+Size and the existing prefilter. Model import fits that same canonical waveform
+and chooses Size there; Unload retains the self-contained canonical curve.
+The supported maximum Size therefore continues to bound canonical duration.
+
+The IR domain reuses JUCE's MemoryAudioSource / ResamplingAudioSource for
+offline waveform conversion, including its established antialias filter. The
+IR processor's existing off-thread `prepareExecution` boundary converts the
+completed canonical filtered kernel to the actual execution sample rate and
+scales it by canonical/output rate to preserve convolution response gain.
+Compiled configurations remain canonical and independent of device rate.
+The existing processor-cache preparation signature includes execution rate;
+the IR processor reuses its playback kernel until either the adopted
+configuration or rate changes, then invalidates its prepared convolvers.
+Source-to-canonical conversion preserves waveform amplitude so the editable
+model remains normalized; it does not introduce rate-dependent geometry gain.
+No resource decoding, conversion, modelling, allocation or device access enters
+realtime processing or a live editor gesture.
+
+IR conversion supports source and execution rates from 8 kHz through 384 kHz.
+The IR preparation owner validates this range and bounds converted sample counts
+before JUCE buffer allocation or integer conversion. Generic graph persistence
+may retain other positive rate metadata; attempting to prepare such an IR fails
+without publishing an invalid configuration.
+
+The mature import trim still caps retained input at 16,384 source samples
+before conversion. This limits high-rate import duration independently of
+canonical Size (42.7 ms at 384 kHz versus 371 ms at 44.1 kHz); the supported-rate
+range does not promise equal maximum retained source duration. This existing
+limitation is recorded separately in `audio-bugs.md` and is not changed by M11.
+
+The canonical model has a 22.05 kHz Nyquist limit; retaining a higher-rate source
+does not promise preservation of that source's ultrasonic bands in the prepared
+kernel. Previously imported 48 kHz experiments should reimport their retained
+body source before new tonal comparisons; their old curve coordinates carry no
+separate authored-rate field.
+
+Acceptance covers known modal frequency and decay at 44.1/48/96 kHz for direct
+and modelled imports, save/reload with source deletion, modelled Unload, unchanged
+retained source/rate, and playback-kernel invalidation after execution-rate change.
+The former copy-at-output-rate path and its automation policy claim must be
+removed. The rebuilt exact app reimported and captured the saxophone body
+through the corrected execution path; earlier pre-fix captures are provisional.
+
+The initial factory-only rate tests missed a production integration defect:
+GraphCompiler and GraphPresentationModel publish canonical 44.1 kHz
+configurations, while the executor passes the actual rate only to processor
+preparation. Moving conversion into that preparation boundary removes the
+unused factory-rate API and reaches realtime, offline-capture and diagnostic
+execution without adding device policy to the compiler or presentation model.
+
+Focused evidence: `CycleV2_tests` builds with `--parallel 10`; actual prepared
+processor and compiled-runtime rate tests pass 528 assertions in five cases.
+The broader IR/resource/configuration/realtime-safety selection passes 957
+assertions in 29 cases. Source and playback grids each cover 44.1/48/96 kHz, direct and
+modelled imports, a real 600 Hz damped resonance and 18 ms decay. Acceptance is
+within 3 Hz / 2 ms, and convolution magnitude within 2.5% at DC/200/600/3000 Hz
+across playback rates. Tests delete source files before reload, preserve source
+rate and bounded serialized sample precision, require unchanged modelled audio
+after Unload, and reject a persisted `1e300` source rate, invalid execution rates
+and an excessive output count before conversion. A compiled graph's real
+realtime-renderer path compares dry/wet known-tone transfer for direct and
+modelled modes at all three rates, within 4% of its canonical response.
+A retained processor also changes rate 44.1 -> 96 -> 48 -> 44.1 kHz without
+republishing its configuration. Existing IR properties, visual
+analysis, channel policy, post-gain, prefilter, split-block and tail tests pass.
+Receipts are under `.context/sax-reed-proud/m11/`.
+
+Responsibility review: Analysis owns the canonical source and shared offline
+conversion (196 lines); ResourcePreparation retains decode/trim/fit ownership
+(134 lines); the existing effect processor owns playback-kernel conversion
+inside execution preparation; the configuration factory retains canonical
+publication. The two App adapters only publish the
+shared policy metadata. No large production file crosses a size trigger, no
+realtime process method changes, and all conversion call sites remain in
+import and off-thread execution preparation. Architecture audit, code-map check
+and diff whitespace checks pass. Earlier full-instrument 96 kHz differences
+were measured while the actual executor still used an unconverted 44.1 kHz
+kernel; they did not establish a separate source/FFT limitation. Rebuilt app
+evidence in `.context/sax-reed-proud/ready-v3/` and
+`.context/sax-reed-proud/analysis/ready-v3-grid-assessment.json` shows the three note probes' 96 versus
+48 kHz harmonic-shape differences reduced from about 8.4 dB to 0.042–0.068 dB,
+centroid differences below 0.13%, and RMS differences below 0.032 dB. The
+44.1 versus 48 kHz probes differ by up to 0.349 dB harmonic shape and 1.20%
+centroid. These are bounded observations for this instrument, not a universal
+whole-graph rate-invariance guarantee.
+
 ## Objective
 
 Make the Impulse Response editor's Load, Model, and Unload actions truthful,

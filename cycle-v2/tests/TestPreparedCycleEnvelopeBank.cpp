@@ -4,10 +4,14 @@
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include <Curve/GuideCurveProvider.h>
+#include <Curve/Mesh/VertCube.h>
+#include <Curve/Rasterization/Sampling/WaveformSampler.h>
 
 #include "Graph/GraphSerializer.h"
+#include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Runtime/NodeAudioProcessor.h"
 #include "Runtime/PreparedCycleEnvelopeBank.h"
@@ -49,6 +53,73 @@ void prepareProcessor(
     };
     noteOn.voice.events.push_back({ NoteLifecycleType::NoteOn, 0, 0 });
     processor.process(noteOn);
+}
+
+TEST_CASE("Pitch bank reconciles live generations without changing configuration identity",
+        "[cycle-v2][envelope][runtime][live]") {
+    EnvelopeNodeModel model;
+    EnvelopeMesh& mesh = model.getMesh();
+    mesh.destroy();
+    constexpr float phases[] { 0.f, 0.45f, 1.f };
+    constexpr float amplitudes[] { 0.2f, 0.8f, 0.5f };
+    for (int cubeIndex = 0; cubeIndex < 3; ++cubeIndex) {
+        auto* cube = new VertCube(&mesh);
+        for (int vertexIndex = 0; vertexIndex < (int) VertCube::numVerts; ++vertexIndex) {
+            bool time, red, blue;
+            VertCube::getPoles(vertexIndex, time, red, blue);
+            Vertex* vertex = cube->getVertex(vertexIndex);
+            vertex->values[Vertex::Time] = time ? 1.f : 0.f;
+            vertex->values[Vertex::Red] = red ? 1.f : 0.f;
+            vertex->values[Vertex::Blue] = blue ? 1.f : 0.f;
+            vertex->values[Vertex::Phase] = cubeIndex == 1 && red ? 0.75f : phases[cubeIndex];
+            vertex->values[Vertex::Amp] = amplitudes[cubeIndex];
+            vertex->values[Vertex::Curve] = 0.5f;
+        }
+        mesh.addCube(cube);
+    }
+    mesh.loopCubes.insert(mesh.getCubes()[0]);
+    mesh.sustainCubes.insert(mesh.getCubes()[1]);
+    REQUIRE(model.synchronizeFromMesh(nullptr));
+    const auto configuration = EnvelopeSignalProcessor::buildConfiguration(
+            { { "purpose", "Purpose", "pitch" }, { "red", "Red", "0" },
+                    { "dimensionCount", "Dimensions", "2" } },
+            CurveNodeModelState::copyOf(model, 0.f, 0.5f, model.revision()));
+    REQUIRE(configuration != nullptr);
+    EnvelopeSignalProcessor processor;
+    prepareProcessor(processor, "pitch", configuration);
+    EnvelopeProcessorAdapter source(processor);
+    GraphExecutionPlan plan;
+    plan.dependencyIndex.stepIndexById["pitch"] = 0;
+    PreparedCycleEnvelopeBank bank;
+    REQUIRE(bank.prepare(plan, {}, { &source }, 2, "pitch"));
+    bank.applyLifecycleEvent({ NoteLifecycleType::NoteOn, 0, 0 });
+    bank.advanceLane(0, 67, 0.01);
+    bank.advanceLane(1, 80, 0.01);
+
+    AudioProcessContext update;
+    update.frameCount = 8;
+    update.liveEnvelopeMorph = true;
+    update.captureTraversalGrid = false;
+    update.inputs.push_back({});
+    update.inputs.back().block.samples = SignalBuffer { 1.f };
+    update.outputPorts = { { "env", PortDomain::EnvelopeSignal, ChannelLayout::Mono } };
+    processor.process(update);
+    // A low oscillator period can span several host blocks without advancing this bank.
+    for (const float red : { 0.2f, 0.4f, 1.f }) {
+        update.inputs.front().block.samples.front() = red;
+        processor.process(update);
+    }
+    REQUIRE(processor.cycleEnvelopeGeneration() == 5);
+    REQUIRE(processor.cycleEnvelopeConfiguration() == configuration.get());
+    const auto replacement = processor.cycleEnvelopePlaybackView();
+    const float expectedFirst = Rasterization::WaveformSampler::sampleAt(
+            replacement.loop.waveform, false, 0.22 / 0.45 * 0.75);
+    const float expectedSecond = Rasterization::WaveformSampler::sampleAt(
+            replacement.loop.waveform, false, 0.35 / 0.45 * 0.75);
+    bank.advanceAll(1, 0.01);
+    REQUIRE(bank.pitchValue(0) == Catch::Approx(expectedFirst));
+    REQUIRE(bank.pitchValue(1) == Catch::Approx(expectedSecond));
+    REQUIRE(bank.pitchValue(0) != Catch::Approx(bank.pitchValue(1)));
 }
 
 std::vector<std::array<float, 3>> renderPitchLanes(

@@ -3,6 +3,51 @@
 Status: implemented on 2026-08-31; document-replacement curve reset completed
 2026-09-09
 
+## 2026-10-21 Guide audio publication follow-up
+
+The reed study exposed a second document-lifecycle cache: reopening the
+original graph and repeating the same Guide-noise edit could retain the noisy
+audio plan. Full compilation cleared prepared-product fingerprints, but the
+semantic request gate still remembered that node stream's previous edit.
+It could reject the repeated request before configuration publication. Separately,
+Guide automation returned while its asynchronous refresh was still pending, so
+an immediately following scheduled capture could copy the preceding plan.
+
+After cancellation and full compilation, `PresentationRefreshScheduler` now
+resets both product fingerprints and request identities. `SemanticEditGate`
+invalidates effective-state comparisons while retaining monotonic identities,
+audit and active-gesture cancellation baselines. The session discards pending
+request identities without discarding dispatcher-owned graph gestures. This
+reset belongs to the existing compilation lifecycle, including graph-semantic
+changes; ordinary Guide movement retains its asynchronous update behavior.
+Committed Guide automation uses the existing synchronous canvas refresh boundary,
+so a later capture sees its prepared configuration before the command returns.
+
+The added work scales with cached source streams only at full compilation.
+There is no movement-time graph/mesh copy, replacement DSP, or new publication
+owner. The large canvas retains only its existing semantic-command and refresh
+adapter; gate/cache policy stays in the runtime session/scheduler collaborators.
+The old product-only reset and asynchronous committed-automation refresh are
+replaced, rather than kept as competing paths.
+
+The focused regression renders actual PCM before/after the same Guide edit,
+reopens the original document and repeats it. Before the fix, the second edit
+produces unchanged noisy PCM; evidence is `.context/guide-reopen-before.txt`.
+Afterward, incremental PCM matches a freshly compiled current graph without
+an extra topology compile. The focused reset/PCM/gesture checks pass 67
+assertions in three cases; adjacent causal, Guide and presentation-session
+checks pass 502 assertions in 38 cases. Separate checks protect active gesture
+commit, cancellation, one undo and its original effective-state baseline.
+
+The rebuilt owned app passes immediate capture after noise-zero publication
+and after reopening/repeating the edit. Both zero-noise captures have PCM hash
+`81e6acea607efa38fcc23a3b14f11b83bd1b600f559219417fee973c4c7b1253`;
+the noisy baseline differs. The verification also retains exact seeded repeats
+and zero-breath silence. Evidence is
+`.context/sax-reed-core/ready/verification.json` and its command log, with no
+export/reopen workaround. Architecture, style, code-map and diff checks pass;
+no additional DSP or graph-mutation path was introduced.
+
 ## Problem
 
 Presentation caches can outlive the graph content that produced them. This is

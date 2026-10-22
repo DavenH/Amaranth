@@ -14,6 +14,7 @@
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/MidiControlState.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
+#include "Runtime/VoiceNoteState.h"
 
 namespace CycleV2 {
 
@@ -27,6 +28,9 @@ public:
         AudioExecutionSpec spec;
         GraphAudioExecutor executor;
         ScopedAlloc<float> outputGainRamp;
+        ScopedAlloc<float> pitchRamps;
+        bool monophonicLegato {};
+        float portamentoSeconds {};
         uint64_t blockStorageValues {};
         uint64_t gridStorageValues {};
     };
@@ -107,10 +111,14 @@ private:
         uint64_t startOrder {};
         int midiChannel { 1 };
         int noteNumber { 60 };
+        int blockStartNote { 60 };
+        int oscillatorNoteNumber { 60 };
         float velocity { 1.f };
         float normalizedTime {};
         bool active {};
         bool released {};
+        VoiceNoteState notes;
+        size_t pitchRenderedThrough {};
     };
 
     void beginBlock();
@@ -120,9 +128,12 @@ private:
             double sampleRate,
             double callbackStartSeconds);
     void applyEvent(const RealtimeMidiEvent& event, size_t sampleOffset);
-    void releaseSource(MidiEventSource source, size_t sampleOffset);
-    void resetSource(MidiEventSource source, size_t sampleOffset);
+    void releaseSource(MidiEventSource source, size_t sampleOffset, int channel = 0);
+    void resetSource(MidiEventSource source, size_t sampleOffset, int channel = 0);
     Voice& allocateVoice(const RealtimeMidiEvent& event, size_t sampleOffset);
+    void retargetVoice(Voice& voice, int noteNumber, size_t sampleOffset);
+    void renderPitchThrough(Voice& voice, size_t sampleOffset);
+    size_t glideSamples() const;
     void renderVoices(
             float* const* outputChannels,
             int outputChannelCount,
@@ -141,6 +152,7 @@ private:
     PreparedGraph* preparedGraph {};
     CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
     std::array<Voice, voiceCount> voices;
+    std::array<std::array<std::array<uint16_t, 128>, 16>, 3> pendingStolenNoteOffs {};
     MidiControlState midiControls;
     std::array<RealtimeMidiEvent, maximumScheduledEvents> scheduledEvents;
     size_t scheduledEventCount {};
@@ -148,6 +160,7 @@ private:
     uint64_t nextVoiceOrder {};
     std::atomic<float> voiceDurationOverrideSeconds {};
     double volumeEnvelopeClockSampleRate {};
+    double currentSampleRate { 44100.0 };
     float outputGain { defaultOutputGain };
     SmoothedParameter graphOutputGain { 1.f };
     std::atomic<float> requestedGraphOutputGain { 1.f };

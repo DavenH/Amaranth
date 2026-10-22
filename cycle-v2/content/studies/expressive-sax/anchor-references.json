@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "Developmental tenor D3 layer anchors",
+  "references": [
+    {
+      "id": "BrettTenor_NV_Main_D3_vl2_rr1",
+      "source": "../../../../.context/sax-reference-downloads/vcsl/audio/Non-Vibrato/BrettTenor_NV_Main_D3_vl2_rr1.wav",
+      "labels": {
+        "sourceLayer": {"value": 2, "origin": "observed"},
+        "partition": {"value": "developmental", "origin": "observed"}
+      }
+    },
+    {
+      "id": "BrettTenor_NV_Main_D3_vl3_rr1",
+      "source": "../../../../.context/sax-reference-downloads/vcsl/audio/Non-Vibrato/BrettTenor_NV_Main_D3_vl3_rr1.wav",
+      "labels": {
+        "sourceLayer": {"value": 3, "origin": "observed"},
+        "partition": {"value": "developmental", "origin": "observed"}
+      }
+    }
+  ]
+}

@@ -109,6 +109,20 @@ TEST_CASE("Reverb factory carries immutable kernels across mix-only publications
     REQUIRE(wetEdit->wetLevel != first->wetLevel);
 }
 
+TEST_CASE("Compiled IR configurations retain the canonical sample-rate domain",
+        "[cycle-v2][runtime][configuration][ir-sample-rate]") {
+    const Node ir = GraphNodeFactory().createNode(NodeKind::ImpulseResponse, "ir", {});
+    const Node reverb = GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", {});
+    const NodeDspConfigurationFactory factory;
+    AudioExecutionSpec first;
+    AudioExecutionSpec second;
+    second.sampleRate = 96000.0;
+    REQUIRE(factory.keyFor(AudioModuleRole::ImpulseResponse, ir.parameters, ir.model, first)
+            == factory.keyFor(AudioModuleRole::ImpulseResponse, ir.parameters, ir.model, second));
+    REQUIRE(factory.keyFor(AudioModuleRole::Reverb, reverb.parameters, reverb.model, first)
+            == factory.keyFor(AudioModuleRole::Reverb, reverb.parameters, reverb.model, second));
+}
+
 TEST_CASE("Time Trimesh configuration applies its authored output gain",
         "[cycle-v2][runtime][configuration][trimesh]") {
     Node node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});

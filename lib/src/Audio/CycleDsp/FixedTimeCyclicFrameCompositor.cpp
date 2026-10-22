@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "FixedTimeCyclicFrameCompositor.h"
 
 #include <Algo/Resampling.h>
@@ -62,6 +64,21 @@ float FixedTimeCyclicFrameCompositor::samplePeriodicFrame(
             frame[(index + 1) & mask],
             frame[(index + 2) & mask],
             frame[(index + 3) & mask]);
+}
+
+void FixedTimeCyclicFrameCompositor::renderPeriodicFrame(
+        Buffer<float> frame,
+        Buffer<float> output,
+        double initialPhaseCycles,
+        double phaseIncrement) {
+    double phase = initialPhaseCycles - std::floor(initialPhaseCycles);
+    for (int sample = 0; sample < output.size(); ++sample) {
+        output[sample] = samplePeriodicFrame(frame, phase);
+        phase += phaseIncrement;
+        if (phase >= 1.0) {
+            phase -= 1.0;
+        }
+    }
 }
 
 float FixedTimeCyclicFrameCompositor::compose(

@@ -10,6 +10,7 @@
 #include "Graph/MeshTopologyEdits.h"
 #include "Graph/TrimeshAuthoringEdits.h"
 #include "Nodes/ModelAuthoringValidation.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Graph/SynthesisCapabilities.h"
 
 namespace CycleV2 {
@@ -78,6 +79,15 @@ var CycleV2Automation::inspectSynthesisCapabilities(const var& command) const {
     guideFields.setProperty("coordinateRange", "x, y and curve in [0, 1]; y=0.5 is neutral displacement");
     guideFields.setProperty("editorRequired", false);
     objectFor(capabilities)->setProperty("guideAuthoring", guideAuthoring);
+    var impulseImport = makeObject();
+    objectFor(impulseImport)->setProperty("command",
+            automationCommandName(CycleV2AutomationCommand::ImportImpulseResponse));
+    objectFor(impulseImport)->setProperty("requiredFields", var(StringArray { "nodeId", "path", "mode" }));
+    objectFor(impulseImport)->setProperty("modes", var(StringArray { "direct", "modelled" }));
+    objectFor(impulseImport)->setProperty("sourceNormalization", "Peak-normalized, first channel retained");
+    objectFor(impulseImport)->setProperty("sampleRatePolicy", impulseResponseSampleRatePolicy);
+    objectFor(impulseImport)->setProperty("canonicalSampleRate", impulseResponseReferenceSampleRate);
+    objectFor(capabilities)->setProperty("impulseResponseImport", impulseImport);
     var shapes = makeObject();
     auto& shapeFields = *objectFor(shapes);
     shapeFields.setProperty("inspectCommands", var(StringArray { "inspectTrimesh", "inspectEnvelope" }));

@@ -94,6 +94,7 @@ public:
     juce::var guideCurveCommandForAutomation(const juce::var& command);
     juce::var shapeCommandForAutomation(const juce::var& command);
     uint64_t documentRevisionForAutomation() const { return canvas.documentRevisionForAutomation(); }
+    bool setPresetSequenceForAutomation(PresetMidiSequence sequence);
     bool setGuideParameterForAutomation(
             const String& guideId,
             const String& parameterId,

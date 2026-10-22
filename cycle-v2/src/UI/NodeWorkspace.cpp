@@ -513,6 +513,14 @@ bool NodeWorkspace::setExplanationForAutomation(const ExplanationTarget& target,
     return canvas.setExplanation(target, text);
 }
 
+bool NodeWorkspace::setPresetSequenceForAutomation(PresetMidiSequence sequence) {
+    if (!canvas.setPresetSequence(std::move(sequence))) {
+        return false;
+    }
+    keyboard.setSequence(resolvedPresetSequence());
+    return true;
+}
+
 var NodeWorkspace::inspectExplanationForAutomation(const ExplanationTarget& target) const {
     return canvas.inspectExplanation(target);
 }

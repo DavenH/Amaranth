@@ -644,6 +644,9 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
                         CycleDsp::voiceLengthUnitValue(1.0)));
         context.pitchSemitones = parameters.floatValue("pitch", 0.f);
         context.portamento = parameters.boolValue("portamento", false);
+        context.portamentoSeconds = parameters.floatValue("portamentoSeconds", 0.06f);
+        context.monophonicLegato = parameters.stringValue("noteMode", "polyphonic") == "legato";
+        context.liveEnvelopeMorph = parameters.stringValue("envelopeModulation", "latched") == "live";
         context.pitchIndependentSpectralControl = parameters.boolValue(
                 "pitchIndependentSpectralControl",
                 false);
@@ -862,6 +865,14 @@ const Node* defaultScratchSourceFor(
         return nullptr;
     }
     return findNode(graph, context->defaultScratchNodeId);
+}
+
+void compileEnvelopeModulationPolicy(const NodeGraph& graph, GraphExecutionPlan& plan) {
+    const VoiceContextAssignments assignments = assignVoiceContexts(graph, plan);
+    for (auto& step : plan.steps) {
+        const CompiledVoiceContext* context = voiceContextForStep(graph, plan, assignments, step);
+        step.liveEnvelopeMorph = context != nullptr && context->liveEnvelopeMorph;
+    }
 }
 
 void compileDefaultScratchAttachments(
@@ -1342,6 +1353,7 @@ void GraphCompiler::refreshVoiceContexts(
         buffer.defaultModulation = context->defaultModulation;
         buffer.defaultModulationNoteOffset = context->octave * 12;
     }
+    compileEnvelopeModulationPolicy(graph, plan);
 }
 
 std::vector<Edge> GraphCompiler::implicitVoiceContextEdges(const NodeGraph& graph) {
@@ -1446,6 +1458,7 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
             return result;
         }
         compileDefaultModulationInputs(graph, result.plan);
+        compileEnvelopeModulationPolicy(graph, result.plan);
         const auto scopeAnalysis = GraphAudioScopeAnalyzer().analyze(graph);
         GraphAudioScopeCompiler::applyOwnership(result.plan, scopeAnalysis);
         if (!result.compileIssues.empty()) {

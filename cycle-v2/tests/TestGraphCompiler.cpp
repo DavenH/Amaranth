@@ -1144,3 +1144,52 @@ TEST_CASE("Compiler derives runtime ownership from the authored global graph",
     REQUIRE(result.plan.globalInputBufferIndex
             == findStep(result.plan, "boundary").outputs.front().bufferIndex);
 }
+
+TEST_CASE("Voice Context articulation policy reaches pitch and volume envelope dependencies",
+        "[cycle-v2][graph][voice-context][articulation]") {
+    GraphNodeFactory factory;
+    GraphNodeStateEditor state;
+    GraphEditor editor;
+    NodeGraph graph;
+    for (const auto& entry : {
+            std::pair { NodeKind::VoiceContext, "voice" },
+            std::pair { NodeKind::VoiceContext, "inactive" },
+            std::pair { NodeKind::TrilinearMesh, "mesh" },
+            std::pair { NodeKind::Envelope, "pitchEnvelope" },
+            std::pair { NodeKind::Envelope, "volumeEnvelope" },
+            std::pair { NodeKind::Multiply, "multiply" } }) {
+        graph.addNode(factory.createNode(entry.first, entry.second, {}));
+    }
+    REQUIRE(state.setNodeParameter(graph, "pitchEnvelope", "purpose", "Purpose", "pitch").succeeded());
+    REQUIRE(state.setNodeParameter(graph, "volumeEnvelope", "purpose", "Purpose", "volume").succeeded());
+    REQUIRE(editor.connect(graph, { "voice", "context", false }, { "mesh", "context", true }).succeeded());
+    REQUIRE(editor.connect(graph, { "pitchEnvelope", "env", false }, { "voice", "pitch", true }).succeeded());
+    REQUIRE(editor.connect(graph, { "mesh", "out", false }, { "multiply", "left", true }).succeeded());
+    REQUIRE(editor.connect(graph, { "volumeEnvelope", "env", false }, { "multiply", "right", true }).succeeded());
+
+    GraphCompiler compiler;
+    auto compiled = compiler.compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE_FALSE(findStep(compiled.plan, "pitchEnvelope").liveEnvelopeMorph);
+    REQUIRE_FALSE(findStep(compiled.plan, "volumeEnvelope").liveEnvelopeMorph);
+
+    REQUIRE(state.setNodeParameter(graph, "voice", "envelopeModulation", "Envelope Modulation", "live").succeeded());
+    REQUIRE(state.setNodeParameter(graph, "voice", "noteMode", "Note Mode", "legato").succeeded());
+    REQUIRE(state.setNodeParameter(graph, "voice", "portamento", "Portamento", "1").succeeded());
+    REQUIRE(state.setNodeParameter(graph, "voice", "portamentoSeconds", "Glide Time", "0.075").succeeded());
+    compiled = compiler.compile(graph);
+    REQUIRE(compiled.succeeded());
+    REQUIRE(findStep(compiled.plan, "pitchEnvelope").liveEnvelopeMorph);
+    REQUIRE(findStep(compiled.plan, "volumeEnvelope").liveEnvelopeMorph);
+    const auto active = std::find_if(compiled.plan.voiceContexts.begin(), compiled.plan.voiceContexts.end(),
+            [](const auto& context) { return context.nodeId == "voice"; });
+    REQUIRE(active != compiled.plan.voiceContexts.end());
+    REQUIRE(active->monophonicLegato);
+    REQUIRE(active->portamento);
+    REQUIRE(active->portamentoSeconds == Catch::Approx(0.075f));
+
+    REQUIRE(state.setNodeParameter(graph, "voice", "envelopeModulation", "Envelope Modulation", "latched").succeeded());
+    compiler.refreshVoiceContexts(graph, compiled.plan);
+    REQUIRE_FALSE(findStep(compiled.plan, "pitchEnvelope").liveEnvelopeMorph);
+    REQUIRE_FALSE(findStep(compiled.plan, "volumeEnvelope").liveEnvelopeMorph);
+}

@@ -2,6 +2,10 @@
 #include <catch2/catch_approx.hpp>
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
+#include <Audio/CycleDsp/OscillatorLaneCore.h>
+#include <Audio/CycleDsp/SpectralStageCapture.h>
+#include <Audio/CycleDsp/UnisonCore.h>
+#include <Curve/Mesh/Mesh.h>
 
 #include <algorithm>
 #include <cmath>
@@ -15,11 +19,72 @@
 #include "Graph/GraphSerializer.h"
 #include "Graph/NodeGraph.h"
 #include "Runtime/RealtimeGraphRenderer.h"
+#include "Runtime/PreparedOscillatorRegion.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
+#include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 
 using namespace CycleV2;
 using namespace juce;
 
 namespace {
+
+NodeGraph legatoGraph(bool volumeEnvelope = false) {
+    NodeGraph graph = NodeGraph::createDemoGraph();
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("LegatoWaveform");
+    const auto* source = graph.findNode("waveMesh");
+    REQUIRE(source != nullptr);
+    REQUIRE(source->model != nullptr);
+    REQUIRE(GraphNodeStateEditor().replaceNodeModel(
+            graph, "waveMesh", source->model->revision(),
+            TrimeshNodeModelState::copyOf(*mesh, source->model->revision() + 1)).succeeded());
+    mesh->destroy();
+    if (!volumeEnvelope) {
+        graph.removeNode("env");
+        graph.removeNode("multiply");
+        graph.addEdge({ "ifft", "time", "voiceOutput", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal });
+    }
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "voice", "noteMode", "Note Mode", "legato").succeeded());
+    return graph;
+}
+
+struct LegatoRender {
+    std::unique_ptr<RealtimeGraphRenderer::PreparedGraph> prepared;
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    AudioBuffer<float> output { 2, 256 };
+    static constexpr double sampleRate = 48000.;
+
+    explicit LegatoRender(bool portamento = false, bool volumeEnvelope = false,
+            bool fixedTime = false) {
+        auto graph = legatoGraph(volumeEnvelope);
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, "voice", "portamento", "Portamento", portamento ? "true" : "false").succeeded());
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, "voice", "portamentoSeconds", "Glide", "0.001").succeeded());
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, "voice", "pitchIndependentSpectralControl", "Spectral Clock",
+                fixedTime ? "true" : "false").succeeded());
+        const auto compiled = GraphCompiler().compile(graph);
+        REQUIRE(compiled.succeeded());
+        AudioExecutionSpec spec;
+        spec.maximumFrameCount = 256;
+        spec.sampleRate = sampleRate;
+        prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+        renderer.setPreparedGraph(prepared.get());
+        renderer.setRandomSeedForTesting(1729);
+    }
+
+    void send(const MidiMessage& message, int sample, MidiEventSource source = MidiEventSource::Hardware) {
+        REQUIRE(queue.enqueue(message, source, 1. + sample / sampleRate));
+    }
+
+    void process(int start = 0) {
+        float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+        renderer.process(queue, channels, 2, 256, sampleRate, 1. + start / sampleRate);
+    }
+};
 
 std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain) {
     NodeGraph graph = NodeGraph::createDemoGraph();
@@ -1125,4 +1190,293 @@ TEST_CASE("Fully released spectral notes repeat on the same voice instance",
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
+}
+
+TEST_CASE("Legato note priority retains duplicate presses and returns to held predecessors",
+        "[cycle-v2][legato]") {
+    VoiceNoteState notes;
+    notes.start(60);
+    notes.press(64, 0);
+    notes.press(60, 0);
+    REQUIRE(notes.currentNote() == 60);
+    REQUIRE(notes.release(60, 0));
+    REQUIRE(notes.currentNote() == 60);
+    REQUIRE(notes.release(60, 0));
+    REQUIRE(notes.currentNote() == 64);
+    REQUIRE_FALSE(notes.release(67, 0));
+    REQUIRE(notes.release(64, 0));
+    REQUIRE(notes.currentNote() == -1);
+}
+
+TEST_CASE("Legato glide retains fractional semitones across partitions and retargets continuously",
+        "[cycle-v2][legato]") {
+    VoiceNoteState notes;
+    notes.start(60);
+    notes.press(72, 48);
+    std::vector<float> first(24), second(24), returned(49);
+    notes.renderPitch({ first.data(), (int) first.size() });
+    notes.renderPitch({ second.data(), (int) second.size() });
+    REQUIRE(first.front() == 60.f);
+    REQUIRE(first.back() == Catch::Approx(65.75f));
+    REQUIRE(second.front() == 66.f);
+    REQUIRE(second.back() == Catch::Approx(71.75f));
+    notes.release(72, 48);
+    notes.renderPitch({ returned.data(), (int) returned.size() });
+    REQUIRE(returned.front() == 72.f);
+    REQUIRE(returned[24] == 66.f);
+    REQUIRE(returned.back() == 60.f);
+}
+
+TEST_CASE("Legato oscillator pitch lookup preserves octave offsets and fractional pitch",
+        "[cycle-v2][legato]") {
+    std::vector<float> offsets { 0.f, 0.5f, 1.f };
+    AudioVoiceContext voice;
+    voice.oscillatorPitchOffsets = { offsets.data(), (int) offsets.size() };
+    PreparedOscillatorProcessContext context;
+    context.voice = &voice;
+    context.midiNote = 72;
+    REQUIRE(context.midiPitchAt(0) == 72.);
+    REQUIRE(context.midiPitchAt(1) == 72.5);
+    REQUIRE(context.midiPitchAt(12) == 73.);
+    REQUIRE(CycleDsp::OscillatorLaneCore::angleDeltaForPitchUnit(72.5, 0.f, .5f, 48000.)
+            == Catch::Approx(CycleDsp::UnisonCore::frequencyForMidiPitch(72.5) / 48000.));
+}
+
+TEST_CASE("Legato retargets and held-note return begin at their scheduled samples",
+        "[cycle-v2][realtime][legato]") {
+    for (const bool glide : { false, true }) {
+        LegatoRender render(glide);
+        render.send(MidiMessage::noteOn(1, 60, (uint8) 100), 0);
+        render.send(MidiMessage::noteOn(1, 72, (uint8) 20), 113);
+        render.send(MidiMessage::noteOff(1, 72), 191);
+        render.process();
+        REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 1);
+        const auto pitches = render.prepared->pitchRamps.withSize(256);
+        REQUIRE(pitches[112] == 0.f);
+        REQUIRE(pitches[113] == (glide ? 0.f : 12.f));
+        REQUIRE(pitches[137] == (glide ? 6.f : 12.f));
+        REQUIRE(pitches[190] == 12.f);
+        REQUIRE(pitches[191] == (glide ? 12.f : 0.f));
+        REQUIRE(pitches[215] == (glide ? 6.f : 0.f));
+        REQUIRE(pitches[240] == 0.f);
+        render.send(MidiMessage::noteOff(1, 60), 270);
+        render.process(256);
+        REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 0);
+    }
+}
+
+TEST_CASE("Legato retargeting leaves the preceding audio prefix unchanged",
+        "[cycle-v2][realtime][legato]") {
+    LegatoRender reference;
+    LegatoRender changed;
+    for (auto* render : { &reference, &changed }) {
+        render->send(MidiMessage::noteOn(1, 60, (uint8) 100), 0);
+    }
+    changed.send(MidiMessage::noteOn(1, 72, (uint8) 20), 113);
+    double difference {};
+    for (int start = 0; start < 1024; start += 256) {
+        reference.process(start);
+        changed.process(start);
+        for (int sample = 0; sample < 256; ++sample) {
+            if (start == 0 && sample < 113) {
+                REQUIRE(changed.output.getSample(0, sample) == reference.output.getSample(0, sample));
+            } else {
+                difference += std::abs(changed.output.getSample(0, sample) - reference.output.getSample(0, sample));
+            }
+        }
+    }
+    REQUIRE(difference > 1.e-5);
+}
+
+TEST_CASE("Legato duplicate releases do not release a still-held pitch",
+        "[cycle-v2][realtime][legato]") {
+    LegatoRender render;
+    render.send(MidiMessage::noteOn(1, 60, (uint8) 100), 0);
+    render.send(MidiMessage::noteOn(1, 60, (uint8) 100), 100);
+    render.send(MidiMessage::noteOff(1, 60), 150);
+    render.process();
+    REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 1);
+    render.send(MidiMessage::noteOff(1, 60), 270);
+    render.process(256);
+    REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 0);
+}
+
+TEST_CASE("Legato sources and channels remain independent through channel resets",
+        "[cycle-v2][realtime][legato]") {
+    LegatoRender render;
+    render.send(MidiMessage::noteOn(1, 60, (uint8) 100), 0);
+    render.send(MidiMessage::noteOn(2, 64, (uint8) 100), 0);
+    render.send(MidiMessage::noteOn(1, 67, (uint8) 100), 0, MidiEventSource::PerformanceKeyboard);
+    render.send(MidiMessage::noteOn(1, 72, (uint8) 100), 100);
+    render.process();
+    REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 3);
+    render.send(MidiMessage::allSoundOff(1), 270);
+    render.process(256);
+    REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 2);
+    render.send(MidiMessage::allNotesOff(2), 520);
+    render.process(512);
+    REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 1);
+}
+
+TEST_CASE("Legato stolen-note releases do not release a replacement phrase",
+        "[cycle-v2][realtime][legato]") {
+    LegatoRender render;
+    for (int channel = 1; channel <= 9; ++channel) {
+        render.send(MidiMessage::noteOn(channel, 60, (uint8) 100), 0);
+    }
+    render.process();
+    REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 8);
+    render.send(MidiMessage::noteOn(1, 60, (uint8) 100), 270);
+    render.send(MidiMessage::noteOff(1, 60), 280);
+    render.process(256);
+    REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 8);
+    render.send(MidiMessage::noteOff(1, 60), 520);
+    render.process(512);
+    REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 7);
+}
+
+TEST_CASE("Canceling a legato pattern clears its held stack without affecting manual notes",
+        "[cycle-v2][realtime][legato]") {
+    LegatoRender render;
+    render.send(MidiMessage::noteOn(1, 60, (uint8) 100), 0, MidiEventSource::PatternPlayback);
+    render.send(MidiMessage::noteOn(1, 64, (uint8) 100), 80, MidiEventSource::PatternPlayback);
+    render.send(MidiMessage::noteOn(1, 67, (uint8) 100), 0);
+    render.process();
+    REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 2);
+    render.queue.cancelSource(MidiEventSource::PatternPlayback);
+    render.process(256);
+    REQUIRE(render.renderer.diagnostics(render.queue).activeVoiceCount == 1);
+}
+
+TEST_CASE("Repeated legato pitch preserves oscillator phase envelope traversal and initial velocity",
+        "[cycle-v2][realtime][legato]") {
+    for (const bool volumeEnvelope : { false, true }) {
+        LegatoRender reference(false, volumeEnvelope);
+        LegatoRender changed(false, volumeEnvelope);
+        for (auto* render : { &reference, &changed }) {
+            render->send(MidiMessage::noteOn(1, 60, (uint8) 100), 0);
+        }
+        changed.send(MidiMessage::noteOn(1, 60, (uint8) 20), 113);
+        for (int start = 0; start < 1024; start += 256) {
+            reference.process(start);
+            changed.process(start);
+            for (int sample = 0; sample < 256; ++sample) {
+                REQUIRE(changed.output.getSample(0, sample) == reference.output.getSample(0, sample));
+            }
+        }
+    }
+}
+
+TEST_CASE("Wide upward slurs preserve their prefix and refresh harmonic limits without resetting phase",
+        "[cycle-v2][realtime][legato][spectral-frame]") {
+    class Capture final : public CycleDsp::SpectralStageCaptureSink {
+    public:
+        void capture(const CycleDsp::SpectralStageFrame& frame) noexcept override {
+            if (frame.stage != CycleDsp::SpectralStage::PostLayerSpectrum || frame.channel != 0) {
+                return;
+            }
+            if (frame.midiNote == 60 && firstHarmonics == 0) {
+                firstHarmonics = frame.primary.size();
+            }
+            if (frame.midiNote == 84) {
+                upperHarmonics = frame.primary.size();
+                earlyUpperFrame = earlyUpperFrame || frame.frontier < 113;
+            }
+        }
+        int firstHarmonics {};
+        int upperHarmonics {};
+        bool earlyUpperFrame {};
+    };
+    for (const bool fixedTime : { false, true }) {
+        Capture capture;
+        LegatoRender reference(false, false, fixedTime);
+        LegatoRender changed(false, false, fixedTime);
+        changed.renderer.setSpectralStageCapture(&capture);
+        for (auto* render : { &reference, &changed }) {
+            render->send(MidiMessage::noteOn(1, 60, (uint8) 100), 0);
+        }
+        changed.send(MidiMessage::noteOn(1, 84, (uint8) 100), 113);
+        for (int start = 0; start < 1024; start += 256) {
+            reference.process(start);
+            changed.process(start);
+            for (int sample = 0; sample < 256; ++sample) {
+                const float value = changed.output.getSample(0, sample);
+                REQUIRE(std::isfinite(value));
+                REQUIRE(std::abs(value) < 16.f);
+                if (start == 0 && sample < 113) {
+                    REQUIRE(value == reference.output.getSample(0, sample));
+                }
+            }
+        }
+        REQUIRE(capture.firstHarmonics > 0);
+        REQUIRE(capture.upperHarmonics > 0);
+        REQUIRE(capture.upperHarmonics < capture.firstHarmonics);
+        REQUIRE_FALSE(capture.earlyUpperFrame);
+        REQUIRE(changed.renderer.diagnostics(changed.queue).activeVoiceCount == 1);
+    }
+}
+
+TEST_CASE("High-to-low legato retains the fresh low note harmonic capacity",
+        "[cycle-v2][realtime][legato][spectral-frame]") {
+    class Capture final : public CycleDsp::SpectralStageCaptureSink {
+    public:
+        void capture(const CycleDsp::SpectralStageFrame& frame) noexcept override {
+            if (frame.stage == CycleDsp::SpectralStage::PostLayerSpectrum
+                    && frame.channel == 0 && frame.midiNote == 48) {
+                lowHarmonics = frame.primary.size();
+            }
+        }
+        int lowHarmonics {};
+    };
+    for (const bool fixedTime : { false, true }) {
+        Capture freshCapture;
+        Capture slurredCapture;
+        LegatoRender fresh(false, false, fixedTime);
+        LegatoRender slurred(false, false, fixedTime);
+        LegatoRender high(false, false, fixedTime);
+        fresh.renderer.setSpectralStageCapture(&freshCapture);
+        slurred.renderer.setSpectralStageCapture(&slurredCapture);
+        fresh.send(MidiMessage::noteOn(1, 48, (uint8) 100), 0);
+        slurred.send(MidiMessage::noteOn(1, 84, (uint8) 100), 0);
+        high.send(MidiMessage::noteOn(1, 84, (uint8) 100), 0);
+        slurred.send(MidiMessage::noteOn(1, 48, (uint8) 100), 113);
+        for (int start = 0; start < 2048; start += 256) {
+            fresh.process(start);
+            slurred.process(start);
+            high.process(start);
+            for (int sample = 0; sample < 256; ++sample) {
+                REQUIRE(std::isfinite(slurred.output.getSample(0, sample)));
+                if (start == 0 && sample < 113) {
+                    REQUIRE(slurred.output.getSample(0, sample) == high.output.getSample(0, sample));
+                }
+            }
+        }
+        REQUIRE(freshCapture.lowHarmonics > 0);
+        REQUIRE(slurredCapture.lowHarmonics == freshCapture.lowHarmonics);
+        REQUIRE(slurred.renderer.diagnostics(slurred.queue).activeVoiceCount == 1);
+    }
+}
+
+TEST_CASE("Repeated current legato pitches retain an in-flight portamento duration",
+        "[cycle-v2][realtime][legato]") {
+    LegatoRender reference(true);
+    LegatoRender repeated(true);
+    for (auto* render : { &reference, &repeated }) {
+        render->send(MidiMessage::noteOn(1, 60, (uint8) 100), 0);
+        render->send(MidiMessage::noteOn(1, 72, (uint8) 100), 100);
+    }
+    repeated.send(MidiMessage::noteOn(1, 72, (uint8) 20), 124);
+    for (int start = 0; start < 1024; start += 256) {
+        reference.process(start);
+        repeated.process(start);
+        const auto first = reference.prepared->pitchRamps.withSize(256);
+        const auto second = repeated.prepared->pitchRamps.withSize(256);
+        for (int sample = 0; sample < 256; ++sample) {
+            REQUIRE(second[sample] == first[sample]);
+            REQUIRE(repeated.output.getSample(0, sample) == reference.output.getSample(0, sample));
+        }
+        if (start == 0) {
+            REQUIRE(second[148] == 12.f);
+        }
+    }
 }

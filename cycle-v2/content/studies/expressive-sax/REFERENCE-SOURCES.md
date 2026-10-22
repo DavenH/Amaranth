@@ -67,6 +67,11 @@ The predeclared split is `vcsl/selection.json`; original licence/source snapshot
 are retained beside it. Reserved audio has not been used to fit or select a
 candidate.
 
+The byte-identical acquisition manifest, selection and licence are now tracked
+in [vcsl-corpus](vcsl-corpus/README.md), with a reconstruction recipe. The
+calibration's strict metadata identities therefore do not depend on access to
+the original workspace's ignored files. Downloaded audio remains local.
+
 ## Continuous solo supplied by the user
 
 [Ivan Renta, tenor sax solo](https://www.youtube.com/watch?v=89A0vvoeI6M),
@@ -96,3 +101,37 @@ also describes AI-related restrictions. Public preview access was not treated
 as an offline modelling licence. No preview assets were extracted. The local
 research record is `splice/research.json`; use Iowa/VCSL for the current offline
 reference collection.
+
+## Local listening page
+
+Build a reference-only browser from the local acquisition metadata:
+
+```sh
+python3 scripts/create_saxophone_reference_audit.py --include-reserved
+open .context/saxophone-reference-audit/index.html
+```
+
+The page offers individual playback, seeking, repeat, source/technique filters,
+listening notes and Keep/Maybe/Skip judgments. Notes stay in browser storage;
+Export audit saves JSON with recording identities and your annotations. It
+contains no synthesized examples and does not contact external services.
+
+The command above includes all 32 references: 12 VCSL notes, 18 Iowa chromatic
+scales, the bundled growl and the complete solo. The two previously reserved Iowa
+parents retain their labels and are available for listening as requested.
+Omitting `--include-reserved` leaves those two unconverted and unavailable for
+playback; their metadata can still be shown by clearing Playable recordings only.
+All twelve VCSL takes are now developmental, despite the original acquisition
+split recorded above.
+
+Iowa playback copies use unnormalised PCM16 WAV at the original 44.1 kHz mono
+format and frame count. WAV/WebM originals are linked without conversion.
+Original media, acquisition metadata and frozen studies remain untouched.
+`--corpus-root` and `--output-dir` support other local locations. Generated HTML,
+media copies and the media identity manifest live outside Git under `.context/`.
+
+Optional browser verification uses Playwright with the installed Chrome:
+
+```sh
+python3 scripts/tests/saxophone_reference_audit_browser_smoke.py --page .context/saxophone-reference-audit/index.html --screenshot .context/saxophone-reference-audit.png
+```

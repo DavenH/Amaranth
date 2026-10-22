@@ -15,9 +15,11 @@ merged, with native input verification and screenshot review complete.
 [Explained exemplars](https://github.com/DavenH/Amaranth/pull/191) are merged with
 controlled audition evidence.
 The bounded [saxophone pilot](cycle-v2-expressive-saxophone-pilot.md) is
-implemented. Its single recording permits exploratory comparisons; the
-expressive-reference and autonomous-search evidence gate remains open.
-Additional reference collection is the next step.
+merged in [PR #193](https://github.com/DavenH/Amaranth/pull/193). Its single
+recording permits exploratory comparisons. External references are acquired;
+the [VCSL calibration](cycle-v2-saxophone-reference-calibration.md) now compares
+one shared-structure pitch ablation against objective and reserved recordings.
+The expressive-model and autonomous-search gates remain closed pending evidence.
 Keep modelling obstacles and useful follow-ups in the evidence-linked
 [feature queue](cycle-v2-preset-modelling-feature-queue.md) during experiments.
 Remaining slices are proposed.

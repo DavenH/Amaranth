@@ -16,5 +16,7 @@ TEST_CASE("Automation command registry owns aliases",
             == CycleV2AutomationCommand::DeleteGuideCurve);
     REQUIRE(automationCommandForName("recreateCanvasOpenGLContext")
             == CycleV2AutomationCommand::RecreateCanvasOpenGLContext);
+    REQUIRE(automationCommandForName("importImpulseResponse")
+            == CycleV2AutomationCommand::ImportImpulseResponse);
     REQUIRE_FALSE(automationCommandForName("missing").has_value());
 }

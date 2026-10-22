@@ -68,10 +68,18 @@ namespace Rasterization {
     }
 
     float EnvelopePlaybackEngine::loopLength(const PreparedEnvelopePlaybackView& prepared) const {
+        return (float) loopSpan(prepared).length;
+    }
+
+    EnvelopeLoopSpan EnvelopePlaybackEngine::loopSpan(const PreparedEnvelopePlaybackView& prepared) {
         EnvelopePlaybackContext context;
         context.loopIndex = prepared.loopIndex;
         context.sustainIndex = prepared.sustainIndex;
-        return EnvelopePlaybackPolicy().loopLength(prepared.display.intercepts, context);
+        const double length = EnvelopePlaybackPolicy().loopLength(prepared.display.intercepts, context);
+        return {
+                length > 0. ? prepared.display.intercepts[prepared.loopIndex].x : 0.,
+                length
+        };
     }
 
     double EnvelopePlaybackEngine::boundary(const PreparedEnvelopePlaybackView& prepared) const {
@@ -345,6 +353,28 @@ namespace Rasterization {
         context.sustainIndex = prepared.sustainIndex;
         const int releaseIndex = EnvelopeReleasePolicy().releaseIndex(context);
         return prepared.display.intercepts[releaseIndex].x;
+    }
+
+    void EnvelopePlaybackEngine::adopt(
+            const PreparedEnvelopePlaybackView& previous,
+            const PreparedEnvelopePlaybackView& replacement) {
+        adopt(loopSpan(previous), replacement);
+    }
+
+    void EnvelopePlaybackEngine::adopt(
+            EnvelopeLoopSpan previous,
+            const PreparedEnvelopePlaybackView& replacement) {
+        const auto replacementSpan = loopSpan(replacement);
+        if (state.mode == EnvelopePlaybackMode::Looping
+                && previous.length > 0. && replacementSpan.length > 0.) {
+            for (int index = firstAudioVoiceIndex; index < (int) state.allVoices().size(); ++index) {
+                auto& voice = state.voice(index);
+                const double phase = jlimit(
+                        0., 1., (voice.samplePosition - previous.start) / previous.length);
+                voice.samplePosition = replacementSpan.start + phase * replacementSpan.length;
+            }
+        }
+        validate(replacement);
     }
 
     void EnvelopePlaybackEngine::validate(const PreparedEnvelopePlaybackView& prepared) {

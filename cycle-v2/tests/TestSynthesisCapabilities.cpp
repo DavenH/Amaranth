@@ -4,6 +4,8 @@
 #include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Audio/CycleDsp/IrModel.h>
+#include <Audio/CycleDsp/SpectralLayerCore.h>
+#include <Util/LogRegionMapping.h>
 
 #include <limits>
 
@@ -155,4 +157,73 @@ TEST_CASE("Discovery distinguishes destination control timing and scoped effect 
             == "unspecified");
     REQUIRE(property(find(nodes, "typeId", "reverb"), "processingCapability").toString() == "globalOnly");
     REQUIRE(property(find(nodes, "typeId", "equalizer"), "processingCapability").toString() == "selectable");
+}
+
+TEST_CASE("Spectral authoring discovery preserves runtime harmonic coordinates and operand scaling",
+        "[cycle-v2][capabilities][spectral-authoring]") {
+    const std::vector<NodeParameter> parameters {
+        { "signalType", {}, "spectralMagnitude" },
+        { "range", {}, "0.333333333333" },
+        { "gain", {}, "0.5" }
+    };
+    String error;
+    const auto authoring = SynthesisCapabilities::spectralAuthoring(parameters, 62, 2048, error);
+    REQUIRE(error.isEmpty());
+    const LogRegionMapping mapping(62 + LogRegionMapping::legacyMidiNoteBias);
+    REQUIRE((int) property(authoring, "harmonicCount") == mapping.regionSize());
+    REQUIRE((int) property(authoring, "harmonicCount") == 76);
+    REQUIRE((double) property(authoring, "mappingSampleRate") == 44100.0);
+    REQUIRE((double) property(authoring, "frequencyHz")
+            == Catch::Approx(MidiMessage::getMidiNoteInHertz(62)));
+    REQUIRE(property(authoring, "requiredPolarity").toString() == "unipolar");
+    REQUIRE(property(authoring, "requiredPhaseMode").toString() == "absolute");
+    REQUIRE(property(authoring, "fftNormalization").toString() == "DivFwdByN");
+    REQUIRE((double) property(authoring, "ordinaryHarmonicPeakToMagnitude") == 0.5);
+    REQUIRE((double) property(authoring, "dcMagnitude") == 0.0);
+    REQUIRE((double) property(authoring, "nyquistPeakToMagnitude") == 1.0);
+    ScopedAlloc<float> positions(mapping.regionSize());
+    mapping.fillDisplayUnits(positions);
+    const auto exportedPositions = property(authoring, "positions");
+    REQUIRE(exportedPositions.size() == positions.size());
+    for (int index = 0; index < positions.size(); ++index) {
+        REQUIRE((double) exportedPositions[index] == positions[index]);
+    }
+
+    const float scale = (float) (double) property(authoring, "additiveUnitScale");
+    const float exponent = (float) (double) property(authoring, "additiveExponent");
+    REQUIRE(exponent == Catch::Approx(1.f));
+    for (const float target : { 0.001f, 0.01f, 0.03f }) {
+        float authoredAmplitude = std::pow(target / scale, 1.f / exponent);
+        CycleDsp::SpectralLayerCore::shapeMagnitudeOperand(
+                Buffer<float>(&authoredAmplitude, 1), 1.f / 3.f, true, false, mapping.regionSize());
+        REQUIRE(authoredAmplitude == Catch::Approx(target).epsilon(1.0e-5f));
+    }
+    ScopedAlloc<float> phaseScales(mapping.regionSize());
+    CycleDsp::SpectralLayerCore::preparePhaseHarmonicScale(phaseScales);
+    phaseScales.mul(CycleDsp::SpectralLayerCore::phaseOffsetScale(1.f / 3.f)
+            * MathConstants<float>::twoPi);
+    const auto exportedPhases = property(authoring, "phaseScales");
+    for (int index = 0; index < phaseScales.size(); ++index) {
+        REQUIRE((double) exportedPhases[index] == Catch::Approx(phaseScales[index]));
+    }
+
+    const auto capped = SynthesisCapabilities::spectralAuthoring(parameters, 62, 64, error);
+    REQUIRE(error.isEmpty());
+    REQUIRE((int) property(capped, "regionSize") == 76);
+    REQUIRE((int) property(capped, "harmonicCount") == 32);
+    REQUIRE(property(capped, "positions").size() == 32);
+    REQUIRE(property(capped, "phaseScales").size() == 32);
+    float cappedScale = 1.f;
+    CycleDsp::SpectralLayerCore::shapeMagnitudeOperand(
+            Buffer<float>(&cappedScale, 1), 1.f / 3.f, true, false, 32);
+    REQUIRE((double) property(capped, "additiveUnitScale") == Catch::Approx(cappedScale));
+
+    for (const int note : { -1, 128 }) {
+        REQUIRE(SynthesisCapabilities::spectralAuthoring(parameters, note, 2048, error).isVoid());
+        REQUIRE(error.isNotEmpty());
+    }
+    REQUIRE(SynthesisCapabilities::spectralAuthoring(parameters, 62, 63, error).isVoid());
+    REQUIRE(error.isNotEmpty());
+    REQUIRE(SynthesisCapabilities::spectralAuthoring({}, 62, 2048, error).isVoid());
+    REQUIRE(error.isNotEmpty());
 }

@@ -136,6 +136,12 @@ void SemanticEditGate::invalidateSource(const String& sourceStreamId) {
     sources.erase(sourceStreamId);
 }
 
+void SemanticEditGate::invalidateSources() {
+    for (auto& source : sources) {
+        source.second.initialized = false;
+    }
+}
+
 bool NodeUpdateGraph::GenerationKey::operator<(const GenerationKey& other) const {
     if (sourceStreamId != other.sourceStreamId) {
         return sourceStreamId < other.sourceStreamId;

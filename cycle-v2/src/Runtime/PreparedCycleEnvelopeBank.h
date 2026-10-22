@@ -41,6 +41,8 @@ private:
         bool pitch {};
         const CycleEnvelopePlaybackSource* source {};
         const EnvelopeConfiguration* adoptedConfiguration {};
+        uint64_t adoptedGeneration {};
+        Rasterization::EnvelopeLoopSpan adoptedLoop;
         Rasterization::EnvelopePlaybackEngine playback;
         MeshLibrary::EnvProps props;
         std::vector<float> values;

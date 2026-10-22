@@ -82,6 +82,8 @@ private:
     float postGain { 1.f };
     uint64_t adoptedRevision {};
     std::shared_ptr<const IrConfiguration> configuration;
+    std::vector<float> playbackImpulse;
+    double playbackSampleRate {};
 };
 
 class ReverbSignalProcessor :
