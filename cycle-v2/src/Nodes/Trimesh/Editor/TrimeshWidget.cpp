@@ -38,6 +38,10 @@ void TrimeshWidget::setMorphEditGestureActive(bool active) {
     bridge.setMorphEditGestureActive(active);
 }
 
+void TrimeshWidget::setPreviewMorphPosition(std::optional<MorphPosition> position) {
+    bridge.setPreviewMorphPosition(std::move(position));
+}
+
 void TrimeshWidget::syncGuideContext(const NodeGraph& graph, const Node& node) {
     if (bridge.isMeshEditGestureActive()) {
         return;

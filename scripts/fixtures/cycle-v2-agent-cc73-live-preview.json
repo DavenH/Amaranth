@@ -19,9 +19,9 @@
     { "command": "pointer", "targetId": "PerformanceKeyboard.CC73", "event": "up", "targetY": 0.25 },
     { "command": "waitForIdle", "idleDelayMs": 800 },
     { "command": "snapshotState" },
-    { "command": "assertNodeParameter", "nodeId": "volumeEnvelope1", "parameterId": "red", "op": "greaterThan", "value": 0.7 },
-    { "command": "assertState", "path": "documentDirty", "equals": true },
-    { "command": "undo" },
+    { "command": "assertState", "path": "performance.cc73Value", "op": "greaterThan", "value": 90 },
+    { "command": "assertState", "path": "documentDirty", "equals": false },
+    { "command": "inspectPreviewControllers" },
     { "command": "assertNodeParameter", "nodeId": "volumeEnvelope1", "parameterId": "red", "equals": "0.5" }
   ],
   "quit": true

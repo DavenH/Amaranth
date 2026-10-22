@@ -94,7 +94,8 @@ public:
     bool syncFromNode(
             const Node& node,
             TrimeshSelectionSyncPolicy selectionPolicy =
-                    TrimeshSelectionSyncPolicy::SynchronizeFromNode);
+                    TrimeshSelectionSyncPolicy::SynchronizeFromNode,
+            std::optional<MorphPosition> previewMorph = std::nullopt);
     bool applyPreparedGuides(
             const Mesh& preparedMesh,
             std::shared_ptr<GuideCurveSnapshotProvider> provider);
@@ -125,6 +126,8 @@ public:
     Mesh& getMeshForPanel() { return mesh(); }
     Mesh& currentMesh() { return mesh(); }
     const Mesh& currentMesh() const { return *ownedMesh; }
+    // Transfers an isolated authoring candidate; the model is not used afterwards.
+    std::unique_ptr<Mesh> releaseMesh();
 
 private:
     friend class TrimeshGridRenderService;

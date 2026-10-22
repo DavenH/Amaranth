@@ -3,6 +3,7 @@
 #include "Graph/GraphCommandDispatcher.h"
 
 #include "Graph/GraphNodeStateEditor.h"
+#include "Graph/GraphMeshGuideRemap.h"
 #include "Graph/MeshDimensionality.h"
 
 namespace CycleV2 {
@@ -52,37 +53,7 @@ GraphEditResult GraphCommandDispatcher::setMeshDimensions(const String& nodeId, 
                         graph.replaceNodeEditorState(nodeId, state);
                         result.changes.editorStateChanged = true;
                     }
-                    const auto& assignments = graph.getGuideAssignments();
-                    for (size_t index = 0; index < assignments.size(); ++index) {
-                        const auto& assignment = assignments[index];
-                        if (assignment.targetNodeId != nodeId) {
-                            continue;
-                        }
-                        const int axis = assignment.target.field == GuideCurveField::Red ? Vertex::Red
-                                : assignment.target.field == GuideCurveField::Blue ? Vertex::Blue : -1;
-                        const auto cell = std::find(retainedCubeIndices.begin(), retainedCubeIndices.end(),
-                                assignment.target.cubeIndex);
-                        const bool removed = (axis >= 0 && !retained.active(axis))
-                                || cell == retainedCubeIndices.end();
-                        const int newIndex = (int) std::distance(retainedCubeIndices.begin(), cell);
-                        if (removed || newIndex != assignment.target.cubeIndex) {
-                            result.changes.removedGuideAssignments.push_back({ index, assignment });
-                            if (!removed) {
-                                auto remapped = assignment;
-                                remapped.target.cubeIndex = newIndex;
-                                result.changes.addedGuideAssignments.push_back(std::move(remapped));
-                            }
-                        }
-                    }
-                    std::reverse(result.changes.removedGuideAssignments.begin(),
-                            result.changes.removedGuideAssignments.end());
-                    for (const auto& assignment : result.changes.removedGuideAssignments) {
-                        graph.removeGuideAssignment(nodeId, assignment.assignment.target);
-                    }
-                    for (const auto& assignment : result.changes.addedGuideAssignments) {
-                        graph.assignGuideCurve(assignment);
-                    }
-                    result.changes.guidesChanged = !result.changes.removedGuideAssignments.empty();
+                    remapMeshGuideAssignments(graph, nodeId, retainedCubeIndices, result, &retained);
                 }
                 const String primary = NodeParameterMap(*node).stringValue("primaryAxis", "yellow");
                 if (node->kind == NodeKind::TrilinearMesh && count > 0

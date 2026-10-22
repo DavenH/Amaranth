@@ -5,6 +5,7 @@
 
 #include "Nodes/Effects/EffectSignalProcessors.h"
 #include "Runtime/FingerprintBuilder.h"
+#include "Runtime/GraphPresentationModel.h"
 
 namespace CycleV2 {
 
@@ -73,6 +74,8 @@ TrimeshWidget& NodePreviewResources::trimeshWidget(
         const Node& node,
         const NodeGraph* graphToUse) {
     TrimeshWidget& widget = trimeshWidget(node.id);
+    widget.setPreviewMorphPosition(previewControls != nullptr
+            ? previewControls->previewMorphForNode(node) : std::nullopt);
     const PreviewPitchContext preview = previewPitchContexts
             .contextForNodeAtPreviewNote(node.id, selectedPreviewMidiNote);
     widget.setPreviewMidiNote(preview.midiNote);
@@ -95,11 +98,39 @@ CurveEditorWidget& NodePreviewResources::curveEditorWidget(const Node& node) {
     }
     CurveEditorWidget* widget = curveEditorWidgets[
             (size_t) curveEditorWidgetIndices[node.id]].second.get();
+    widget->setPreviewMorphPosition(previewControls != nullptr
+            ? previewControls->previewMorphForNode(node) : std::nullopt);
     if (created && node.kind == NodeKind::ImpulseResponse) {
         widget->setImpulseResponseAudioResource(
                 IrSignalProcessor::directResource(durableGraph, node.id));
     }
     return *widget;
+}
+
+void NodePreviewResources::refreshControllerPreview(int controller) {
+    if (previewControls == nullptr || durableGraph == nullptr) {
+        return;
+    }
+    String previousNodeId;
+    for (const auto& target : previewControls->controllerMorphTargets(controller)) {
+        if (target.nodeId == previousNodeId) {
+            continue;
+        }
+        previousNodeId = target.nodeId;
+        const Node* node = durableGraph->findNode(target.nodeId);
+        if (node == nullptr) {
+            continue;
+        }
+        if (trimeshWidgetIndices.contains(node->id)) {
+            trimeshWidget(*node);
+        }
+        if (curveEditorWidgetIndices.contains(node->id)) {
+            curveEditorWidget(*node);
+        }
+        if (cachedSpriteIndices.contains(node->id)) {
+            cachedSprites[(size_t) cachedSpriteIndices[node->id]].second.signature.clear();
+        }
+    }
 }
 
 void NodePreviewResources::syncCurveEditorWidget(const Node& node) {
@@ -118,12 +149,10 @@ void NodePreviewResources::syncCurveEditorWidget(const Node& node) {
 }
 
 CachedNodePreviewSprite& NodePreviewResources::cachedSprite(const String& nodeId) {
-    for (auto& entry : cachedSprites) {
-        if (entry.first == nodeId) {
-            return entry.second;
-        }
+    if (cachedSpriteIndices.contains(nodeId)) {
+        return cachedSprites[(size_t) cachedSpriteIndices[nodeId]].second;
     }
-
+    cachedSpriteIndices.set(nodeId, (int) cachedSprites.size());
     cachedSprites.emplace_back(nodeId, CachedNodePreviewSprite {});
     return cachedSprites.back().second;
 }
@@ -161,6 +190,7 @@ TrimeshWidget* NodePreviewResources::findTrimeshWidget(const String& nodeId) {
 
 void NodePreviewResources::clearCachedSprites() {
     cachedSprites.clear();
+    cachedSpriteIndices.clear();
 }
 
 void NodePreviewResources::resetDocumentPreviews() {

@@ -87,7 +87,37 @@ Inspect artifacts in this order:
 3. Raw log: only when the filtered log omits needed detail.
 4. LLDB transcript for breakpoint runs, or a crash report when available.
 
-## Semantic Candidate Authoring
+## Direct Live Authoring
+
+Keep one socket open and inspect the current model before editing. Capabilities
+advertise `shapeAuthoring`, `guideAuthoring` and `previewControllers` contracts.
+`inspectTrimesh` and `inspectEnvelope` accept `nodeId` without opening an editor.
+They report document/model revisions, geometry, field units and bounds, Guide
+attachments and authored/effective morph positions. Use those revisions for one
+atomic edit; stale requests are rejected without changing history.
+
+| Command | Edit representation |
+| --- | --- |
+| `editTrimesh` | `vertex` with vertexIndex/field/value; `cubeCurve` with cubeIndex/value; `guideGain` with vertexIndex/field/value. |
+| `editEnvelope` | Stable cubeId, corner and field/value; `guideGain`; loop/sustain states. Supply dimensionCount and linkedAxes yellow/red/blue. |
+| `editMeshTopology` | Insert cubeIndex/phase/amp/curve; remove Trimesh cubeIndex or Envelope cubeId. Addresses follow the sequential candidate. |
+| `setPreviewController` | Integer controller/value 0..127 on audition channel 1, even with keyboard hidden. |
+| `inspectPreviewControllers` | All 128 ephemeral values and document/audio-plan counters. |
+
+Value batches allow 64 edits; topology batches allow 16. Trimesh ordinals are
+revision-scoped. Envelope cube IDs survive edits to other cells. Re-inspect after
+topology changes. New poles start constant over the full morph range and can be
+refined with addressed values. Guide targets follow retained cells through index
+changes; removed cells lose their attachments in the same undo step.
+
+Controller auditions leave preset bytes and undo history unchanged. The expanded
+editor displays effective coordinates without publishing them as authored morph.
+`sendMidi` also accepts `type: "controller"`, channel 1..16, controller/value
+0..127 for raw delivery; that command does not synchronize preview readback.
+Keep a pinned Spy/reference for comparison, make one targeted edit, audition and
+undo when needed. Refine the running preset directly through these commands.
+
+## Whole Model Import And Compatibility
 
 Use `inspectSynthesisCapabilities` to discover `authoring` bounds and each model's
 `authoringReplacement` support. `inspectNodeControls` returns the current typed
@@ -114,9 +144,9 @@ active gestures and stale revisions are rejected. Model validation covers safe
 structure and factory-compatible coordinates; musical quality and gesture-specific
 collision eligibility require separate evaluation.
 
-Save a baseline with `saveGraph`, create candidates with `applyNodeEdits`, save each,
-and discard by reopening the baseline through `openGraph`. The demonstration below
-uses that lifecycle and the existing repeatable performance-suite renderer:
+`applyNodeEdits` remains available for explicit whole-model import and existing
+repeatable fixtures. The historical candidate demonstration uses that lifecycle
+and the performance-suite renderer:
 
 ```sh
 python3 scripts/create_cycle_v2_candidates.py --no-build \

@@ -1,5 +1,19 @@
 # Audio Bug Notes
 
+## Investigation: Baroque offline audition ignores a first-pole change
+
+During the 2026-10-22 live-authoring audit, loading
+`content/presets/old/baroque-flute.cyclegraph` and setting all eight corners of
+`timeLayer1` cube 0 to amplitude .15 published successfully but left the seeded
+offline PCM identical. Repro: seed 7143, 44.1 kHz, 8192 frames, blocks of 173,
+note 60 at velocity 100 on channel 1. The downstream spectral graph may explain
+the lack of sensitivity; this has not been assigned to an engine defect.
+
+The direct mesh-to-output regression does change PCM and restores it exactly
+through undo/redo. Use that isolated path as the addressed-edit proof until the
+factory graph's sensitivity is understood. This observation preceded the
+isolated `TestLiveShapeAudio` regression; no factory content was changed.
+
 ## P2: Reference comparison Spies use a legacy note as standard MIDI
 
 The saxophone audit found a 293.665 Hz recording correctly stored as note 74

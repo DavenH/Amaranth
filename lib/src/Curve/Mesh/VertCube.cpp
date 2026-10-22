@@ -341,6 +341,17 @@ void VertCube::initVerts(const MorphPosition& pos) {
     }
 }
 
+void VertCube::initLine(const MorphPosition& pos, float phase, float amp, float curve) {
+    initVerts(pos);
+    for (auto* vertex : lineVerts) {
+        vertex->values[Vertex::Phase] = phase;
+        vertex->values[Vertex::Amp] = amp;
+        if (curve >= 0.f) {
+            vertex->values[Vertex::Curve] = curve;
+        }
+    }
+}
+
 bool VertCube::poleOf(int dim, Vertex const* poleVert) const {
     bool polarity = LowPole;
     bool time, red, blue;

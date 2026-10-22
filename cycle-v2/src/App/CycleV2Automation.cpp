@@ -290,6 +290,16 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return resetAudioPerformance();
         case Command::SendMidi:
             return sendMidi(commandValue);
+        case Command::SetPreviewController:
+            return workspaceCommands->setPreviewController(commandValue);
+        case Command::InspectPreviewControllers:
+            return okResult("inspectPreviewControllers", workspace.inspectPreviewControllersForAutomation());
+        case Command::InspectTrimesh:
+        case Command::EditTrimesh:
+        case Command::InspectEnvelope:
+        case Command::EditEnvelope:
+        case Command::EditMeshTopology:
+            return workspace.shapeCommandForAutomation(commandValue);
         case Command::RequestCanvasOpenGLFrame:
             return requestCanvasOpenGLFrame();
         case Command::RecreateCanvasOpenGLContext:
@@ -921,6 +931,15 @@ var CycleV2Automation::sendMidi(const var& commandValue) {
         message = MidiMessage::noteOn(channel, note, velocity);
     } else if (type == "noteOff") {
         message = MidiMessage::noteOff(channel, note);
+    } else if (type == "controller") {
+        const auto valid = [](const var& value, int64 low, int64 high) {
+            return (value.isInt() || value.isInt64()) && (int64) value >= low && (int64) value <= high;
+        };
+        if (!valid(commandValue.getProperty("channel", 1), 1, 16)
+                || !valid(commandValue["controller"], 0, 127) || !valid(commandValue["value"], 0, 127)) {
+            return failedResult("sendMidi", "Controller events require channel 1..16 and integer controller/value 0..127");
+        }
+        message = MidiMessage::controllerEvent(channel, (int) commandValue["controller"], (int) commandValue["value"]);
     } else if (type == "allNotesOff") {
         message = MidiMessage::allNotesOff(channel);
     } else {

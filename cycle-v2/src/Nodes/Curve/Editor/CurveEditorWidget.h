@@ -27,6 +27,8 @@ public:
     void prepareEnvelopeMorphSurface(int axis, const MorphPosition& morph);
     void renderEnvelopeMorphSurface(Rectangle<float> bounds, float scaleFactor);
     void setEditGestureActive(bool active);
+    void setPreviewMorphPosition(std::optional<MorphPosition> position);
+    std::optional<MorphPosition> effectiveMorphPosition() const;
     Rectangle<float> panelContentBounds(Rectangle<float> frame) const;
     void fitEnvelopeVerticalRange();
     void resetEnvelopeVerticalRange();

@@ -19,6 +19,7 @@ public:
             PathResolver pathResolver);
 
     juce::var openNodeEditor(const juce::var& command);
+    juce::var setPreviewController(const juce::var& command);
     juce::var addNode(const juce::var& command);
     juce::var moveNode(const juce::var& command);
     juce::var connectPorts(const juce::var& command);

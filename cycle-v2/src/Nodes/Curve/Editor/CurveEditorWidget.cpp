@@ -85,6 +85,16 @@ void CurveEditorWidget::setEditGestureActive(bool active) {
     controller->setEditGestureActive(active);
 }
 
+void CurveEditorWidget::setPreviewMorphPosition(std::optional<MorphPosition> position) {
+    if (controller->setPreviewMorphPosition(std::move(position))) {
+        ++previewPresentationRevision;
+    }
+}
+
+std::optional<MorphPosition> CurveEditorWidget::effectiveMorphPosition() const {
+    return controller->effectiveMorphPosition();
+}
+
 Rectangle<float> CurveEditorWidget::panelContentBounds(Rectangle<float> frame) const {
     return controller->panelContentBounds(frame);
 }

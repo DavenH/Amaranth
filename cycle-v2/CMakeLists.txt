@@ -102,6 +102,11 @@ set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/MeshDimensionality.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/MeshDimensionalityMigration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphMeshCommands.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphMeshGuideRemap.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphMeshTopologyEdits.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphTrimeshEdits.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphEnvelopeEdits.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/EnvelopeMeshEditPreparation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/DefaultOutputProbeResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphMigration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphRepresentationMigration.cpp"
@@ -296,6 +301,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
 )
 
 set(NODE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/EnvelopeEditCore.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Control/ModulationSource.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Editor/CurveEditorPrimitives.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Curve/Editor/CurveNodeEditorFactory.cpp"
@@ -502,6 +508,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationCommand.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/NodeAuthoringAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GuideCurveAutomation.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/TrimeshAuthoringAutomation.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/EnvelopeAuthoringAutomation.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/MeshTopologyAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationAssertions.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationProtocol.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/CycleV2AutomationSessionTransport.cpp"

@@ -255,6 +255,7 @@ NodeCanvas::NodeCanvas() :
                     [this](const String& guideId) { requestDeleteGuideCurve(guideId); },
                     [this]() { requestCanvasRepaint(); }
             });
+    editorCoordinator.previewResources().setPreviewControls(presentation);
     refreshCompiledState();
 
     setOpaque(true);

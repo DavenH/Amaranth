@@ -1,6 +1,6 @@
 # Live shape and controller authoring
 
-Status: In Progress. Dedicated branch `DavenH/live-preset-authoring`, based on
+Status: Implemented. Dedicated branch `DavenH/live-preset-authoring`, based on
 `origin/master` at `ad966fdd` (unified dimensionality and morph editing, #196).
 Persistent socket, reference pitch and direct Guide authoring are prerequisites
 carried forward without the saxophone study/content history.
@@ -103,7 +103,10 @@ release shape, marker membership or stable cube IDs.
 ## Slice 4: topology and attachments
 
 Expose bounded explicit insert/create and remove operations in the respective
-Trimesh/Envelope edit families. Cube construction uses the same `VertCube`
+Trimesh/Envelope authoring workflow through `editMeshTopology`. This initial
+topology surface exposes pole insertion/removal; it does not expose split or
+extrusion gestures. Any later split/extrusion must extract mature operations.
+Cube construction uses the same `VertCube`
 initialization and inactive-axis conventions as mature editing. Removal retains
 shared vertices needed by surviving cubes and applies canonical orphan cleanup.
 Topology operations report affected/new addresses so an agent can re-inspect
@@ -154,8 +157,10 @@ Expected files and production envelopes:
 Deletion targets: widget-dependent automation for these operations; duplicated
 Envelope link/marker/seam policy; inline one-off Guide index remapping replaced
 by its shared owner; controller wheel caches as audition truth; generator/reload
-refinement from the canonical workflow. Existing pointer commands remain for
-testing physical interactions, not as the semantic implementation.
+refinement from the canonical workflow. Existing selected-widget and pointer
+commands intentionally remain as UI regression interfaces. Direct authoring
+does not route through them or require their widgets; both paths reuse the same
+domain edit rules.
 
 ## Acceptance
 
@@ -171,7 +176,8 @@ testing physical interactions, not as the semantic implementation.
   1D, both families' 2D layouts and 3D; Envelope all-axis links, valid release
   extents, loop seams and marker validation are covered.
 - Insertion/deletion before a guided middle cube preserves the intended target.
-  Removed cells, split children, marker transfer and exact undo are covered.
+  Removed cells, retained markers, new identities and exact undo are covered.
+  A later split command must cover inherited Guides and marker transfer.
 - Hidden-keyboard CC1/2/3/5/76 and unused CCs have exact readback; one accepted
   event updates held audio without note events/retrigger or document changes.
   Expanded preview coordinates update without leaking into a later saved edit.
@@ -185,3 +191,99 @@ testing physical interactions, not as the semantic implementation.
   tests, applicable native fixtures, style/diff/code-map and architecture audits.
   Record incidents in existing ledgers. Mark Implemented only after every
   principal slice and deletion target is complete.
+
+## Implementation review and evidence — 2026-10-22
+
+All four principal slices are implemented. Socket capabilities advertise the
+installed commands, strict address/value contracts and batch limits. Topology
+responses list final cube ordinals and Envelope identities, including new cells;
+the caller can re-inspect geometry at the returned revision. Split/extrusion is
+outside this initial command surface, as specified above.
+
+The production diff adds 2,167 lines and removes 312 across the four slices and
+their shared owners. New focused graph files contain Trimesh batches (113),
+Envelope batches (141), topology orchestration (235), Guide remapping (48), and
+Envelope Guide preparation (60). App decoders/inspection are 227/218/118 lines
+for Trimesh/Envelope/topology; they contain no interpolation or DSP algorithms.
+Controller and shape Canvas routing live in separate 40/47-line files.
+
+| Existing owner | Before → after | Responsibility retained |
+| --- | --- | --- |
+| `NodeCanvas.cpp` / `.h` | 3602/477 → 3603/481 | Routing and lifecycle; new behavior delegates to focused files. |
+| `EnvelopeCurvePanel.cpp` | 1301 → 1133 | Pointer state, selection, gestures and repaint; shared domain loops removed. |
+| `EnvelopeEditorComponent.cpp` | 1118 → 1124 | Editor presentation and authored/effective coordinate readback. |
+| `CurveNodeModels.cpp` | 880 → 926 | Persistence, identity/revision ownership and adoption; no UI policy. |
+| `CurvePanelController.cpp` | 804 → 829 | Existing panel lifecycle; effective view settings delegate to the Envelope adapter. |
+| `NodeWorkspace.cpp` | 983 → 992 | Shared MIDI/preview/keyboard controller coordinator. |
+| `PerformanceKeyboard.cpp` | 983 → 1001 | Wheel reflection and playback; canonical values come from the provider. |
+
+Large-file review also covered Trimesh widget delegation and the App command
+switch. They gain forwards/readback, with value/topology policy in the node and
+graph owners. New family/kind branches decode typed requests, select the existing
+model owner or serialize addresses. No renderer, generic mesh framework, copied
+interpolator, copied collision algorithm or alternate undo mechanism was added.
+
+Reuse/deletion proof:
+
+- `EnvelopeEditCore` now owns the actual panel and socket link masks, marker
+  eligibility and loop seams. The old panel loops were deleted.
+- `VertCube::initLine` and non-owning `Mesh::detachCube` extract mature shared
+  construction/removal mechanics; the existing Interactor calls them too.
+  Detached objects remain available to interactive undo.
+- Dimensional projection and topology call `GraphMeshGuideRemap`; its old inline
+  mapping was removed. Existing indexed assignment deltas restore exact order.
+- Keyboard callbacks no longer publish wheel gestures to the document. The
+  canonical 128-value presentation array feeds silent wheels and playback.
+  Effective editor coordinates remain separate from authored publications.
+- Owned model adoption removes the extra publication clone. One discrete target
+  stage is instrumented. Trimesh clones its target once; Envelope's existing
+  `copyFrom` clones live/committed meshes and `synchronizeFromMesh` refreshes its
+  baseline. Those existing XML-backed mesh copies are not claimed to be one raw
+  deep-copy call. No batch operation or new continuous update copies a model.
+- Guide preparation for these Envelope stages prepares only the target's Guide
+  resources. Existing all-resource callers retain their behavior. Assignment
+  iteration still uses the existing graph assignment scan.
+- Empty Envelope models persist and recreate without identity reuse. Optional
+  `nextCubeIdentity` preserves the high-water mark across reload; old snapshots
+  derive it. Explicit modern marker arrays preserve empty sustain and authored
+  sharpness through JSON/XML copies; absent/legacy markers keep their fallback.
+- The runbook now starts with direct socket refinement. Whole-model import and
+  historical candidate generation remain explicitly separate compatibility
+  workflows; no preset generator was used for this implementation.
+
+Verification:
+
+- Exact `CycleV2` and `CycleV2_tests` targets build with `--parallel 10`.
+- `.context/live-authoring-final-tests.log`: 53 cases, 3,810 assertions pass.
+  Includes both families' dimensions, all eight Envelope link masks, actual
+  panel/headless parity, partial/stale/no-op rejection, identity/selection/Guide
+  remapping, empty creation/reload, marker/Guide preservation, seeded PCM change
+  and exact audio undo/redo, held-voice CC and deliberate stored Yellow updates.
+- Scaling unrelated nodes to 128 leaves graph copies/model JSON serializations
+  at zero and the target staging count fixed. Scaling unrelated Guides to 128
+  leaves the Envelope helper's prepared provider at one assigned resource.
+- Native isolated fixtures pass: live shape authoring (55 commands), live Guide
+  authoring (13), and actual keyboard wheel interaction (19). The shape fixture
+  checks hidden keyboard, held voice, every requested CC and unchanged document,
+  audio-plan and compilation revisions. Before/after CC exports are byte-identical.
+  Spy captures refresh for controllers and visible shape/Guide commit/undo/redo.
+- Five requests over one raw persistent `nc` connection inspect an Envelope,
+  set CC76, edit a corner, undo and read CC76 back. All succeed; no generator,
+  temporary graph replacement or hidden panel is involved. Evidence:
+  `.context/live-authoring-persistent-socket.ndjson`.
+- The original app PID 1230 remains running. Its exported graph after the work
+  exactly matches `.context/live-authoring-before-branch.cyclegraph`; factory
+  content has no diff.
+- Whitespace, code-map and architecture audits pass. Size triggers were reviewed
+  above. Five old preview fixtures now declare their intended active dimensions;
+  a master fixture dereferencing an empty factory mesh now authors its mesh and
+  passes its 25 gesture/copy/undo assertions.
+
+The full aggregate suite is not a green gate: it exposed the unchanged master
+cursor-initialization failure and the repaired empty-mesh fixture. A broader
+304-case runtime/automation run also found missing preset fixtures, outdated
+parameter counts and other historical audio expectations. The directly affected
+dimension fixtures pass in the final focused run; the remaining broad mismatches
+are not claimed fixed or all proven baseline. Existing bug ledgers record the
+specific cursor/crash evidence and the unrelated Baroque audition sensitivity
+investigation. Native app runs did not assert or crash.

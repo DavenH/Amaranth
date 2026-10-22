@@ -52,6 +52,7 @@ public:
     virtual uint64_t previewSnapshotRevision() const = 0;
     virtual void resetDocumentPresentation() = 0;
     virtual void setEditGestureActive(bool) {}
+    virtual bool setPreviewMorphPosition(std::optional<MorphPosition>) { return false; }
     virtual Rectangle<float> panelContentBounds(Rectangle<float> bounds) const { return bounds; }
     virtual void releaseSharedGlResources() = 0;
     virtual int vertexCountForAutomation() const = 0;
@@ -66,6 +67,7 @@ public:
     virtual uint64_t contentRevision() const = 0;
     virtual std::vector<TrimeshVertexParameter> selectedVertexParameters() const = 0;
     virtual std::vector<TrimeshCubePreviewVertex> morphPreviewVertices() const { return {}; }
+    virtual std::optional<MorphPosition> effectiveMorphPosition() const { return std::nullopt; }
     virtual bool setSelectedVertexParameter(const String& parameterId, float value) = 0;
 };
 
