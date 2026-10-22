@@ -1,88 +1,127 @@
-"""Author a broad quiet spectral tilt using one pressure-scaled component Guide.
+"""Author a compact pressure-dependent edge at shared played harmonics.
 
-Cycle owns the log-frequency map, Guide rasterization and spectral transfer.
-Frequency labels describe the inspected effective oscillator note, not a new
-fixed-Hz filter. The separate body IR supplies that fixed-Hz response.
+Cycle owns logarithmic coordinates, key normalization, Guide rasterization and
+spectral multiplication. Callers supply inspected per-key coordinates for the
+voice's octave=-1 configuration; no frequency map is reproduced here.
 """
 
-from bisect import bisect_left
 import copy
 import math
 
 from cycle_saxophone_anchor_model import cube, revised
 
 
-QUIET_PROFILE_HZ_DB = ((0, 0), (500, 0), (2200, -6), (6000, -14), (22050, -18))
+KEY_NOTES = (44, 48, 60, 72, 76)
+REFERENCE_PLAYED_NOTE = 60
+PLAYED_HARMONICS = (1, 2, 4, 8, 16, 32)
+QUIET_BLUE = 32 / 127
+BLUE_PLANES = (0.0, QUIET_BLUE, 1.0)
+GUIDE_PREFIX = "reedEdgeKeyH"
 
 
-def color_model(controls):
-    """Two poles; pressure fades the component Guide to exact raw neutral .5."""
+def _checked_coordinates(coordinates):
+    """Require complete inspected anchors and played-note key positions."""
+    coordinates = {int(key): value for key, value in coordinates.items()}
+    previous_key = 0.0
+    for note in KEY_NOTES:
+        row = coordinates[note]
+        positions = list(row["positions"][:2 * PLAYED_HARMONICS[-1]])
+        key = float(row["keyPosition"])
+        if (row["effectiveMidi"] != note - 12 or len(positions) != 2 * PLAYED_HARMONICS[-1]
+                or not math.isfinite(key) or not previous_key < key < 1
+                or any(not math.isfinite(value) or not 0 < value <= 1 for value in positions)
+                or any(a >= b for a, b in zip(positions, positions[1:]))):
+            raise ValueError("Supply ordered inspected octave=-1 positions and played-note keyPosition")
+        previous_key = key
+    return coordinates
+
+
+def _phase(coordinates, note, harmonic):
+    # Each played harmonic occupies bin 2h in the doubled lower-octave reed.
+    return float(coordinates[note]["positions"][2 * harmonic - 1])
+
+
+def _settings(controls, recipe):
+    metadata = controls["spectralAuthoring"]
+    gain = float(metadata["gain"])
+    exponent = float(metadata["additiveExponent"])
+    quiet = float(recipe["quietCc32CornerHarmonic"])
+    loud = float(recipe["loudCc127CornerHarmonic"])
+    order = float(recipe["order"])
+    if (not math.isclose(gain, 1, rel_tol=1e-6) or not math.isfinite(exponent) or exponent <= 0
+            or any(not math.isfinite(value) or value <= 0 for value in (quiet, loud, order))):
+        raise ValueError("Reed edge requires unit spectral gain and positive finite recipe controls")
+    return exponent, gain, quiet, loud, order
+
+
+def edge_model(controls, coordinates, recipe):
+    """Return one semantic edit: 8 poles, 96 vertices and 16 pressure cubes.
+
+    recipe supplies quietCc32CornerHarmonic, loudCc127CornerHarmonic and order.
+    Target amplitude is 1/sqrt(1+(playedH/Hc)**(2*order)); invert the inspected
+    MultiplyBipolar transfer M=(2*g*u)**D. Pressure below CC32 holds the quiet
+    profile; above it the mesh interpolates inverse-transfer amplitudes. The
+    already weak >H32 tail tapers to zero at the spectral region boundary.
+    """
+    coordinates = _checked_coordinates(coordinates)
+    exponent, gain, quiet, loud, order = _settings(controls, recipe)
     vertices, cubes = [], []
-    for pole in (0, 1):
-        start = len(vertices)
+    for harmonic in (0, *PLAYED_HARMONICS, None):
+        phase = (0.0 if harmonic == 0 else 1.0 if harmonic is None else
+                 _phase(coordinates, REFERENCE_PLAYED_NOTE, harmonic))
+        first = len(vertices)
         for time in (0, 1):
             for red in (0, 1):
-                for blue in (0, 1):
+                for blue in BLUE_PLANES:
+                    raw = 0.0
+                    if harmonic is not None:
+                        corner = loud if blue == 1 else quiet
+                        target = 1 / math.sqrt(1 + (harmonic / corner) ** (2 * order))
+                        raw = .5 * target ** (1 / exponent) / gain
                     vertices.append({"id": len(vertices), "time": float(time),
-                        "key": float(red), "mod": float(blue), "phase": float(pole),
-                        "amp": .5, "weight": float(1 - blue if pole == 0 else 1)})
-        cubes.append(cube(list(range(start, start + 8))))
+                        "key": float(red), "mod": blue, "phase": phase,
+                        "amp": raw, "weight": 1.0})
+        for interval in range(len(BLUE_PLANES) - 1):
+            cubes.append(cube([first + time * 6 + red * 3 + interval + high
+                               for time in (0, 1) for red in (0, 1) for high in (0, 1)]))
     model = copy.deepcopy(controls["model"])
-    model["mesh"] = {"name": "Pressure spectral color", "version": 1,
+    model["mesh"] = {"name": "Reed edge: shared harmonic landmarks", "version": 1,
                      "vertices": vertices, "cubes": cubes}
     return revised(controls, model)
 
 
-def _frequency_position(frequency, harmonic_hz, positions):
-    """Interpolate inspected observations without reproducing LogRegionMapping."""
-    index = bisect_left(harmonic_hz, frequency)
-    if index == 0:
-        return positions[0]
-    if index == len(harmonic_hz):
-        return positions[-1]
-    fraction = (frequency - harmonic_hz[index - 1]) / (harmonic_hz[index] - harmonic_hz[index - 1])
-    return positions[index - 1] + fraction * (positions[index] - positions[index - 1])
+def edge_resources(template_guide, controls, coordinates):
+    """Return 6 noiseless key Guides and 12 typed Red assignments.
 
-
-def color_resources(template_guide, controls):
-    """Return one noiseless quiet-tilt Guide and its valid cube-zero assignment.
-
-    Require unit node gain so blue=1's raw .5 is neutral for MultiplyBipolar.
-    Cube gain remains the canonical stored .5 (unit gain). Quiet target M uses
-    raw u=.5*M**(1/D); the component Guide stores u, yielding offset u-.5.
+    keyPosition must be inspected at the played note, independently of the
+    effective-note spectral positions. Guides hold endpoint displacement
+    outside MIDI 44..76. Supply the last existing Guide as template so new shelf
+    orders follow it; other factory metadata is preserved in each new resource.
     """
-    metadata = controls["spectralAuthoring"]
-    positions = list(metadata["positions"])
-    frequency = float(metadata["frequencyHz"])
-    exponent = float(metadata["additiveExponent"])
-    gain = float(metadata["gain"])
-    if not math.isclose(gain, 1, rel_tol=1e-6) or not math.isfinite(exponent) or exponent <= 0:
-        raise ValueError("Quiet color requires unit spectral node gain and a positive inspected exponent")
-    if not positions or len(positions) != metadata["regionSize"]:
-        raise ValueError("Inspect with enough cycleFrames to cover the complete spectral mapping")
-    if not math.isfinite(frequency) or frequency <= 0:
-        raise ValueError("Inspect at the effective oscillator's positive fundamental frequency")
-    harmonic_hz = [0, *(frequency * harmonic for harmonic in range(1, len(positions) + 1))]
-    positions = [0, *positions]
-    if harmonic_hz[-1] < QUIET_PROFILE_HZ_DB[-1][0]:
-        raise ValueError("Inspected spectral mapping does not cover the requested tilt")
-    points = []
-    for hz, decibels in QUIET_PROFILE_HZ_DB:
-        position = _frequency_position(hz, harmonic_hz, positions)
-        raw = .5 * (10 ** (decibels / 20)) ** (1 / exponent) / gain
-        points.append((position, raw))
-    if points[-1][0] < 1:
-        points.append((1, points[-1][1]))
-
-    guide = copy.deepcopy(template_guide)
-    guide.update(id="reedQuietTilt", name="Quiet reed spectral tilt", shortLabel="Tilt",
-                 enabled=True, noise=0, dcOffset=0, phase=0, revision=1)
-    guide["model"]["revision"] = 1
-    state = guide["model"]["state"]
-    state["revision"] = 1
-    # GuideCurvePreparation samples [0.05, 0.95]; IR padding is a separate domain.
-    state["vertices"] = [{"id": index + 1, "x": .05 + .9 * position,
-        "y": raw, "curve": 1.0} for index, (position, raw) in enumerate(points)]
-    return {"guides": [guide], "guideAssignments": [{"guideId": guide["id"],
-        "targetNodeId": controls["nodeId"], "target": {"kind": "trimeshCubeComponent",
-            "cubeIndex": 0, "field": "time"}}]}
+    coordinates = _checked_coordinates(coordinates)
+    guides, assignments = [], []
+    for pole, harmonic in enumerate(PLAYED_HARMONICS, start=1):
+        base = _phase(coordinates, REFERENCE_PLAYED_NOTE, harmonic)
+        keys = [(0.0, KEY_NOTES[0]),
+                *((float(coordinates[note]["keyPosition"]), note) for note in KEY_NOTES),
+                (1.0, KEY_NOTES[-1])]
+        points = []
+        for progress, note in keys:
+            value = .5 + _phase(coordinates, note, harmonic) - base
+            if not 0 <= value <= 1:
+                raise ValueError("Reed key rail exceeds the unipolar Guide authoring range")
+            points.append({"id": len(points) + 1, "x": .05 + .9 * progress,
+                           "y": value, "curve": 1.0})
+        guide = copy.deepcopy(template_guide)
+        guide.update(id=GUIDE_PREFIX + str(harmonic), name=f"Reed edge key rail H{harmonic}",
+            shortLabel=f"H{harmonic}", enabled=True, noise=0, dcOffset=0, phase=0,
+            revision=1, shelfOrder=int(template_guide.get("shelfOrder", 0)) + pole)
+        guide.pop("heatmapAssetId", None)
+        guide["model"]["revision"] = 1
+        guide["model"]["state"].update(revision=1, vertices=points)
+        guides.append(guide)
+        for interval in range(len(BLUE_PLANES) - 1):
+            assignments.append({"guideId": guide["id"], "targetNodeId": controls["nodeId"],
+                "target": {"kind": "trimeshCubeComponent", "cubeIndex": pole * 2 + interval,
+                           "field": "red"}})
+    return {"guides": guides, "guideAssignments": assignments}

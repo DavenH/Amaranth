@@ -319,6 +319,12 @@ grain/EQ trial established the mechanism. The compact reed prototype now puts
 the same Guide on both closing edges and filters the whole excitation through
 its shared body IR; the abandoned neutral-baseline branch is not its source.
 
+The refined instrument also adds a quiet two-pole aspiration mesh after the
+harmonic reed edge and before the same body. Independent grain/air ablations
+change actual PCM. This supplies the current breath bed with existing tools;
+larger aspiration settings over-roughen upper notes. A new colored-noise feature
+remains optional, rather than a prerequisite for this instrument.
+
 Owner/direction: shared Guide table/noise preparation and immutable resource
 snapshots. First distinguish correlation along waveform phase from variation
 between cycles and across note age; these have different musical consequences.
@@ -351,26 +357,27 @@ invalid or stale targets atomically, and preserve save/reload and audio output.
 
 ## M11 — Preserve physical body-filter resonances across output sample rates
 
-Status: Confirmed preparation limitation by source inspection; the first reed
-prototype fixes playback and authored impulse data at 48 kHz. No rate-conversion
-DSP change is included in that experiment.
+Status: Resolved in canonical IR import/configuration preparation. Direct and
+modelled resonance, decay and response gain are verified at 44.1/48/96 kHz;
+the exact app and reimported saxophone body use the corrected path.
 
 Musical task: model a saxophone body with a short impulse response whose modal
 frequencies remain fixed in Hz while the reed source changes pitch, and retain
 those frequencies when the device sample rate changes.
 
-Evidence: IR resources retain their source sample rate, but
+Original evidence: IR resources retained their source sample rate, but
 `prepareImpulseResponseSource` copies direct samples or rasterizes the editable
 curve at the selected sample count. Neither path receives the output rate or
 converts source-rate coordinates. A 48 kHz kernel replayed at 44.1 kHz therefore
-changes physical modal frequency by the 44.1/48 ratio. This is separate from
-the intentionally fixed body response across played notes. The new
-`importImpulseResponse` automation command reuses canonical import and reports
-the retained-rate policy, rather than implementing a competing conversion.
+changed physical modal frequency by the 44.1/48 ratio. This was separate from
+the intentionally fixed body response across played notes. Canonical import
+and automation now report the corrected preparation/playback conversion policy.
 
-Owner/direction: existing IR resource/preparation/configuration boundaries in
-[IR Audio Resources](cycle-v2-ir-audio-resources.md). Establish authored curve
-time-domain semantics and reuse a mature resampler before changing preparation.
+Resolution: the existing IR resource/preparation/configuration boundaries use
+canonical 44.1 kHz curve time and JUCE's offline resampler. Imported original
+samples/rate remain embedded; the completed kernel is converted to execution
+rate with response-gain compensation. No conversion enters realtime processing.
+See [IR Audio Resources](cycle-v2-ir-audio-resources.md) for policy and evidence.
 Acceptance: direct and modelled versions of a known physical resonance retain
 its frequency and decay at 44.1/48/96 kHz, survive save/reload, and allocate no
 conversion resources on the audio thread.
@@ -436,8 +443,8 @@ and the aligned candidate captures. The final D3 clean source has H40/H1 at
 
 ## M14 — Shared register-dependent reed-edge/body relationships
 
-Status: Preset design follow-up using existing spectral/Guide controls, rather
-than a confirmed missing engine feature.
+Status: Implemented with existing spectral/Guide controls. Remaining acoustic
+balance is a preset-design issue, rather than a confirmed missing engine feature.
 
 Musical task: keep the full-harmonic impulse source, then explain the reference
 family's register changes with a few shared controls. A stronger fixed-Hz upper
@@ -454,8 +461,47 @@ key modulation and Guide rails should be tried before proposing runtime work.
 Validate the actual spectral mapping across notes; a Guide calibrated in Hz at
 one inspected note must not be described as a fixed-Hz filter at every note.
 Evidence: `.context/sax-reed-refinement/shared-edge-hypothesis.json` and the
-actual aligned-flat/modal/focused assessments. Runtime capture and listening
-remain required before adopting that extra relationship.
+actual aligned-flat/modal/focused assessments. The final refinement instead
+uses a rounded H3→H4.5 pressure-dependent edge, six harmonic landmarks and six
+canonical key Guides, shared across every note. Combined with five broad body
+controls, actual weighted shape error improves 4.19→3.22 dB across six probes.
+Quiet D3 is still bright. A further broad key bell was rejected for marginal
+overall gain and a loss of loud D3 character; no per-note spectra were added.
+
+## M15 — Send live controllers through the interactive MIDI command
+
+Status: Confirmed automation gap. Offline capture and embedded patterns accept
+controllers, and the native keyboard exposes the mod wheel; `sendMidi` accepts
+only noteOn, noteOff and allNotesOff.
+
+Musical task: hold a native note while an agent moves breath, vibrato depth/rate
+or reed instability without restarting a capture or editing a pattern. The
+current command explicitly rejects a controller event. A persistent socket or
+MCP wrapper alone does not add this missing semantic operation.
+
+Owner/direction: extend the existing interactive MIDI adapter and event queue,
+reusing controller validation and voice delivery. Acceptance: CC1/2/3/5/76
+changes reach an already-held native voice, independent unused CCs leave its
+sound unchanged, and note-off/all-notes-off retain their current behavior.
+Do not implement a second MIDI transport or audio renderer.
+
+## M16 — Reproduce modelled IR authoring from the same source
+
+Status: Measured small import/modelling variation; saved-preset seeded playback
+is repeatable. The cause of repeated-fit variation has not been isolated.
+
+Musical task: compare a deliberate body change without an unrelated fitted-curve
+change. Ready-v3/v4 import the same body WAV SHA and IR parameters, but their
+28-point modelled curves differ (maximum y delta .00138). Register captures
+change .038–.050 dB in RMS, with .27–.62% residual after one best constant gain.
+The source-only probe is exact while noise-free filtered PCM differs. The
+separate live explicit/implicit context edit produces exact PCM, ruling it out
+as the cause. Evidence: `.context/sax-reed-proud/analysis/ready-v3-v4-regeneration-comparison.json`.
+
+Owner/direction: shared AutoModeller/import preparation. Establish which fitter
+inputs or random state vary; offer a deterministic authoring recipe or retain
+the canonical fitted result when replaying an experiment. Do not change mature
+fitting behavior or add a parallel modeller merely to stabilize this preset.
 
 ## Related defects, tracked separately
 

@@ -43,6 +43,22 @@ SPECTRAL_ROLES = {
 SPECTRAL_OUTPUT_SPY = (1920, 40, 300, 206)
 
 
+EXPRESSIVE_ROLES = {
+    **SPECTRAL_ROLES,
+    "body": ("impulseResponse", 256, 210, 1614, 600),
+    "breathMultiply": ("multiply", 150, 118, 1950, 600),
+    "volumeMultiply": ("multiply", 150, 118, 2180, 600),
+    "voiceOutput": ("voiceOutput", 116, 116, 2410, 600),
+    "pressure": ("modulationSource", 250, 48, 1775, 840),
+    "volume": ("envelope", 295.2, 244, 2107.4, 830),
+    "key": ("modulationSource", 250, 48, 570, 352),
+    "articulationControls": ("modulationTriple", 280, 126, -340, 264),
+    "pitch": ("envelope", 295.2, 244, 0, 200),
+    "air": ("trilinearMesh", 286, 269, 1316, 250),
+    "airAdd": ("add", 150, 118, 1384, 600),
+}
+
+
 def layout_nodes(graph, ids, roles=ROLES):
     by_id = {node["id"]: node for node in graph["nodes"]}
     nodes = {role: by_id[ids.get(role, role)] for role in roles
@@ -114,6 +130,42 @@ def apply_spectral_reed_layout(graph, ids):
     report = reed_layout_report(graph, ids, SPECTRAL_ROLES, SPECTRAL_OUTPUT_SPY)
     if report["overlaps"]:
         raise ValueError("Spectral reed preset cards overlap: " + str(report["overlaps"]))
+    return report
+
+
+
+def apply_expressive_reed_layout(graph, ids):
+    """Keep the main audio row clear and controls beside their destinations.
+
+    A dedicated CC3 source joins the reed locally; the vibrato triple and
+    pitch envelope form an adjacent pair above it. Air sits above Add so its
+    signal drops vertically and all mesh-context fan-outs stay above cards.
+    Existing frozen layouts remain available for earlier studies.
+    """
+    nodes = layout_nodes(graph, ids, EXPRESSIVE_ROLES)
+    for role, node in nodes.items():
+        _, _, _, x, y = EXPRESSIVE_ROLES[role]
+        node["position"] = {"x": x, "y": y}
+        node.pop("portSides", None)
+        node.pop("reverseInputPortOrder", None)
+    nodes["voice"]["portSides"] = {"outputs": {"context": "bottom"}}
+    for role in ("reed", "color", "air"):
+        nodes[role]["portSides"] = {"inputs": {"context": "top"}}
+    nodes["color"]["portSides"]["outputs"] = {"out": "bottom"}
+    nodes["air"]["portSides"]["outputs"] = {"out": "bottom"}
+    nodes["fft"]["portSides"] = {"outputs": {"phase": "bottom"}}
+    nodes["ifft"]["portSides"] = {"inputs": {"phase": "bottom"}}
+    for role in ("colorMultiply", "airAdd"):
+        nodes[role]["portSides"] = {"inputs": {"right": "top"}}
+    for role in ("breathMultiply", "volumeMultiply"):
+        nodes[role]["portSides"] = {"inputs": {"right": "bottom"}}
+    nodes["volume"]["portSides"] = {"outputs": {"env": "top"}}
+    graph.pop("nodeGroups", None)
+    presentation = graph.setdefault("presetPresentation", {"version": 1})
+    presentation["outputSpyX"], presentation["outputSpyY"] = SPECTRAL_OUTPUT_SPY[:2]
+    report = reed_layout_report(graph, ids, EXPRESSIVE_ROLES, SPECTRAL_OUTPUT_SPY)
+    if report["overlaps"]:
+        raise ValueError("Expressive reed preset cards overlap: " + str(report["overlaps"]))
     return report
 
 

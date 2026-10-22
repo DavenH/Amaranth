@@ -128,6 +128,18 @@ def build_reed_audit(results_path, profiles_path, output, alternatives_path=None
             bridge.append({"id": "phrase", "label": "Phrase", "renderId": "reed-phrase-" + file_digest(phrase)[:12],
                 **media(local_copy(phrase)), "note": "Full raw phrase capture; no audition gain."})
             break
+    articulation_ids = set()
+    for item in results.get("articulations", []):
+        identifier = item["id"]
+        if not identifier.replace("-", "").isalnum() or identifier in articulation_ids:
+            raise ValueError("Invalid or duplicate articulation ID: " + identifier)
+        articulation_ids.add(identifier)
+        verified_audio(item["path"], item["sha256"])
+        clip = local_copy(item["path"])
+        bridge.append({"id": "articulation-" + identifier, "label": item["label"],
+            "renderId": "reed-articulation-" + identifier + "-" + item["sha256"][:12],
+            **media(clip), "note": "Full raw articulation capture; no excerpt, audition gain, fades or alignment. "
+                + item.get("note", "")})
     alternative_ids = set()
     if alternatives_path:
         alternatives_path = alternatives_path.resolve()
@@ -153,6 +165,7 @@ def build_reed_audit(results_path, profiles_path, output, alternatives_path=None
             "Full raw register/pressure captures retain the preset's original level. Labels follow source filenames "
             "C2/D3/C4 (standard MIDI 48/62/72); numbers are CC2 values. The six paired row excerpts use "
             "explicit per-pair RMS matching for timbre comparison. All six references are consumed development probes."
+            + (" Articulation buttons play their complete raw captures." if articulation_ids else "")
             + (" Alternative D3 loud clips are the first 1.50 seconds at each version's raw level; "
                "their levels are not matched." if alternative_ids else ""),
             "clips": bridge}}

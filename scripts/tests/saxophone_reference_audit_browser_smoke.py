@@ -97,6 +97,12 @@ def main():
             button = page.locator('#bridge-clips [data-clip-id="' + clip["id"] + '"]')
             button.click()
             check_audio(clip, clip["renderId"])
+            target = clip["durationSeconds"] * .65
+            page.locator("audio").evaluate("(audio,time) => {audio.currentTime=time}", target)
+            page.wait_for_function("""time => {
+                const audio = document.querySelector('audio');
+                return !audio.seeking && !audio.paused && audio.currentTime >= time;
+            }""", arg=target)
             assert button.get_attribute("aria-current") == "true"
             assert page.locator('#bridge-clips [aria-current="true"]').count() == 1
             assert page.locator('.track.active').count() == 0

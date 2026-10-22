@@ -1,9 +1,95 @@
 # Saxophone reference anchors and first bridge
 
-Status: Compact reed-source/body-filter prototype implemented; acoustic listening
-acceptance and the full expressive instrument remain open. The user approved the earlier two-reference fitting
+Status: Compact reed-source/body-filter instrument and core expressive controls
+implemented and verified; acoustic listening acceptance remains open. The user approved the earlier two-reference fitting
 experiment, then directed a simpler synthesis model that can generalize across
 notes. Dense harmonic fits remain discovery evidence and comparison captures.
+
+## Current instrument refinement
+
+The user requests sustained refinement into a useful, polished preset. Keep
+one shared pulse/spectrum/body design, rather than accepting a good D3 score
+or adding independently fitted note spectra. The completed slice establishes:
+
+- balanced low/middle/high tone at quiet/full breath, with intermediate notes
+  and controller sweeps checked before adopting a candidate;
+- retained noisy reed closure and brief startup asymmetry, with actual source
+  ablations and repeatable comparisons rather than parameter-label claims;
+- tongued, short and sustained notes; connected solo-legato transitions;
+  live vibrato depth/rate and growl controls;
+- a short playable musical demonstration of those controls and sensible
+  listening levels, alongside the raw reference audit;
+- consistent physical body resonances across native/render sample rates; and
+- normalized editable geometry, sparse meaningful Guide rails, clear local
+  routing and concise explanations.
+
+The isolated-note polyphonic/legato comparison under
+`.context/sax-reed-proud/mode-comparison/` finds almost unchanged spectral
+centroids (under 3 Hz), but legato's fixed 2048-point source reduces middle/high
+note level relative to the pitch-derived polyphonic frame. Further trials use
+solo legato deliberately for connected playing and account for its level law.
+No source-quality claim is inferred from selecting a performance mode.
+
+The first complete refinement is a broad minimum-phase body with five rounded
+controls: low warmth +2 dB/180 Hz, lower resonance +5 dB/550 Hz, middle dip
+−8.5 dB/1100 Hz, upper resonance +5 dB/2500 Hz and upper damping −14 dB/3500 Hz.
+One harmonic-relative edge opens from H3 at CC2≤32 to H4.5 at full breath.
+Six sparse spectral landmarks follow key through canonical inspected positions;
+they are samples of one smooth law, rather than independently fitted partials.
+
+Rounding the five gains costs under .001 dB in the offline design objective.
+See `.context/sax-reed-proud/analysis/` for candidate identities, measurements
+and rejected pressure-bell alternatives. Final metrics below use the rebuilt
+app's actual playback-rate path, rather than the earlier factory-only rate test.
+
+Closing-edge Guide weights .20→.14 add phase-local reed variation. A separate
+two-pole aspiration mesh joins after the reed edge and before the shared body:
+node gain .1, noisy Guide .2, pressure weights 1→.6. The light setting brings
+1.5–4 kHz off-harmonic RMS to 54–95% of the source descriptors, while stronger
+trials overdo upper-register roughness. These descriptors include room sound,
+pitch drift and leakage; they do not identify an isolated noise stem. The
+faint reference odd-bin texture is mainly upper half-harmonics, not a strong
+persistent subfundamental. CC3 therefore retains a clean zero default.
+
+The five-pole volume contour now has pressure-dependent attack inertia,
+14+73*CC5+66*(1−CC2) ms, and 90–110 ms release. Its live amplitude combines
+with the external pressure multiplier as x*(1−.45*x), staying monotonic and
+above the mature .5 sustain floor. A reused seven-pole pitch loop supplies
+mod-wheel depth (CC1) and CC76 rate; solo legato and 30 ms glide preserve connected notes.
+The eighteen-second musical phrase demonstrates breath, short tongued notes,
+slurs, delayed shallow vibrato, register changes and one brief rough gesture.
+
+The complete 21-node candidate adds eleven reusable Guides, including six
+key-following phase rails, and a 28-point modelled body. The three sources resolve
+the single Voice Context implicitly; explicit context cables are reserved for
+multiple-context disambiguation. A seeded before/after live edit produces exact
+PCM. Its graph has no card
+overlaps or cable/card-body intersections in the canonical layout proof. Native
+PLAY reaches the full phrase and stops cleanly; held-note return uses one voice.
+
+After the M11 rate correction and body reimport, comparable harmonic RMSE is
+4.52 versus the prior focused body's 5.60 dB; broad-band RMSE is 2.73 versus
+3.16 dB, and amplitude^.7-weighted error is 3.22 versus 4.19 dB. Quiet D3 remains
+too bright. One broad register correction predicted only .33 dB improvement
+and weakened loud D3, so it was rejected rather than expanding the model.
+
+Actual articulation checks find neutral pitch within .004 cents mean, live rate
+changes 5.64→4.50→7.50 Hz, continuous overlapped notes, exact silent separated
+gaps and a 93 ms release. Known-carrier phase analysis is validated against
+synthetic FM and is not a general pitch tracker. Eight notes across MIDI 44–76
+increase level and brightness with pressure. All 25 register/rate captures are
+finite and unclipped (maximum peak .633), without held-note silence holes.
+The 44.1/48 kHz tonal difference is small. At 96 kHz, harmonic-shape differences
+from 48 kHz are under .07 dB, centroid differences under .14%, and RMS differences
+under .04 dB. The earlier large 96 kHz mismatch came from missing actual-rate IR
+preparation, now corrected; it is not evidence of a separate source/FFT defect.
+
+Final content is `.context/sax-reed-proud/ready-v4/`, installed as
+`reed-saxophone.cyclegraph` (SHA256 `038cd7fcfce722ca1b2387d2d64a4e901202b351b38ec26c29da1dde36d5bcec`).
+Native held-note wheel changes and one-voice legato are verified, with full phrase
+PLAY returning to stopped/zero voices. The reference page retains all 32 original
+recordings, six source/synth pairs, the full phrase and four full articulation
+clips. Its row comparisons declare RMS matching; raw captures keep their levels.
 
 ## Listening revision: a compact reed pulse and shared body response
 

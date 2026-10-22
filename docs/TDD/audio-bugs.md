@@ -1,5 +1,44 @@
 # Audio Bug Notes
 
+## P2: IR imports cap source samples before canonical-rate conversion
+
+Source review on 2026-10-21 confirms that
+`ImpulseResponseResourcePreparation::prepare` calls the mature
+`CycleDsp::irTrimmedSampleCount` before resampling to 44.1 kHz. That helper
+retains at most 16,384 source samples: about 171 ms at 96 kHz and 42.7 ms at
+384 kHz, although the canonical Size can represent about 371 ms. The same
+100 ms resonant response therefore fits at 44.1/48/96 kHz but is truncated
+when imported at 384 kHz.
+
+Status: existing import-duration limitation, confirmed by source; no shared
+trim policy changed in M11. Its supported-rate validation is not a guarantee
+of equal maximum retained source duration. A follow-up should compare the
+same physical response at high source rates and retain the mature audible-tail
+criterion while applying the maximum duration in the canonical timebase.
+The current reed body's 160 retained source samples are unaffected. See
+[IR audio resources](cycle-v2-ir-audio-resources.md) for the separate resolved
+playback-rate conversion and compiled-runtime coverage.
+
+## P3: Disabled noisy Guides may retain generated noise (unconfirmed)
+
+During the 2026-10-21 reed/aspiration authoring study, source review found that
+`GuideCurveSnapshotProvider::addGuide` copies noise, vertical-offset and phase
+parameters before its disabled-resource branch. That branch zeros only the
+curve table, prepares it and still publishes the Guide slot. Both
+`getTableValue` and `sampleDownAddNoise` then call `GuideCurveTableDsp` with the
+retained parameters; the latter adds noise and vertical offset after reading
+the zero table. `GuideCurveMeshPreparation` still applies the typed assignment
+for this slot. Disabling a noisy Guide may therefore leave generated texture.
+
+Status: unconfirmed by rendered app audio; no runtime policy changed. Reproduce
+with a neutral flat component Guide at noise 1, disable it, then compare seeded
+PCM against the same resource at enabled=true/noise=0. Also check a nonzero
+vertical-offset resource. A focused provider/PCM test should establish the
+intended enable contract before a fix. Current reed tonal ablations explicitly
+set noise=0 on both `reedGrain` and `reedAspiration` and do not rely on the enable
+flag. Investigation notes are in
+`.context/sax-reed-proud/capabilities/README.md`.
+
 ## P2: Repeated Guide edits after reopening can retain the preceding audio plan
 
 On 2026-10-21, the shared-body reed preset under
