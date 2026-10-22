@@ -67,12 +67,12 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 
 - `cycle-v2/README.md` — Node-workflow overview, current controls, build, test, and automation commands.
 - `cycle-v2/CMakeLists.txt` — CycleV2 app, graph migrator, and test target source lists.
-- `cycle-v2/src/Main.cpp` — CycleV2 process entry point and top-level JUCE application composition.
-- `cycle-v2/src/App/` — Standalone engine, graph file lifecycle, library state, and automation protocol.
+- `cycle-v2/src/Main.cpp` — App composition root; App/ owns audio engine, graph files and library lifecycle.
+- `cycle-v2/src/App/Automation/` — Socket transport, input, inspection, command routing and semantic authoring adapters.
 - `cycle-v2/src/Reference/` — Reference library, pitch/cyclogram analysis, and numerical automation exports.
 - `cycle-v2/src/Graph/NodeGraph.h` — Durable graph data model; read through dispatcher-owned edit views in UI code.
 - `cycle-v2/src/Graph/GraphDocument.h` — Committed graph ownership, publication, and document observers.
-- `cycle-v2/src/Graph/GraphCommandDispatcher.h` — Authoritative semantic edit, gesture, undo, and commit boundary.
+- `cycle-v2/src/Graph/GraphCommandDispatcher.h` — Semantic values, topology, Guides, gestures and staged undoable publication.
 - `cycle-v2/src/Graph/GraphDelta.h` — Ordered semantic deltas for atomic graph edits, rollback, undo, and redo.
 - `cycle-v2/src/Graph/GraphSerializer.h` — Current graph persistence and migration-facing serialization.
 - `cycle-v2/src/Graph/GraphCompiler.h` — Compiles graph topology into executable runtime structure.
@@ -85,12 +85,12 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/` — Domain node implementations; keep DSP, model, editor, panel, and rendering layers distinct.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
-- `cycle-v2/src/Graph/MeshDimensionality.h` — Shared node axis eligibility, projection, and dimensional edit semantics.
+- `cycle-v2/src/Graph/MeshDimensionality.h` — Shared axis eligibility and projection; GraphMeshGuideRemap preserves rail targets.
 - `cycle-v2/src/UI/Editors/` — Shared editor geometry, cube-face input, property/morph controls, usable travel and keyboard interaction.
-- `cycle-v2/src/Nodes/Curve/` — Curve model/editor adapters and shared panel hosts for snapshots, zoom controls and GL lifetime.
-- `cycle-v2/src/Nodes/Envelope/` — Envelope state/playback, commit-cached surfaces, shared panel/zoom hosts and curve-overlay tools.
+- `cycle-v2/src/Nodes/Curve/` — Curve codecs, stable identities, editor adapters and shared panel/zoom/GL hosts.
+- `cycle-v2/src/Nodes/Envelope/` — State/playback, surfaces and shared EnvelopeEditCore for panel and headless values/markers.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
-- `cycle-v2/src/UI/NodeWorkspace.h` — Top-level CycleV2 workspace composition and sidebar/canvas ownership.
+- `cycle-v2/src/UI/NodeWorkspace.h` — Workspace composition and canonical ephemeral controller delivery to audio and previews.
 - `cycle-v2/src/UI/NodeCanvas.h` — Canvas orchestrator; delegate interaction, scene, presentation, and commands.
 - `cycle-v2/src/UI/NodeCanvasInteraction.h` — Pointer/gesture routing; preserve semantic command and cost boundaries.
 - `cycle-v2/src/UI/NodeCanvasPresentation.h` — Builds visible canvas presentation from graph/runtime facts.
@@ -126,7 +126,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `docs/cycle-agent-runbook.md` — Focused fixtures, native gestures, screenshots, state assertions, IPC, GL, and crash workflow.
 - `docs/chats/` — Durable user preferences and workflow decisions; not a substitute for architecture docs.
 - `scripts/cycle_automation.py` — Canonical local Cycle automation entry point for exact-PID lifecycle, fixtures, and capture.
-- `scripts/cycle_automation_support/` — Product profiles, workspace identity, registry leases, process lifecycle, and session client.
+- `scripts/cycle_automation_support/` — Product profiles, identity, leases, lifecycle, and persistent JSON-lines session/REPL.
 - `scripts/fixtures/cycle1-smoke-suite.json` — Cycle 1 smoke fixture catalog and optional visual check.
 - `scripts/fixtures/cycle-v2-smoke-suite.json` — Cycle 2 smoke fixture catalog and optional visual checks.
 - `scripts/launch_cycle_app.swift` — Exact-PID NSWorkspace launch and native window activation for parallel workspaces.

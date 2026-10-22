@@ -42,6 +42,16 @@ std::shared_ptr<const TrimeshNodeModelState> TrimeshNodeModelState::copyOf(
             new TrimeshNodeModelState(std::move(copy), revisionToUse));
 }
 
+std::shared_ptr<const TrimeshNodeModelState> TrimeshNodeModelState::takeOwnership(
+        std::unique_ptr<Mesh> mesh,
+        uint64_t revisionToUse) {
+    if (mesh == nullptr) {
+        return {};
+    }
+    return std::shared_ptr<const TrimeshNodeModelState>(
+            new TrimeshNodeModelState(ownedMesh(mesh.release()), revisionToUse));
+}
+
 String TrimeshNodeModelState::schemaId() const {
     return "trimesh";
 }

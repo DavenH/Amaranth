@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "App/CycleV2AutomationAssertions.h"
-#include "App/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationAssertions.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
 
 using namespace CycleV2;
 using namespace juce;

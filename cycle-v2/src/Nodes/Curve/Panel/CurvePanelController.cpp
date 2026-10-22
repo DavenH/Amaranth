@@ -193,6 +193,7 @@ protected:
     virtual bool registerMeshEdit() = 0;
     virtual void synchronizeSelection() = 0;
     virtual void applyDomainPanelSettings() {}
+    virtual ControlState panelControlState() const { return controls; }
     virtual void applyDomainControlValues(float, float, float) {}
     virtual const Mesh& modelMesh() const = 0;
     virtual String domainModelName() const = 0;
@@ -215,12 +216,13 @@ protected:
     }
 
     void applyPanelSettings() {
+        const auto values = panelControlState();
         panel->setControlValues(
-                controls.enabled,
-                controls.first,
-                controls.second,
-                controls.third,
-                controls.menuId);
+                values.enabled,
+                values.first,
+                values.second,
+                values.third,
+                values.menuId);
         applyDomainPanelSettings();
     }
 
@@ -580,6 +582,19 @@ public:
         return envelopePanel().selectedEnvelopeCubeIndex();
     }
 
+    bool setPreviewMorphPosition(std::optional<MorphPosition> position) override {
+        if (!adapter.setPreviewMorphPosition(std::move(position))) {
+            return false;
+        }
+        applyPanelSettings();
+        panel->refreshRasterizer();
+        return true;
+    }
+
+    std::optional<MorphPosition> effectiveMorphPosition() const override {
+        return adapter.effectiveMorphPosition();
+    }
+
     void resetDocumentPresentation() override {
         CurvePanelControllerBase::resetDocumentPresentation();
         frameOnNextNodeSync = true;
@@ -729,6 +744,11 @@ public:
 
 private:
     bool usesZoomHost() const override { return true; }
+
+    ControlState panelControlState() const override {
+        const auto position = adapter.effectiveMorphPosition();
+        return { controls.enabled, position.red, position.blue, position.time, controls.menuId };
+    }
 
     EnvelopeMorphSurfacePreview morphSurface;
     bool surfaceGestureActive {};

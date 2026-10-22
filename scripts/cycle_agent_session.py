@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import socket
 import sys
+
+from cycle_automation_support.session import Session
 
 
 def load_command(args):
@@ -25,28 +26,9 @@ def main():
     args = parser.parse_args()
 
     command = load_command(args)
-    request = {
-        "id": args.id,
-        "command": command,
-    }
-
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-        sock.connect(args.socket_path)
-        sock.sendall((json.dumps(request, separators=(",", ":")) + "\n").encode("utf-8"))
-
-        chunks = []
-        while True:
-            chunk = sock.recv(4096)
-            if not chunk:
-                break
-
-            chunks.append(chunk)
-
-            if b"\n" in chunk:
-                break
-
-    response = b"".join(chunks).split(b"\n", 1)[0]
-    print(json.dumps(json.loads(response.decode("utf-8")), indent=2))
+    with Session(args.socket_path) as session:
+        response = session.command(command, request_id=args.id, require_ok=False)
+    print(json.dumps(response, indent=2))
 
 
 if __name__ == "__main__":

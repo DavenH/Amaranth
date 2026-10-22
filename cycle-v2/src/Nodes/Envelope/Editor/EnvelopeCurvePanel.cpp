@@ -14,6 +14,7 @@
 #include <Util/Arithmetic.h>
 
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
+#include "Nodes/Envelope/EnvelopeEditCore.h"
 #include "UI/MeshEditorPresentation.h"
 
 #include <algorithm>
@@ -303,20 +304,7 @@ public:
             return;
         }
 
-        auto transferMarker = [from, to1, to2](std::set<VertCube*>& markers) {
-            auto* source = const_cast<VertCube*>(from);
-
-            if (markers.find(source) == markers.end()) {
-                return;
-            }
-
-            markers.erase(source);
-            markers.insert(to1);
-            markers.insert(to2);
-        };
-
-        transferMarker(envelopeMesh.loopCubes);
-        transferMarker(envelopeMesh.sustainCubes);
+        EnvelopeEditCore::transferMarkers(envelopeMesh, *from, *to1, *to2);
     }
 
     Array<Vertex*> getVerticesToMove(VertCube* cube, Vertex* startVertex) override {
@@ -324,19 +312,8 @@ public:
             return Interactor::getVerticesToMove(cube, startVertex);
         }
 
-        Array<Vertex*> moving;
-        const auto dimensions = MorphDimensions(dimensionCount);
-        int linked = ~dimensions.cornerMask() & 7;
-        linked |= envelopeYellowLinked ? 4 : 0;
-        linked |= envelopeRedLinked ? 2 : 0;
-        linked |= envelopeBlueLinked ? 1 : 0;
-        const int selectedCorner = cube->indexOf(startVertex);
-        for (int corner = 0; corner < 8; ++corner) {
-            if ((corner & ~linked) == (selectedCorner & ~linked)) {
-                moving.addIfNotAlreadyThere(cube->getVertex(corner));
-            }
-        }
-        return moving;
+        return EnvelopeEditCore::linkedVertices(cube, startVertex,
+                { dimensionCount, { envelopeYellowLinked, envelopeRedLinked, envelopeBlueLinked } });
     }
 
     void doExtraMouseDrag(const MouseEvent& event) override {
@@ -603,7 +580,10 @@ public:
             if (dimension < 0) {
                 return false;
             }
-            cube->guideCurveGainAt(dimension) = jlimit(0.f, 1.f, normalizedValue);
+            if (!EnvelopeEditCore::setGuideGain(
+                    *cube, dimension, jlimit(0.f, 1.f, normalizedValue), dimensionCount)) {
+                return false;
+            }
             refreshRasterizer();
             return true;
         }
@@ -616,28 +596,13 @@ public:
             return false;
         }
 
-        Array<Vertex*> vertices;
-
-        if (dimension == Vertex::Phase || dimension == Vertex::Amp || dimension == Vertex::Curve) {
-            VertCube* cube = selectedEnvelopeCubeForModel();
-            if (cube == nullptr) {
-                cube = closestEnvelopeCubeFor(vertex);
-            }
-
-            vertices = getVerticesToMove(cube, vertex);
-            if (vertices.isEmpty() && cube != nullptr) {
-                for (int i = 0; i < (int) VertCube::numVerts; ++i) {
-                    vertices.addIfNotAlreadyThere(cube->getVertex(i));
-                }
-            }
-        } else {
-            vertices.add(vertex);
+        VertCube* cube = selectedEnvelopeCubeForModel();
+        if (cube == nullptr) {
+            cube = closestEnvelopeCubeFor(vertex);
         }
-
-        for (Vertex* movingVertex : vertices) {
-            if (movingVertex != nullptr) {
-                movingVertex->values[dimension] = value;
-            }
+        if (cube == nullptr || !EnvelopeEditCore::setValue(*cube, cube->indexOf(vertex), dimension, value,
+                { dimensionCount, { envelopeYellowLinked, envelopeRedLinked, envelopeBlueLinked } })) {
+            return false;
         }
 
         state.currentVertex = vertex;
@@ -659,8 +624,7 @@ public:
             return false;
         }
 
-        const auto& markers = loopMarker ? envelopeMesh.loopCubes : envelopeMesh.sustainCubes;
-        return markers.find(cube) != markers.end();
+        return EnvelopeEditCore::markerState(envelopeMesh, *cube, loopMarker);
     }
 
     void toggleSelectedEnvelopeMarker(bool loopMarker) override {
@@ -670,17 +634,8 @@ public:
             return;
         }
 
-        auto& markers = loopMarker ? envelopeMesh.loopCubes : envelopeMesh.sustainCubes;
-        const bool wasSet = markers.find(cube) != markers.end();
-
-        markers.clear();
-
-        if (!wasSet) {
-            markers.insert(cube);
-        }
-
-        envRasterizer.evaluateLoopSustainIndices();
-        synchronizeEnvelopeLoopSeamFrom(cube->getVertex(0), loopMarker);
+        EnvelopeEditCore::setMarker(envelopeMesh, *cube, loopMarker,
+                !EnvelopeEditCore::markerState(envelopeMesh, *cube, loopMarker), envRasterizer);
         refreshRasterizer();
         state.flags[PanelState::DidMeshChange] = true;
         Panel2D::repaint();
@@ -721,17 +676,7 @@ protected:
         position.blueDepth = 1.f;
 
         auto* cube = new VertCube(&envelopeMesh);
-        cube->initVerts(position);
-
-        for (int i = 0; i < (int) VertCube::numVerts; ++i) {
-            Vertex* vertex = cube->getVertex(i);
-            vertex->values[Vertex::Phase] = x;
-            vertex->values[Vertex::Amp] = y;
-
-            if (curve >= 0.f) {
-                vertex->values[Vertex::Curve] = curve;
-            }
-        }
+        cube->initLine(position, x, y, curve);
 
         envelopeMesh.addCube(cube);
         state.currentCube = cube;
@@ -755,34 +700,7 @@ protected:
     }
 
     static int vertexDimensionForParameter(const String& parameterId) {
-        const String field = parameterId.fromLastOccurrenceOf(".", false, false);
-
-        if (field == "time") {
-            return Vertex::Time;
-        }
-
-        if (field == "red") {
-            return Vertex::Red;
-        }
-
-        if (field == "blue") {
-            return Vertex::Blue;
-        }
-
-        if (field == "phase") {
-            return Vertex::Phase;
-        }
-
-        if (field == "amp") {
-            return Vertex::Amp;
-        }
-
-        if (field == "curve") {
-            return Vertex::Curve;
-        }
-
-
-        return -1;
+        return EnvelopeEditCore::fieldDimension(parameterId);
     }
 
     float parameterValueFromNormalized(const String& parameterId, float normalizedValue) const {
@@ -921,47 +839,7 @@ protected:
     }
 
     void validateEnvelopeMarkers() {
-        std::set<VertCube*> meshCubes;
-        for (VertCube* cube : mesh.getCubes()) {
-            if (cube != nullptr) {
-                meshCubes.insert(cube);
-            }
-        }
-
-        auto removeMissingCubes = [&meshCubes](std::set<VertCube*>& markers) {
-            for (auto iter = markers.begin(); iter != markers.end();) {
-                if (meshCubes.find(*iter) == meshCubes.end()) {
-                    iter = markers.erase(iter);
-                } else {
-                    ++iter;
-                }
-            }
-        };
-
-        removeMissingCubes(envelopeMesh.loopCubes);
-        removeMissingCubes(envelopeMesh.sustainCubes);
-
-        envRasterizer.evaluateLoopSustainIndices();
-
-        int loopIdx = -1;
-        int sustIdx = -1;
-        envRasterizer.getIndices(loopIdx, sustIdx);
-
-        if (sustIdx >= 0) {
-            auto snapshot = envRasterizer.snapshotView();
-            const auto& intercepts = snapshot.intercepts();
-
-            for (int i = 0; i < (int) intercepts.size(); ++i) {
-                VertCube* cube = intercepts[(size_t) i].cube;
-                if (cube != nullptr
-                        && envelopeMesh.loopCubes.find(cube) != envelopeMesh.loopCubes.end()
-                        && i > sustIdx - EnvRasterizer::loopMinSizeIcpts) {
-                    envelopeMesh.loopCubes.erase(cube);
-                }
-            }
-        }
-
-        envRasterizer.evaluateLoopSustainIndices();
+        EnvelopeEditCore::validateMarkers(envelopeMesh, envRasterizer);
     }
 
     void drawEnvelopeBackground() {
@@ -1168,54 +1046,7 @@ protected:
 
     bool synchronizeEnvelopeLoopSeamFrom(Vertex* sourceVertex, bool sourceIsLoopVertex) {
         ignoreUnused(sourceVertex);
-
-        int loopIdx = -1;
-        int sustIdx = -1;
-        envRasterizer.getIndices(loopIdx, sustIdx);
-
-        auto snapshot = envRasterizer.snapshotView();
-        const auto& intercepts = snapshot.intercepts();
-
-        VertCube* loopCube = loopIdx >= 0 && loopIdx < (int) intercepts.size()
-                ? intercepts[(size_t) loopIdx].cube
-                : nullptr;
-        VertCube* sustainCube = sustIdx >= 0 && sustIdx < (int) intercepts.size()
-                ? intercepts[(size_t) sustIdx].cube
-                : nullptr;
-
-        if (loopCube != nullptr && sustainCube != nullptr) {
-            VertCube* toMove = sourceIsLoopVertex ? sustainCube : loopCube;
-            VertCube* toCopyFrom = sourceIsLoopVertex ? loopCube : sustainCube;
-            bool changed = false;
-
-            for (int i = 0; i < (int) VertCube::numVerts; ++i) {
-                Vertex* target = toMove->getVertex(i);
-                Vertex* source = toCopyFrom->getVertex(i);
-                const float nextAmp = source->values[Vertex::Amp];
-                changed = changed || target->values[Vertex::Amp] != nextAmp;
-                target->values[Vertex::Amp] = nextAmp;
-
-                if (toMove->getCompGuideCurve() < 0) {
-                    target->setMaxSharpness();
-                }
-
-                if (toCopyFrom->getCompGuideCurve() < 0) {
-                    source->setMaxSharpness();
-                }
-            }
-
-            return changed;
-        }
-
-        if (sustainCube != nullptr && sustainCube->guideCurveAt(Vertex::Time) < 0) {
-            for (int i = 0; i < (int) VertCube::numVerts; ++i) {
-                sustainCube->getVertex(i)->setMaxSharpness();
-            }
-
-            return true;
-        }
-
-        return false;
+        return EnvelopeEditCore::synchronizeLoopSeam(envelopeMesh, envRasterizer, sourceIsLoopVertex);
     }
 
     bool synchronizeEnvelopeLoopSeamForCurrentEdit() {

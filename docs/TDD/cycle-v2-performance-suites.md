@@ -45,7 +45,7 @@ lookahead and ambient wheel values are not synthesized by a preset suite.
   suite, including a shared library pattern.
 - `scripts/tests/test_cycle_performance_suite.py`: semantic contract tests.
 - `UI/PatternPlaybackSchedule.{h,cpp}`: extracted preparation, roughly 65 lines.
-- `App/PatternScheduleAutomation.{h,cpp}`: bounded MIDI/JSON adapter, roughly 115
+- `App/Automation/PatternScheduleAutomation.{h,cpp}`: bounded MIDI/JSON adapter, roughly 115
   lines; command dispatch/registry and CMake only wire these existing boundaries.
 - `tests/TestPatternPlaybackSchedule.cpp`: interpolation and boundary-order
   behavior plus invalid/overflow failure; existing keyboard tests protect UI reuse.

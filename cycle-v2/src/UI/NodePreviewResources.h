@@ -13,6 +13,7 @@
 namespace CycleV2 {
 
 class NodeEditorCommandService;
+class GraphPresentationModel;
 struct GraphChangeSet;
 
 struct CachedNodePreviewSprite {
@@ -39,6 +40,8 @@ public:
     void refreshGraph(
             const NodeGraph& graphToUse,
             const GraphChangeSet& changes);
+    void setPreviewControls(const GraphPresentationModel& controls) { previewControls = &controls; }
+    void refreshControllerPreview(int controller);
     void setPreviewMidiNote(int midiNote) {
         selectedPreviewMidiNote = jlimit(0, 127, midiNote);
     }
@@ -64,10 +67,12 @@ private:
     std::vector<std::pair<String, CachedNodePreviewSprite>> cachedSprites;
     HashMap<String, int> trimeshWidgetIndices;
     HashMap<String, int> curveEditorWidgetIndices;
+    HashMap<String, int> cachedSpriteIndices;
     StringArray initializedTrimeshGuideContexts;
     StringArray initializedCurveGuideContexts;
 
     const NodeGraph* durableGraph {};
+    const GraphPresentationModel* previewControls {};
     PreviewPitchContextIndex previewPitchContexts;
 };
 

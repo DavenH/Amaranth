@@ -1,6 +1,6 @@
-#include "App/CycleV2AutomationInput.h"
+#include "App/Automation/CycleV2AutomationInput.h"
 
-#include "App/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
 #include "UI/NodeWorkspace.h"
 
 #include <utility>

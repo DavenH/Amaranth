@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Obj/MorphPosition.h>
+
 #include <functional>
 #include <memory>
 #include <optional>
@@ -82,6 +84,7 @@ public:
     const std::array<int, 128>& previewControllerValues() const {
         return current.previewControllerValues;
     }
+    std::optional<MorphPosition> previewMorphForNode(const Node& node) const;
     bool hasModWheelPreviewRoots() const { return hasControllerPreviewRoots(1); }
     bool hasControllerPreviewRoots(int controller) const {
         return !controllerPreviewRootNodeIds[(size_t) jlimit(0, 127, controller)].empty();
@@ -165,6 +168,7 @@ private:
     std::array<std::vector<String>, 128> controllerPreviewRootNodeIds;
     std::vector<PreviewMorphTarget> keyScaleTargets;
     std::array<std::vector<PreviewMorphTarget>, 128> controllerTargets;
+    HashMap<String, std::vector<PreviewMorphTarget>> nodeMorphTargets;
     GraphPresentationPerformanceMetrics performance;
 };
 

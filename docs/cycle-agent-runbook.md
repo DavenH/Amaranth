@@ -48,6 +48,38 @@ PID, and run ID; pass a bounded `--wait` when waiting is intentional. Semantic
 fixtures on separate registered instances can run concurrently. Foreground
 capture takes the machine-wide foreground lease.
 
+For exploratory Cycle V2 work, keep one connection open instead of writing a
+new script for each command:
+
+```sh
+scripts/cycle_automation.py repl --product cycle-v2 --no-build
+```
+
+Run this in a PTY and send successive lines through its stdin. Each line is a
+JSON command or a command name such as `ping` or `snapshotState`. `:exit` closes
+the client; it leaves the app running. `:reconnect` opens a fresh connection and
+never replays a previous command. Command responses include distinct request IDs.
+The REPL holds no foreground lease: native input and capture still use the
+coordinated `exec --foreground` / `capture` routes.
+
+Repeatable Python workflows use the same client and command schema:
+
+```python
+from cycle_automation_support.session import Session
+
+with Session(socket_path, timeout=120) as session:
+    state = session.command({"command": "snapshotState"})["result"]
+    controls = session.command({"command": "inspectNodeControls", "nodeId": "voice"})["result"]
+```
+
+One `Session` is sequential and retains partial response lines between requests.
+Disconnects, timeouts, malformed responses, and mismatched IDs close the
+connection and raise; a command may already have run, so the client never retries
+it automatically. An explicit reconnect or a later command opens a new socket.
+Cycle V2 accepts up to sixteen clients, buffers at most 16 MiB of queued request
+bytes per client, and bounds each response at 64 MiB. Idle or slow clients do not
+block other connections. Existing one-shot clients remain supported.
+
 Inspect artifacts in this order:
 
 1. Report JSON: command success/failure, snapshot, exported command data.
@@ -55,7 +87,37 @@ Inspect artifacts in this order:
 3. Raw log: only when the filtered log omits needed detail.
 4. LLDB transcript for breakpoint runs, or a crash report when available.
 
-## Semantic Candidate Authoring
+## Direct Live Authoring
+
+Keep one socket open and inspect the current model before editing. Capabilities
+advertise `shapeAuthoring`, `guideAuthoring` and `previewControllers` contracts.
+`inspectTrimesh` and `inspectEnvelope` accept `nodeId` without opening an editor.
+They report document/model revisions, geometry, field units and bounds, Guide
+attachments and authored/effective morph positions. Use those revisions for one
+atomic edit; stale requests are rejected without changing history.
+
+| Command | Edit representation |
+| --- | --- |
+| `editTrimesh` | `vertex` with vertexIndex/field/value; `cubeCurve` with cubeIndex/value; `guideGain` with vertexIndex/field/value. |
+| `editEnvelope` | Stable cubeId, corner and field/value; `guideGain`; loop/sustain states. Supply dimensionCount and linkedAxes yellow/red/blue. |
+| `editMeshTopology` | Insert cubeIndex/phase/amp/curve; remove Trimesh cubeIndex or Envelope cubeId. Addresses follow the sequential candidate. |
+| `setPreviewController` | Integer controller/value 0..127 on audition channel 1, even with keyboard hidden. |
+| `inspectPreviewControllers` | All 128 ephemeral values and document/audio-plan counters. |
+
+Value batches allow 64 edits; topology batches allow 16. Trimesh ordinals are
+revision-scoped. Envelope cube IDs survive edits to other cells. Re-inspect after
+topology changes. New poles start constant over the full morph range and can be
+refined with addressed values. Guide targets follow retained cells through index
+changes; removed cells lose their attachments in the same undo step.
+
+Controller auditions leave preset bytes and undo history unchanged. The expanded
+editor displays effective coordinates without publishing them as authored morph.
+`sendMidi` also accepts `type: "controller"`, channel 1..16, controller/value
+0..127 for raw delivery; that command does not synchronize preview readback.
+Keep a pinned Spy/reference for comparison, make one targeted edit, audition and
+undo when needed. Refine the running preset directly through these commands.
+
+## Whole Model Import And Compatibility
 
 Use `inspectSynthesisCapabilities` to discover `authoring` bounds and each model's
 `authoringReplacement` support. `inspectNodeControls` returns the current typed
@@ -82,9 +144,9 @@ active gestures and stale revisions are rejected. Model validation covers safe
 structure and factory-compatible coordinates; musical quality and gesture-specific
 collision eligibility require separate evaluation.
 
-Save a baseline with `saveGraph`, create candidates with `applyNodeEdits`, save each,
-and discard by reopening the baseline through `openGraph`. The demonstration below
-uses that lifecycle and the existing repeatable performance-suite renderer:
+`applyNodeEdits` remains available for explicit whole-model import and existing
+repeatable fixtures. The historical candidate demonstration uses that lifecycle
+and the performance-suite renderer:
 
 ```sh
 python3 scripts/create_cycle_v2_candidates.py --no-build \
@@ -187,6 +249,49 @@ Use `assertState` or `assertTarget` once the path is known. Do not validate by
 visually reading a screenshot if a state assertion can prove the behavior.
 
 ## Choosing Commands
+
+### Live preset authoring
+
+Refine presets with targeted semantic commands against the running document.
+Do not use preset generators, patched graph JSON or reload cycles for new sound
+design. Inspect, edit, compare the pinned live Spy/reference, and retain or undo.
+When a needed edit is missing, expose its existing command owner through the
+socket before proceeding. Saved graphs are explicit checkpoints.
+
+The persistent socket also accepts raw JSON lines without a Python authoring
+client. Hold the coordinator's exact-instance lease while using `nc`:
+
+```sh
+python3 scripts/cycle_automation.py exec --product cycle-v2 --no-build -- \
+    /bin/sh -c 'exec /usr/bin/nc -U "$CYCLE_AGENT_SESSION"'
+```
+
+Send one request at a time, with a distinct ID, and inspect its response before
+the next mutation. Transport reconnects must not replay a failed edit:
+
+```json
+{"id":"guide-1","command":{"command":"inspectGuideCurve","guideId":"reedOnsetPhase"}}
+{"id":"guide-2","command":{"command":"editGuideCurve","guideId":"reedOnsetPhase","expectedDocumentRevision":7,"expectedModelRevision":1,"edits":[{"op":"set","vertexId":1,"y":0.507}]}}
+```
+
+Use the revisions from inspection, rather than copying these example values.
+`inspectSynthesisCapabilities.guideAuthoring` advertises commands and limits.
+`inspectGuideCurve` returns resource/model/document revisions, canonical points,
+controls and resolved assignments. `editGuideCurve` supports partial `set`,
+`insert` and `remove` point edits, bounded to 64 per atomic request. Point IDs
+are stable; inserting allocates an ID visible on the next inspection. Coordinates
+and sharpness are in [0,1]; y=0.5 is neutral Guide displacement.
+
+`createGuideCurve` requires the current `expectedDocumentRevision` and returns
+the new Guide ID. `assignGuideCurve` / `detachGuideCurve` additionally take
+`nodeId`, `expectedModelRevision`, `selectionIndex` and `field` (`time`, `red`,
+`blue`, `phase`, `amp` or `curve`); assignment also takes `guideId`. The index
+addresses a Trimesh vertex array entry or an Envelope cube array entry, and
+resolves every owning rail through the same rules as the editor. It does not
+refer to the current selection. Inspect actual assignments after attachment.
+These operations work with all editors closed and use normal undo/redo.
+
+### General automation
 
 Common command families:
 

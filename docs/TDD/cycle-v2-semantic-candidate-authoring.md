@@ -90,7 +90,7 @@ replaced by the canonical delta changes.
 - `Graph/NodeDefinition.{h,cpp}`, relevant model codecs and new
   `Nodes/ModelAuthoringValidation.{h,cpp}`: explicit authoring-only validation,
   approximately 200–300 lines; persistence behavior unchanged.
-- New `App/NodeAuthoringAutomation.{h,cpp}`, command/capability adapters,
+- New `App/Automation/NodeAuthoringAutomation.{h,cpp}`, command/capability adapters,
   workspace/canvas forwarding and inspector revision: approximately 180 lines.
 - `tests/TestGraphCandidateEdits.cpp`, transaction/model compatibility tests,
   `scripts/create_cycle_v2_candidates.py`, focused Python contracts and docs.

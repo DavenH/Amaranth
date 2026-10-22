@@ -91,6 +91,8 @@ public:
     bool undoForAutomation();
     bool redoForAutomation();
     GraphEditResult applyNodeEditsForAutomation(const NodeAuthoringEdits& edits);
+    juce::var guideCurveCommandForAutomation(const juce::var& command);
+    juce::var shapeCommandForAutomation(const juce::var& command);
     uint64_t documentRevisionForAutomation() const { return canvas.documentRevisionForAutomation(); }
     bool setGuideParameterForAutomation(
             const String& guideId,
@@ -124,6 +126,8 @@ public:
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlanForAutomation(GraphExecutionPlan& plan, uint64_t& revision) const;
     var performanceStateForAutomation() const;
+    bool setPreviewControllerForAutomation(int controller, int value, String& error);
+    var inspectPreviewControllersForAutomation() const;
     bool performancePointerDownForAutomation(int noteNumber, float velocity);
     bool performancePointerDragForAutomation(int noteNumber, float velocity);
     bool performancePointerUpForAutomation();

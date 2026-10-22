@@ -5,6 +5,7 @@
 
 #include "Graph/NodeParameterMap.h"
 #include "Graph/MeshDimensionality.h"
+#include "Graph/InteractionComplexityDiagnostics.h"
 
 #include <Curve/Mesh/CollisionDetector.h>
 #include <Curve/Mesh/Mesh.h>
@@ -85,7 +86,8 @@ TrimeshNodeModel& TrimeshNodeModel::operator=(TrimeshNodeModel&& other) noexcept
 
 bool TrimeshNodeModel::syncFromNode(
         const Node& node,
-        TrimeshSelectionSyncPolicy selectionPolicy) {
+        TrimeshSelectionSyncPolicy selectionPolicy,
+        std::optional<MorphPosition> previewMorph) {
     const NodeParameterMap parameters(node);
     const int nextDimensionCount = parameters.intValue("dimensionCount", 0);
     if (nextDimensionCount != dimensionCount) {
@@ -93,11 +95,13 @@ bool TrimeshNodeModel::syncFromNode(
         bumpMeshContentRevision();
     }
     const auto dimensions = MorphDimensions::trimesh(dimensionCount);
-    const MorphPosition nextMorph {
+    const MorphPosition authoredMorph {
             parameters.floatValue("yellow", 0.5f),
             parameters.floatValue("red", 0.5f),
             parameters.floatValue("blue", 0.5f)
     };
+    const MorphPosition nextMorph = previewMorph.has_value()
+            ? dimensions.constrain(*previewMorph, authoredMorph) : authoredMorph;
     const int nextPrimaryAxis = primaryAxisFromParameter(
             parameters.stringValue("primaryAxis", "yellow"));
     const int nextSelectedVertexIndex = (int) node.editorState.getProperty(
@@ -131,6 +135,9 @@ bool TrimeshNodeModel::syncFromNode(
                     || typedModel->revision() != appliedModelRevision)) {
         const bool meshReplaced = !mesh().equals(typedModel->mesh());
         if (meshReplaced) {
+            InteractionComplexityDiagnostics::recordMeshCopy(
+                    (size_t) typedModel->mesh().getNumVerts(),
+                    (size_t) typedModel->mesh().getNumCubes());
             mesh().deepCopy(&typedModel->mesh());
             bumpMeshContentRevision();
         }
@@ -525,6 +532,10 @@ void TrimeshNodeModel::clearMesh() {
         ownedMesh->destroy();
         ownedMesh = nullptr;
     }
+}
+
+std::unique_ptr<Mesh> TrimeshNodeModel::releaseMesh() {
+    return std::move(ownedMesh);
 }
 
 }

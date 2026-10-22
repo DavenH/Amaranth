@@ -7,6 +7,7 @@
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "Graph/NodeParameterMap.h"
+#include "Graph/MeshDimensionality.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Guide/GuideGraphEditor.h"
 
@@ -413,6 +414,9 @@ GraphEditResult GraphCommandDispatcher::setMappedPreviewMorph(
         size_t next = first;
         while (next < targets.size() && targets[next].nodeId == nodeId) {
             const auto& target = targets[next++];
+            if (!MeshDimensionality::inputActive(*node, target.parameterId)) {
+                continue;
+            }
             const float controlValue = target.control == PreviewMorphControl::KeyScale
                     ? keyScale
                     : controllerValues[(size_t) jlimit(0, 127, target.controller)];
@@ -422,7 +426,8 @@ GraphEditResult GraphCommandDispatcher::setMappedPreviewMorph(
             } else if (target.parameterId == "blue") {
                 blue = value;
             }
-            if (node->kind == NodeKind::TrilinearMesh) {
+            if (node->kind == NodeKind::TrilinearMesh
+                    || (node->kind == NodeKind::Envelope && target.parameterId == "yellow")) {
                 const auto result = setNodeParameter(
                         nodeId, target.parameterId, target.parameterId, value);
                 succeeded = result.succeeded();

@@ -44,6 +44,19 @@ void Mesh::destroy() {
     }
 }
 
+bool Mesh::detachCube(VertCube* cube, vector<Vertex*>& detachedVertices) {
+    if (!removeCube(cube)) {
+        return false;
+    }
+    for (auto* vertex : cube->lineVerts) {
+        vertex->removeOwner(cube);
+        if (vertex->owners.isEmpty() && removeVert(vertex)) {
+            detachedVertices.push_back(vertex);
+        }
+    }
+    return true;
+}
+
 void Mesh::print(bool printLines, bool printVerts) {
 #ifndef ORGANIZER
     if (printLines) {

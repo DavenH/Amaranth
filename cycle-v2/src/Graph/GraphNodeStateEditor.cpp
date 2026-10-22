@@ -6,6 +6,7 @@
 #include <Curve/Mesh/Mesh.h>
 
 #include "Graph/GraphNodeStateEditor.h"
+#include "Graph/GraphMeshGuideRemap.h"
 #include "Graph/MeshDimensionality.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
@@ -274,7 +275,8 @@ GraphEditResult GraphNodeStateEditor::replaceNodeModel(
         NodeGraph& graph,
         const String& nodeId,
         uint64_t expectedRevision,
-        NodeModelStatePtr model) const {
+        NodeModelStatePtr model,
+        const std::vector<int>* retainedCubeIndices) const {
     Node* node = findMutableNode(graph, nodeId);
     if (node == nullptr) {
         return { GraphEditCode::MissingNode, nodeId, {} };
@@ -302,7 +304,9 @@ GraphEditResult GraphNodeStateEditor::replaceNodeModel(
     GraphEditResult result;
     result.nodeId = nodeId;
     result.changed = graph.replaceNodeModel(nodeId, std::move(model));
-    if (result.changed && nextCubeCount < previousCubeCount) {
+    if (result.changed && retainedCubeIndices != nullptr) {
+        remapMeshGuideAssignments(graph, nodeId, *retainedCubeIndices, result);
+    } else if (result.changed && nextCubeCount < previousCubeCount) {
         reconcileTrimeshGuideAssignments(graph, nodeId, result);
     }
     result.changes.nodeIds.push_back(nodeId);

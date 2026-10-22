@@ -145,7 +145,8 @@ void TrimeshPanelBridge::syncFromNode(
                     node,
                     morphEditGestureActive
                             ? TrimeshSelectionSyncPolicy::PreserveCurrent
-                            : TrimeshSelectionSyncPolicy::SynchronizeFromNode);
+                            : TrimeshSelectionSyncPolicy::SynchronizeFromNode,
+                    previewMorph);
     if (meshReplaced) {
         stopTimer();
         pendingMeshEdit = false;
@@ -288,6 +289,10 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
     } else if (!isTimerRunning()) {
         startTimerHz(30);
     }
+}
+
+void TrimeshPanelBridge::setPreviewMorphPosition(std::optional<MorphPosition> position) {
+    previewMorph = std::move(position);
 }
 
 void TrimeshPanelBridge::flushPendingMeshEdit(bool gestureComplete) {

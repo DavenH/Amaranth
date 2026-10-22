@@ -2,6 +2,8 @@
 
 #include <JuceHeader.h>
 
+#include <memory>
+
 #include "Graph/NodeDefinition.h"
 
 class Mesh;
@@ -12,6 +14,9 @@ class TrimeshNodeModelState : public NodeModelState {
 public:
     static std::shared_ptr<const TrimeshNodeModelState> copyOf(
             const Mesh& mesh,
+            uint64_t revisionToUse);
+    static std::shared_ptr<const TrimeshNodeModelState> takeOwnership(
+            std::unique_ptr<Mesh> mesh,
             uint64_t revisionToUse);
 
     String schemaId() const override;

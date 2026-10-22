@@ -68,6 +68,7 @@ public:
     void syncFromNode(const Node& node);
     void syncExpandedFromNode(const Node& node);
     void setMorphEditGestureActive(bool active);
+    void setPreviewMorphPosition(std::optional<MorphPosition> position);
     void syncGuideContext(const NodeGraph& graph, const Node& node);
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);

@@ -6,6 +6,7 @@
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 
 #include <Curve/Mesh/VertCube.h>
+#include <Curve/Mesh/MorphDimensions.h>
 #include <Obj/MorphPosition.h>
 
 #include <algorithm>
@@ -40,9 +41,9 @@ bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
     syncedModel = node.model;
     const NodeParameterMap parameters(node);
     dimensions = parameters.intValue("dimensionCount", 0);
-    morphYellow = parameters.floatValue("yellow", 0.f);
-    morphRed = parameters.floatValue("red", 0.5f);
-    morphBlue = parameters.floatValue("blue", 0.5f);
+    authoredMorph = { parameters.floatValue("yellow", 0.f),
+            parameters.floatValue("red", 0.5f), parameters.floatValue("blue", 0.5f) };
+    refreshEffectiveMorph();
     if (differentNode) {
         morphRedLinked = true;
         morphBlueLinked = true;
@@ -75,7 +76,7 @@ NodeModelStatePtr EnvelopePanelAdapter::modelPublication(
         editor->setProperty("selectedCubeId", (int64) *model.selectedCubeId());
     }
     return CurveNodeModelState::copyOf(
-            model, morphRed, morphBlue, publicationRevision, var(editor.release()));
+            model, authoredMorph.red, authoredMorph.blue, publicationRevision, var(editor.release()));
 }
 
 std::vector<CurvePreviewVertex> EnvelopePanelAdapter::previewVertices() {
@@ -114,6 +115,20 @@ bool EnvelopePanelAdapter::registerMeshEdit() {
 }
 
 void EnvelopePanelAdapter::setMorph(const MorphPosition& position) {
+    authoredMorph = position;
+    refreshEffectiveMorph();
+}
+
+bool EnvelopePanelAdapter::setPreviewMorphPosition(std::optional<MorphPosition> position) {
+    const MorphPosition previous = effectiveMorphPosition();
+    previewMorph = std::move(position);
+    refreshEffectiveMorph();
+    return previous.time != morphYellow || previous.red != morphRed || previous.blue != morphBlue;
+}
+
+void EnvelopePanelAdapter::refreshEffectiveMorph() {
+    const MorphPosition position = previewMorph.has_value()
+            ? MorphDimensions(dimensions).constrain(*previewMorph, authoredMorph) : authoredMorph;
     morphYellow = position.time;
     morphRed = position.red;
     morphBlue = position.blue;

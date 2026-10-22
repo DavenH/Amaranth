@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "App/CycleV2AutomationCommand.h"
+#include "App/Automation/CycleV2AutomationCommand.h"
 
 using namespace CycleV2;
 

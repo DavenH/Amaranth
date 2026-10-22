@@ -134,7 +134,7 @@ bool curve(const juce::var& value, bool isEnvelope) {
         if (meshValue.getDynamicObject() == nullptr
                 || (meshValue.hasProperty("name") && !meshValue["name"].isString())
                 || !mesh(meshValue["mainMesh"]) || cubes == nullptr || ids == nullptr
-                || ids->isEmpty() || ids->size() != cubes->size()
+                || ids->size() != cubes->size()
                 || !indices(meshValue["loopIndices"], cubes->size())
                 || !indices(meshValue["sustainIndices"], cubes->size())
                 || !value["logarithmic"].isBool() || !unitFields(value, { "red", "blue" })) {

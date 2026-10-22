@@ -91,6 +91,29 @@ struct NodeAuthoringEdits {
     std::vector<NodeAuthoringEdit> edits;
 };
 
+constexpr size_t maximumGuideCurvePointEdits = 64;
+
+enum class GuideCurvePointEditKind {
+    Set,
+    Insert,
+    Remove
+};
+
+struct GuideCurvePointEdit {
+    GuideCurvePointEditKind kind { GuideCurvePointEditKind::Set };
+    uint64_t vertexId {};
+    std::optional<float> x;
+    std::optional<float> y;
+    std::optional<float> curve;
+};
+
+struct GuideCurveEdits {
+    String guideId;
+    uint64_t expectedDocumentRevision {};
+    uint64_t expectedModelRevision {};
+    std::vector<GuideCurvePointEdit> edits;
+};
+
 struct GraphEditResult {
     GraphEditCode code { GraphEditCode::Connected };
     String nodeId;

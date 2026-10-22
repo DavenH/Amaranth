@@ -255,6 +255,7 @@ NodeCanvas::NodeCanvas() :
                     [this](const String& guideId) { requestDeleteGuideCurve(guideId); },
                     [this]() { requestCanvasRepaint(); }
             });
+    editorCoordinator.previewResources().setPreviewControls(presentation);
     refreshCompiledState();
 
     setOpaque(true);
@@ -2439,6 +2440,7 @@ bool NodeCanvas::undoForAutomation() {
     applyAuthoringResult(result);
     if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
+        refreshComparisonAfterCommit();
     }
     return result.succeeded;
 }
@@ -2449,6 +2451,7 @@ bool NodeCanvas::redoForAutomation() {
     applyAuthoringResult(result);
     if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
+        refreshComparisonAfterCommit();
     }
     return result.succeeded;
 }
@@ -2457,11 +2460,16 @@ GraphEditResult NodeCanvas::applyNodeEditsForAutomation(const NodeAuthoringEdits
     presentation.cancelPendingRefreshes();
     const auto result = commands.applyNodeEdits(edits);
     if (result.succeeded() && result.changed) {
-        presentation.refresh(document.graph(), document.revision(), document.lastChange());
-        applyAuthoringResult({ true, true, true, result.code, {}, { true, true } });
-        rebindGuideEditor();
+        refreshAfterAutomationEdit();
     }
     return result;
+}
+
+void NodeCanvas::refreshAfterAutomationEdit() {
+    presentation.refresh(document.graph(), document.revision(), document.lastChange());
+    applyAuthoringResult({ true, true, true, GraphEditCode::Connected, {}, { true, true } });
+    rebindGuideEditor();
+    refreshComparisonAfterCommit();
 }
 
 bool NodeCanvas::setGuideParameterForAutomation(

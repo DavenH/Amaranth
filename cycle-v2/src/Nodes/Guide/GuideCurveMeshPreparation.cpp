@@ -81,16 +81,28 @@ PreparedMeshGuideAssignments GuideCurveMeshPreparation::apply(
         Mesh& mesh,
         const NodeGraph& graph,
         const String& nodeId,
-        GuideCurveTargetKind targetKind) {
+        GuideCurveTargetKind targetKind,
+        Scope scope) {
     PreparedMeshGuideAssignments result;
     result.provider = std::make_shared<GuideCurveSnapshotProvider>();
     clearGuideAssignments(mesh);
 
     std::unordered_map<String, int, StringHash> slots;
-    for (const auto& resource : graph.getGuideCurves()) {
+    const auto prepareResource = [&](const GuideCurveResource& resource) {
         const GuideHeatmapAsset* heatmap = graph.findGuideHeatmap(resource.heatmapAssetId);
         if (result.provider->addGuide(resource, heatmap)) {
             slots.emplace(resource.id, result.provider->size() - 1);
+        }
+    };
+    if (scope == Scope::TargetNode) {
+        for (const auto& id : graph.guideIdsForTargetNode(nodeId)) {
+            if (const auto* resource = graph.findGuideCurve(id)) {
+                prepareResource(*resource);
+            }
+        }
+    } else {
+        for (const auto& resource : graph.getGuideCurves()) {
+            prepareResource(resource);
         }
     }
     for (const auto& assignment : graph.getGuideAssignments()) {

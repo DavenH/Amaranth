@@ -1,8 +1,8 @@
-#include "App/CycleV2AutomationWorkspaceCommands.h"
+#include "App/Automation/CycleV2AutomationWorkspaceCommands.h"
 
-#include "App/NodeAuthoringAutomation.h"
+#include "App/Automation/NodeAuthoringAutomation.h"
 
-#include "App/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
 #include "UI/NodeWorkspace.h"
 
 #include <utility>
@@ -19,6 +19,25 @@ CycleV2AutomationWorkspaceCommands::CycleV2AutomationWorkspaceCommands(
         workspace(targetWorkspace)
     ,   snapshot(std::move(snapshotProvider))
     ,   resolvePath(std::move(pathResolver)) {
+}
+
+var CycleV2AutomationWorkspaceCommands::setPreviewController(const var& commandValue) {
+    const auto valid = [](const var& value) {
+        return (value.isInt() || value.isInt64()) && (int64) value >= 0 && (int64) value <= 127;
+    };
+    if (!valid(commandValue["controller"]) || !valid(commandValue["value"])) {
+        return failedResult("setPreviewController", "controller and value must be integers in [0, 127]");
+    }
+    const auto channel = commandValue.getProperty("channel", 1);
+    if ((!channel.isInt() && !channel.isInt64()) || (int64) channel != 1) {
+        return failedResult("setPreviewController", "Preview controllers use audition channel 1");
+    }
+    String error;
+    if (!workspace.setPreviewControllerForAutomation(
+            (int) commandValue["controller"], (int) commandValue["value"], error)) {
+        return failedResult("setPreviewController", error);
+    }
+    return okResult("setPreviewController", workspace.inspectPreviewControllersForAutomation());
 }
 
 var CycleV2AutomationWorkspaceCommands::openNodeEditor(const var& commandValue) {

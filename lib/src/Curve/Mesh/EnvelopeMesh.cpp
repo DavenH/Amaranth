@@ -83,7 +83,6 @@ bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
             int index = loopIndexElem->getIntAttribute("index", -1);
 
             if (isPositiveAndBelow(index, (int) cubes.size())) {
-                clampSharpness(cubes[index]);
                 loopCubes.insert(cubes[index]);
             }
         }
@@ -102,7 +101,6 @@ bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
             int index = sustIndexElem->getIntAttribute("index", -1);
 
             if (isPositiveAndBelow(index, (int) cubes.size())) {
-                clampSharpness(cubes[index]);
                 sustainCubes.insert(cubes[index]);
             }
         }
@@ -115,7 +113,7 @@ bool EnvelopeMesh::readXML(const XmlElement* envLayersElem) {
         }
     }
 
-    if(sustainCubes.empty() && ! cubes.empty()) {
+    if (sustainCubes.empty() && sustIndicesElem == nullptr && !cubes.empty()) {
         setSustainToRightmost();
     }
 
@@ -164,7 +162,6 @@ bool EnvelopeMesh::readJSON(const var& object) {
             int index = int(entry);
 
             if (isPositiveAndBelow(index, (int) cubes.size())) {
-                clampSharpness(cubes[index]);
                 loopCubes.insert(cubes[index]);
             }
         }
@@ -175,13 +172,12 @@ bool EnvelopeMesh::readJSON(const var& object) {
             int index = int(entry);
 
             if (isPositiveAndBelow(index, (int) cubes.size())) {
-                clampSharpness(cubes[index]);
                 sustainCubes.insert(cubes[index]);
             }
         }
     }
 
-    if (sustainCubes.empty() && !cubes.empty()) {
+    if (sustainCubes.empty() && sustainIndices == nullptr && !cubes.empty()) {
         setSustainToRightmost();
     }
 

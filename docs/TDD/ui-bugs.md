@@ -1,5 +1,56 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Broad automation unit filter assumes a non-Static canvas mesh
+
+On 2026-10-22, folder-only automation relocation verification reached "Canvas
+automation inspection is semantic and side effect free" and failed its
+`expanded:mesh.panel3D` lookup at TestNodeEditorHost.cpp:1709. The unchanged
+fixture uses the factory's Static mesh while expecting a 3D host. The same
+aggregate run later crashed while constructing another test's Guide resource;
+test-order interference is not yet isolated. The moved production files were
+verified identical apart from include paths. Evidence:
+`.context/automation-folder-tests-including-canvas.log`.
+
+## P2: Trimesh cursor unit test expects callbacks before render initialization
+
+On 2026-10-22, the full suite reported the cursor assertion in "Trimesh panel
+hosts use component cursors and delegated repaint". A narrow run also failed:
+the 2D cursor request updates the inner input host, while the test inspects the
+ZoomPanel wrapper. CurvePanelHost installs the delegated callbacks through its
+render host context; component creation alone does not install them. The test
+and these owners are unchanged from origin/master. Current status: baseline
+initialization contract unresolved; no production change in live authoring.
+Evidence: `.context/live-authoring-cursor-repro.log`,
+`.context/live-authoring-full-tests.log`.
+
+## Resolved: Trimesh drag unit fixture dereferenced an empty factory mesh
+
+On 2026-10-22, the full suite and a narrow run crashed with SIGSEGV at
+TestNodeEditorHost.cpp in "Trimesh drag keeps movement local and publishes one
+commit snapshot". The test was unchanged from origin/master and assumed a
+populated GraphNodeFactory model; origin/master's TrimeshNodeModelCodec creates
+an empty mesh. The fixture now explicitly authors its populated mesh and checks
+it is nonempty before accessing its first vertex. Its local-update, one-copy,
+one-undo contracts remain intact. Before evidence:
+`.context/live-authoring-drag-repro.log`. The updated fixture passes all 25
+assertions in `.context/live-authoring-drag-fixed.log`; the separate cursor
+initialization failure still prevents a green aggregate gate.
+
+## Resolved: Pinned comparison Spies remain stale after direct Guide edits
+
+The prior live Guide audit confirmed that addressed Guide commits changed audio
+but left pinned comparison Spies stale, including through undo. Synchronous
+semantic refresh and successful audio undo/redo now invoke the existing
+comparison callback. Hidden shelves retain their no-capture behavior. Native
+Guide and comparison fixtures protect the refresh sequence.
+
+## P2: Failed create-and-assign Guide command leaves a new resource
+
+Source review found that the combined Guide command creates its resource before
+validating the attachment. Failure can leave an unpublished resource. Separate
+create and assign socket operations avoid this path. Validate or roll back the
+combined domain operation before exposing it as an atomic command.
+
 ## Resolved: Cube drags focus the Blue lock and draw its focus ring
 
 On 2026-10-21, native Trimesh cube dragging showed a cyan outline around the

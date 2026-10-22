@@ -1,4 +1,4 @@
-#include "App/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
 
 #include <cmath>
 

@@ -1,11 +1,14 @@
 #include <cmath>
 #include <limits>
 
-#include "App/CycleV2Automation.h"
+#include "App/Automation/CycleV2Automation.h"
 
-#include "App/CycleV2AutomationProtocol.h"
-#include "App/CycleV2AutomationCommand.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationCommand.h"
 #include "Graph/GraphEditTypes.h"
+#include "Graph/EnvelopeAuthoringEdits.h"
+#include "Graph/MeshTopologyEdits.h"
+#include "Graph/TrimeshAuthoringEdits.h"
 #include "Nodes/ModelAuthoringValidation.h"
 #include "Graph/SynthesisCapabilities.h"
 
@@ -59,6 +62,48 @@ var CycleV2Automation::inspectSynthesisCapabilities(const var& command) const {
     }
     fields.setProperty("lifecycleCommands", lifecycle);
     objectFor(capabilities)->setProperty("authoring", authoring);
+    var guideAuthoring = makeObject();
+    auto& guideFields = *objectFor(guideAuthoring);
+    guideFields.setProperty("inspectCommand", automationCommandName(CycleV2AutomationCommand::InspectGuideCurve));
+    guideFields.setProperty("editCommand", automationCommandName(CycleV2AutomationCommand::EditGuideCurve));
+    guideFields.setProperty("createCommand", automationCommandName(CycleV2AutomationCommand::CreateGuideCurve));
+    guideFields.setProperty("assignCommand", automationCommandName(CycleV2AutomationCommand::AssignGuideCurve));
+    guideFields.setProperty("detachCommand", automationCommandName(CycleV2AutomationCommand::DetachGuideCurve));
+    guideFields.setProperty("maximumPointEdits", (int) maximumGuideCurvePointEdits);
+    guideFields.setProperty("pointOperations", var(StringArray { "set", "insert", "remove" }));
+    guideFields.setProperty("pointIdentityField", "vertexId");
+    guideFields.setProperty("requiresDocumentRevision", true);
+    guideFields.setProperty("requiresModelRevisionForEditsAndAttachments", true);
+    guideFields.setProperty("selectionIndex", "Trimesh vertex array index; Envelope cube array index; resolves all owning rails");
+    guideFields.setProperty("coordinateRange", "x, y and curve in [0, 1]; y=0.5 is neutral displacement");
+    guideFields.setProperty("editorRequired", false);
+    objectFor(capabilities)->setProperty("guideAuthoring", guideAuthoring);
+    var shapes = makeObject();
+    auto& shapeFields = *objectFor(shapes);
+    shapeFields.setProperty("inspectCommands", var(StringArray { "inspectTrimesh", "inspectEnvelope" }));
+    shapeFields.setProperty("editCommands", var(StringArray { "editTrimesh", "editEnvelope", "editMeshTopology" }));
+    shapeFields.setProperty("maximumValueEdits", (int) maximumTrimeshAuthoringEdits);
+    shapeFields.setProperty("maximumTopologyEdits", (int) maximumMeshTopologyEdits);
+    shapeFields.setProperty("requiresDocumentAndModelRevision", true);
+    shapeFields.setProperty("editorRequired", false);
+    shapeFields.setProperty("trimeshAddress", "vertexIndex or cubeIndex; valid only at inspected modelRevision");
+    shapeFields.setProperty("trimeshOperations", var(StringArray { "vertex", "cubeCurve", "guideGain" }));
+    shapeFields.setProperty("envelopeAddress", "stable cubeId and corner 0..7; explicit dimensionCount and linkedAxes yellow/red/blue");
+    shapeFields.setProperty("envelopeOperations", var(StringArray { "value", "guideGain", "loop", "sustain" }));
+    shapeFields.setProperty("topologyOperations", var(StringArray { "insert", "remove" }));
+    shapeFields.setProperty("insert", "cubeIndex in sequential candidate; phase, amp, curve required; constant shape over full morph range");
+    shapeFields.setProperty("remove", "Trimesh cubeIndex; Envelope stable cubeId; surviving Guide targets and IDs retained");
+    shapeFields.setProperty("units", "Raw canonical coordinates; inspect field bounds. Envelope phase may exceed 1; other values in [0,1]");
+    objectFor(capabilities)->setProperty("shapeAuthoring", shapes);
+    var controllers = makeObject();
+    auto& controllerFields = *objectFor(controllers);
+    controllerFields.setProperty("setCommand", "setPreviewController");
+    controllerFields.setProperty("inspectCommand", "inspectPreviewControllers");
+    controllerFields.setProperty("channel", 1);
+    controllerFields.setProperty("controllerAndValue", "integers 0..127");
+    controllerFields.setProperty("ephemeral", true);
+    controllerFields.setProperty("rawMidi", "sendMidi type=controller, channel=1..16, controller/value=0..127; does not synchronize previews");
+    objectFor(capabilities)->setProperty("previewControllers", controllers);
     var explanations = makeObject();
     objectFor(explanations)->setProperty("scopes", var(StringArray { "preset", "node", "group" }));
     objectFor(explanations)->setProperty("readCommand", automationCommandName(CycleV2AutomationCommand::InspectExplanation));

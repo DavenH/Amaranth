@@ -416,18 +416,19 @@ void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
     const auto dimensions = MeshDimensionality::dimensions(node);
     const int selectedAxis = MorphDimensions::axes[(size_t) impl->viewAxis];
     const int surfaceAxis = dimensions.active(selectedAxis) ? selectedAxis : dimensions.primaryAxis();
-    widget.prepareEnvelopeMorphSurface(surfaceAxis,
-            { (float) impl->yellowMorph.slider.getValue(),
+    const MorphPosition effective = widget.effectiveMorphPosition().value_or(
+            MorphPosition { (float) impl->yellowMorph.slider.getValue(),
                     (float) impl->redMorph.slider.getValue(), (float) impl->blueMorph.slider.getValue() });
+    widget.prepareEnvelopeMorphSurface(surfaceAxis, effective);
     impl->presentation.draw(
             graphics,
             controls,
-            static_cast<float>(impl->redMorph.slider.getValue()),
-            static_cast<float>(impl->blueMorph.slider.getValue()),
+            (float) effective.red,
+            (float) effective.blue,
             impl->viewAxis,
             impl->redLinked,
             impl->blueLinked,
-            static_cast<float>(impl->yellowMorph.slider.getValue()), impl->yellowLinked, widget.morphPreviewVertices());
+            (float) effective.time, impl->yellowLinked, widget.morphPreviewVertices());
     if (impl->hoveredLink >= 0) {
         const int axis = impl->hoveredLink;
         paintMorphAxisLock(graphics, impl->presentation.linkBounds(controls, axis),
@@ -655,6 +656,11 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty("redMorph", impl->redMorph.slider.getValue());
     state.setProperty("enabled", impl->enabled.getToggleState());
     state.setProperty("blueMorph", impl->blueMorph.slider.getValue());
+    if (const auto effective = widget.effectiveMorphPosition()) {
+        state.setProperty("effectiveYellowMorph", (float) effective->time);
+        state.setProperty("effectiveRedMorph", (float) effective->red);
+        state.setProperty("effectiveBlueMorph", (float) effective->blue);
+    }
     state.setProperty("yellowLinked", impl->yellowLinked);
     state.setProperty("redLinked", impl->redLinked);
     state.setProperty("blueLinked", impl->blueLinked);

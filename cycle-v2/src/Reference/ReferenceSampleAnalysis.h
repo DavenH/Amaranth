@@ -21,6 +21,7 @@ struct ReferenceSampleAnalysis {
     juce::String error;
 
     bool succeeded() const { return sample != nullptr && error.isEmpty(); }
+    int standardMidiNote() const;
 };
 
 class ReferenceSampleAnalyzer {

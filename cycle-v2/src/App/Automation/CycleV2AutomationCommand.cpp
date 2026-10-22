@@ -1,4 +1,4 @@
-#include "App/CycleV2AutomationCommand.h"
+#include "App/Automation/CycleV2AutomationCommand.h"
 
 namespace CycleV2 {
 
@@ -16,6 +16,13 @@ const std::pair<const char*, Command> commands[] {
             { "inspectAudioPerformance", Command::InspectAudioPerformance },
             { "resetAudioPerformance", Command::ResetAudioPerformance },
             { "sendMidi", Command::SendMidi },
+            { "setPreviewController", Command::SetPreviewController },
+            { "inspectPreviewControllers", Command::InspectPreviewControllers },
+            { "inspectTrimesh", Command::InspectTrimesh },
+            { "editTrimesh", Command::EditTrimesh },
+            { "inspectEnvelope", Command::InspectEnvelope },
+            { "editEnvelope", Command::EditEnvelope },
+            { "editMeshTopology", Command::EditMeshTopology },
             { "requestCanvasOpenGLFrame", Command::RequestCanvasOpenGLFrame },
             { "recreateCanvasOpenGLContext", Command::RecreateCanvasOpenGLContext },
             { "exportGraph", Command::ExportGraph },
@@ -50,6 +57,11 @@ const std::pair<const char*, Command> commands[] {
             { "deleteEdge", Command::DeleteEdge },
             { "removeEdge", Command::DeleteEdge },
             { "deleteGuideCurve", Command::DeleteGuideCurve },
+            { "inspectGuideCurve", Command::InspectGuideCurve },
+            { "createGuideCurve", Command::CreateGuideCurve },
+            { "editGuideCurve", Command::EditGuideCurve },
+            { "assignGuideCurve", Command::AssignGuideCurve },
+            { "detachGuideCurve", Command::DetachGuideCurve },
             { "removeGuideCurve", Command::DeleteGuideCurve },
             { "loadGuideHeatmap", Command::LoadGuideHeatmap },
             { "clearGuideHeatmap", Command::ClearGuideHeatmap },

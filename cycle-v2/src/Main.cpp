@@ -7,7 +7,7 @@
 #include <UI/AmaranthLookAndFeel.h>
 #include <UI/Panels/TimeSurfaceStyles.h>
 
-#include "App/CycleV2Automation.h"
+#include "App/Automation/CycleV2Automation.h"
 #include "App/GraphDocumentReplacement.h"
 #include "App/GraphFileHistory.h"
 #include "App/LibraryFavorites.h"

@@ -1,8 +1,10 @@
 #include <algorithm>
+#include <App/AppConstants.h>
 
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphPresentationFacts.h"
 #include "Runtime/PreviewMorphBinding.h"
+#include "Graph/MeshDimensionality.h"
 #include "Runtime/PreviewPitchResolver.h"
 #include "Runtime/ReverbLocalPreview.h"
 
@@ -255,6 +257,26 @@ bool GraphPresentationModel::refreshPreviewControllerValue(
 
 void GraphPresentationModel::stagePreviewModWheelValue(int value) {
     stagePreviewControllerValue(1, value);
+}
+
+std::optional<MorphPosition> GraphPresentationModel::previewMorphForNode(const Node& node) const {
+    if (!nodeMorphTargets.contains(node.id)) {
+        return std::nullopt;
+    }
+    const auto dimensions = MeshDimensionality::dimensions(node);
+    MorphPosition position = MeshDimensionality::position(node);
+    for (const auto& target : nodeMorphTargets[node.id]) {
+        const int axis = MeshDimensionality::axisForPort(target.parameterId);
+        if (axis < 0 || !dimensions.active(axis)) {
+            continue;
+        }
+        const float value = target.control == PreviewMorphControl::KeyScale
+                ? ModulationSource::normalizeKey(current.previewMidiNote,
+                        Constants::LowestMidiNote, Constants::HighestMidiNote)
+                : (float) previewControllerValue(target.controller) / 127.f;
+        position[axis].setValueDirect(value);
+    }
+    return position;
 }
 
 void GraphPresentationModel::stagePreviewControllerValue(int controller, int value) {
@@ -586,10 +608,12 @@ bool GraphPresentationModel::requiresPreview(const GraphChangeSet& change) const
 void GraphPresentationModel::refreshPreviewMorphBindings() {
     const auto targets = PreviewMorphBinding::fromPlan(current.compileResult.plan);
     keyScaleTargets.clear();
+    nodeMorphTargets.clear();
     for (auto& targets : controllerTargets) {
         targets.clear();
     }
     for (const auto& target : targets) {
+        nodeMorphTargets.getReference(target.nodeId).push_back(target);
         if (target.control == PreviewMorphControl::KeyScale) {
             keyScaleTargets.push_back(target);
         } else {

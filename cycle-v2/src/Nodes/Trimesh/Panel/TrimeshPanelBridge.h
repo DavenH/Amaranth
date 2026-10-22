@@ -29,6 +29,7 @@ public:
             int rows,
             int columns);
     void setMorphEditGestureActive(bool active) { morphEditGestureActive = active; }
+    void setPreviewMorphPosition(std::optional<MorphPosition> position);
     bool applyPreparedGuides(PreparedTrimeshGuides guides);
 
     TrimeshPanel3D& getPanel3D() { return panel3D; }
@@ -104,6 +105,7 @@ private:
     bool pendingMeshEditSourceIs3D {};
     bool meshEditGestureActive {};
     bool morphEditGestureActive {};
+    std::optional<MorphPosition> previewMorph;
     bool pendingSelectionChanged {};
 };
 
