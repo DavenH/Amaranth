@@ -1,9 +1,9 @@
 #include "UI/NodeCanvas.h"
 #include "UI/NodeWorkspace.h"
 
-#include "App/EnvelopeAuthoringAutomation.h"
-#include "App/MeshTopologyAutomation.h"
-#include "App/TrimeshAuthoringAutomation.h"
+#include "App/Automation/EnvelopeAuthoringAutomation.h"
+#include "App/Automation/MeshTopologyAutomation.h"
+#include "App/Automation/TrimeshAuthoringAutomation.h"
 #include "Graph/MeshDimensionality.h"
 
 namespace CycleV2 {

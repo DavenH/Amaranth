@@ -4,16 +4,16 @@
 
 #include <UI/Panels/TimeSurfaceStyles.h>
 
-#include "App/CycleV2Automation.h"
+#include "App/Automation/CycleV2Automation.h"
 
-#include "App/CycleV2AutomationAssertions.h"
-#include "App/CycleV2AutomationCommand.h"
-#include "App/CycleV2AutomationInput.h"
-#include "App/CycleV2AutomationProtocol.h"
-#include "App/CycleV2AutomationSessionTransport.h"
-#include "App/CycleV2AutomationWorkspaceCommands.h"
-#include "App/OfflineAudioCaptureAutomation.h"
-#include "App/PatternScheduleAutomation.h"
+#include "App/Automation/CycleV2AutomationAssertions.h"
+#include "App/Automation/CycleV2AutomationCommand.h"
+#include "App/Automation/CycleV2AutomationInput.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationSessionTransport.h"
+#include "App/Automation/CycleV2AutomationWorkspaceCommands.h"
+#include "App/Automation/OfflineAudioCaptureAutomation.h"
+#include "App/Automation/PatternScheduleAutomation.h"
 #include "Graph/NodeDefinition.h"
 #include "UI/NodePalette.h"
 #include "UI/NodeWorkspace.h"

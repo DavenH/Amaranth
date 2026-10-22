@@ -1,9 +1,9 @@
 #include <cmath>
 #include <limits>
 
-#include "App/GuideCurveAutomation.h"
+#include "App/Automation/GuideCurveAutomation.h"
 
-#include "App/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
 

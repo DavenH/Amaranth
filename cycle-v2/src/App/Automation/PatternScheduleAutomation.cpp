@@ -1,8 +1,8 @@
 #include <algorithm>
 
-#include "App/PatternScheduleAutomation.h"
+#include "App/Automation/PatternScheduleAutomation.h"
 
-#include "App/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
 #include "UI/PatternPlaybackSchedule.h"
 
 namespace CycleV2 {

@@ -1,6 +1,6 @@
-#include "App/CycleV2AutomationAssertions.h"
+#include "App/Automation/CycleV2AutomationAssertions.h"
 
-#include "App/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
 
 namespace CycleV2 {
 

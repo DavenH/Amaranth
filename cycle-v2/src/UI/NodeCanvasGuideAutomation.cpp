@@ -1,6 +1,6 @@
 #include "UI/NodeCanvas.h"
 
-#include "App/GuideCurveAutomation.h"
+#include "App/Automation/GuideCurveAutomation.h"
 
 namespace CycleV2 {
 

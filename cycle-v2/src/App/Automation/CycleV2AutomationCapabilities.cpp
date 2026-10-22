@@ -1,10 +1,10 @@
 #include <cmath>
 #include <limits>
 
-#include "App/CycleV2Automation.h"
+#include "App/Automation/CycleV2Automation.h"
 
-#include "App/CycleV2AutomationProtocol.h"
-#include "App/CycleV2AutomationCommand.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationCommand.h"
 #include "Graph/GraphEditTypes.h"
 #include "Graph/EnvelopeAuthoringEdits.h"
 #include "Graph/MeshTopologyEdits.h"

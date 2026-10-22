@@ -3,8 +3,8 @@
 
 #include <Curve/Mesh/Mesh.h>
 
-#include "App/MeshTopologyAutomation.h"
-#include "App/CycleV2AutomationProtocol.h"
+#include "App/Automation/MeshTopologyAutomation.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/MeshTopologyEdits.h"
 #include "Nodes/Envelope/EnvelopeEditCore.h"

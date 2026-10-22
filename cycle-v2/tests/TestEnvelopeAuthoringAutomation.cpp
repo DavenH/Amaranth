@@ -3,7 +3,7 @@
 
 #include <limits>
 
-#include "App/EnvelopeAuthoringAutomation.h"
+#include "App/Automation/EnvelopeAuthoringAutomation.h"
 #include "EnvelopeAuthoringTestSupport.h"
 
 using namespace CycleV2;

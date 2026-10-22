@@ -3,7 +3,7 @@
 
 #include <limits>
 
-#include "App/TrimeshAuthoringAutomation.h"
+#include "App/Automation/TrimeshAuthoringAutomation.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "TrimeshAuthoringTestSupport.h"
 

@@ -7,7 +7,7 @@
 #include <Audio/CycleDsp/SpectralStageCapture.h>
 #include <Util/LogRegionMapping.h>
 
-#include "App/OfflineAudioCaptureAutomation.h"
+#include "App/Automation/OfflineAudioCaptureAutomation.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphSerializer.h"
 #include "Runtime/OfflineGraphAudioRenderer.h"

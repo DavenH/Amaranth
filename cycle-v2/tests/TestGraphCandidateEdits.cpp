@@ -2,8 +2,8 @@
 
 #include <algorithm>
 
-#include "App/CycleV2AutomationCommand.h"
-#include "App/NodeAuthoringAutomation.h"
+#include "App/Automation/CycleV2AutomationCommand.h"
+#include "App/Automation/NodeAuthoringAutomation.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphNodeStateEditor.h"

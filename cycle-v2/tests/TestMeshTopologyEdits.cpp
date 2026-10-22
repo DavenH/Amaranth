@@ -9,9 +9,9 @@
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Rasterization/Rasterizer/EnvRasterizer.h>
 
-#include "App/EnvelopeAuthoringAutomation.h"
-#include "App/MeshTopologyAutomation.h"
-#include "App/TrimeshAuthoringAutomation.h"
+#include "App/Automation/EnvelopeAuthoringAutomation.h"
+#include "App/Automation/MeshTopologyAutomation.h"
+#include "App/Automation/TrimeshAuthoringAutomation.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/MeshTopologyEdits.h"
 #include "Nodes/Envelope/EnvelopeEditCore.h"

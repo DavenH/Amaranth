@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "App/CycleV2AutomationProtocol.h"
-#include "App/CycleV2AutomationSessionTransport.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationSessionTransport.h"
 
 #if JUCE_MAC || JUCE_LINUX
 #include <cerrno>

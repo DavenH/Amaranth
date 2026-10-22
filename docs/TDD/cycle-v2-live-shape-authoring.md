@@ -200,6 +200,10 @@ responses list final cube ordinals and Envelope identities, including new cells;
 the caller can re-inspect geometry at the returned revision. Split/extrusion is
 outside this initial command surface, as specified above.
 
+App socket routing, transport and authoring adapters live together under
+`App/Automation/`; app lifecycle, library state and the audio engine stay in
+`App/`. This folder organization changes no command or ownership contract.
+
 The production diff adds 2,167 lines and removes 312 across the four slices and
 their shared owners. New focused graph files contain Trimesh batches (113),
 Envelope batches (141), topology orchestration (235), Guide remapping (48), and

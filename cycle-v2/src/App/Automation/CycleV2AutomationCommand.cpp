@@ -1,4 +1,4 @@
-#include "App/CycleV2AutomationCommand.h"
+#include "App/Automation/CycleV2AutomationCommand.h"
 
 namespace CycleV2 {
 

@@ -3,7 +3,7 @@
 #include <Array/Buffer.h>
 #include <Audio/CycleDsp/SpectralStageCapture.h>
 
-#include "App/OfflineAudioCaptureAutomation.h"
+#include "App/Automation/OfflineAudioCaptureAutomation.h"
 #include "Runtime/OfflineGraphAudioRenderer.h"
 
 namespace CycleV2 {

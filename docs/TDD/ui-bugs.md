@@ -1,5 +1,16 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Broad automation unit filter assumes a non-Static canvas mesh
+
+On 2026-10-22, folder-only automation relocation verification reached "Canvas
+automation inspection is semantic and side effect free" and failed its
+`expanded:mesh.panel3D` lookup at TestNodeEditorHost.cpp:1709. The unchanged
+fixture uses the factory's Static mesh while expecting a 3D host. The same
+aggregate run later crashed while constructing another test's Guide resource;
+test-order interference is not yet isolated. The moved production files were
+verified identical apart from include paths. Evidence:
+`.context/automation-folder-tests-including-canvas.log`.
+
 ## P2: Trimesh cursor unit test expects callbacks before render initialization
 
 On 2026-10-22, the full suite reported the cursor assertion in "Trimesh panel

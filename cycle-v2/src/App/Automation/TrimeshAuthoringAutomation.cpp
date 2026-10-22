@@ -7,8 +7,8 @@
 #include <Curve/Mesh/Vertex.h>
 #include <Curve/Mesh/VertCube.h>
 
-#include "App/TrimeshAuthoringAutomation.h"
-#include "App/CycleV2AutomationProtocol.h"
+#include "App/Automation/TrimeshAuthoringAutomation.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/MeshDimensionality.h"
 #include "Graph/TrimeshAuthoringEdits.h"

@@ -95,7 +95,7 @@ implementations unchanged:
 
 - `cycle/src/App/CycleAutomation.{h,cpp}` owns Cycle 1 commands, reports, and
   session transport.
-- `cycle-v2/src/App/CycleV2Automation.{h,cpp}` and
+- `cycle-v2/src/App/Automation/CycleV2Automation.{h,cpp}` and
   `CycleV2AutomationSessionTransport.{h,cpp}` own Cycle 2 commands and session
   transport.
 - `scripts/cycle_agent_session.py` owns the newline-delimited JSON socket

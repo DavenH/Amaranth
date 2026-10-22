@@ -1,6 +1,6 @@
-#include "App/CycleV2AutomationSessionTransport.h"
+#include "App/Automation/CycleV2AutomationSessionTransport.h"
 
-#include "App/CycleV2AutomationProtocol.h"
+#include "App/Automation/CycleV2AutomationProtocol.h"
 
 #include <algorithm>
 #include <atomic>

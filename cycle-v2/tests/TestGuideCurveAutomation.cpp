@@ -5,7 +5,7 @@
 
 #include <Curve/Mesh/Mesh.h>
 
-#include "App/GuideCurveAutomation.h"
+#include "App/Automation/GuideCurveAutomation.h"
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
