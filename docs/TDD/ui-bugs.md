@@ -1,5 +1,20 @@
 # Cycle V2 UI Bug Notes
 
+## Resolved: Pinned comparison Spies remain stale after direct Guide edits
+
+The prior live Guide audit confirmed that addressed Guide commits changed audio
+but left pinned comparison Spies stale, including through undo. Synchronous
+semantic refresh and successful audio undo/redo now invoke the existing
+comparison callback. Hidden shelves retain their no-capture behavior. Native
+Guide and comparison fixtures protect the refresh sequence.
+
+## P2: Failed create-and-assign Guide command leaves a new resource
+
+Source review found that the combined Guide command creates its resource before
+validating the attachment. Failure can leave an unpublished resource. Separate
+create and assign socket operations avoid this path. Validate or roll back the
+combined domain operation before exposing it as an atomic command.
+
 ## Resolved: Cube drags focus the Blue lock and draw its focus ring
 
 On 2026-10-21, native Trimesh cube dragging showed a cyan outline around the

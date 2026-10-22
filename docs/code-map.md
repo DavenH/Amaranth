@@ -68,7 +68,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/README.md` — Node-workflow overview, current controls, build, test, and automation commands.
 - `cycle-v2/CMakeLists.txt` — CycleV2 app, graph migrator, and test target source lists.
 - `cycle-v2/src/Main.cpp` — CycleV2 process entry point and top-level JUCE application composition.
-- `cycle-v2/src/App/` — Standalone engine, graph file lifecycle, library state, and automation protocol.
+- `cycle-v2/src/App/` — Engine, graph lifecycle, library state and semantic socket command adapters.
 - `cycle-v2/src/Reference/` — Reference library, pitch/cyclogram analysis, and numerical automation exports.
 - `cycle-v2/src/Graph/NodeGraph.h` — Durable graph data model; read through dispatcher-owned edit views in UI code.
 - `cycle-v2/src/Graph/GraphDocument.h` — Committed graph ownership, publication, and document observers.

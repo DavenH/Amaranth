@@ -84,6 +84,7 @@ public:
             const juce::String& guideId,
             const juce::String& name);
     GraphEditResult publishGuideCurveState(const GuideCurveStatePublication& publication);
+    GraphEditResult editGuideCurve(const GuideCurveEdits& edits);
     GraphEditResult setGuideHeatmap(
             const juce::String& guideId,
             uint64_t expectedRevision,
@@ -142,6 +143,7 @@ public:
     // The caller must settle worker reads before mutating the durable graph.
     std::shared_ptr<const NodeGraph> snapshotTransientEditForWorker() const;
     bool hasTransientEdit() const { return transientEdit.has_value(); }
+    bool hasActiveEdit() const { return compoundActive || transientEdit.has_value(); }
 
 private:
     struct TransientEdit {

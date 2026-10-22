@@ -48,6 +48,10 @@ std::vector<TrimeshCubeComponentGuideTarget> TrimeshGuideAttachmentTarget::cubeT
         const Node& trimeshNode,
         int vertexIndex,
         const juce::String& field) {
+    const auto& supportedFields = fields();
+    if (std::find(supportedFields.begin(), supportedFields.end(), field) == supportedFields.end()) {
+        return {};
+    }
     const auto model = std::dynamic_pointer_cast<const TrimeshNodeModelState>(trimeshNode.model);
     if (model == nullptr || !isPositiveAndBelow(vertexIndex, model->mesh().getNumVerts())) {
         return {};

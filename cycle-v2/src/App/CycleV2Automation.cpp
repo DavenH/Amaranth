@@ -378,6 +378,12 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return workspaceCommands->redo();
         case Command::ApplyNodeEdits:
             return workspaceCommands->applyNodeEdits(commandValue);
+        case Command::InspectGuideCurve:
+        case Command::CreateGuideCurve:
+        case Command::EditGuideCurve:
+        case Command::AssignGuideCurve:
+        case Command::DetachGuideCurve:
+            return workspace.guideCurveCommandForAutomation(commandValue);
         case Command::SetNodeParameter:
             return workspaceCommands->setNodeParameter(commandValue);
         case Command::SetGuideParameter:

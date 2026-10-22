@@ -1,0 +1,28 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/reed-saxophone.cyclegraph",
+      "includeSnapshot": false
+    },
+    { "command": "inspectGuideCurve", "guideId": "reedOnsetPhase" },
+    { "command": "selectReference", "referenceId": "factory:sax-growl" },
+    { "command": "pinComparisonSpy", "probeId": "default-output" },
+    { "command": "openNodeEditor", "nodeId": "mesh" },
+    { "command": "assertState", "path": "comparison.captureCount", "equals": 1 },
+    {
+      "command": "editGuideCurve",
+      "guideId": "reedOnsetPhase",
+      "expectedDocumentRevision": 2,
+      "expectedModelRevision": 1,
+      "edits": [{ "op": "set", "vertexId": 1, "y": 0.507 }]
+    },
+    { "command": "assertState", "path": "comparison.captureCount", "equals": 2 },
+    { "command": "undo" },
+    { "command": "assertState", "path": "comparison.captureCount", "equals": 3 },
+    { "command": "redo" },
+    { "command": "assertState", "path": "comparison.captureCount", "equals": 4 },
+    { "command": "inspectGuideCurve", "guideId": "reedOnsetPhase" }
+  ],
+  "quit": true
+}
