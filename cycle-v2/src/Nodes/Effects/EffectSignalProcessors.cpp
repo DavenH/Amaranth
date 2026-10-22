@@ -66,7 +66,11 @@ String IrSignalProcessor::resourceConfigurationKey(
     if (binding == nullptr) {
         return ":irResource=none";
     }
-    return ":irResource=" + binding->resourceId + ":" + binding->mode;
+    String key = ":irResource=" + binding->resourceId + ":" + binding->mode;
+    if (const auto* resource = directResource(graph, nodeId)) {
+        key << ":sourceRate=" << String(resource->sampleRate, 9);
+    }
+    return key;
 }
 
 void IrSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
@@ -74,6 +78,27 @@ void IrSignalProcessor::prepareExecution(const AudioExecutionSpec& spec) {
         return;
     }
 
+    if (playbackSampleRate != spec.sampleRate) {
+        playbackImpulse.clear();
+        for (auto& channelConvolvers : convolvers) {
+            channelConvolvers.invalidate();
+        }
+        if (!isSupportedImpulseResponseSampleRate(spec.sampleRate)) {
+            playbackSampleRate = 0.;
+            return;
+        }
+        if (spec.sampleRate == impulseResponseReferenceSampleRate) {
+            playbackImpulse = configuration->impulse;
+        } else {
+            const int outputLength = jmax(1, (int) std::ceil(
+                    (double) configuration->impulse.size() * spec.sampleRate / impulseResponseReferenceSampleRate));
+            playbackImpulse = resampleImpulseResponse(configuration->impulse,
+                    impulseResponseReferenceSampleRate, spec.sampleRate, outputLength);
+            Buffer<float>(playbackImpulse.data(), (int) playbackImpulse.size())
+                    .mul((float) (impulseResponseReferenceSampleRate / spec.sampleRate));
+        }
+        playbackSampleRate = spec.sampleRate;
+    }
     prepareBlockConvolver(spec.maximumFrameCount);
     prepareTraversalConvolver(spec.maximumFrameCount);
     for (auto& channelConvolvers : convolvers) {
@@ -88,6 +113,7 @@ void IrSignalProcessor::adoptConfiguration(const PublishedNodeConfiguration& pub
     }
 
     configuration = std::static_pointer_cast<const IrConfiguration>(published.value);
+    playbackSampleRate = 0.;
     postGain = configuration->postGain;
     for (auto& channelConvolvers : convolvers) {
         channelConvolvers.invalidate();
@@ -120,7 +146,7 @@ void IrSignalProcessor::processBuffer(
         Buffer<float> buffer,
         const SignalProcessPosition& position) {
     auto& channelConvolvers = convolvers[jmin(position.channel, (size_t) 1)];
-    if (buffer.empty() || configuration == nullptr || configuration->impulse.empty()
+    if (buffer.empty() || configuration == nullptr || playbackImpulse.empty()
             || channelConvolvers.active() == nullptr) {
         return;
     }
@@ -164,15 +190,15 @@ void IrSignalProcessor::prepareTraversalConvolver(size_t rowCount) {
 void IrSignalProcessor::prepareConvolver(
         BlockConvolver& convolver,
         size_t frameCount) {
-    if (configuration == nullptr || frameCount == 0) {
+    if (configuration == nullptr || playbackImpulse.empty() || frameCount == 0) {
         return;
     }
 
     convolver.init(
             NumberUtils::nextPower2((unsigned) frameCount),
             Buffer<float>(
-                    const_cast<float*>(configuration->impulse.data()),
-                    (int) configuration->impulse.size()));
+                    playbackImpulse.data(),
+                    (int) playbackImpulse.size()));
 }
 
 std::shared_ptr<const ReverbConfiguration> ReverbSignalProcessor::buildConfiguration(

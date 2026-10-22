@@ -1,11 +1,14 @@
 #include "Nodes/ImpulseResponse/ImpulseResponseResourcePreparation.h"
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 
 #include <Algo/AutoModeller.h>
 #include <Audio/CycleDsp/IrModel.h>
 #include <Audio/PitchedSample.h>
 #include <Util/NumberUtils.h>
+
+#include <cmath>
 
 namespace CycleV2 {
 
@@ -83,6 +86,9 @@ Result ImpulseResponseResourcePreparation::prepare(
     if (loadResult < 0) {
         return Result::fail("The selected audio file could not be decoded.");
     }
+    if (!isSupportedImpulseResponseSampleRate(decoded.samplerate)) {
+        return Result::fail("Impulse audio sample rate must be between 8 kHz and 384 kHz.");
+    }
     if (decoded.audio.size() < kMinimumIrSampleCount) {
         return Result::fail("Impulse audio must contain at least 64 samples.");
     }
@@ -90,10 +96,12 @@ Result ImpulseResponseResourcePreparation::prepare(
     const int sampleCount = CycleDsp::irTrimmedSampleCount(decoded.audio.left);
     std::vector<float> samples((size_t) sampleCount);
     VecOps::copy(decoded.audio.left.get(), samples.data(), sampleCount);
+    const int canonicalSampleCount = (int) jlimit(1.0, (double) kMaximumIrImpulseLength,
+            std::ceil((double) sampleCount * impulseResponseReferenceSampleRate / decoded.samplerate));
     const int impulseLength = jlimit(
             kMinimumIrImpulseLength,
             kMaximumIrImpulseLength,
-            NumberUtils::nextPower2((unsigned) sampleCount));
+            NumberUtils::nextPower2((unsigned) canonicalSampleCount));
 
     NodeAudioResourceEdit edit;
     edit.nodeId = node.id;
@@ -111,7 +119,9 @@ Result ImpulseResponseResourcePreparation::prepare(
     });
     edit.expectedModelRevision = node.model != nullptr ? node.model->revision() : 0;
     if (mode == ImpulseResponseImportMode::Modelled) {
-        edit.model = buildModelledCurve(edit.resource.samples.vector(), impulseLength, node);
+        const auto canonicalSamples = resampleImpulseResponse(edit.resource.samples.vector(),
+                edit.resource.sampleRate, impulseResponseReferenceSampleRate, canonicalSampleCount);
+        edit.model = buildModelledCurve(canonicalSamples, impulseLength, node);
         if (edit.model == nullptr) {
             return Result::fail("The impulse could not be converted to an editable curve.");
         }

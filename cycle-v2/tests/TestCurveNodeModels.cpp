@@ -1020,6 +1020,7 @@ TEST_CASE("IR analysis reuses one sampled source across live high-pass changes",
     const auto source = prepareImpulseResponseSource(
             ir.parameters, ir.model, &resource);
     REQUIRE(source.has_value());
+    const auto rawBeforeFiltering = source->rawImpulse;
 
     const ImpulseResponseAnalysis zeroCutoff = prepareImpulseResponseAnalysis(
             *source, 0.f);
@@ -1044,7 +1045,8 @@ TEST_CASE("IR analysis reuses one sampled source across live high-pass changes",
     REQUIRE(raisedCutoff.filteredImpulse != zeroCutoff.filteredImpulse);
     REQUIRE(raisedCutoff.filteredDisplayImpulse
             != zeroCutoff.filteredDisplayImpulse);
-    REQUIRE(source->rawImpulse.front() == 1.f);
+    REQUIRE(source->rawImpulse == rawBeforeFiltering);
+    REQUIRE(resource.samples.front() == 1.f);
 }
 
 TEST_CASE("IR modelled source retains Cycle 1 audio and display sample views",

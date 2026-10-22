@@ -12,6 +12,7 @@
 #include "Nodes/Delay/DelaySignalProcessor.h"
 #include "Nodes/Effects/EffectSignalProcessors.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
@@ -213,7 +214,7 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
         AudioModuleRole role,
         const std::vector<NodeParameter>& parameters,
         const NodeModelStatePtr& model,
-        const AudioExecutionSpec&,
+        const AudioExecutionSpec& spec,
         const NodeGraph* graph,
         const String& nodeId,
         const String& scratchSourceNodeId,
@@ -228,6 +229,9 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                         scratchSourceNodeId));
     }
     if (role == AudioModuleRole::ImpulseResponse) {
+        if (!isSupportedImpulseResponseSampleRate(spec.sampleRate)) {
+            return {};
+        }
         return IrSignalProcessor::buildConfiguration(
                 parameters,
                 model,

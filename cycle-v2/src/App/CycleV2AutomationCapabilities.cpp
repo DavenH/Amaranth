@@ -7,6 +7,7 @@
 #include "App/CycleV2AutomationCommand.h"
 #include "Graph/GraphEditTypes.h"
 #include "Nodes/ModelAuthoringValidation.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 #include "Graph/SynthesisCapabilities.h"
 
 namespace CycleV2 {
@@ -65,7 +66,8 @@ var CycleV2Automation::inspectSynthesisCapabilities(const var& command) const {
     objectFor(impulseImport)->setProperty("requiredFields", var(StringArray { "nodeId", "path", "mode" }));
     objectFor(impulseImport)->setProperty("modes", var(StringArray { "direct", "modelled" }));
     objectFor(impulseImport)->setProperty("sourceNormalization", "Peak-normalized, first channel retained");
-    objectFor(impulseImport)->setProperty("sampleRatePolicy", "Source samples retained without output-rate resampling");
+    objectFor(impulseImport)->setProperty("sampleRatePolicy", impulseResponseSampleRatePolicy);
+    objectFor(impulseImport)->setProperty("canonicalSampleRate", impulseResponseReferenceSampleRate);
     objectFor(capabilities)->setProperty("impulseResponseImport", impulseImport);
     var explanations = makeObject();
     objectFor(explanations)->setProperty("scopes", var(StringArray { "preset", "node", "group" }));

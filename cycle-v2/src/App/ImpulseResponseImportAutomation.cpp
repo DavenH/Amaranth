@@ -6,6 +6,7 @@
 #include "Graph/GraphDocument.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/ImpulseResponse/ImpulseResponseResourcePreparation.h"
+#include "Nodes/ImpulseResponse/ImpulseResponseAnalysis.h"
 
 namespace CycleV2 {
 
@@ -23,7 +24,8 @@ var importedState(const GraphDocument& document, const String& nodeId, const Fil
     fields.setProperty("sourcePath", file.getFullPathName());
     fields.setProperty("resourceId", resource.id);
     fields.setProperty("sourceSampleRate", resource.sampleRate);
-    fields.setProperty("sampleRatePolicy", "Retain source samples without resampling to the output rate");
+    fields.setProperty("sampleRatePolicy", impulseResponseSampleRatePolicy);
+    fields.setProperty("canonicalSampleRate", impulseResponseReferenceSampleRate);
     fields.setProperty("resourceSampleCount", (int) resource.samples.size());
     fields.setProperty("sourceNormalization", "PitchedSample peak-normalized audio; first channel retained");
     fields.setProperty("mode", binding.mode);
