@@ -51,7 +51,7 @@ def rms(channels, rate):
     return float(np.sqrt(np.mean(channels[:, start:end] ** 2)))
 
 
-def build_reed_audit(results_path, profiles_path, output):
+def build_reed_audit(results_path, profiles_path, output, alternatives_path=None):
     results_path, profiles_path, output = results_path.resolve(), profiles_path.resolve(), output.resolve()
     results = json.loads(results_path.read_text())
     profiles = json.loads(profiles_path.read_text())
@@ -128,11 +128,33 @@ def build_reed_audit(results_path, profiles_path, output):
             bridge.append({"id": "phrase", "label": "Phrase", "renderId": "reed-phrase-" + file_digest(phrase)[:12],
                 **media(local_copy(phrase)), "note": "Full raw phrase capture; no audition gain."})
             break
+    alternative_ids = set()
+    if alternatives_path:
+        alternatives_path = alternatives_path.resolve()
+        alternatives = json.loads(alternatives_path.read_text())
+        for item in alternatives["alternatives"]:
+            identifier = item["id"]
+            if not identifier.replace("-", "").isalnum() or identifier in alternative_ids:
+                raise ValueError("Invalid or duplicate alternative ID: " + identifier)
+            alternative_ids.add(identifier)
+            original = Path(item["path"])
+            if not original.is_absolute():
+                original = alternatives_path.parent / original
+            audio, rate = verified_audio(original, item["sha256"])
+            clip = output / ("audit-alternative-" + identifier + ".wav")
+            write_pcm32(clip, excerpt(audio, rate), rate)
+            bridge.append({"id": "alternative-" + identifier, "label": item["label"],
+                "renderId": item["renderId"], **media(clip), "note":
+                "First 1.50 seconds at the original raw level; no gain, fades or alignment. "
+                + item.get("note", "") + " Source capture: " + str(original.resolve())
+                + "; SHA-256 " + item["sha256"] + "."})
     manifest = {"schema": "saxophone-anchor-comparisons.v1", "comparisons": comparisons,
         "bridge": {"title": "Shared reed/body · CC2", "note":
             "Full raw register/pressure captures retain the preset's original level. Labels follow source filenames "
             "C2/D3/C4 (standard MIDI 48/62/72); numbers are CC2 values. The six paired row excerpts use "
-            "explicit per-pair RMS matching for timbre comparison. All six references are consumed development probes.",
+            "explicit per-pair RMS matching for timbre comparison. All six references are consumed development probes."
+            + (" Alternative D3 loud clips are the first 1.50 seconds at each version's raw level; "
+               "their levels are not matched." if alternative_ids else ""),
             "clips": bridge}}
     (output / "comparisons.json").write_text(json.dumps(manifest, indent=2, allow_nan=False) + "\n")
     report = {"schema": "cycle-saxophone-reed-audit.v1", "resultsPath": str(results_path),
@@ -141,6 +163,9 @@ def build_reed_audit(results_path, profiles_path, output):
         "presetSha256": results["presetSha256"], "timeAlignment": "none", "frequencyAlignment": "none",
         "matching": "One scalar per pair; channel-energy RMS; no per-channel or time-varying gain",
         "measurements": measurements}
+    if alternatives_path:
+        report["alternativesManifestPath"] = str(alternatives_path)
+        report["alternativesManifestSha256"] = file_digest(alternatives_path)
     (output / "audition-levels.json").write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
     return output / "comparisons.json"
 
@@ -150,8 +175,10 @@ def main():
     parser.add_argument("--results", type=Path, required=True)
     parser.add_argument("--profiles", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--alternatives", type=Path,
+        help="Optional JSON with alternatives containing id, label, path, sha256, renderId and note")
     args = parser.parse_args()
-    print(build_reed_audit(args.results, args.profiles, args.output_dir))
+    print(build_reed_audit(args.results, args.profiles, args.output_dir, args.alternatives))
 
 
 if __name__ == "__main__":

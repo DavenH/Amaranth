@@ -55,7 +55,76 @@ The original sections below document the completed dense harmonic experiment
 and its frozen evidence. Its spectral authoring and stereo-routing details are
 historical, rather than requirements for the current reed/body implementation.
 
-## Compact core implementation and evidence
+## Narrow excitation and rail-Guide revision
+
+The user accepts the compact core and specifically likes its sub-octave
+behavior, but rejects the initial tone as a saxophone match. The next direction
+is a near-impulse/narrow-PWM source with broad harmonic support and a visible
+multiplicative spectral canvas. Preserve the useful instability while refining
+the reference tone; successful symmetry tests are not acoustic acceptance.
+
+The source now uses two .005-cycle narrow kicks, with crests aligned to 0/.5.
+The initial wider kick suppressed harmonic 40 by roughly 21–39 dB in the
+analytic probe. The actual revised clean D3 source retains H40 within 0.82 dB
+of H1. Alignment also avoids the peak misses exposed by pitch-derived point
+sampling (queue M13). Source amplitude stays visibly normalized and gain is
+separate. No new synthesis or resampling algorithm is introduced.
+
+Three sparse onset Guides replace the redundant yellow-time cube subdivision.
+They control second-pulse lag, crest depth and grain sharpness; neutral guards
+settle them by 120 ms. Delay translates the whole pulse, preserving its narrow
+width. The source drops from 20 cubes/120 vertices to 10 cubes/80 vertices.
+An added spectral mesh uses only two cubes and one simple Guide: quiet upper
+attenuation fades to exact neutral at full CC2. Its six curve points replace
+independent harmonic poles. The pipeline is pulse -> FFT -> magnitude Multiply
+-> IFFT -> common body IR -> breath -> articulation. FFT phase passes through;
+no additive magnitude or retired stereo nodes are used.
+
+The bipolar product is authored using the inspected exponent D and gain g:
+raw amp = 0.5 * desiredGain^(1/D) / g. The additive unit coefficient is not
+used. Spectral frequency labels are calibrated at the inspected effective
+oscillator note; the existing body IR supplies the genuinely fixed-Hz stage.
+
+The current body emphasizes D3's lower resonance at 600 Hz/BW250, with a
+2200 Hz/BW1000 upper mode at relative peak 0.25. D3 loud H2/H1 improves to
+1.72 versus reference 2.15, and its centroid is 821 versus 875 Hz. The lower
+and upper register still fail parts of the reference balance; quiet D3's H2
+is excessive. Mean harmonic RMSE across the six probes is 5.61 dB versus the
+initial core's 4.90, while broad-band RMSE improves from 3.65 to 3.16 dB.
+This is a D3-focused refinement, rather than an overall harmonic improvement.
+Alternative flat and broader modal bodies are retained for listening; no full-range or
+taste acceptance is claimed. Queue M14 records the shared reed-edge/register
+relationship needed next.
+
+Artifacts are under `.context/sax-reed-refinement/aligned-focused-body/`.
+With grain disabled, settled odd/even power is −99.56 dB before the body and
+−100.08 dB after it. The filtered onset is −15.01 dB and retained CC3 asymmetry
+is −9.10 dB. Seeded repetition, immediate/reopened Guide edits, grain ablation
+and zero-breath silence pass. The preset has 16 nodes, 17 cubes and 209 total
+mesh/curve vertices, including its five Guides and 53-point modelled body.
+
+Native verification finds all 16 cards and the output spy visible with zero
+overlap, clean compilation and working phrase PLAY/stop. The phase bypass
+runs below its magnitude multiplier; color and pressure enter locally from
+above/below. Graph/editor screenshots and `native-review-proof.json` are in
+the artifact folder. The browser audit plays all 32 original references, six
+current source/synth pairs and ten raw clips including the phrase and three
+D3 body alternatives. The app is left on the installed preset, stopped, with
+CC2 at 96 and no unsaved document edits. Native device playback is 44.1 kHz;
+the analysis captures are 48 kHz. Queue M11's existing IR sample-rate policy
+limits direct equivalence between their body color.
+
+A separate like-for-like Debug benchmark isolates the rail change before the
+new FFT/body work: three interleaved 1/8-voice runs, same app/presets/device,
+1.2-second measurement windows. Mean rasterization cost per operation is
+148.66 -> 135.30 microseconds at one voice and 72.11 -> 69.56 at eight;
+waveform segments per rasterization stay unchanged. Mean callback times are
+0.406 -> 0.393 ms and 2.151 -> 2.198 ms respectively, with coarse p95 buckets
+unchanged. This supports reduced interpolation work, not a large or reliable
+whole-callback speedup claim. Raw distributions, operation counts and workload
+are in `performance/baseline-vs-rails.json` under the refinement folder.
+
+## Initial compact core implementation and evidence
 
 `cycle-v2/content/presets/reed-saxophone.cyclegraph` contains one normalized
 five-point kick repeated twice, one common body IR, separate breath gain and

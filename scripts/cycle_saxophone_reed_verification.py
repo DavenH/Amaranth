@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from cycle_audio_diff import midi_frequency, read_wav
-from cycle_saxophone_anchor_analysis import half_lattice_profile
+from cycle_saxophone_anchor_analysis import half_lattice_profile, harmonic_phase
 from cycle_saxophone_anchor_model import VOICE_SECONDS
 from cycle_study_artifacts import write
 
@@ -38,6 +38,9 @@ def verify_reed(output, invoke):
                 peaks = np.array(profile["channelPeakAmplitudes"])
                 ratio = np.sum(peaks[:, ::2] ** 2) / np.sum(peaks[:, 1::2] ** 2)
                 evidence["captures"][name][label + "OddEvenDb"] = float(10 * np.log10(max(ratio, 1e-24)))
+            if name == "tonal-source":
+                profile = harmonic_phase(signal[0], decoded["sampleRate"], pitch, .5, .8, 40)
+                evidence["captures"][name]["settledHarmonicDbToFundamental"] = profile["dbToFundamental"]
         return decoded
 
     try:
@@ -63,12 +66,23 @@ def verify_reed(output, invoke):
         if not evidence["guideEditSurvivesReload"]:
             raise RuntimeError("Repeated Guide edit after reload produced different audio")
         parameter(ids["body"], "enabled", 0)
+        reed_gain = next(node for node in json.loads(Path(preset).read_text())["nodes"]
+            if node["id"] == ids["reed"])["parameters"]["gain"]
+        parameter(ids["reed"], "gain", .5)
         capture("tonal-source")
+        parameter(ids["reed"], "gain", reed_gain)
         parameter(ids["body"], "enabled", 1)
         capture("alternating-closure", instability=100)
+        source_harmonics = evidence["captures"]["tonal-source"]["settledHarmonicDbToFundamental"]
+        if any(abs(value) > 3 for value in source_harmonics):
+            raise RuntimeError("Clean source does not retain H1-H40 within 3 dB")
         for name in ("tonal-source", "tonal-filtered"):
-            if evidence["captures"][name]["settledOddEvenDb"] > -55:
+            profile = evidence["captures"][name]
+            if profile["settledOddEvenDb"] > -55:
                 raise RuntimeError("Settled two-copy tonal symmetry is not preserved: " + name)
+            if (profile["onsetOddEvenDb"] < -40
+                    or profile["onsetOddEvenDb"] - profile["settledOddEvenDb"] < 20):
+                raise RuntimeError("Startup asymmetry is not distinct from settled symmetry: " + name)
         if evidence["captures"]["alternating-closure"]["settledOddEvenDb"] < -40:
             raise RuntimeError("Alternating closure did not expose odd content")
         if not evidence["seedChangesPcm"]:

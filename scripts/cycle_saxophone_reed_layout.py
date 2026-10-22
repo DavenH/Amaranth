@@ -22,17 +22,38 @@ ROLES = {
 OUTPUT_SPY = (0, 760, 300, 206)
 
 
-def layout_nodes(graph, ids):
+SPECTRAL_ROLES = {
+    **ROLES,
+    "reed": ("trilinearMesh", 286, 269, 340, 600),
+    "fft": ("fft", 144, 142, 706, 600),
+    "color": ("trilinearMesh", 286, 269, 862, 250),
+    "colorMultiply": ("multiply", 150, 118, 930, 600),
+    "ifft": ("ifft", 144, 142, 1160, 600),
+    "body": ("impulseResponse", 256, 210, 1384, 600),
+    "breathMultiply": ("multiply", 150, 118, 1720, 600),
+    "volumeMultiply": ("multiply", 150, 118, 1950, 600),
+    "voiceOutput": ("voiceOutput", 116, 116, 2180, 600),
+    "instability": ("modulationSource", 250, 48, 0, 702),
+    "pressure": ("modulationSource", 250, 48, 1545, 840),
+    "volume": ("envelope", 295.2, 244, 1877.4, 830),
+    "globalInput": ("globalInput", 116, 116, 1440, 40),
+    "output": ("output", 190, 320, 1640, 40),
+}
+
+SPECTRAL_OUTPUT_SPY = (1920, 40, 300, 206)
+
+
+def layout_nodes(graph, ids, roles=ROLES):
     by_id = {node["id"]: node for node in graph["nodes"]}
-    nodes = {role: by_id[ids.get(role, role)] for role in ROLES
+    nodes = {role: by_id[ids.get(role, role)] for role in roles
         if ids.get(role, role) in by_id}
-    missing = set(ROLES).difference(nodes, {"instability"})
+    missing = set(roles).difference(nodes, {"instability"})
     unknown = set(by_id).difference(node["id"] for node in nodes.values())
     if missing or unknown:
         raise ValueError("Incomplete reed layout: missing roles " + str(sorted(missing))
             + "; nodes without a position " + str(sorted(unknown)))
     for role, node in nodes.items():
-        if node["kind"] != ROLES[role][0]:
+        if node["kind"] != roles[role][0]:
             raise ValueError("Unexpected node kind for reed layout role " + role)
     return nodes
 
@@ -63,11 +84,44 @@ def apply_reed_layout(graph, ids):
     return report
 
 
-def reed_layout_report(graph, ids):
+def apply_spectral_reed_layout(graph, ids):
+    """Keep the spectral branch local and its phase bypass below the audio row.
+
+    Adjacent audio ports share y=658 with 80 world-unit joins. Color enters
+    the magnitude multiplier from above; both phase ports share y=742 below
+    that multiplier. Shared context enters both meshes from above. Global I/O
+    and its reserved spy occupy the independent upper-right row.
+    """
+    nodes = layout_nodes(graph, ids, SPECTRAL_ROLES)
+    for role, node in nodes.items():
+        _, _, _, x, y = SPECTRAL_ROLES[role]
+        node["position"] = {"x": x, "y": y}
+        node.pop("portSides", None)
+        node.pop("reverseInputPortOrder", None)
+    nodes["voice"]["portSides"] = {"outputs": {"context": "bottom"}}
+    for role in ("reed", "color"):
+        nodes[role]["portSides"] = {"inputs": {"context": "top"}}
+    nodes["color"]["portSides"]["outputs"] = {"out": "bottom"}
+    nodes["fft"]["portSides"] = {"outputs": {"phase": "bottom"}}
+    nodes["ifft"]["portSides"] = {"inputs": {"phase": "bottom"}}
+    nodes["colorMultiply"]["portSides"] = {"inputs": {"right": "top"}}
+    for role in ("breathMultiply", "volumeMultiply"):
+        nodes[role]["portSides"] = {"inputs": {"right": "bottom"}}
+    nodes["volume"]["portSides"] = {"outputs": {"env": "top"}}
+    graph.pop("nodeGroups", None)
+    presentation = graph.setdefault("presetPresentation", {"version": 1})
+    presentation["outputSpyX"], presentation["outputSpyY"] = SPECTRAL_OUTPUT_SPY[:2]
+    report = reed_layout_report(graph, ids, SPECTRAL_ROLES, SPECTRAL_OUTPUT_SPY)
+    if report["overlaps"]:
+        raise ValueError("Spectral reed preset cards overlap: " + str(report["overlaps"]))
+    return report
+
+
+def reed_layout_report(graph, ids, roles=ROLES, output_spy=OUTPUT_SPY):
     """Audit every actual node card, endpoint caption and reserved output spy."""
-    rectangles = {"outputSpy": OUTPUT_SPY}
-    for role, node in layout_nodes(graph, ids).items():
-        _, width, height, _, _ = ROLES[role]
+    rectangles = {"outputSpy": output_spy}
+    for role, node in layout_nodes(graph, ids, roles).items():
+        _, width, height, _, _ = roles[role]
         x, y = (node["position"][axis] for axis in ("x", "y"))
         if role == "voiceOutput":
             width += 84

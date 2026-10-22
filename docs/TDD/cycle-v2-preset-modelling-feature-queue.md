@@ -406,6 +406,57 @@ reopened zero-noise captures are bit-identical and differ from the noisy
 baseline; `.context/sax-reed-core/ready/verification.json` passes without the
 temporary export/reopen workaround.
 
+## M13 — Discover narrow-source sampling and frame-size policy
+
+Status: Confirmed authoring constraint; peak alignment is the current content
+workaround. This is not a newly introduced oversampling regression.
+
+Musical task: author two narrow impulses with broad harmonic support while
+retaining level and shape across notes. In the polyphonic spectral region,
+the source frame follows pitch (roughly 1024/512/256 at the tested notes),
+rather than always using the displayed `cycleFrames=2048`. That minimum is
+currently passed only for monophonic-legato contexts. `TimeFrameSourceRenderer`
+uses point sampling with integral preparation disabled; a crest at phase .001
+falls between progressively coarser samples. The actual three-note probe
+retains a nearly flat harmonic series but loses fundamental level sharply.
+
+Aligning crests at 0/.5 removes the accidental peak miss for this preset.
+It does not establish area invariance for every sub-grid pulse. Existing mature
+integral/area sampling is available, while V2 point-only preparation was an
+explicit performance choice. Oversampling limitations are already documented
+in the audio ledger and oscillator-region performance design. A quality-policy
+change should reuse that sampler and compare harmonic/level stability, aliasing
+and runtime work; do not introduce another oscillator algorithm.
+
+Discovery should report effective source frame length, sampling policy and
+whether a requested frame minimum/oversampling value affects the chosen path.
+Evidence: `.context/sax-reed-refinement/narrow-canvas-old-body/exciter-probe/`
+and the aligned candidate captures. The final D3 clean source has H40/H1 at
+−0.82 dB; the doubled source's settled missing bins remain suppressed.
+
+## M14 — Shared register-dependent reed-edge/body relationships
+
+Status: Preset design follow-up using existing spectral/Guide controls, rather
+than a confirmed missing engine feature.
+
+Musical task: keep the full-harmonic impulse source, then explain the reference
+family's register changes with a few shared controls. A stronger fixed-Hz upper
+mode restores the high register but over-brightens lower notes; broad fixed-Hz
+damping does the reverse. The D3-focused lower resonance improves H2/H1 while
+remaining too dark on the high probe. No single-note metric is acceptance of
+the complete instrument.
+
+An offline conditional fit suggests one smooth harmonic-relative reed-edge
+cutoff near 6.5 harmonics could reduce low-note upper bands while preserving
+high-note lower harmonics. Every gain stays positive; this is not an odd/even
+comb. Expose it as an interpretable shape alongside the fixed-Hz body. Existing
+key modulation and Guide rails should be tried before proposing runtime work.
+Validate the actual spectral mapping across notes; a Guide calibrated in Hz at
+one inspected note must not be described as a fixed-Hz filter at every note.
+Evidence: `.context/sax-reed-refinement/shared-edge-hypothesis.json` and the
+actual aligned-flat/modal/focused assessments. Runtime capture and listening
+remain required before adopting that extra relationship.
+
 ## Related defects, tracked separately
 
 - Flat-curve coordinate rounding changes a sharp modelled IR slightly after

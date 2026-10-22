@@ -12,7 +12,8 @@ from cycle_automation_support.session import command
 from cycle_automation_support.identity import process_identity
 from cycle_reference_study import file_digest
 from cycle_saxophone_anchor_model import VOICE_SECONDS
-from cycle_saxophone_reed_layout import apply_reed_layout
+from cycle_saxophone_reed_layout import apply_spectral_reed_layout
+from cycle_saxophone_reed_color import color_model, color_resources
 from cycle_saxophone_reed_model import BODY_RECIPE, grain_resources, modal_impulse, reed_model, sequence, volume_model
 from cycle_saxophone_reed_verification import verify_reed
 from cycle_study_artifacts import write
@@ -69,6 +70,7 @@ def run(output, impulse):
         invoke({"command": "deleteGuideCurve", "guideId": guide["id"]})
     ids = {role: invoke({"command": "addNode", "kind": kind, "x": 0, "y": 0})["nodeId"]
         for role, kind in (("controls", "modulationTriple"), ("reed", "trilinearMesh"),
+            ("fft", "fft"), ("color", "trilinearMesh"), ("colorMultiply", "multiply"), ("ifft", "ifft"),
             ("body", "impulseResponse"), ("volume", "envelope"),
             ("volumeMultiply", "multiply"), ("breathMultiply", "multiply"),
             ("pressure", "modulationSource"), ("instability", "modulationSource"))}
@@ -80,13 +82,17 @@ def run(output, impulse):
         ids["instability"]: {"source": "midiCC", "controller": 3},
         ids["pressure"]: {"source": "midiCC", "controller": 2},
         ids["reed"]: {"signalType": "time", "polarity": "bipolar", "range": .5},
+        ids["color"]: {"signalType": "spectralMagnitude", "polarity": "bipolar", "range": .5},
+        ids["fft"]: {"cycleFrames": 2048, "mode": "cycle"},
+        ids["ifft"]: {"cycleFrames": 2048, "mode": "cyclic"},
         ids["body"]: {"processingScope": "voice"},
         ids["volume"]: {"purpose": "volume", "logarithmic": False, "declick": True}}
     for node, values in settings.items():
         for parameter, value in values.items():
             set_parameter(node, parameter, value)
     physical("voice", "voiceContext", "voiceLength", VOICE_SECONDS)
-    physical(ids["reed"], "trilinearMesh", "gain", 1.0)
+    physical(ids["reed"], "trilinearMesh", "gain", 7.0)
+    physical(ids["color"], "trilinearMesh", "gain", 1.0)
     physical(ids["body"], "impulseResponse", "post", -20)
     physical(ids["body"], "impulseResponse", "highPass", 20)
     resources = grain_resources(factory, ids["reed"])
@@ -97,7 +103,10 @@ def run(output, impulse):
         ("voice", "context", "reed", "context"),
         ("controls", "modulation", "voice", "modulation"),
         ("instability", "value", "reed", "red"),
-        ("reed", "out", "body", "time"), ("body", "time", "breathMultiply", "left"),
+        ("reed", "out", "fft", "time"), ("voice", "context", "color", "context"),
+        ("fft", "mag", "colorMultiply", "left"), ("color", "out", "colorMultiply", "right"),
+        ("colorMultiply", "out", "ifft", "mag"), ("fft", "phase", "ifft", "phase"),
+        ("ifft", "time", "body", "time"), ("body", "time", "breathMultiply", "left"),
         ("pressure", "value", "breathMultiply", "right"),
         ("breathMultiply", "out", "volumeMultiply", "left"),
         ("volume", "env", "volumeMultiply", "right"), ("volumeMultiply", "out", "voiceOutput", "time")]
@@ -106,25 +115,33 @@ def run(output, impulse):
         "connectionKind": "configurationAttachment" if dest_port == "modulation" else "signal",
         "attachmentType": "modulationTriple" if dest_port == "modulation" else "none"}
         for source, source_port, dest, dest_port in edges]
-    write(output / "layout.json", apply_reed_layout(graph, ids))
+    write(output / "layout.json", apply_spectral_reed_layout(graph, ids))
     topology = output / "topology.cyclegraph"
     write(topology, graph)
     invoke({"command": "openGraph", "path": str(topology), "includeSnapshot": False})
-    edits = [reed_model(inspect(ids["reed"])), volume_model(inspect(ids["volume"]))]
+    color_controls = invoke({"command": "inspectNodeControls", "nodeId": ids["color"],
+        "midiNote": 50, "cycleFrames": 2048})
+    write(output / "color-coordinates.json", color_controls["spectralAuthoring"])
+    color_guides = color_resources(resources["guides"][0], color_controls)
+    edits = [reed_model(inspect(ids["reed"])), volume_model(inspect(ids["volume"])), color_model(color_controls)]
     invoke({"command": "applyNodeEdits", "expectedDocumentRevision": inspect("voice")["documentRevision"],
             "edits": edits})
     guided = export("authored-shapes.cyclegraph")
-    guided["guideAssignments"] = resources["guideAssignments"]
+    guided["guides"].extend(color_guides["guides"])
+    guided["guideAssignments"] = resources["guideAssignments"] + color_guides["guideAssignments"]
     write(output / "guided.cyclegraph", guided)
     invoke({"command": "openGraph", "path": str(output / "guided.cyclegraph"), "includeSnapshot": False})
     imported = invoke({"command": "importImpulseResponse", "nodeId": ids["body"],
             "path": str(impulse), "mode": "modelled"})
     explanations = {
-        "reed": "Five-point reed kick repeated twice in each oscillator cycle. Voice octave -1 restores nominal pitch. "
+        "reed": "Two narrow normalized reed pulses per oscillator cycle. Voice octave -1 restores nominal pitch. "
             "The even bins of this lower oscillator are the played note's full integer harmonic series. "
-            "CC2 narrows the closure; onset briefly perturbs the second copy, then settles in 120 ms. "
+            "Sparse Guide rails delay and weaken the second closure at onset, settling in 120 ms. "
             "CC3 retains alternating closure. Grain is factory component-guide noise on the closing edges. "
             "Waveform stays visibly normalized; gain controls listening level.",
+        "color": "Multiplicative spectral color: one simple Guide draws the quiet high-frequency attenuation. "
+            "CC2 fades that attenuation to neutral at full breath. The spectrum comes from the pulse FFT; "
+            "multiplication preserves its absent half-harmonics and passes its phase to IFFT. No additive filling.",
         "body": "One shared fixed-Hz body impulse response, with broad lower and upper resonances. "
             "Convolution multiplies the reed spectrum, preserving absent odd bins. No additive harmonic filling. "
             "This is a compact design hypothesis, not a uniquely identified acoustic bore. Authored for 48 kHz.",
@@ -135,8 +152,8 @@ def run(output, impulse):
     for role, explanation in explanations.items():
         invoke({"command": "setExplanation", "scope": "node", "nodeId": ids[role], "text": explanation})
     invoke({"command": "setExplanation", "scope": "preset", "text":
-        "Compact reed/body saxophone study. CC2 pressure/closure width; CC1 tongue/breath attack; CC3 alternating closure. "
-        "One five-point doubled reed and one common body response across all notes. Play the embedded register/pressure phrase. "
+        "Compact pulse/spectrum/body saxophone study. CC2 breath and spectral brightness; CC1 tongue/breath attack; CC3 alternating closure. "
+        "Two narrow pulses, multiplicative spectral color and one shared body response across notes. Play the embedded register/pressure phrase. "
         "Development prototype: register realism, vibrato and fluid connected articulation remain to be refined."})
     invoke({"command": "setPresetSequence", "sequence": sequence()})
     preset = output / "reed-saxophone.cyclegraph"

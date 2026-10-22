@@ -8,11 +8,20 @@ import numpy as np
 from cycle_saxophone_anchor_model import VOICE_SECONDS, cube, revised
 
 
-TIMES = (0, .12, VOICE_SECONDS)
+ONSET_SECONDS = .12
+PULSE_WIDTH_QUIET = .005
+PULSE_WIDTH_LOUD = .005
+PULSE_PEAK = .9
+CC3_ASYMMETRY = .22
+CC3_PHASE_LAG_QUIET = .004
+CC3_PHASE_LAG_LOUD = .014
+ONSET_PHASE_LAG = .009
+ONSET_PEAK_OFFSET = -.09
+ONSET_GRAIN_SHARPNESS = .08
 
 BODY_RECIPE = {"schema": "cycle-reed-modal-ir.v1", "sampleRate": 48000, "frames": 1024,
-    "modes": [{"frequencyHz": 500, "bandwidthHz": 450, "relativeModalPeak": 1},
-              {"frequencyHz": 2200, "bandwidthHz": 1000, "relativeModalPeak": .4}],
+    "modes": [{"frequencyHz": 600, "bandwidthHz": 250, "relativeModalPeak": 1},
+              {"frequencyHz": 2200, "bandwidthHz": 1000, "relativeModalPeak": .25}],
     "purpose": "Shared broad body color from six consumed VCSL development probes; not a unique bore reconstruction"}
 
 
@@ -39,38 +48,40 @@ def modal_impulse(path):
 
 
 def reed_model(controls):
-    """Two corresponding five-pole kicks, pressure width and startup symmetry.
+    """Two corresponding five-pole kicks with one cube per pole.
 
     The waveform remains visible at full scale. Absolute listening level belongs
-    in node gain. CC3 retains alternating closure at steady state; with CC3 zero,
-    the two copies become identical after 120 ms (before stochastic grain).
+    in node gain. Pressure and CC3 retain independent mesh axes. Shared 1D Guide
+    rails own the brief onset change, leaving both copies equal when settled and
+    CC3 is zero. Time endpoints carry no redundant onset geometry.
     """
-    vertices, cubes, indices = [], [], {}
+    vertices, cubes = [], []
     for pole in range(10):
         half, local = divmod(pole, 5)
-        for ti, seconds in enumerate(TIMES):
+        start = len(vertices)
+        for time in (0, 1):
             for red in (0, 1):
                 for blue in (0, 1):
-                    width = .085 * (1 - blue) + .035 * blue
-                    startup = max(0, 1 - seconds / .12)
-                    asymmetry = startup * (.025 + .155 * blue) + red * .22
-                    shift = half * (.004 + .010 * blue) * max(startup, red)
-                    amplitude = .9 / (1 - .8 * width)
+                    width = PULSE_WIDTH_QUIET * (1 - blue) + PULSE_WIDTH_LOUD * blue
+                    asymmetry = red * CC3_ASYMMETRY
+                    shift = half * (CC3_PHASE_LAG_QUIET * (1 - blue)
+                                    + CC3_PHASE_LAG_LOUD * blue) * red
+                    amplitude = PULSE_PEAK / (1 - .8 * width)
                     baseline = -.8 * width * amplitude
-                    phase = (0, .2 * width + shift, .6 * width + shift,
+                    phase = (shift, .2 * width + shift, .6 * width + shift,
                              width + shift, .499)[local] + half * .5
+                    # Existing fixed-frame rendering samples on pitch-dependent
+                    # grids. Align crests so narrow pulses retain their peaks.
+                    phase = (phase - .2 * width) % 1
                     signal = baseline + (0, 1, .25, 0, 0)[local] * amplitude
                     if half:
                         signal *= 1 - asymmetry
                     identifier = len(vertices)
-                    indices[pole, ti, red, blue] = identifier
-                    vertices.append({"id": identifier, "time": seconds / VOICE_SECONDS,
+                    vertices.append({"id": identifier, "time": float(time),
                         "key": float(red), "mod": float(blue), "phase": phase,
                         "amp": .5 + signal / 2,
-                        "weight": (.04 + .04 * blue + .08 * startup) if local == 2 else 1.0})
-        for segment in range(len(TIMES) - 1):
-            cubes.append(cube([indices[pole, segment + offset, red, blue]
-                for offset in (0, 1) for red in (0, 1) for blue in (0, 1)]))
+                        "weight": (.04 + .04 * blue) if local == 2 else 1.0})
+        cubes.append(cube(list(range(start, start + 8))))
     model = copy.deepcopy(controls["model"])
     model["mesh"] = {"name": "Two reed closures", "version": 1,
                      "vertices": vertices, "cubes": cubes}
@@ -99,17 +110,48 @@ def volume_model(controls):
     return revised(controls, model)
 
 
+def _onset_guide(template, identifier, name, label, offset):
+    """Use canonical Guide units: table value is stored y minus one half.
+
+    The neutral guard holds the late rail flat despite finite curve sharpness.
+    Unit cube gain is already supplied by the existing cube authoring helper.
+    """
+    guide = copy.deepcopy(template)
+    guide.update(id=identifier, name=name, shortLabel=label, revision=1,
+                 noise=0, dcOffset=0, phase=0)
+    guide["model"]["revision"] = 1
+    state = guide["model"]["state"]
+    state["revision"] = 1
+    state["vertices"] = [{"id": index + 1, "x": .05 + .9 * seconds / VOICE_SECONDS,
+        "y": .5 + (offset if index == 0 else 0), "curve": 1.0}
+        for index, seconds in enumerate((0, ONSET_SECONDS * 5 / 6, ONSET_SECONDS, VOICE_SECONDS))]
+    return guide
+
+
 def grain_resources(factory, reed):
+    """Factory grain plus sparse phase, amplitude and sharpness onset rails."""
     assignment = next(item for item in factory["guideAssignments"]
         if item["targetNodeId"] == "timeLayer1" and item["target"] == {
             "kind": "trimeshCubeComponent", "cubeIndex": 1, "field": "time"})
     guide = copy.deepcopy(next(item for item in factory["guides"]
         if item["id"] == assignment["guideId"]))
     guide.update(id="reedGrain", name="Reed closure grain", shortLabel="Grain", shelfOrder=0)
-    return {"guides": [guide], "guideAssignments": [
+    guides = [guide,
+        _onset_guide(guide, "reedOnsetPhase", "Second closure onset lag", "Lag", ONSET_PHASE_LAG),
+        _onset_guide(guide, "reedOnsetPeak", "Second closure onset depth", "Attack", ONSET_PEAK_OFFSET),
+        _onset_guide(guide, "reedOnsetGrain", "Onset grain depth", "Grain+", ONSET_GRAIN_SHARPNESS / 2)]
+    for index, resource in enumerate(guides):
+        resource["shelfOrder"] = index
+    assignments = [
         {"guideId": guide["id"], "targetNodeId": reed, "target": {
-            "kind": "trimeshCubeComponent", "cubeIndex": pole * 2 + segment, "field": "time"}}
-        for pole in (2, 7) for segment in (0, 1)]}
+            "kind": "trimeshCubeComponent", "cubeIndex": pole, "field": "time"}}
+        for pole in (2, 7)]
+    assignments += [{"guideId": identifier, "targetNodeId": reed, "target": {
+        "kind": "trimeshCubeComponent", "cubeIndex": pole, "field": field}}
+        for identifier, poles, field in (("reedOnsetPhase", (5, 6, 7, 8), "phase"),
+            ("reedOnsetPeak", (6,), "amp"), ("reedOnsetGrain", (2, 7), "curve"))
+        for pole in poles]
+    return {"guides": guides, "guideAssignments": assignments}
 
 
 def sequence():
