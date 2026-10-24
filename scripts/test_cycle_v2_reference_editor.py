@@ -97,6 +97,23 @@ def check(record, output):
             assert editor["visible"] and editor["referenceId"] == reference
             assert state()["comparison"]["cardCount"] == 2
             assert placement() == before
+            zoom = editor["zoomControls"]["vertical"]
+            assert zoom["visible"] and not editor["zoomControls"]["horizontal"]["visible"]
+            y = zoom["start"] + zoom["size"] / 2
+            for event, position in (("down", y), ("drag", y + 0.05),
+                                    ("drag", y + 0.1), ("up", y + 0.1)):
+                invoke({"command": "pointer", "event": event,
+                        "targetId": "referencePitch.zoomY", "downTargetId": "referencePitch.zoomY",
+                        "targetY": position, "downTargetY": y})
+            invoke({"command": "waitForIdle", "idleDelayMs": 300})
+            panned = layout()
+            assert panned["zoomControls"]["vertical"]["start"] > zoom["start"] + 0.01
+            assert abs(panned["zoomControls"]["vertical"]["size"] - zoom["size"]) < 0.0001
+            assert panned["cyclogramRevision"] == editor["cyclogramRevision"]
+            evidence["verticalPan"] = {"before": zoom, "after": panned["zoomControls"]["vertical"]}
+            # Reopening restores the fitted view before the pitch edit gesture.
+            invoke({"command": "openReferencePitchEditor", "referenceId": reference})
+            editor = layout()
             subprocess.run([str(compiled_helper("capture_cycle_screenshot.swift")),
                             str(record["pid"]), str(output / "expanded-before.png")], check=True)
             original_analysis = invoke({"command": "exportReferenceAnalysis"})

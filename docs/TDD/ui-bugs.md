@@ -1046,6 +1046,13 @@ and successful run identity `a10ee2c48615`. Parallel CycleV2 launches also disru
 some earlier attempts. Current status: open as native fixture/input timing work;
 no full native-suite reliability claim is made.
 
+The 2026-10-24 reference zoom follow-up again missed native baseline selection
+and scrollbar gestures in the broad replay. The scoped semantic replay pans the
+same scrollbar from 0.4771 to 0.5297, keeps its span and analysis unchanged, and
+captures the correct fitted view. Artifacts: `.context/reference-zoom-scroll-native/`,
+`.context/reference-pitch-zoom-check/`. The focused retained scrollbar check uses
+semantic down/two-drag/up events; native input timing remains a separate limitation.
+
 The Component-row review also missed one native Static-pill click: the intended
 Static screenshots still showed 3D. Its corrected capture preparation uses an
 in-app mode click and asserts `dimensionCount=0` before capture. Native acceptance
@@ -1099,3 +1106,14 @@ Reference selection and both rendered cards passed. The tray and its new
 
 Current status: open; inspect the expanded editor's minimum size and control
 allocation independently of reference browsing and tray disclosure.
+
+## P3: Pointer automation cannot encode the Command modifier
+
+On 2026-10-24, the reference pitch zoom check sent an unmodified wheel event;
+it correctly changed horizontal zoom rather than the expected vertical range.
+Vertical wheel zoom requires Command. CycleV2AutomationInput::pointerModifiers
+reads a boolean `command` from the same payload whose `command` string selects
+the operation, so a request cannot supply both values. Evidence:
+`.context/reference-pitch-zoom-wheel-failure/commands.jsonl`. Native vertical
+thumb dragging passes. Current status: open automation encoding gap; no change
+to production zoom semantics or the pointer protocol in the reference UI work.

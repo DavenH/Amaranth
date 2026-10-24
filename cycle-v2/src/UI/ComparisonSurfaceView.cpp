@@ -82,6 +82,14 @@ private:
     void mouseMove(const juce::MouseEvent&) override {}
     void mouseExit(const juce::MouseEvent&) override {}
 
+    void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override {
+        if (view.onWheel) {
+            view.onWheel(event, wheel);
+        } else {
+            PanelInputHostComponent::mouseWheelMove(event, wheel);
+        }
+    }
+
     void mouseUp(const juce::MouseEvent& event) override {
         if (!event.mods.isPopupMenu() && view.onClicked) {
             view.onClicked();

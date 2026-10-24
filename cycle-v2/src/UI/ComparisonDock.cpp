@@ -334,7 +334,8 @@ ComparisonDock::referenceEditorTargetsForAutomation() const {
     return {
             { "referencePitch.curve", canvas.getLocalArea(pitchEditor.get(), pitchEditor->curveBounds()).toFloat() },
             { "referencePitch.cyclogram", canvas.getLocalArea(pitchEditor.get(), pitchEditor->cyclogramBounds()).toFloat() },
-            { "referencePitch.close", canvas.getLocalArea(pitchEditor.get(), pitchEditor->closeBounds()).toFloat() }
+            { "referencePitch.close", canvas.getLocalArea(pitchEditor.get(), pitchEditor->closeBounds()).toFloat() },
+            { "referencePitch.zoomY", canvas.getLocalArea(pitchEditor.get(), pitchEditor->verticalZoomBounds()).toFloat() }
     };
 }
 
@@ -494,6 +495,9 @@ void ComparisonDock::updateCards() {
             }
         }
         view->referenceId = card.id;
+        view->onWheel = [this](const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
+            viewport.mouseWheelMove(event.getEventRelativeTo(&viewport), wheel);
+        };
         const auto oldCard = std::find_if(previousCards.begin(), previousCards.end(),
                 [&](const Card& candidate) { return candidate.id == card.id; });
         const bool sampleUnchanged = viewWasVisible && card.sample
@@ -590,6 +594,7 @@ juce::var ComparisonDock::exportAutomationState() const {
     state->setProperty("visible", isVisible());
     state->setProperty("auditioning", audioEngine.isReferenceAuditioning());
     state->setProperty("height", getHeight());
+    state->setProperty("scrollX", viewport.getViewPositionX());
     state->setProperty("cardCount", (int) cards.size());
     state->setProperty("captureCount", (int64) captureCount);
     state->setProperty("selectedReferenceId", library.selectedId());

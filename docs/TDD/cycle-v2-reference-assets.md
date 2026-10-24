@@ -162,3 +162,35 @@ vertical range is smaller than the full domain. Standalone build, fixture,
 architecture audit and whitespace checks pass; the sax-growl capture at
 `.context/reference-pitch-fit.png` confirms the fitted view without document edits.
 The editor remains 343 lines with unchanged ownership and algorithms.
+
+The expanded pitch envelope mounts its existing CurvePanelHost zoom wrapper,
+exposing only the vertical bar. ZoomPanel retains range, pan, wheel and clamping
+behavior; AmaranthLookAndFeel supplies the neutral track/thumb. ReferencePitchEditor
+listens to scrollbar range changes only to request a fresh GL snapshot, including
+when the shared wheel handler changes scale. The drawing/input host remains the
+wrapper's child, with automation bounds translated from that child. The cyclogram
+shares its content width, leaving the bar outside the aligned drawing areas.
+The existing automatic fit still runs on open/history restoration, never during
+pan or a live edit. There is no new zoom algorithm, document edit or analysis work.
+
+Tray card input forwards wheel events to the existing JUCE Viewport, including
+smooth horizontal trackpad events and the reverse direction. Headers and gaps
+retain their normal viewport bubbling. The expanded reference surface has no
+tray wheel callback and retains its own navigation. PanelInputHostComponent's
+wheel override is protected so the read-only host can delegate its fallback;
+the shared axis-lock/zoom implementation is unchanged. No scrolling mechanics
+are copied. Scrollbar redraw requests are queued after ZoomPanel applies the
+range, so GL reads the updated viewport.
+
+Review: these two additions total 54 production lines added and 9 removed.
+ReferencePitchEditor grows 343→370 lines and ComparisonDock 756→761, retaining
+their composition roles and shared owners. The standalone build, two shared
+trackpad tests, expanded-reference fixture, new reference-tray-scroll fixture,
+architecture audit, semantic map and whitespace checks pass. The tray fixture
+checks scroll positions 0→134→0→134 across card surfaces and headers while
+preserving selection/order. The focused zoom check moves the vertical range
+from 0.4771 to 0.5297 with unchanged span, analysis revision and document state.
+Evidence: `.context/reference-tray-scroll-report.json`,
+`.context/reference-pitch-zoom-check/` (including the full-window capture), and
+`.context/reference-zoom-scroll-tests.log`. Broader native replay still has the
+previously recorded input-delivery limitation; focused semantic gestures pass.

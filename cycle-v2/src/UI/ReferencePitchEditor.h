@@ -18,7 +18,8 @@ class ComparisonSurfaceView;
 
 class ReferencePitchEditor final :
         public juce::Component
-    ,   private CurvePanelHostDelegate {
+    ,   private CurvePanelHostDelegate
+    ,   private juce::ScrollBar::Listener {
 public:
     explicit ReferencePitchEditor(ReferenceLibrary& library);
     ~ReferencePitchEditor() override;
@@ -29,6 +30,7 @@ public:
     const juce::String& referenceId() const { return openedId; }
     juce::Rectangle<int> cyclogramBounds() const;
     juce::Rectangle<int> closeBounds() const;
+    juce::Rectangle<int> verticalZoomBounds() const;
     void renderOpenGL(float scaleFactor);
     void releaseOpenGLResources();
     juce::var exportAutomationState() const;
@@ -43,6 +45,7 @@ public:
     std::function<void()> onRenderRequested;
 
 private:
+    void scrollBarMoved(juce::ScrollBar* scrollbar, double newRangeStart) override;
     void initialiseCurvePanel(juce::Component* component) override;
     void updateCurvePanelZoom(bool resetView) override;
     void prepareCurvePanel() override;

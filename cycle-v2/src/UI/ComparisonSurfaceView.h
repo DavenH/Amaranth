@@ -30,6 +30,7 @@ public:
     std::function<void(const ZoomRect&)> onCameraChanged;
     std::function<void()> onClicked;
     std::function<void()> onDoubleClicked;
+    std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onWheel;
 
 private:
     class Impl;

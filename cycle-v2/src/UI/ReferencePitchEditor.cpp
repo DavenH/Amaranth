@@ -60,7 +60,15 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
     panel->setEnvelopeBipolar(false);
     host = std::make_unique<CurvePanelHost>(panel->hostedPanel(),
             static_cast<CurvePanelHostDelegate&>(*this));
-    addAndMakeVisible(host->component());
+    auto* zoom = static_cast<ZoomPanel*>(host->zoomComponent());
+    auto context = zoom->getZoomContext();
+    context.haveHorz = false;
+    zoom->setZoomContext(context);
+    zoom->getComponent(true)->setVisible(false);
+    auto* vertical = static_cast<juce::ScrollBar*>(zoom->getComponent(false));
+    vertical->setTitle("Pitch range");
+    vertical->addListener(this);
+    addAndMakeVisible(zoom);
 
     fundamental.slider.setRange(0, 127, 1);
     fundamental.slider.setKeyboardSteps(1, 1);
@@ -84,6 +92,8 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
 }
 
 ReferencePitchEditor::~ReferencePitchEditor() {
+    static_cast<juce::ScrollBar*>(panel->hostedPanel().getZoomPanel()->getComponent(false))
+            ->removeListener(this);
     cyclogram->releaseOpenGLResources();
     host->releaseSharedGlResources();
     host.reset();
@@ -201,6 +211,7 @@ juce::var ReferencePitchEditor::exportAutomationState() const {
     result->setProperty("cyclogramBounds", rect(cyclogramBounds()));
     result->setProperty("curveBounds", rect(curveBounds()));
     result->setProperty("curveView", panel->automationState());
+    result->setProperty("zoomControls", host->zoomControlsState());
     result->setProperty("surfaceView", cyclogram->automationDiagnostics());
     result->setProperty("pointCount", (int) mesh.getCubes().size());
     result->setProperty("note", (int) fundamental.slider.getValue()
@@ -213,9 +224,14 @@ juce::var ReferencePitchEditor::exportAutomationState() const {
 
 juce::Rectangle<int> ReferencePitchEditor::curveBounds() const {
     if (const Component* component = host->componentIfCreated()) {
-        return component->getBounds();
+        return getLocalArea(component, component->getLocalBounds());
     }
     return {};
+}
+
+juce::Rectangle<int> ReferencePitchEditor::verticalZoomBounds() const {
+    const auto* scrollbar = panel->hostedPanel().getZoomPanel()->getComponent(false);
+    return getLocalArea(scrollbar, scrollbar->getLocalBounds());
 }
 
 juce::Rectangle<int> ReferencePitchEditor::cyclogramBounds() const {
@@ -240,17 +256,28 @@ void ReferencePitchEditor::resized() {
     auto bounds = getLocalBounds().withTrimmedTop(CanvasChromeMetrics::fullEditorHeaderHeight)
             .reduced(12, 8);
     const int pitchHeight = juce::jlimit(90, 170, bounds.getHeight() / 3);
-    cyclogram->setBounds(bounds.removeFromTop(juce::jmax(0, bounds.getHeight() - pitchHeight - 34)));
+    cyclogram->setBounds(bounds.removeFromTop(juce::jmax(0, bounds.getHeight() - pitchHeight - 34))
+            .withTrimmedRight(ZoomPanel::scrollbarWidth));
     bounds.removeFromTop(6);
     auto heading = bounds.removeFromTop(28);
     const int noteWidth = juce::jmin(320, juce::jmax(0, heading.getWidth() - 145));
     fundamental.setBounds(heading.removeFromRight(noteWidth), 92, 8, 70);
-    if (Component* component = host->componentIfCreated()) {
+    if (Component* component = host->zoomComponentIfCreated()) {
         component->setBounds(bounds);
     }
     if (onRenderRequested) {
         onRenderRequested();
     }
+}
+
+void ReferencePitchEditor::scrollBarMoved(juce::ScrollBar*, double) {
+    // Let ZoomPanel apply the scrollbar range before the GL thread reads it.
+    juce::Component::SafePointer<ReferencePitchEditor> safeThis(this);
+    juce::MessageManager::callAsync([safeThis] {
+        if (safeThis != nullptr && safeThis->onRenderRequested) {
+            safeThis->onRenderRequested();
+        }
+    });
 }
 
 bool ReferencePitchEditor::keyPressed(const juce::KeyPress& key) {
