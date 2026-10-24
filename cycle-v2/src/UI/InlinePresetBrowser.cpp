@@ -4,6 +4,7 @@
 #include "UI/PresetBrowserComponents.h"
 #include "UI/PresetMetadataEditor.h"
 #include "UI/SidebarMediaRow.h"
+#include "UI/ReferenceAssetBrowser.h"
 #include "Graph/PresetMetadataStore.h"
 
 namespace CycleV2 {
@@ -37,6 +38,8 @@ juce::String workspaceSidebarTabName(WorkspaceSidebarTab tab) {
             return "Presets";
         case WorkspaceSidebarTab::Patterns:
             return "Patterns";
+        case WorkspaceSidebarTab::Assets:
+            return "Assets";
         case WorkspaceSidebarTab::Nodes:
             return "Nodes";
     }
@@ -246,22 +249,26 @@ InlinePresetBrowser::InlinePresetBrowser(
     setLookAndFeel(&lookAndFeel);
     setWantsKeyboardFocus(true);
 
-    styleTabButton(curves);
-    styleTabButton(presets);
-    styleTabButton(patterns);
-    styleTabButton(nodes);
+    styleTabButton(curves, LibraryIcon::Curves, "Curves");
+    styleTabButton(presets, LibraryIcon::Presets, "Presets");
+    styleTabButton(patterns, LibraryIcon::Patterns, "Patterns");
+    styleTabButton(nodes, LibraryIcon::Nodes, "Nodes");
+    styleTabButton(assets, LibraryIcon::Assets, "Assets");
     curves.setComponentID("workspace.sidebar.curves");
     presets.setComponentID("workspace.sidebar.presets");
     patterns.setComponentID("workspace.sidebar.patterns");
+    assets.setComponentID("workspace.sidebar.assets");
     nodes.setComponentID("workspace.sidebar.nodes");
     curves.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Curves); };
     presets.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Presets); };
     patterns.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Patterns); };
+    assets.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Assets); };
     nodes.onClick = [this] { setActiveTab(WorkspaceSidebarTab::Nodes); };
     addAndMakeVisible(curves);
     addAndMakeVisible(presets);
     addAndMakeVisible(patterns);
     addAndMakeVisible(nodes);
+    addAndMakeVisible(assets);
 
     auto& search = toolbar.searchField();
     auto& create = toolbar.newButton();
@@ -433,7 +440,8 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
             { "workspace.sidebar.curves", curves.getBounds().toFloat() },
             { "workspace.sidebar.presets", presets.getBounds().toFloat() },
             { "workspace.sidebar.patterns", patterns.getBounds().toFloat() },
-            { "workspace.sidebar.nodes", nodes.getBounds().toFloat() }
+            { "workspace.sidebar.nodes", nodes.getBounds().toFloat() },
+            { "workspace.sidebar.assets", assets.getBounds().toFloat() }
     };
     if (tab == WorkspaceSidebarTab::Presets) {
         for (const auto& [id, bounds] : toolbar.pointerTargetsForAutomation()) {
@@ -453,6 +461,12 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
         for (const auto& [id, bounds] : patternBrowser->pointerTargetsForAutomation()) {
             targets.push_back({ id, bounds.translated(
                     (float) patternBrowser->getX(), (float) patternBrowser->getY()) });
+        }
+    }
+    if (tab == WorkspaceSidebarTab::Assets && assetBrowser != nullptr) {
+        for (const auto& [id, bounds] : assetBrowser->pointerTargetsForAutomation()) {
+            targets.push_back({ id, bounds.translated(
+                    (float) assetBrowser->getX(), (float) assetBrowser->getY()) });
         }
     }
     return targets;
@@ -480,7 +494,9 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
             : tab == WorkspaceSidebarTab::Presets
                     ? presets.getBounds().toFloat()
                     : tab == WorkspaceSidebarTab::Patterns
-                            ? patterns.getBounds().toFloat() : nodes.getBounds().toFloat();
+                            ? patterns.getBounds().toFloat()
+                            : tab == WorkspaceSidebarTab::Assets
+                                    ? assets.getBounds().toFloat() : nodes.getBounds().toFloat();
     graphics.setColour(CanvasChromePalette::navigationAccent);
     graphics.fillRoundedRectangle(
             selectedTab.withY(43.f).withHeight(3.f).reduced(8.f, 0.f),
@@ -494,11 +510,15 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
 void InlinePresetBrowser::resized() {
     auto bounds = getLocalBounds();
     auto tabs = bounds.removeFromTop(46).reduced(8, 0);
-    const int tabWidth = juce::jmin(100, tabs.getWidth() / 4);
+    const int tabWidth = juce::jmin(100, tabs.getWidth() / 5);
     curves.setBounds(tabs.removeFromLeft(tabWidth));
     presets.setBounds(tabs.removeFromLeft(tabWidth));
     patterns.setBounds(tabs.removeFromLeft(tabWidth));
-    nodes.setBounds(tabs);
+    nodes.setBounds(tabs.removeFromLeft(tabWidth));
+    assets.setBounds(tabs);
+    if (assetBrowser != nullptr) {
+        assetBrowser->setBounds(bounds);
+    }
     if (patternBrowser != nullptr) {
         patternBrowser->setBounds(bounds);
     }
@@ -777,6 +797,10 @@ void InlinePresetBrowser::updateVisibility() {
     nodes.setToggleState(tab == WorkspaceSidebarTab::Nodes, juce::dontSendNotification);
     nodes.setColour(juce::TextButton::textColourOffId, CanvasChromePalette::mutedText);
     nodes.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
+    assets.setToggleState(tab == WorkspaceSidebarTab::Assets, juce::dontSendNotification);
+    if (assetBrowser != nullptr) {
+        assetBrowser->setVisible(tab == WorkspaceSidebarTab::Assets);
+    }
     toolbar.setVisible(showingPresets);
     tagHeading.setVisible(showingPresets);
     tagCloud.setVisible(showingPresets);
@@ -788,7 +812,20 @@ void InlinePresetBrowser::updateVisibility() {
     resized();
 }
 
-void InlinePresetBrowser::styleTabButton(juce::TextButton& button) {
+void InlinePresetBrowser::configureAssets(ReferenceAssetBrowser& browser) {
+    assetBrowser = &browser;
+    addChildComponent(browser);
+    updateVisibility();
+}
+
+void InlinePresetBrowser::showAssets() {
+    setActiveTab(WorkspaceSidebarTab::Assets);
+}
+
+void InlinePresetBrowser::styleTabButton(juce::TextButton& button,
+        LibraryIcon icon, const juce::String& name) {
+    LibraryIconRenderer::configure(button, icon, name);
+    button.getProperties().set("sidebarTab", true);
     button.setClickingTogglesState(false);
     button.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
     button.setColour(juce::TextButton::buttonOnColourId, juce::Colours::transparentBlack);

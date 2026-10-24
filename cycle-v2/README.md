@@ -154,6 +154,15 @@ The editor should feel like a studio canvas rather than a legacy panel UI:
 - rich per-node previews: trilinear mesh surfaces, 2D mesh slices, waveform/cyclogram views, spectrograms, spectral magnitude/phase graphs, envelopes, and meters
 - double-click expansion into a larger editor for the selected node
 
+## Wave References
+
+Expand **Wave References** below the canvas at any time. **Assets** in the
+sidebar provides search, audition and import for the shared audio library.
+Files up to four seconds show waveforms. Double-click an asset, choose
+**Add to Tray**, or drag it onto the open tray or its collapsed bar. Use the
+play control on an asset or reference card to audition it. Opening a node
+editor does not change the tray's visibility.
+
 ## Reference Studies
 
 Reference studies can collect labelled recordings and numerical pitch/cyclogram

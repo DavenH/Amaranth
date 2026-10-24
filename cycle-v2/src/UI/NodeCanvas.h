@@ -94,6 +94,8 @@ public:
             InlinePresetBrowser::ActionCallback browseCallback,
             InlinePresetBrowser::ActionCallback createCallback,
             LibraryFavorites* favorites = nullptr);
+    void configureReferenceSidebar(ReferenceAssetBrowser& browser);
+    void showReferenceAssets();
     void refreshPresetSidebarFavorites();
     void refreshPresetSidebarIndex();
     void refreshPresetSidebarRecord(const juce::File& file);

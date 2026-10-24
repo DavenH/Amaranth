@@ -15,7 +15,8 @@ class StandaloneAudioEngine;
 class ComparisonSurfaceView;
 class ReferencePitchEditor;
 
-class ComparisonDock : public juce::Component {
+class ComparisonDock : public juce::Component,
+                       public juce::DragAndDropTarget {
 public:
     ComparisonDock(
             NodeCanvas& canvas,
@@ -23,6 +24,11 @@ public:
             StandaloneAudioEngine& audioEngine);
     ~ComparisonDock() override;
 
+    std::function<void(const juce::String&)> onReferenceDropped;
+    bool isInterestedInDragSource(const SourceDetails& source) override;
+    void itemDropped(const SourceDetails& source) override;
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>>
+            pointerTargetsForAutomation() const;
     void refreshCaptures();
     void syncAuditionState();
     void importReference();
@@ -47,7 +53,6 @@ private:
     struct Card {
         juce::String id;
         juce::String title;
-        juce::String duration;
         std::vector<float> surface;
         const std::vector<float>* sampleSurface {};
         const PitchedSample* sampleIdentity {};
@@ -74,6 +79,7 @@ private:
     void closePitchEditor();
     void toggleAudition();
     void selectReference(const juce::String& id);
+    void closeReference(const juce::String& id);
     void updateCards();
     void paintCard(juce::Graphics& graphics, const Card& card, juce::Rectangle<float> bounds);
     static juce::PopupMenu::Options menuOptionsFor(juce::Component& target);
@@ -96,6 +102,7 @@ private:
     bool resizing {};
     uint64_t captureCount {};
     bool lastAuditioning {};
+    juce::String lastAuditionPath;
     juce::CriticalSection surfaceLock;
 };
 

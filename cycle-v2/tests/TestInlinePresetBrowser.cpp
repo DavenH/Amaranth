@@ -299,13 +299,16 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(search->getFont().getHeight() >= 14.f);
     REQUIRE(search->getHeight() == 30);
     REQUIRE(create->getHeight() == 28);
-    REQUIRE(search->getX() == create->getX());
+    const auto actions = create->getBounds().getUnion(remove->getBounds());
+    REQUIRE(actions.getCentreX() == search->getBounds().getCentreX());
+    REQUIRE(create->getWidth() == 32);
     REQUIRE(create->getY() > search->getBottom());
     REQUIRE(create->getX() < edit->getX());
     REQUIRE(edit->getX() < rename->getX());
     REQUIRE(rename->getX() < remove->getX());
-    REQUIRE(remove->getRight() == search->getRight());
-    REQUIRE(create->getButtonText() == "+ NEW");
+    REQUIRE(create->getX() - search->getX()
+            == search->getRight() - remove->getRight());
+    REQUIRE(create->getTitle().isNotEmpty());
     REQUIRE(tagCloud->getY() > search->getY());
     REQUIRE_FALSE(findDescendantWithID(browser, "workspace.sidebar.hero"));
     create->triggerClick();

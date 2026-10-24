@@ -45,6 +45,9 @@ public:
     LiveCapture captureLiveAudio(int durationMs);
     bool startReferenceAudition(const PitchedSample& sample);
     void stopReferenceAudition();
+    // Audition requests and source readback belong to the message thread.
+    const juce::String& referenceAuditionSourcePath() const { return referenceAuditionPath; }
+    bool isReferenceAuditioningFile(const juce::String& path) const;
     bool isReferenceAuditioning() const {
         return referencePlaying.load(std::memory_order_acquire);
     }
@@ -87,6 +90,7 @@ private:
             int frameCount);
     double currentTimeSeconds() const;
 
+    juce::String referenceAuditionPath;
     std::unique_ptr<juce::PropertiesFile> deviceProperties;
     juce::AudioDeviceManager deviceManager;
     RealtimeMidiEventQueue midiEvents;

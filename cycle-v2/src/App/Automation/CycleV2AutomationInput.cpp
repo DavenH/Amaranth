@@ -215,6 +215,8 @@ var CycleV2AutomationInput::pointer(const var& commandValue) {
             || downTargetId.startsWith("PerformanceKeyboard.")
             || targetId.startsWith("referencePitch.")
             || downTargetId.startsWith("referencePitch.")
+            || targetId.startsWith("comparison.")
+            || downTargetId.startsWith("comparison.")
             || targetId == "comparisonDock"
             || downTargetId == "comparisonDock") {
         area = "workspace";

@@ -9,6 +9,7 @@
 #include "UI/CanvasChromePalette.h"
 #include "UI/ComparisonSurfaceView.h"
 #include "UI/ReferencePitchEditor.h"
+#include "UI/ReferenceAssetBrowser.h"
 #include "UI/WorkspaceDock.h"
 
 namespace CycleV2 {
@@ -29,6 +30,15 @@ juce::Rectangle<float> cardBounds(int index, int height) {
             kCardWidth,
             (float) height - 10.f
     };
+}
+
+juce::Rectangle<float> closeBounds(juce::Rectangle<float> card) {
+    return card.removeFromTop(kCardTitleHeight).removeFromRight(26.f);
+}
+
+juce::Rectangle<float> playBounds(juce::Rectangle<float> card) {
+    card.removeFromRight(26.f);
+    return card.removeFromTop(kCardTitleHeight).removeFromRight(26.f);
 }
 
 }
@@ -59,6 +69,12 @@ public:
     explicit CardStrip(ComparisonDock& ownerToUse) : owner(ownerToUse) {}
 
     void paint(juce::Graphics& graphics) override {
+        if (owner.cards.empty()) {
+            graphics.setColour(CanvasChromePalette::mutedText);
+            graphics.setFont(14.f);
+            graphics.drawText("Drop audio from Assets", getLocalBounds(),
+                    juce::Justification::centred);
+        }
         for (int index = 0; index < (int) owner.cards.size(); ++index) {
             owner.paintCard(graphics, owner.cards[(size_t) index],
                     cardBounds(index, getHeight()));
@@ -75,19 +91,15 @@ public:
             owner.showCardMenu(card, event.position.toInt());
             return;
         }
-        const auto close = cardBounds(index, getHeight()).removeFromRight(26.f)
-                .removeFromTop(kCardTitleHeight);
+        const auto close = closeBounds(cardBounds(index, getHeight()));
         if (close.contains(event.position)) {
             if (card.sample) {
-                owner.library.close(card.id);
-                owner.refreshCaptures();
+                owner.closeReference(card.id);
             } else {
                 owner.canvas.unpinComparisonSpy(card.id);
             }
         } else if (card.sample) {
-            auto play = cardBounds(index, getHeight());
-            play.removeFromRight(26.f);
-            play = play.removeFromRight(26.f).removeFromTop(kCardTitleHeight);
+            const auto play = playBounds(cardBounds(index, getHeight()));
             if (play.contains(event.position)) {
                 if (card.id != owner.library.selectedId()) {
                     owner.selectReference(card.id);
@@ -132,6 +144,8 @@ ComparisonDock::ComparisonDock(
     viewport.setViewedComponent(strip.get(), false);
     viewport.setScrollBarsShown(false, true, false, true);
     viewport.setScrollBarThickness(7);
+    viewport.getHorizontalScrollBar().setColour(juce::ScrollBar::thumbColourId,
+            CanvasChromePalette::mutedText);
 
     addButton->onClick = [this] { showAddMenu(); };
     updateCards();
@@ -245,8 +259,8 @@ void ComparisonDock::showAddMenu() {
 void ComparisonDock::showCardMenu(const Card& card, juce::Point<int> position) {
     juce::PopupMenu menu;
     if (card.sample) {
-        menu.addItem(1, audioEngine.isReferenceAuditioning()
-                && card.id == library.selectedId() ? "Stop Audition" : "Audition Sample");
+        menu.addItem(1, card.sampleIdentity != nullptr
+                && audioEngine.isReferenceAuditioningFile(card.sampleIdentity->lastLoadedFilePath) ? "Stop Audition" : "Audition Sample");
         if (card.id != library.selectedId()) {
             menu.addItem(2, "Use as Comparison Target");
         }
@@ -288,8 +302,7 @@ void ComparisonDock::showCardMenu(const Card& card, juce::Point<int> position) {
                         }
                         break;
                     case 5:
-                        safeThis->library.close(id);
-                        safeThis->refreshCaptures();
+                        safeThis->closeReference(id);
                         break;
                     case 6: safeThis->canvas.unpinComparisonSpy(id); break;
                     case 7: safeThis->openPitchEditor(id); break;
@@ -334,10 +347,13 @@ void ComparisonDock::closePitchEditor() {
 }
 
 void ComparisonDock::toggleAudition() {
-    if (audioEngine.isReferenceAuditioning()) {
-        audioEngine.stopReferenceAudition();
-    } else if (const auto* analysis = library.selectedAnalysis()) {
-        audioEngine.startReferenceAudition(*analysis->sample);
+    if (const auto* analysis = library.selectedAnalysis()) {
+        if (audioEngine.isReferenceAuditioningFile(analysis->sample->lastLoadedFilePath)) {
+            audioEngine.stopReferenceAudition();
+        } else if (!audioEngine.startReferenceAudition(*analysis->sample)) {
+            juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::WarningIcon,
+                    "Cannot audition audio", "Enable an audio output device to play this reference.");
+        }
     }
     lastAuditioning = audioEngine.isReferenceAuditioning();
     strip->repaint();
@@ -358,14 +374,26 @@ void ComparisonDock::selectReference(const juce::String& id) {
     refreshCaptures();
 }
 
+void ComparisonDock::closeReference(const juce::String& id) {
+    if (const auto* analysis = library.analysisFor(id)) {
+        if (audioEngine.isReferenceAuditioningFile(analysis->sample->lastLoadedFilePath)) {
+            audioEngine.stopReferenceAudition();
+        }
+    }
+    library.close(id);
+    refreshCaptures();
+}
+
 void ComparisonDock::refreshCaptures() {
     updateCards();
 }
 
 void ComparisonDock::syncAuditionState() {
     const bool auditioning = audioEngine.isReferenceAuditioning();
-    if (lastAuditioning != auditioning) {
+    const auto& path = audioEngine.referenceAuditionSourcePath();
+    if (lastAuditioning != auditioning || lastAuditionPath != path) {
         lastAuditioning = auditioning;
+        lastAuditionPath = path;
         strip->repaint();
     }
 }
@@ -389,7 +417,6 @@ void ComparisonDock::updateCards() {
         Card card;
         card.id = record->id;
         card.title = record->name;
-        card.duration = juce::String(sampleAnalysis->sample->lengthSeconds(), 2) + " s";
         card.displayGain = 2.f;
         card.sampleSurface = &sampleAnalysis->cyclogram;
         card.sampleIdentity = sampleAnalysis->sample.get();
@@ -417,9 +444,6 @@ void ComparisonDock::updateCards() {
             return option.id == card.id;
         });
         card.title = found != options.end() ? found->label : "Disconnected Spy";
-        const double captureSeconds = (double) GraphPreviewExecutor::sourceFrameCountForMidiNote(note)
-                / 44100.0;
-        card.duration = juce::String(captureSeconds * 1000.0, 1) + " ms";
         card.displayGain = card.id == DefaultOutputProbeResolver::probeId
                 ? 1.f / 3.f : 1.f;
         if (index < previews.size() && previews[index].has_value()) {
@@ -566,6 +590,7 @@ void ComparisonDock::releaseOpenGLResources() {
 juce::var ComparisonDock::exportAutomationState() const {
     auto state = std::make_unique<juce::DynamicObject>();
     state->setProperty("visible", isVisible());
+    state->setProperty("auditioning", audioEngine.isReferenceAuditioning());
     state->setProperty("height", getHeight());
     state->setProperty("cardCount", (int) cards.size());
     state->setProperty("captureCount", (int64) captureCount);
@@ -610,37 +635,33 @@ void ComparisonDock::paintCard(
 
     auto titleBounds = bounds.removeFromTop(kCardTitleHeight);
     auto textBounds = titleBounds.reduced(9.f, 2.f);
-    textBounds.removeFromRight(card.sample ? 100.f : 56.f);
+    textBounds.removeFromRight(card.sample ? 52.f : 26.f);
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(13.f);
     graphics.drawText(card.title, textBounds,
             juce::Justification::centredLeft, true);
-    auto closeBounds = titleBounds.removeFromRight(26.f);
+    const auto close = closeBounds(titleBounds);
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(16.f);
-    graphics.drawText(juce::String::charToString(0x00d7), closeBounds,
+    graphics.drawText(juce::String::charToString(0x00d7), close,
             juce::Justification::centred);
-    auto durationBounds = titleBounds.removeFromRight(card.sample ? 67.f : 55.f);
     if (card.sample) {
-        const bool playing = selected && audioEngine.isReferenceAuditioning();
-        const auto playBounds = titleBounds.removeFromRight(26.f);
+        const bool playing = card.sampleIdentity != nullptr
+                && audioEngine.isReferenceAuditioningFile(card.sampleIdentity->lastLoadedFilePath);
+        const auto play = playBounds(titleBounds);
         graphics.setColour(selected ? CanvasChromePalette::text
                 : CanvasChromePalette::mutedText);
         if (playing) {
-            graphics.fillRect(playBounds.withSizeKeepingCentre(8.f, 8.f));
+            graphics.fillRect(play.withSizeKeepingCentre(8.f, 8.f));
         } else {
-            juce::Path play;
-            play.addTriangle(
-                    playBounds.getCentreX() - 3.f, playBounds.getCentreY() - 5.f,
-                    playBounds.getCentreX() + 5.f, playBounds.getCentreY(),
-                    playBounds.getCentreX() - 3.f, playBounds.getCentreY() + 5.f);
-            graphics.fillPath(play);
+            juce::Path triangle;
+            triangle.addTriangle(
+                    play.getCentreX() - 3.f, play.getCentreY() - 5.f,
+                    play.getCentreX() + 5.f, play.getCentreY(),
+                    play.getCentreX() - 3.f, play.getCentreY() + 5.f);
+            graphics.fillPath(triangle);
         }
     }
-    graphics.setColour(CanvasChromePalette::mutedText);
-    graphics.setFont(11.f);
-    graphics.drawText(card.duration, durationBounds,
-            juce::Justification::centredRight, true);
 
     if (!card.connected || card.surfaceValues().empty()) {
         graphics.setColour(CanvasChromePalette::mutedText);
@@ -650,6 +671,34 @@ void ComparisonDock::paintCard(
     }
     graphics.setColour(CanvasChromePalette::canvasBackground);
     graphics.fillRect(bounds.reduced(6.f, 5.f));
+}
+
+bool ComparisonDock::isInterestedInDragSource(const SourceDetails& source) {
+    return ReferenceAssetBrowser::referenceIdFromDrag(source.description).isNotEmpty();
+}
+
+void ComparisonDock::itemDropped(const SourceDetails& source) {
+    const auto id = ReferenceAssetBrowser::referenceIdFromDrag(source.description);
+    if (onReferenceDropped && id.isNotEmpty()) {
+        onReferenceDropped(id);
+    }
+}
+
+std::vector<std::pair<juce::String, juce::Rectangle<float>>>
+ComparisonDock::pointerTargetsForAutomation() const {
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets;
+    for (int index = 0; index < (int) cards.size(); ++index) {
+        const auto bounds = cardBounds(index, strip->getHeight());
+        const auto origin = getLocalPoint(strip.get(), juce::Point<int>()).toFloat();
+        const auto& card = cards[(size_t) index];
+        if (card.sample) {
+            targets.push_back({ "comparison.play." + card.id,
+                    playBounds(bounds).translated(origin.x, origin.y) });
+        }
+        targets.push_back({ "comparison.close." + card.id,
+                closeBounds(bounds).translated(origin.x, origin.y) });
+    }
+    return targets;
 }
 
 void ComparisonDock::paint(juce::Graphics& graphics) {

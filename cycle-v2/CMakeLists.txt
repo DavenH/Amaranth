@@ -66,6 +66,7 @@ generate_svg_data(
     effectEnable zoomAttack zoomFull
     envelopeLoop envelopeSustain envelopeZoomFit envelopeZoomFull
     envelopeScaleLinear envelopeScaleLogarithmic
+    libraryCurves libraryPresets libraryPatterns libraryNodes libraryAssets libraryImport libraryAddReference libraryTray libraryNew libraryEdit libraryRename libraryDelete
 )
 
 file(GLOB_RECURSE APP_SOURCES
@@ -270,11 +271,15 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/MidiPatternMiniMap.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/PatternLibrary.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternBrowser.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceAssetBrowser.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceWaveformPreview.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceTrayBar.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarMediaRow.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarTagCloud.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarLibraryToolbar.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetMetadataEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/LibrarySearchField.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/LibraryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserComponents.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserLookAndFeel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetLibraryIndex.cpp"

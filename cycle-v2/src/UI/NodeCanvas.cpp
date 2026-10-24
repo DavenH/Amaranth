@@ -323,6 +323,23 @@ void NodeCanvas::configurePresetSidebar(
     resized();
 }
 
+void NodeCanvas::configureReferenceSidebar(ReferenceAssetBrowser& browser) {
+    if (presetSidebar != nullptr) {
+        presetSidebar->configureAssets(browser);
+    }
+}
+
+void NodeCanvas::showReferenceAssets() {
+    if (presetSidebar == nullptr) {
+        return;
+    }
+    closeNodeEditor();
+    closeGuideEditor();
+    guideShelfState.minimized = false;
+    presetSidebar->showAssets();
+    resized();
+}
+
 void NodeCanvas::refreshPresetSidebarFavorites() {
     if (presetSidebar != nullptr) {
         presetSidebar->refreshFavorites();

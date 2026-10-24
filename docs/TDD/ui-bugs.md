@@ -1086,3 +1086,16 @@ Evidence: `.context/volume-scale-native.log` (failed attempt) and
 actual native clicks and captures the native cursor for visual review rather
 than gating on that stale cached classification. Other cursor smokes retain
 their existing checks; the inspector's cached-source limitation remains open.
+
+## P3: Expanded Trimesh top pane crowds out its surface at 1000x700
+
+On 2026-10-23, `cycle-v2-agent-reference-surface-click.json` opened `timeLayer1`
+from `baroque-flute` at 1000x700 with two reference cards. The upper Trimesh
+surface narrowed to roughly 55 px while its fixed controls occupied the rest
+of the row; the Type selector also crowded the dimensionality selector.
+Reference selection and both rendered cards passed. The tray and its new
+30 px disclosure share the previous 284 px height budget. Evidence:
+`.context/reference-small-editor.png`, `.context/reference-surface-report.json`.
+
+Current status: open; inspect the expanded editor's minimum size and control
+allocation independently of reference browsing and tray disclosure.
