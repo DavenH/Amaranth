@@ -6,7 +6,7 @@ namespace CycleV2 {
 
 enum class LibraryIcon {
     Curves, Presets, Patterns, Nodes, Assets,
-    Import, AddReference, Tray, New, Edit, Rename, Delete,
+    Import, AddReference, Tray,
     Count
 };
 

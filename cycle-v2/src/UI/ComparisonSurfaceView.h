@@ -29,6 +29,7 @@ public:
     juce::String referenceId;
     std::function<void(const ZoomRect&)> onCameraChanged;
     std::function<void()> onClicked;
+    std::function<void()> onDoubleClicked;
 
 private:
     class Impl;

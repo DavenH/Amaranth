@@ -136,7 +136,6 @@ ComparisonDock::ComparisonDock(
     setOpaque(true);
     addAndMakeVisible(*addButton);
     addAndMakeVisible(viewport);
-    addAndMakeVisible(*pitchEditor);
     pitchEditor->setVisible(false);
     pitchEditor->onEdited = [this] { refreshCaptures(); };
     pitchEditor->onClose = [this] { closePitchEditor(); };
@@ -318,12 +317,7 @@ void ComparisonDock::openPitchEditor(const juce::String& id) {
     if (!pitchEditor->open(id)) {
         return;
     }
-    viewport.setVisible(false);
-    addButton->setVisible(false);
-    pitchEditor->setVisible(true);
-    pitchEditor->toFront(true);
-    pitchEditor->setBounds(0, kResizeGripHeight, getWidth(),
-            juce::jmax(0, getHeight() - kResizeGripHeight));
+    canvas.showReferenceEditor(*pitchEditor);
     canvas.requestComparisonRendering();
 }
 
@@ -332,17 +326,20 @@ bool ComparisonDock::openPitchEditorForAutomation(const juce::String& id) {
     return pitchEditor->isVisible() && library.selectedId() == id;
 }
 
-juce::Rectangle<int> ComparisonDock::pitchCurveBoundsForAutomation() const {
-    return pitchEditor->isVisible()
-            ? pitchEditor->curveBounds().translated(
-                    pitchEditor->getX(), pitchEditor->getY())
-            : juce::Rectangle<int>();
+std::vector<std::pair<juce::String, juce::Rectangle<float>>>
+ComparisonDock::referenceEditorTargetsForAutomation() const {
+    if (!pitchEditor->isVisible()) {
+        return {};
+    }
+    return {
+            { "referencePitch.curve", canvas.getLocalArea(pitchEditor.get(), pitchEditor->curveBounds()).toFloat() },
+            { "referencePitch.cyclogram", canvas.getLocalArea(pitchEditor.get(), pitchEditor->cyclogramBounds()).toFloat() },
+            { "referencePitch.close", canvas.getLocalArea(pitchEditor.get(), pitchEditor->closeBounds()).toFloat() }
+    };
 }
 
 void ComparisonDock::closePitchEditor() {
-    pitchEditor->setVisible(false);
-    viewport.setVisible(true);
-    addButton->setVisible(true);
+    canvas.closeReferenceEditor();
     canvas.requestComparisonRendering();
 }
 
@@ -400,13 +397,13 @@ void ComparisonDock::syncAuditionState() {
 
 void ComparisonDock::updateCards() {
     const juce::ScopedLock lock(surfaceLock);
+    if (pitchEditor->isVisible() && pitchEditor->referenceId() != library.selectedId()) {
+        closePitchEditor();
+    }
+    pitchEditor->refreshCyclogram();
     auto previousCards = std::move(cards);
     const auto* analysis = library.selectedAnalysis();
     auto open = library.openReferenceIds();
-    const auto selected = std::find(open.begin(), open.end(), library.selectedId());
-    if (selected != open.end() && selected != open.begin()) {
-        std::rotate(open.begin(), selected, selected + 1);
-    }
     for (const auto& id : open) {
         const auto* sampleAnalysis = library.analysisFor(id);
         const auto record = std::find_if(library.records().begin(), library.records().end(),
@@ -517,6 +514,7 @@ void ComparisonDock::updateCards() {
             canvas.requestComparisonRendering();
         };
         if (card.sample) {
+            view->onDoubleClicked = [this, id = card.id] { openPitchEditor(id); };
             view->onClicked = [this, id = card.id] {
                 if (id != library.selectedId()) {
                     selectReference(id);
@@ -524,6 +522,7 @@ void ComparisonDock::updateCards() {
             };
         } else {
             view->onClicked = nullptr;
+            view->onDoubleClicked = nullptr;
         }
         const auto bounds = cardBounds((int) index, viewport.getHeight());
         auto surface = bounds.withTrimmedTop(kCardTitleHeight + 3.f)
@@ -551,11 +550,10 @@ void ComparisonDock::updateCards() {
 
 void ComparisonDock::renderOpenGL(float scaleFactor) {
     const juce::ScopedLock lock(surfaceLock);
-    if (!isVisible()) {
-        return;
-    }
     if (pitchEditor->isVisible()) {
         pitchEditor->renderOpenGL(scaleFactor);
+    }
+    if (!isVisible()) {
         return;
     }
     for (const auto& view : surfaceViews) {
@@ -695,6 +693,11 @@ ComparisonDock::pointerTargetsForAutomation() const {
             targets.push_back({ "comparison.play." + card.id,
                     playBounds(bounds).translated(origin.x, origin.y) });
         }
+        if (index < (int) surfaceViews.size() && surfaceViews[(size_t) index] != nullptr) {
+            targets.push_back({ "comparison.surface." + card.id,
+                    getLocalArea(surfaceViews[(size_t) index].get(),
+                            surfaceViews[(size_t) index]->getLocalBounds()).toFloat() });
+        }
         targets.push_back({ "comparison.close." + card.id,
                 closeBounds(bounds).translated(origin.x, origin.y) });
     }
@@ -715,8 +718,6 @@ void ComparisonDock::resized() {
     addButton->setBounds(8, kResizeGripHeight + 7, 26, 24);
     viewport.setBounds(kSourceControlWidth, kResizeGripHeight,
             juce::jmax(0, getWidth() - kSourceControlWidth),
-            juce::jmax(0, getHeight() - kResizeGripHeight));
-    pitchEditor->setBounds(0, kResizeGripHeight, getWidth(),
             juce::jmax(0, getHeight() - kResizeGripHeight));
     strip->setSize(juce::jmax(viewport.getWidth(),
                     (int) (kCardInset * 2.f

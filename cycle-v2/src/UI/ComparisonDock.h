@@ -33,7 +33,8 @@ public:
     void syncAuditionState();
     void importReference();
     bool openPitchEditorForAutomation(const juce::String& id);
-    juce::Rectangle<int> pitchCurveBoundsForAutomation() const;
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>>
+            referenceEditorTargetsForAutomation() const;
     void renderOpenGL(float scaleFactor);
     void releaseOpenGLResources();
     juce::var exportAutomationState() const;

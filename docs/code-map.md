@@ -156,7 +156,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Explained examples / sax studies | `scripts/create_cycle_v2_saxophone_articulation.py`, `scripts/create_cycle_v2_saxophone_anchors.py`, `scripts/create_cycle_v2_reed_saxophone.py` | Author expressive, measured-anchor and compact pulse/spectrum/body studies through canonical edits and capture. |
 | Audition comparisons / reference listening | `scripts/report_cycle_auditions.py`, `scripts/create_saxophone_reference_audit.py`, `scripts/cycle_saxophone_reed_audit.py`, `scripts/cycle_study_artifacts.py` | Reuse saved metadata, declared levels, provenance and immutable study boundaries. |
 | Sidebar icons | `cycle-v2/src/UI/LibraryIconRenderer.h`, `cycle-v2/resources/ui-icons/` | Reuse embedded SVGs and shared control geometry for tabs and library actions. |
-| Wave-reference workflow | `cycle-v2/src/UI/ReferenceAssetBrowser.h`, `cycle-v2/src/UI/ReferenceTrayBar.h`, `cycle-v2/src/Reference/` | Reuse catalog, decoded audition and ReferenceWaveformPreview; workspace owns explicit tray visibility. |
+| Wave-reference workflow | `cycle-v2/src/UI/ReferenceAssetBrowser.h`, `cycle-v2/src/UI/ReferenceTrayBar.h`, `cycle-v2/src/UI/ReferencePitchEditor.h`, `cycle-v2/src/Reference/` | Assets and stable tray; canvas hosts cyclogram/pitch expansion; library owns analysis, edits and audition data. |
 | Labelled reference / pitch evidence | `scripts/cycle_reference_study.py`, `scripts/cycle_reference_pitch_evidence.py`, `scripts/cycle_saxophone_anchor_analysis.py` | Reuse cached analysis; retain confidence and effective pitch-path provenance. |
 | Preset/graph persistence | `GraphSerializer.h`, product `content/` | Preserve migrations and canonical on-disk formats. |
 

@@ -40,12 +40,13 @@ focused reference tests and production-size captures.
 
 The five sidebar tabs use Curves (Bezier handles), Presets (stacked cards),
 Patterns (piano roll), Nodes (connected blocks), and Assets (wave folder).
-Actions use import-to-tray, waveform-plus, tray, plus, pencil, rename caret and
-trash. LibraryIconRenderer parses the existing embedded SVG resource pipeline
+Reference actions use import-to-tray, waveform-plus, tray and plus.
+Preset/pattern New/Edit/Rename/Delete retain their text buttons.
+LibraryIconRenderer parses the existing embedded SVG resource pipeline
 once, with neutral resting/highlighted variants. No cyan is introduced.
 
 Tabs keep their existing 46 px hit height and receive a centered 24 px icon
-canvas. Action controls are 32x28 px with a centered 24 px canvas, in a compact
+canvas. Reference actions are 32x28 px with a centered 24 px canvas, in a compact
 centered group with 8 px gaps. All SVGs use a 24-unit viewBox, a 1.7-unit primary
 stroke and roughly 3-unit optical insets. The tray disclosure is 30 px tall;
 its initial content height is 254 px, preserving the previous 284 px total.
@@ -94,3 +95,60 @@ The expanded Trimesh editor's crowded top pane at 1000x700 is recorded separatel
 in `ui-bugs.md`; reference browsing, disclosure and playback remain operable at
 that size. The UI keeps neutral accents, including inherited scrollbars/hover
 outlines. Source/synth material colours retain their domain visualization.
+
+## Follow-up: stable cards and expanded pitch view
+
+Status: Implemented (2026-10-24).
+
+Restore the preset/pattern New/Edit/Rename/Delete row to its original text
+controls. Asset actions and sidebar tabs keep their semantic icons. Preserve
+library insertion order in the tray: selecting or playing a reference changes
+selection, never placement.
+
+Double-clicking a reference surface or title opens a canvas editor with that
+reference's cyclogram above its pitch envelope. The rail remains visible and
+keeps its order. ReferencePitchEditor composes the existing ComparisonSurfaceView,
+CurvePanelHost, PropertySliderRow and ExpandedEditorChrome; no second envelope
+interaction, pitch codec or surface renderer is permitted. NodeCanvas owns only
+attachment, standard editor bounds, input dismissal and occlusion. ReferenceLibrary
+retains pitch edits and undo. Delete the dock-wide envelope replacement and the
+selected-card rotation. Live pitch movement remains local to the curve panel;
+release updates the selected reference and its cached cyclogram once. The
+cyclogram and envelope share horizontal bounds, separated by a compact pitch
+heading/fundamental row. Escape or the standard close control dismisses the
+expanded view. Verify real surface double-click routing, stable positions,
+layout geometry, pitch commit/undo and tray preservation.
+
+The empty pitch view also sampled time 0.5 despite EnvelopeMeshState placing
+reference cubes in the static time-zero slice. The adapter now supplies time
+zero, preserving the existing envelope rasterizer and gestures. Cmd-Z accepts
+the native uppercase key code as well as the lowercase automation form.
+Remove the four superseded New/Edit/Rename/Delete SVG resources and identifiers.
+
+Review: production changes add 185 lines and remove 87. ReferencePitchEditor
+grows 290→342 lines by composing the existing surface view and chrome.
+ComparisonDock stays 755→756 while deleting rotation and dock replacement.
+NodeWorkspace shrinks 1021→1018 and only translates automation coordinates.
+NodeCanvas grows 3630→3674 (header 484→487): attachment, standard bounds,
+dismissal and keyboard/occlusion routing remain its cohesive responsibilities.
+NodeCanvasEditorCoordinator still owns editor geometry, ReferencePitchEditor
+owns the reference layout, and ReferenceLibrary owns edits/history. The canvas
+holds a non-owning SafePointer; the dock retains lifetime and GL teardown.
+No graph/DSP kinds, mesh gesture implementations or analysis paths are added.
+The cyclogram cache is keyed by sample identity and analysis revision; live
+curve motion does not copy its grid, publish a document, or rebuild the graph.
+
+The standalone build, 31 reference/browser cases, three fixtures
+(`reference-expanded`, `reference-surface-click`, `reference-assets`), architecture
+audit, semantic map and whitespace checks pass. Native verification with
+`python3 scripts/test_cycle_v2_reference_editor.py --no-build` passes card
+selection/placement, double-click, aligned cyclogram/envelope bounds, two live
+drag updates without analysis publication, one release revision, changed derived
+pitch frames, exact Cmd-Z restoration, close and Escape. Document revisions
+and dirty state remain unchanged. The script uses a scoped instance and deletes
+only its own UUID import, leaving live user presets/reference metadata alone.
+Native replay uses the existing native-edit smoke's two-click sequence and
+80 ms keyboard settling; earlier fast click/shortcut attempts missed delivery.
+No application assertions or crashes occurred. Evidence is in
+`.context/reference-editor-native/`, with full-window captures at 1280x900 and
+1000x760, and `.context/final-reference-*-report.json`.

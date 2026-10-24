@@ -301,14 +301,14 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(create->getHeight() == 28);
     const auto actions = create->getBounds().getUnion(remove->getBounds());
     REQUIRE(actions.getCentreX() == search->getBounds().getCentreX());
-    REQUIRE(create->getWidth() == 32);
+    REQUIRE(create->getX() == search->getX());
     REQUIRE(create->getY() > search->getBottom());
     REQUIRE(create->getX() < edit->getX());
     REQUIRE(edit->getX() < rename->getX());
     REQUIRE(rename->getX() < remove->getX());
     REQUIRE(create->getX() - search->getX()
             == search->getRight() - remove->getRight());
-    REQUIRE(create->getTitle().isNotEmpty());
+    REQUIRE(create->getButtonText() == "+ NEW");
     REQUIRE(tagCloud->getY() > search->getY());
     REQUIRE_FALSE(findDescendantWithID(browser, "workspace.sidebar.hero"));
     create->triggerClick();

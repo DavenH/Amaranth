@@ -11,8 +11,7 @@ namespace {
 
 constexpr std::array<const char*, (size_t) LibraryIcon::Count> names {
         "libraryCurves", "libraryPresets", "libraryPatterns", "libraryNodes", "libraryAssets",
-        "libraryImport", "libraryAddReference", "libraryTray", "libraryNew", "libraryEdit",
-        "libraryRename", "libraryDelete"
+        "libraryImport", "libraryAddReference", "libraryTray"
 };
 
 struct Icon {

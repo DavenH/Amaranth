@@ -1,7 +1,6 @@
 #include "UI/SidebarLibraryToolbar.h"
 
 #include "UI/CanvasChromePalette.h"
-#include "UI/LibraryIconRenderer.h"
 
 namespace CycleV2 {
 
@@ -9,10 +8,6 @@ SidebarLibraryToolbar::SidebarLibraryToolbar(
         const juce::String& searchPlaceholder) :
         search(searchPlaceholder) {
     addAndMakeVisible(search);
-    LibraryIconRenderer::configure(create, LibraryIcon::New, "New");
-    LibraryIconRenderer::configure(edit, LibraryIcon::Edit, "Edit");
-    LibraryIconRenderer::configure(rename, LibraryIcon::Rename, "Rename");
-    LibraryIconRenderer::configure(remove, LibraryIcon::Delete, "Delete");
     for (auto* button : { &create, &edit, &rename, &remove }) {
         button->setColour(juce::TextButton::buttonColourId,
                 CanvasChromePalette::restingControlSurface);
@@ -66,6 +61,15 @@ void SidebarLibraryToolbar::resized() {
         if (button->isVisible()) {
             buttons.push_back(button);
         }
+    }
+    const bool iconActions = create.getProperties().contains("libraryIcon");
+    if (!iconActions) {
+        const int width = (actions.getWidth() - 4 * ((int) buttons.size() - 1)) / (int) buttons.size();
+        for (auto* button : buttons) {
+            button->setBounds(button == buttons.back() ? actions : actions.removeFromLeft(width));
+            actions.removeFromLeft(4);
+        }
+        return;
     }
     const int groupWidth = (int) buttons.size() * 32 + ((int) buttons.size() - 1) * 8;
     actions = actions.withSizeKeepingCentre(groupWidth, 28);

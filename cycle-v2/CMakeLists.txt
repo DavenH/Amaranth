@@ -66,7 +66,7 @@ generate_svg_data(
     effectEnable zoomAttack zoomFull
     envelopeLoop envelopeSustain envelopeZoomFit envelopeZoomFull
     envelopeScaleLinear envelopeScaleLogarithmic
-    libraryCurves libraryPresets libraryPatterns libraryNodes libraryAssets libraryImport libraryAddReference libraryTray libraryNew libraryEdit libraryRename libraryDelete
+    libraryCurves libraryPresets libraryPatterns libraryNodes libraryAssets libraryImport libraryAddReference libraryTray
 )
 
 file(GLOB_RECURSE APP_SOURCES

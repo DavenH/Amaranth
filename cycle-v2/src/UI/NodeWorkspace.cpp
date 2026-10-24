@@ -583,13 +583,10 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
         dockTarget.getDynamicObject()->setProperty("screenBounds",
                 rectangleToVar(comparisonDock.getScreenBounds().toFloat()));
         targets->add(dockTarget);
-        const auto curve = comparisonDock.pitchCurveBoundsForAutomation();
-        if (!curve.isEmpty()) {
-            targets->add(pointerTarget("referencePitch.curve", "referencePitchCurve",
-                    curve.toFloat().translated(
-                            (float) comparisonDock.getX(),
-                            (float) comparisonDock.getY())));
-        }
+    }
+    for (const auto& [id, bounds] : comparisonDock.referenceEditorTargetsForAutomation()) {
+        targets->add(pointerTarget(id, "referenceEditor", bounds.translated(
+                (float) canvas.getX(), (float) canvas.getY())));
     }
     for (const auto& [id, bounds] : canvas.presetSidebarPointerTargetsForAutomation()) {
         targets->add(pointerTarget(id, "presetSidebar", bounds));

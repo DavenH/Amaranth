@@ -8,6 +8,8 @@
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/ReferencePitchEditor.h"
+#include "UI/ComparisonSurfaceView.h"
+#include "UI/CanvasChromeMetrics.h"
 
 using namespace gl;
 
@@ -40,8 +42,15 @@ std::optional<double> parseNote(const juce::String& text) {
 
 ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
         library     (libraryToUse)
+    ,   chrome      (*this, "Wave Reference", "referencePitch", [this] {
+            if (onClose) {
+                onClose();
+            }
+        })
+    ,   cyclogram   (std::make_unique<ComparisonSurfaceView>())
     ,   fundamental (*this, "Fundamental") {
     setOpaque(true);
+    addAndMakeVisible(*cyclogram);
     setWantsKeyboardFocus(true);
     EnvelopeMeshState::replacePointPath(mesh,
             { Vertex2(0.f, 0.5f), Vertex2(1.f, 0.5f) });
@@ -75,6 +84,7 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
 }
 
 ReferencePitchEditor::~ReferencePitchEditor() {
+    cyclogram->releaseOpenGLResources();
     host->releaseSharedGlResources();
     host.reset();
     panel.reset();
@@ -85,7 +95,14 @@ bool ReferencePitchEditor::open(const juce::String& referenceId) {
     if (library.analysisFor(referenceId) == nullptr) {
         return false;
     }
+    if (openedId != referenceId) {
+        displayedSample = nullptr;
+        displayedRevision = 0;
+    }
     openedId = referenceId;
+    if (const auto* record = library.selectedRecord()) {
+        chrome.setTitle(record->name);
+    }
     syncFromLibrary();
     return true;
 }
@@ -95,6 +112,7 @@ void ReferencePitchEditor::syncFromLibrary() {
     if (analysis == nullptr) {
         return;
     }
+    refreshCyclogram();
     panel->clearInteractionState();
     EnvelopeMeshState::replacePointPath(mesh, analysis->pitchPath);
     panel->refreshRasterizer();
@@ -109,9 +127,30 @@ void ReferencePitchEditor::syncFromLibrary() {
     repaint();
 }
 
+void ReferencePitchEditor::refreshCyclogram() {
+    const auto* analysis = library.analysisFor(openedId);
+    if (analysis == nullptr || (displayedSample == analysis->sample.get()
+            && displayedRevision == analysis->cyclogramRevision)) {
+        return;
+    }
+    cyclogram->setGrid(analysis->cyclogram, (size_t) analysis->columns,
+            (size_t) analysis->rows, PortDomain::TimeSignal,
+            analysis->standardMidiNote(), 2.f);
+    displayedSample = analysis->sample.get();
+    displayedRevision = analysis->cyclogramRevision;
+}
+
 void ReferencePitchEditor::renderOpenGL(float scaleFactor) {
     if (!isVisible() || host->componentIfCreated() == nullptr) {
         return;
+    }
+    if (cyclogram->renderOpenGL(scaleFactor)) {
+        juce::Component::SafePointer<ReferencePitchEditor> safeThis(this);
+        juce::MessageManager::callAsync([safeThis] {
+            if (safeThis != nullptr) {
+                safeThis->repaint();
+            }
+        });
     }
     const auto bounds = host->componentIfCreated()->getLocalBounds().toFloat();
     if (bounds.getWidth() < 2.f || bounds.getHeight() < 2.f) {
@@ -143,6 +182,7 @@ void ReferencePitchEditor::renderOpenGL(float scaleFactor) {
 }
 
 void ReferencePitchEditor::releaseOpenGLResources() {
+    cyclogram->releaseOpenGLResources();
     host->releaseSharedGlResources();
 }
 
@@ -150,6 +190,17 @@ juce::var ReferencePitchEditor::exportAutomationState() const {
     auto result = std::make_unique<juce::DynamicObject>();
     result->setProperty("referenceId", openedId);
     result->setProperty("visible", isVisible());
+    const auto rect = [](juce::Rectangle<int> bounds) {
+        auto* value = new juce::DynamicObject();
+        value->setProperty("x", bounds.getX());
+        value->setProperty("y", bounds.getY());
+        value->setProperty("width", bounds.getWidth());
+        value->setProperty("height", bounds.getHeight());
+        return juce::var(value);
+    };
+    result->setProperty("cyclogramBounds", rect(cyclogramBounds()));
+    result->setProperty("curveBounds", rect(curveBounds()));
+    result->setProperty("surfaceView", cyclogram->automationDiagnostics());
     result->setProperty("pointCount", (int) mesh.getCubes().size());
     result->setProperty("note", (int) fundamental.slider.getValue()
             - LogRegionMapping::legacyMidiNoteBias);
@@ -166,39 +217,38 @@ juce::Rectangle<int> ReferencePitchEditor::curveBounds() const {
     return {};
 }
 
+juce::Rectangle<int> ReferencePitchEditor::cyclogramBounds() const {
+    return cyclogram->getBounds();
+}
+
+juce::Rectangle<int> ReferencePitchEditor::closeBounds() const {
+    const auto* button = findChildWithID("referencePitch.close");
+    return button != nullptr ? button->getBounds() : juce::Rectangle<int>();
+}
+
 void ReferencePitchEditor::paint(juce::Graphics& graphics) {
-    graphics.fillAll(CanvasChromePalette::canvasBackground);
+    chrome.paint(graphics);
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(13.f);
-    const auto* record = library.selectedRecord();
-    const juce::String title = record != nullptr
-            ? "PITCH ENVELOPE  /  " + record->name : "PITCH ENVELOPE";
-    graphics.drawText(title, 12, 5, juce::jmin(320, getWidth() / 3), 26,
-            juce::Justification::centredLeft, true);
-    graphics.setColour(CanvasChromePalette::mutedText);
-    graphics.setFont(17.f);
-    graphics.drawText(juce::String::charToString(0x00d7), getWidth() - 36, 5, 28, 26,
-            juce::Justification::centred);
+    graphics.drawText("Pitch envelope", 12, cyclogram->getBottom() + 6, 130, 28,
+            juce::Justification::centredLeft);
 }
 
 void ReferencePitchEditor::resized() {
-    const int rightInset = 44;
-    const int noteWidth = juce::jmin(370, juce::jmax(270, getWidth() / 3));
-    fundamental.setBounds({ getWidth() - rightInset - noteWidth, 4, noteWidth, 28 },
-            92, 8, 70);
+    chrome.resized();
+    auto bounds = getLocalBounds().withTrimmedTop(CanvasChromeMetrics::fullEditorHeaderHeight)
+            .reduced(12, 8);
+    const int pitchHeight = juce::jlimit(90, 170, bounds.getHeight() / 3);
+    cyclogram->setBounds(bounds.removeFromTop(juce::jmax(0, bounds.getHeight() - pitchHeight - 34)));
+    bounds.removeFromTop(6);
+    auto heading = bounds.removeFromTop(28);
+    const int noteWidth = juce::jmin(320, juce::jmax(0, heading.getWidth() - 145));
+    fundamental.setBounds(heading.removeFromRight(noteWidth), 92, 8, 70);
     if (Component* component = host->componentIfCreated()) {
-        component->setBounds(8, 38, juce::jmax(0, getWidth() - 16),
-                juce::jmax(0, getHeight() - 46));
+        component->setBounds(bounds);
     }
     if (onRenderRequested) {
         onRenderRequested();
-    }
-}
-
-void ReferencePitchEditor::mouseUp(const juce::MouseEvent& event) {
-    if (event.position.x >= (float) getWidth() - 38.f && event.position.y < 34.f
-            && onClose) {
-        onClose();
     }
 }
 
@@ -208,7 +258,8 @@ bool ReferencePitchEditor::keyPressed(const juce::KeyPress& key) {
         return true;
     }
     const bool command = key.getModifiers().isCommandDown();
-    if (command && key.getKeyCode() == 'z') {
+    const int keyCode = key.getKeyCode();
+    if (command && (keyCode == 'z' || keyCode == 'Z')) {
         const bool changed = key.getModifiers().isShiftDown()
                 ? library.redoPitchEdit() : library.undoPitchEdit();
         if (changed) {
@@ -231,7 +282,8 @@ void ReferencePitchEditor::updateCurvePanelZoom(bool resetView) {
 }
 
 void ReferencePitchEditor::prepareCurvePanel() {
-    panel->setControlValues(true, 0.5f, 0.5f, 0.5f, 0);
+    // Point paths occupy the static time slice, matching EnvelopeMeshState.
+    panel->setControlValues(true, 0.5f, 0.5f, 0.f, 0);
     panel->refreshRasterizer();
 }
 

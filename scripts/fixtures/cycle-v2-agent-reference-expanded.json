@@ -1,0 +1,28 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph" },
+    { "command": "resizeWindow", "width": 1280, "height": 900 },
+    { "command": "selectReference", "referenceId": "factory:dist3" },
+    { "command": "selectReference", "referenceId": "factory:sine500" },
+    { "command": "pointer", "event": "click", "targetId": "comparison.surface.factory:dist3" },
+    { "command": "assertState", "path": "comparison.cards.0.id", "equals": "factory:dist3" },
+    { "command": "assertState", "path": "comparison.cards.1.id", "equals": "factory:sine500" },
+    { "command": "pointer", "event": "click", "targetId": "comparison.surface.factory:sine500" },
+    { "command": "assertState", "path": "comparison.selectedReferenceId", "equals": "factory:sine500" },
+    { "command": "assertState", "path": "comparison.cards.0.id", "equals": "factory:dist3" },
+    { "command": "assertState", "path": "comparison.cards.1.id", "equals": "factory:sine500" },
+    { "command": "openNodeEditor", "nodeId": "timeLayer1" },
+    { "command": "pointer", "event": "doubleClick", "targetId": "comparison.surface.factory:sine500" },
+    { "command": "waitForIdle", "idleDelayMs": 600 },
+    { "command": "assertState", "path": "expandedNodeId", "equals": "" },
+    { "command": "assertState", "path": "comparison.pitchEditor.visible", "equals": true },
+    { "command": "assertState", "path": "comparison.pitchEditor.referenceId", "equals": "factory:sine500" },
+    { "command": "assertState", "path": "comparison.pitchEditor.surfaceView.renderCount", "op": "greaterThan", "value": 0 },
+    { "command": "assertState", "path": "comparison.visible", "equals": true },
+    { "command": "assertState", "path": "comparison.cardCount", "equals": 2 },
+    { "command": "pointer", "event": "click", "targetId": "referencePitch.close" },
+    { "command": "assertState", "path": "comparison.pitchEditor.visible", "equals": false },
+    { "command": "assertState", "path": "comparison.visible", "equals": true }
+  ],
+  "quit": true
+}

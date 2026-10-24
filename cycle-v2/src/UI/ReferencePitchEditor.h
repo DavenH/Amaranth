@@ -9,10 +9,12 @@
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Reference/ReferenceLibrary.h"
 #include "UI/Editors/PropertyControls.h"
+#include "UI/ExpandedEditorChrome.h"
 
 namespace CycleV2 {
 
 class EnvelopeCurvePanelContract;
+class ComparisonSurfaceView;
 
 class ReferencePitchEditor final :
         public juce::Component
@@ -23,6 +25,10 @@ public:
 
     bool open(const juce::String& referenceId);
     void syncFromLibrary();
+    void refreshCyclogram();
+    const juce::String& referenceId() const { return openedId; }
+    juce::Rectangle<int> cyclogramBounds() const;
+    juce::Rectangle<int> closeBounds() const;
     void renderOpenGL(float scaleFactor);
     void releaseOpenGLResources();
     juce::var exportAutomationState() const;
@@ -30,7 +36,6 @@ public:
 
     void paint(juce::Graphics& graphics) override;
     void resized() override;
-    void mouseUp(const juce::MouseEvent& event) override;
     bool keyPressed(const juce::KeyPress& key) override;
 
     std::function<void()> onEdited;
@@ -51,6 +56,10 @@ private:
     void commitFundamental();
 
     ReferenceLibrary& library;
+    ExpandedEditorChrome chrome;
+    std::unique_ptr<ComparisonSurfaceView> cyclogram;
+    const PitchedSample* displayedSample {};
+    uint64_t displayedRevision {};
     CurvePanelEnvironment environment;
     EnvelopeMesh mesh { "ReferencePitchEnvelope" };
     std::unique_ptr<EnvelopeCurvePanelContract> panel;

@@ -88,6 +88,12 @@ private:
         }
     }
 
+    void mouseDoubleClick(const juce::MouseEvent& event) override {
+        if (!event.mods.isPopupMenu() && view.onDoubleClicked) {
+            view.onDoubleClicked();
+        }
+    }
+
     ComparisonSurfaceView& view;
 };
 

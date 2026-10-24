@@ -20,6 +20,7 @@ public:
 
     void paint(juce::Graphics& graphics) const;
     void resized();
+    void setTitle(const juce::String& value) { title = value; }
     void setEnabled(bool enabled);
     bool isEnabled() const;
 
