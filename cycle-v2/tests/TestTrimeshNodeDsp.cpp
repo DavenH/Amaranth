@@ -9,6 +9,7 @@
 #include "Graph/GraphSerializer.h"
 #include "Graph/NodeParameterMap.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
+#include "TrimeshAuthoringTestSupport.h"
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
 #include "Nodes/Control/ModulationSource.h"
@@ -1982,10 +1983,8 @@ TEST_CASE("Trimesh click selection survives a repaint before pointer up",
 TEST_CASE("Primary Trimesh morph rebuilds only the displayed slice",
         "[cycle-v2][nodes][trimesh][morph][complexity]") {
     ScopedJuceInitialiser_GUI juce;
-    Node node = GraphNodeFactory().createNode(
-            NodeKind::TrilinearMesh,
-            "mesh",
-            {});
+    const auto graph = TestSupport::authoredTrimeshGraph();
+    Node node = *graph.findNode("mesh");
     TrimeshPanelBridge bridge;
     bridge.syncFromNode(node, 128, 64);
     const auto initial = bridge.getDataSource().getRenderCounters();

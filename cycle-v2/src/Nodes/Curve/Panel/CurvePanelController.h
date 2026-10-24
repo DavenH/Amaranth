@@ -41,7 +41,8 @@ public:
     virtual void render(
             Rectangle<float> bounds,
             Rectangle<float> clipBounds,
-            float scaleFactor) = 0;
+            float scaleFactor,
+            uint64_t presentationRevision = 0) = 0;
     virtual bool renderPreview(
             Rectangle<float> bounds,
             float scaleFactor,

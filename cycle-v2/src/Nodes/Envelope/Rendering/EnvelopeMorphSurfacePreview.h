@@ -6,12 +6,12 @@
 #include "JuceHeader.h"
 #include <Obj/MorphPosition.h>
 
-class GuideCurveProvider;
 class Mesh;
 
 namespace CycleV2 {
 
 class TrimeshPanelEnvironment;
+class GuideCurveSnapshotProvider;
 
 class EnvelopeMorphSurfacePreview {
 public:
@@ -19,8 +19,9 @@ public:
     ~EnvelopeMorphSurfacePreview();
 
     juce::Component* component();
-    void prepare(Mesh& mesh, GuideCurveProvider* guides, uint64_t revision,
-            const MorphPosition& morph, int axis, int dimensions, bool gestureActive);
+    void prepare(Mesh& mesh, GuideCurveSnapshotProvider* guides, uint64_t revision,
+            const MorphPosition& morph, int axis, int dimensions, bool gestureActive,
+            juce::Range<float> timeRange = { 0.f, 1.f });
     void render(juce::Rectangle<float> bounds, float scaleFactor);
     void releaseOpenGLResources();
     juce::var automationState() const;

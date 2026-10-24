@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <utility>
 
 #include "Panel3D.h"
 #include "Texture.h"
@@ -105,6 +106,10 @@ void Panel3D::drawDepthLinesAndVerts() {
     // just don't draw them
 }
 
+Vertex2 Panel3D::displayIntercept(Vertex2 point) const {
+    return isPrimaryAxisVertical() ? Vertex2(point.y, point.x) : point;
+}
+
 void Panel3D::drawInterceptLines() {
     auto* itr3D = dynamic_cast<Interactor3D*>(interactor.get());
     vector<SimpleIcpt> interceptPairs;
@@ -158,6 +163,9 @@ void Panel3D::drawInterceptLines() {
             realLast.x *= 0.9999f;
             second.x *= 0.9999f;
 
+            if (isPrimaryAxisVertical()) {
+                std::swap(xy.x, xy.y);
+            }
             applyScale(xy);
 
             PanelRenderer* renderer = ::getPanelRenderer(this);
@@ -185,13 +193,19 @@ void Panel3D::drawInterceptLines() {
             }
 
             renderer->disableSmoothing();
-            renderer->drawLine(first.x, first.y, realFirst.x, realFirst.y, true);
-            renderer->drawLine(realLast.x, realLast.y, second.x, second.y, true);
+            const Vertex2 displayFirst = displayIntercept(first);
+            const Vertex2 displaySecond = displayIntercept(second);
+            realFirst = displayIntercept(realFirst);
+            realLast = displayIntercept(realLast);
+            renderer->drawLine(displayFirst.x, displayFirst.y, realFirst.x, realFirst.y, true);
+            renderer->drawLine(realLast.x, realLast.y, displaySecond.x, displaySecond.y, true);
         } else {
-            x1 = sx(first.x);
-            x2 = sx(second.x);
-            y1 = sy(first.y);
-            y2 = sy(second.y);
+            const Vertex2 displayFirst = displayIntercept(first);
+            const Vertex2 displaySecond = displayIntercept(second);
+            x1 = sx(displayFirst.x);
+            x2 = sx(displaySecond.x);
+            y1 = sy(displayFirst.y);
+            y2 = sy(displaySecond.y);
 
             PanelRenderer* renderer = ::getPanelRenderer(this);
             jassert(renderer != nullptr);
@@ -236,6 +250,9 @@ void Panel3D::drawInterceptsAndHighlightClosest() {
     int size = interceptPairs.size();
 
     prepareAndCopy(interceptPairs);
+    if (isPrimaryAxisVertical()) {
+        std::swap(xy.x, xy.y);
+    }
     drawScaledInterceptPoints(size);
 }
 
@@ -1014,7 +1031,7 @@ void Panel3D::highlightCurrentIntercept() {
     PanelRenderer* renderer = ::getPanelRenderer(this);
     jassert(renderer != nullptr);
     renderer->setCurrentColour(1.f, 0.8f, 0.0f);
-    renderer->drawPoint(vertexHighlightRadius, point, true);
+    renderer->drawPoint(vertexHighlightRadius, displayIntercept(point), true);
 }
 
 void Panel3D::doExtraResized() {
@@ -1049,8 +1066,8 @@ void Panel3D::drawGuideCurveTags() {
     for (int i = 0; i < (int) interceptPairs.size() - 1; i += 2) {
         VertCube* cube = interceptPairs[i].parent;
 
-        Vertex2 first = Vertex2(interceptPairs[i]);
-        Vertex2 second = Vertex2(interceptPairs[i + 1]);
+        Vertex2 first = displayIntercept(Vertex2(interceptPairs[i]));
+        Vertex2 second = displayIntercept(Vertex2(interceptPairs[i + 1]));
 
         if (cube != nullptr && cube->isDeformed()) {
             Vertex2 b(sx(first.x),  sy(first.y));

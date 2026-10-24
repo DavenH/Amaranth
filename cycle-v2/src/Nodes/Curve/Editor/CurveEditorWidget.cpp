@@ -187,7 +187,7 @@ void CurveEditorWidget::renderExpandedPanelOpenGL(
         return;
     }
 
-    controller->render(bounds, clipBounds, scaleFactor);
+    controller->render(bounds, clipBounds, scaleFactor, previewPresentationRevision);
 }
 
 void CurveEditorWidget::renderGuideExpandedPanelOpenGL(
@@ -198,7 +198,7 @@ void CurveEditorWidget::renderGuideExpandedPanelOpenGL(
         return;
     }
 
-    controller->render(bounds, clipBounds, scaleFactor);
+    controller->render(bounds, clipBounds, scaleFactor, previewPresentationRevision);
 }
 
 bool CurveEditorWidget::renderGuidePreviewSnapshotOpenGL(

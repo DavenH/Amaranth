@@ -30,7 +30,7 @@
       "command": "setVertexParameter",
       "nodeId": "waveMesh",
       "parameterId": "vertex.phase",
-      "value": 0.27
+      "value": 0.027
     },
     {
       "command": "setVertexParameter",
@@ -85,7 +85,7 @@
     {
       "command": "assertState",
       "path": "expandedNodeControls.trimesh.selectedVertexParameters.3.value",
-      "equals": 0.27
+      "equals": 0.027
     },
     {
       "command": "assertState",
@@ -93,9 +93,10 @@
       "equals": 0.73
     },
     {
-      "command": "undo",
-      "waitForIdle": true,
-      "idleDelayMs": 100
+      "command": "assertState",
+      "path": "expandedNodeControls.morphSliders.0.value",
+      "op": "greaterThan",
+      "value": 0.7
     },
     {
       "command": "assertNodeParameter",

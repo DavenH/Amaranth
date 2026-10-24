@@ -76,6 +76,7 @@ private:
     enum class DragTarget {
         None,
         Morph,
+        MorphSpace,
         MorphFace,
         OutputScale,
         VertexParameter,
@@ -92,6 +93,9 @@ private:
             juce::Point<float> position,
             juce::Rectangle<int> screenArea);
     void beginMorphFaceDrag(juce::Point<float> position);
+    void beginMorphSpaceDrag(juce::Point<float> position);
+    void dragReducedMorphSpace(juce::Point<float> position);
+    bool isMorphSpaceAt(juce::Point<float> position) const;
     MorphSpaceLayout morphSpace() const;
     void dragControl(juce::Point<float> position);
     void endControlDrag();

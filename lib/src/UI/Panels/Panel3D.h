@@ -87,6 +87,8 @@ public:
     virtual bool getScalarSurfaceMaterial(ScalarSurfaceMaterial&) const { return false; }
     virtual bool shouldStepSurfaceRows() const         { return false; }
     virtual int interceptLinePrimaryDimension();
+    virtual bool isPrimaryAxisVertical() const { return false; }
+    Vertex2 displayIntercept(Vertex2 point) const;
 
     void postVertsDraw() override;
 
