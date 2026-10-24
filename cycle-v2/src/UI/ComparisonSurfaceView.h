@@ -20,6 +20,9 @@ public:
             PortDomain domain, int note, float displayGain = 1.f);
     void setCamera(const ZoomRect& camera);
     ZoomRect camera();
+    void setZoomBarsVisible(bool visible);
+    juce::Rectangle<int> plotBounds() const;
+    juce::Rectangle<int> zoomBounds(bool horizontal) const;
     bool renderOpenGL(float scaleFactor);
     void releaseOpenGLResources();
     juce::var automationDiagnostics() const;

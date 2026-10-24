@@ -6,6 +6,7 @@
 #include "Runtime/MessageThreadWorker.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/EffectEnableButton.h"
+#include "UI/PanelOverlayIconButton.h"
 #include "UI/Editors/ProcessingScopeSelector.h"
 #include "UI/Editors/PropertyControls.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
@@ -35,44 +36,6 @@ struct SampleLandmark {
     int sample {};
     float x {};
     Rectangle<float> labelBounds;
-};
-
-class IrViewButton final : public Button {
-public:
-    IrViewButton(
-            const String& title,
-            const String& description,
-            const String& tooltip,
-            const char* svg) :
-            Button(title)
-        ,   icon(createIcon(svg)) {
-        setTitle(title);
-        setDescription(description);
-        setTooltip(tooltip);
-        setWantsKeyboardFocus(true);
-        setMouseClickGrabsKeyboardFocus(false);
-        setMouseCursor(MouseCursor::PointingHandCursor);
-    }
-
-    void paintButton(Graphics& graphics, bool highlighted, bool down) override {
-        paintPanelOverlayButton(graphics, getLocalBounds().toFloat(),
-                highlighted, down, hasKeyboardFocus(false));
-        if (icon != nullptr) {
-            icon->drawWithin(
-                    graphics,
-                    getLocalBounds().toFloat().reduced(CanvasChromeMetrics::panelOverlayIconInset),
-                    RectanglePlacement::centred,
-                    1.f);
-        }
-    }
-
-private:
-    static std::unique_ptr<Drawable> createIcon(const char* svg) {
-        const std::unique_ptr<XmlElement> document = parseXML(svg);
-        return document != nullptr ? Drawable::createFromSVG(*document) : nullptr;
-    }
-
-    std::unique_ptr<Drawable> icon;
 };
 
 var boundsToVar(Rectangle<int> bounds) {
@@ -336,8 +299,8 @@ struct ImpulseResponseEditorComponent::Impl {
 
     EffectEnableButton enabled;
     ProcessingScopeSelector processingScope;
-    IrViewButton zoomAttack;
-    IrViewButton zoomFull;
+    PanelOverlayIconButton zoomAttack;
+    PanelOverlayIconButton zoomFull;
     LabeledParameterSlider size;
     LabeledParameterSlider postGain;
     LabeledParameterSlider highPass;

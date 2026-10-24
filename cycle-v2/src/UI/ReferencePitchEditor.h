@@ -10,6 +10,8 @@
 #include "Reference/ReferenceLibrary.h"
 #include "UI/Editors/PropertyControls.h"
 #include "UI/ExpandedEditorChrome.h"
+#include "UI/PanelOverlayIconButton.h"
+#include "UI/ReferenceSurfaceCache.h"
 
 namespace CycleV2 {
 
@@ -30,7 +32,7 @@ public:
     const juce::String& referenceId() const { return openedId; }
     juce::Rectangle<int> cyclogramBounds() const;
     juce::Rectangle<int> closeBounds() const;
-    juce::Rectangle<int> verticalZoomBounds() const;
+    std::vector<std::pair<juce::String, juce::Rectangle<int>>> pointerTargetsForAutomation() const;
     void renderOpenGL(float scaleFactor);
     void releaseOpenGLResources();
     juce::var exportAutomationState() const;
@@ -46,6 +48,10 @@ public:
     std::function<void()> onRenderRequested;
 
 private:
+    void configureViewControls();
+    void setSurfaceMode(bool spectral);
+    void syncTimeZoom(bool fromSurface);
+    void resetView();
     void scrollBarMoved(juce::ScrollBar* scrollbar, double newRangeStart) override;
     void initialiseCurvePanel(juce::Component* component) override;
     void updateCurvePanelZoom(bool resetView) override;
@@ -62,8 +68,16 @@ private:
     ReferenceLibrary& library;
     ExpandedEditorChrome chrome;
     std::unique_ptr<ComparisonSurfaceView> cyclogram;
-    const PitchedSample* displayedSample {};
-    uint64_t displayedRevision {};
+    ReferenceSurfaceCache surfaceCache;
+    PanelOverlayIconButton timeView;
+    PanelOverlayIconButton spectrumView;
+    PanelOverlayIconButton zoomAttack;
+    PanelOverlayIconButton zoomFit;
+    PanelOverlayIconButton zoomFull;
+    int displayedGeneration { -1 };
+    bool spectral {};
+    bool displayedSpectral {};
+    bool linkingTimeZoom {};
     CurvePanelEnvironment environment;
     EnvelopeMesh mesh { "ReferencePitchEnvelope" };
     std::unique_ptr<EnvelopeCurvePanelContract> panel;

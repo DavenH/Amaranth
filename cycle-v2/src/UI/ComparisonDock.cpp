@@ -332,12 +332,11 @@ ComparisonDock::referenceEditorTargetsForAutomation() const {
     if (!pitchEditor->isVisible()) {
         return {};
     }
-    return {
-            { "referencePitch.curve", canvas.getLocalArea(pitchEditor.get(), pitchEditor->curveBounds()).toFloat() },
-            { "referencePitch.cyclogram", canvas.getLocalArea(pitchEditor.get(), pitchEditor->cyclogramBounds()).toFloat() },
-            { "referencePitch.close", canvas.getLocalArea(pitchEditor.get(), pitchEditor->closeBounds()).toFloat() },
-            { "referencePitch.zoomY", canvas.getLocalArea(pitchEditor.get(), pitchEditor->verticalZoomBounds()).toFloat() }
-    };
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets;
+    for (const auto& [id, bounds] : pitchEditor->pointerTargetsForAutomation()) {
+        targets.emplace_back(id, canvas.getLocalArea(pitchEditor.get(), bounds).toFloat());
+    }
+    return targets;
 }
 
 void ComparisonDock::closePitchEditor() {

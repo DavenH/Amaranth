@@ -64,6 +64,7 @@ generate_svg_data(
     UiIconData
     UiIconData
     effectEnable zoomAttack zoomFull
+    referenceCyclogram referenceSpectrogram
     envelopeLoop envelopeSustain envelopeZoomFit envelopeZoomFull
     envelopeScaleLinear envelopeScaleLogarithmic
     libraryCurves libraryPresets libraryPatterns libraryNodes libraryAssets libraryImport libraryAddReference libraryTray
@@ -528,6 +529,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/src/Reference/ReferenceLibrary.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/Reference/ReferenceAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserPage.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceSurfaceCache.cpp"
             ${TEST_SOURCES}
         )
         add_dependencies(${PROJECT_NAME}_tests CycleV2GraphMigrator)

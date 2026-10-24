@@ -1,4 +1,5 @@
 #include "UI/ComparisonSurfaceView.h"
+#include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 
 #include "Nodes/Trimesh/Panel/TrimeshInteractor3D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
@@ -56,6 +57,7 @@ public:
                 : Buffer<float>(displayStorage.data(), (int) displayStorage.size());
     }
     const std::vector<Column>& getColumns() override { return panelColumns; }
+    const std::vector<Column>& columns() const { return panelColumns; }
     juce::CriticalSection& getGridLock() override { return gridLock; }
     uint64_t getScalarSurfaceRevision() const override { return revision; }
     bool hasStableScalarSurfaceRevision() const override { return true; }
@@ -107,7 +109,7 @@ private:
 
 }
 
-class ComparisonSurfaceView::Impl final : private ZoomPanel::ZoomListener {
+class ComparisonSurfaceView::Impl final : private juce::ScrollBar::Listener {
 public:
     explicit Impl(ComparisonSurfaceView& ownerToUse) :
             owner(ownerToUse)
@@ -121,13 +123,17 @@ public:
         inputHost = std::make_unique<ComparisonInputHost>(panel, owner);
         panel.initWithExternalComponent(inputHost.get());
         panel.configureViewport({ 0.f, 1.f });
-        panel.getZoomPanel()->addListener(this);
+        for (bool horizontal : { true, false }) {
+            static_cast<juce::ScrollBar*>(panel.getZoomPanel()->getComponent(horizontal))->addListener(this);
+        }
         panel.getZoomPanel()->setScrollbarsVisible(false);
         owner.addAndMakeVisible(panel.getZoomPanel());
     }
 
     ~Impl() override {
-        panel.getZoomPanel()->removeListener(this);
+        for (bool horizontal : { true, false }) {
+            static_cast<juce::ScrollBar*>(panel.getZoomPanel()->getComponent(horizontal))->removeListener(this);
+        }
         panel.setInteractor(nullptr);
         interactor.setRasterizer(nullptr);
     }
@@ -149,11 +155,26 @@ public:
         relayingCamera = true;
         panel.getZoomPanel()->rect = camera;
         panel.getZoomPanel()->panelZoomChanged(false);
+        panel.bakeTexturesNextRepaint();
         snapshotPending = true;
         relayingCamera = false;
     }
 
     ZoomRect camera() { return panel.getZoomPanel()->rect; }
+
+    void setZoomBarsVisible(bool visible) {
+        stylePanelZoomScrollbars(*panel.getZoomPanel());
+        panel.getZoomPanel()->setScrollbarsVisible(visible);
+    }
+
+    juce::Rectangle<int> plotBounds() const {
+        return owner.getLocalArea(inputHost.get(), inputHost->getLocalBounds());
+    }
+
+    juce::Rectangle<int> zoomBounds(bool horizontal) {
+        auto* bar = panel.getZoomPanel()->getComponent(horizontal);
+        return owner.getLocalArea(bar, bar->getLocalBounds());
+    }
 
     bool renderOpenGL(float scaleFactor) {
         const int width = inputHost->getWidth();
@@ -213,13 +234,22 @@ public:
                 .withWidth(inputHost->getWidth()).withHeight(inputHost->getHeight()));
     }
 
-    juce::var automationDiagnostics() const {
+    juce::var automationDiagnostics() {
         auto result = std::make_unique<juce::DynamicObject>();
         result->setProperty("attached", resourceReady.load());
         result->setProperty("renderCount", renderCount.load());
         result->setProperty("contextCreateCount", contextCreateCount.load());
         result->setProperty("width", inputHost->getWidth());
         result->setProperty("height", inputHost->getHeight());
+        result->setProperty("gridColumns", (int) source.columns().size());
+        result->setProperty("gridRows", source.columns().empty() ? 0 : source.columns().front().size());
+        auto* view = new juce::DynamicObject();
+        const auto& rect = panel.getZoomPanel()->rect;
+        view->setProperty("x", rect.x);
+        view->setProperty("y", rect.y);
+        view->setProperty("w", rect.w);
+        view->setProperty("h", rect.h);
+        result->setProperty("camera", juce::var(view));
         result->setProperty("errorCount", 0);
         return { result.release() };
     }
@@ -230,11 +260,22 @@ public:
     }
 
 private:
-    void zoomUpdated(int) override {
-        snapshotPending = true;
-        if (!relayingCamera && owner.onCameraChanged) {
-            owner.onCameraChanged(camera());
+    void scrollBarMoved(juce::ScrollBar*, double) override {
+        if (relayingCamera) {
+            return;
         }
+        juce::Component::SafePointer<ComparisonSurfaceView> safeOwner(&owner);
+        juce::MessageManager::callAsync([safeOwner] {
+            if (safeOwner != nullptr) {
+                auto& self = *safeOwner->impl;
+                self.snapshotPending = true;
+                self.panel.bakeTexturesNextRepaint();
+                if (safeOwner->onCameraChanged) {
+                    safeOwner->onCameraChanged(self.camera());
+                }
+                safeOwner->repaint();
+            }
+        });
     }
 
     ComparisonSurfaceView& owner;
@@ -276,6 +317,10 @@ void ComparisonSurfaceView::setCamera(const ZoomRect& camera) {
 ZoomRect ComparisonSurfaceView::camera() {
     return impl->camera();
 }
+
+void ComparisonSurfaceView::setZoomBarsVisible(bool visible) { impl->setZoomBarsVisible(visible); }
+juce::Rectangle<int> ComparisonSurfaceView::plotBounds() const { return impl->plotBounds(); }
+juce::Rectangle<int> ComparisonSurfaceView::zoomBounds(bool horizontal) const { return impl->zoomBounds(horizontal); }
 
 bool ComparisonSurfaceView::renderOpenGL(float scaleFactor) {
     GLint viewport[4] {};

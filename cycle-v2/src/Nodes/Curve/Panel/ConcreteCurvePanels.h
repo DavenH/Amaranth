@@ -69,6 +69,7 @@ public:
     virtual void restoreEnvelopeSelection(VertCube* cube) = 0;
     virtual void setEnvelopeBipolar(bool bipolar) = 0;
     virtual void setEnvelopeLogarithmic(bool logarithmic) = 0;
+    virtual void setEnvelopeReleaseEnabled(bool enabled) = 0;
     virtual void setEnvelopeAxisLinks(bool redLinked, bool blueLinked) = 0;
     virtual void setEnvelopeDimensions(int count, bool yellowLinked) = 0;
     virtual void fitEnvelopeVerticalRange() = 0;

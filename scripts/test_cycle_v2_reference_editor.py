@@ -98,7 +98,7 @@ def check(record, output):
             assert state()["comparison"]["cardCount"] == 2
             assert placement() == before
             zoom = editor["zoomControls"]["vertical"]
-            assert zoom["visible"] and not editor["zoomControls"]["horizontal"]["visible"]
+            assert zoom["visible"] and editor["zoomControls"]["horizontal"]["visible"]
             y = zoom["start"] + zoom["size"] / 2
             for event, position in (("down", y), ("drag", y + 0.05),
                                     ("drag", y + 0.1), ("up", y + 0.1)):
@@ -121,8 +121,12 @@ def check(record, output):
             evidence["openedEditor"] = editor
             evidence["originalPitchPath"] = original
             revision = editor["cyclogramRevision"]
-            x, y = point("referencePitch.curve", 0.87, 0.5)
-            _, end_y = point("referencePitch.curve", 0.87, 0.32)
+            view = editor["curveView"]["zoom"]
+            endpoint = original[-1]
+            position_x = (endpoint["time"] - view["x"]) / view["w"]
+            position_y = (1 - endpoint["pitch"] - view["y"]) / view["h"]
+            x, y = point("referencePitch.curve", position_x, position_y)
+            _, end_y = point("referencePitch.curve", position_x, position_y - 0.18)
             native(f"m:{x + 2},{y}", f"m:{x},{y}", f"dd:{x},{y}")
             native(f"dm:{x},{round((y + end_y) / 2)}", f"dm:{x},{end_y}")
             assert state()["comparison"]["pitchEditor"]["cyclogramRevision"] == revision

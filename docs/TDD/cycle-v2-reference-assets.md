@@ -205,3 +205,65 @@ whitespace checks pass. Native Space checks pass with both panel and pitch-curve
 focus, including nonzero captured audio, stop, unchanged preset transport and
 clean document state. Evidence: `.context/reference-space-report.json` and
 `.context/reference-space-native/`.
+
+## Expanded reference navigation
+
+Status: Implemented (2026-10-24).
+
+Retain the existing 160x256 analysis: the apparent resolution difference may be
+zoom framing. The expanded surface cache derives a spectrogram from that product
+using DefaultOutputPreview::spectrum (the Spy FFT/normalization path). No new
+folding, FFT, pitch tracker or resampling algorithm is allowed. Rebuild only for
+sample/pitch revision changes, never pan, zoom, mode changes or live movement.
+
+Expose Cyclogram/Spectrogram as paired icon controls and show the existing
+surface zoom wrapper. Share normalized recording time [0,1] between surface and
+pitch envelope; synchronize only horizontal position/span. Phase/frequency and
+pitch amplitude retain separate vertical ranges. Retain Space audition and undo.
+Reuse the IR overlay icon button by extracting its presentation class; add the
+existing attack, vertical-fit and full-view icons inlaid at the pitch plot's top
+right. Each control is 24x24 with the existing inset and 4px gap. View icons use a
+24-unit canvas, neutral strokes and distinct wave/stacked-frequency silhouettes.
+Disable envelope release sections in the reference editor, including the default
+release tint and 1.5 time extent; preserve them in ordinary envelope panels.
+Delete the hidden horizontal zoom context and the IR-local duplicate button. Verify revision-cache counts, mode FFT
+output, linked two-update navigation in either direction, independent vertical
+zoom, framing actions, retained edit/undo/audition, and actual-size captures.
+
+The reference GL preparation hook no longer refreshes the rasterizer/zoom ranges
+on every frame. Loading and history restoration prepare the static-time path;
+the existing EnvelopeCurvePanel interaction owns live rasterization. This removes
+the scrollbar overwrite race documented in ui-bugs.md. Navigation only updates
+viewport rectangles and render invalidation, with no pitch analysis, graph copy
+or history publication. Spectral conversion occurs lazily once per revision.
+
+Responsibility/size review: ReferencePitchEditor grows 374→486 lines, keeping
+editor composition and linked presentation; ReferenceSurfaceCache owns the
+revision-derived surface and PanelOverlayIconButton owns shared control paint.
+ComparisonSurfaceView grows 315→360 lines for the existing wrapper's bars and
+camera notification. ComparisonDock remains 761 lines and only translates the
+editor's own automation targets. The IR editor shrinks 652→615 lines after
+removing its local icon button. EnvelopeCurvePanel grows 1133→1151 lines: its
+new default-on release presentation flag controls existing tint/section and
+normalized time bounds, with no new DSP or interaction policy. Its existing
+rasterizer/interaction/drawing composition remains cohesive; this slice adds no
+new responsibility to that large panel.
+
+Verification: the exact standalone target and test target build. All twelve
+reference test cases pass, including cached spectra, revision invalidation and
+SVG coverage/contact-sheet rendering. The expanded-reference fixture and the
+focused reference-views sequence pass: full time on open, no release section,
+wheel zoom from either plot, two-way horizontal pan/drag, independent vertical
+pitch pan, attack/fit/full actions, mode switching without reanalysis, unchanged
+document revisions and Space audition. Screenshots cover both modes at 1280x900
+and the smaller 1000x760 layout, with the tray open. The three icon reviews cover
+large/native contact sheet, real control legibility and family consistency; the
+spectral glyph was simplified to stacked harmonic ridges. Shared IR attack/full
+controls and ordinary envelope release defaults pass their regression fixture.
+Native pitch drag/commit and Undo restore the exact pitch path and pitch frames;
+the native suite's later close click has the existing input-delivery limitation
+recorded in ui-bugs.md. Architecture audit, code map and whitespace checks pass.
+Evidence: `.context/reference-views/`, `.context/reference-navigation-tests.log`,
+`.context/reference-navigation-expanded-report.json`,
+`.context/reference-shared-controls-report.json` and
+`.context/reference-navigation-native/`. No criteria or deletion targets remain.

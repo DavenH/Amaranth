@@ -19,7 +19,7 @@
     { "command": "assertState", "path": "comparison.pitchEditor.referenceId", "equals": "factory:sine500" },
     { "command": "assertState", "path": "comparison.pitchEditor.curveView.zoom.h", "op": "lessThan", "value": 1 },
     { "command": "assertState", "path": "comparison.pitchEditor.zoomControls.vertical.visible", "equals": true },
-    { "command": "assertState", "path": "comparison.pitchEditor.zoomControls.horizontal.visible", "equals": false },
+    { "command": "assertState", "path": "comparison.pitchEditor.zoomControls.horizontal.visible", "equals": true },
     { "command": "assertState", "path": "comparison.pitchEditor.surfaceView.renderCount", "op": "greaterThan", "value": 0 },
     { "command": "assertState", "path": "comparison.visible", "equals": true },
     { "command": "assertState", "path": "comparison.cardCount", "equals": 2 },

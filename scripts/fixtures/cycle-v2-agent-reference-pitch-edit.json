@@ -40,14 +40,14 @@
       "command": "pointer",
       "event": "move",
       "targetId": "referencePitch.curve",
-      "targetX": 0.87,
+      "targetX": 0.33642578125,
       "targetY": 0.5
     },
     {
       "command": "pointer",
       "event": "down",
       "targetId": "referencePitch.curve",
-      "targetX": 0.87,
+      "targetX": 0.33642578125,
       "targetY": 0.5
     },
     {
@@ -55,9 +55,9 @@
       "event": "drag",
       "targetId": "referencePitch.curve",
       "downTargetId": "referencePitch.curve",
-      "targetX": 0.87,
+      "targetX": 0.33642578125,
       "targetY": 0.42,
-      "downTargetX": 0.87,
+      "downTargetX": 0.33642578125,
       "downTargetY": 0.5
     },
     {
@@ -65,9 +65,9 @@
       "event": "drag",
       "targetId": "referencePitch.curve",
       "downTargetId": "referencePitch.curve",
-      "targetX": 0.87,
+      "targetX": 0.33642578125,
       "targetY": 0.32,
-      "downTargetX": 0.87,
+      "downTargetX": 0.33642578125,
       "downTargetY": 0.5
     },
     {
@@ -80,9 +80,9 @@
       "event": "up",
       "targetId": "referencePitch.curve",
       "downTargetId": "referencePitch.curve",
-      "targetX": 0.87,
+      "targetX": 0.33642578125,
       "targetY": 0.32,
-      "downTargetX": 0.87,
+      "downTargetX": 0.33642578125,
       "downTargetY": 0.5,
       "waitForIdle": true,
       "idleDelayMs": 350

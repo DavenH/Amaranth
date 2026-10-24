@@ -1053,6 +1053,12 @@ captures the correct fitted view. Artifacts: `.context/reference-zoom-scroll-nat
 `.context/reference-pitch-zoom-check/`. The focused retained scrollbar check uses
 semantic down/two-drag/up events; native input timing remains a separate limitation.
 
+The 2026-10-24 reference navigation native run passed stable selection, expansion,
+vertical pan, pitch drag/commit and exact pitch-path/frame restoration by Undo,
+then missed the close-button click after resizing to 1000x760. Semantic close
+passes. Evidence: `.context/reference-navigation-native/`; this remains part of
+the native event-delivery limitation rather than a full native-suite pass.
+
 The Component-row review also missed one native Static-pill click: the intended
 Static screenshots still showed 3D. Its corrected capture preparation uses an
 in-app mode click and asserts `dimensionCount=0` before capture. Native acceptance
@@ -1117,3 +1123,13 @@ the operation, so a request cannot supply both values. Evidence:
 `.context/reference-pitch-zoom-wheel-failure/commands.jsonl`. Native vertical
 thumb dragging passes. Current status: open automation encoding gap; no change
 to production zoom semantics or the pointer protocol in the reference UI work.
+
+## P2: Reference rendering could overwrite pending scrollbar movement
+
+During the 2026-10-24 linked-navigation checks, repeated horizontal scrollbar
+movement intermittently kept its old position. The GL preparation hook refreshed
+the pitch rasterizer and scrollbar ranges before JUCE delivered the range change.
+Reference preparation now runs on loading/history restoration and interaction;
+the render hook consumes the already-prepared curve. The focused reference-views
+check covers two surface pans, two pitch thumb-drag updates and wheel zoom from
+either plot. Evidence: `.context/reference-views/result.json`. Status: resolved.
