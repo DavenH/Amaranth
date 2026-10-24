@@ -27,6 +27,7 @@ public:
     void prepareEnvelopeMorphSurface(int axis, const MorphPosition& morph);
     void renderEnvelopeMorphSurface(Rectangle<float> bounds, float scaleFactor);
     void setEditGestureActive(bool active);
+    void setPlaybackCursors(const PlaybackCursorFrame& frame) { controller->setPlaybackCursors(frame); }
     void setPreviewMorphPosition(std::optional<MorphPosition> position);
     void setEditorMorphPosition(int axis, float value);
     void restoreEditorMorphGesture();

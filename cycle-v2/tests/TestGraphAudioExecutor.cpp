@@ -2822,6 +2822,7 @@ TEST_CASE("Prepared realtime voice mixing performs no allocations or locks",
     RealtimeGraphRenderer renderer;
     RealtimeMidiEventQueue queue;
     renderer.setPreparedGraph(prepared.get());
+    renderer.playbackCursors().request((uint64_t) String("env").hashCode64());
     REQUIRE(queue.enqueue(
             MidiMessage::noteOn(1, 60, (uint8) 100),
             MidiEventSource::PerformanceKeyboard,
@@ -2835,6 +2836,7 @@ TEST_CASE("Prepared realtime voice mixing performs no allocations or locks",
     AudioPerformanceMetrics::RealtimeSample performance;
     renderer.process(queue, channels, 2, 64, 44100.0, 1.01, &performance);
 
+    REQUIRE(renderer.playbackCursors().read().count == 1);
     REQUIRE(allocations.count() == 0);
     REQUIRE(locks.count() == 0);
 }

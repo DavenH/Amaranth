@@ -69,6 +69,7 @@ bool PreparedTrimeshMorphBinding::supports(
 void PreparedTrimeshMorphBinding::bind(
         const GraphExecutionPlan& plan,
         const GraphExecutionStep& step) {
+    nodeKey = (uint64_t) step.nodeId.hashCode64();
     for (const auto& input : step.inputs) {
         const int morphIndex = morphIndexFor(input.destPortId);
         if (morphIndex < 0) {
@@ -91,6 +92,10 @@ TrimeshMorphInputs PreparedTrimeshMorphBinding::inputsFor(
         const PreparedCycleEnvelopeBank* cycleEnvelopes,
         int laneIndex) const {
     TrimeshMorphInputs inputs;
+    if (context.voice != nullptr && context.voice->playbackCursor != nullptr
+            && context.voice->playbackCursor->nodeKey == nodeKey) {
+        inputs.playbackCursor = context.voice->playbackCursor;
+    }
     for (size_t axis = 0; axis < inputs.absoluteMorph.size(); ++axis) {
         inputs.absoluteMorph[axis] = context.signalAt(morphInputBuffers[axis]);
         if (!voiceTimeMorph[axis]

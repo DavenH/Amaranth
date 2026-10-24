@@ -7,6 +7,7 @@
 #include "Runtime/AudioProcessContextUtils.h"
 #include "Runtime/AudioProcessorFactories.h"
 #include "Runtime/TrimeshMorphResolver.h"
+#include "Runtime/PreviewTraversal.h"
 
 #include "Nodes/Trimesh/Model/PreparedTrimeshTopology.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
@@ -183,7 +184,7 @@ public:
                 && !scratch->block.samples.empty()
                 && Rasterization::ScratchPositionPolicy::shouldApply(
                         scratchDomain, primaryAxis);
-        const TrimeshMorphInputs morphInputs {
+        TrimeshMorphInputs morphInputs {
                 {
                         inputAt(context, 2),
                         inputAt(context, 3),
@@ -193,6 +194,9 @@ public:
                 {},
                 scratch
         };
+        if (voice.playbackCursor != nullptr && voice.playbackCursor->nodeKey == context.nodeKey) {
+            morphInputs.playbackCursor = voice.playbackCursor;
+        }
         const MorphPosition renderMorph = morphResolver.resolve(
                 morphInputs,
                 baseMorph,
@@ -280,7 +284,7 @@ private:
                         ? (double) context.frameCount / context.timing.sampleRate
                         : 0.0;
         const double columnSeconds = grid.columns > 1
-                ? traversalSeconds / (double) (grid.columns - 1)
+                ? traversalSeconds * PreviewTraversal(grid.columns).increment()
                 : 0.0;
         for (size_t column = 0; column < grid.columns; ++column) {
             previewPhaseAccumulator.integrate(Buffer<float>(
@@ -454,45 +458,22 @@ private:
 
         Mesh& mesh = currentMesh();
         trimeshGridDsp.setCyclic(outputPort.domain == PortDomain::TimeSignal);
-        if (scratch != nullptr
-                && Rasterization::ScratchPositionPolicy::shouldApply(
-                        scratchDomain, primaryAxis)
-                && traversalMorphs.size() >= columnCount) {
-            for (size_t column = 0; column < columnCount; ++column) {
-                const MorphPosition columnMorph = TrimeshGridwiseDsp::morphForColumn(
-                        morph,
-                        primaryAxis,
-                        column,
-                        columnCount);
-                traversalMorphs[column] = Rasterization::ScratchPositionPolicy::resolve(
-                        columnMorph,
-                        scratchDomain,
-                        primaryAxis,
-                        scratchCoordinateForColumn(
-                                *scratch,
-                                column,
-                                columnCount,
-                                columnMorph.time.getCurrentValue()));
+        const PreviewTraversal traversal(columnCount);
+        traversalMorphs.resize(columnCount);
+        for (size_t column = 0; column < columnCount; ++column) {
+            MorphPosition columnMorph = morph;
+            columnMorph[primaryAxis].setValueDirect(traversal.morphPosition(column));
+            if (scratch != nullptr && Rasterization::ScratchPositionPolicy::shouldApply(
+                    scratchDomain, primaryAxis)) {
+                columnMorph = Rasterization::ScratchPositionPolicy::resolve(
+                        columnMorph, scratchDomain, primaryAxis,
+                        scratchCoordinateForColumn(*scratch, column, columnCount, columnMorph.time));
             }
-            trimeshGridDsp.renderMorphColumnsInto(
-                    mesh,
-                    traversalMorphs.data(),
-                    primaryAxis,
-                    columnCount,
-                    Buffer<float>(
-                            output.traversalGrid.values.data(),
-                            (int) (columnCount * rowCount)),
-                    outputPort.domain);
-            return;
+            traversalMorphs[column] = columnMorph;
         }
-        trimeshGridDsp.renderColumnsInto(
-                mesh,
-                morph,
-                primaryAxis,
-                columnCount,
-                Buffer<float>(
-                        output.traversalGrid.values.data(),
-                        (int) (columnCount * rowCount)),
+        trimeshGridDsp.renderMorphColumnsInto(
+                mesh, traversalMorphs.data(), primaryAxis, columnCount,
+                Buffer<float>(output.traversalGrid.values.data(), (int) (columnCount * rowCount)),
                 outputPort.domain);
     }
 

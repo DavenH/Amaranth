@@ -307,7 +307,8 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
     if (context != nullptr && context->voice != nullptr) {
         cycleEnvelopes.advanceAll(
                 (int) elapsedSamples,
-                context->voice->controls.normalizedVoiceTimeIncrement);
+                context->voice->controls.normalizedVoiceTimeIncrement,
+                context->voice->playbackCursor);
     }
     CycleDsp::SpectralFrameCapture frameCapture(
             context != nullptr && context->voice != nullptr

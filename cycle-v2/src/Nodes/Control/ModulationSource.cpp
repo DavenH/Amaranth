@@ -7,6 +7,7 @@
 #include "Graph/NodeParameterMap.h"
 
 #include "Runtime/AudioProcessContextUtils.h"
+#include "Runtime/PreviewTraversal.h"
 
 namespace CycleV2 {
 
@@ -82,11 +83,9 @@ public:
 
         if (configuration->mode == ModulationSourceMode::VoiceTime
                 && controls.traverseVoiceTime) {
-            const float denominator = context.pointCount > 1
-                    ? (float) (context.pointCount - 1)
-                    : 1.f;
+            const PreviewTraversal traversal(context.pointCount);
             for (size_t column = 0; column < context.pointCount; ++column) {
-                context.primary[column] = (float) column / denominator;
+                context.primary[column] = traversal.morphPosition(column);
             }
             context.gridColumns = context.pointCount;
             context.gridRows = 1;

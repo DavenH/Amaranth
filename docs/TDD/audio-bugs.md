@@ -1274,3 +1274,16 @@ This run has not established whether that failure predates this change.
 Evidence: `.context/dimensions-tests.log`, `.context/dimensions-regression.log`.
 Focused guided migration through sustain/release and reduced interpolation
 parity pass independently in TestMeshDimensionality.cpp.
+
+## Playback cursor verification: existing runtime fixture failures
+
+2026-10-24: the broad cursor/envelope/probe/realtime filter passed 169/185 cases.
+One sustain-only traversal expectation needed updating for the new release
+contract. The other 15 failures all reproduced after linking the original HEAD
+DSP/preview implementations listed in `ui-bugs.md` against the same test harness.
+Runtime failures include empty demo-mesh signal/telemetry expectations, Icycle's
+hard-coded pitch frontier, attached/unattached scratch differences, and missing
+Astral, Guitar 3 G, and pitch-independent preset fixtures. No incidental app
+crash was observed. Exact cases and assertions: `.context/baseline/cases.json`
+and `.context/baseline/results.xml`. The focused cursor, envelope lifecycle,
+Guide-noise and realtime allocation/lock contracts pass separately.

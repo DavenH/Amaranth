@@ -116,7 +116,11 @@ TEST_CASE("Pitch bank reconciles live generations without changing configuration
             replacement.loop.waveform, false, 0.22 / 0.45 * 0.75);
     const float expectedSecond = Rasterization::WaveformSampler::sampleAt(
             replacement.loop.waveform, false, 0.35 / 0.45 * 0.75);
-    bank.advanceAll(1, 0.01);
+    PlaybackCursorCapture cursor;
+    cursor.nodeKey = (uint64_t) String("pitch").hashCode64();
+    bank.advanceAll(1, 0.01, &cursor);
+    REQUIRE(cursor.hasEnvelopeTime);
+    REQUIRE(cursor.envelopeTime == Catch::Approx(0.35 / 0.45 * 0.75 + 0.01));
     REQUIRE(bank.pitchValue(0) == Catch::Approx(expectedFirst));
     REQUIRE(bank.pitchValue(1) == Catch::Approx(expectedSecond));
     REQUIRE(bank.pitchValue(0) != Catch::Approx(bank.pitchValue(1)));

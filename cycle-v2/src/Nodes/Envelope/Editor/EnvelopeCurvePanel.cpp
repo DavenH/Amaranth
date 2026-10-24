@@ -16,6 +16,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
 #include "Nodes/Envelope/EnvelopeEditCore.h"
 #include "UI/MeshEditorPresentation.h"
+#include "UI/PanelPlaybackOverlay.h"
 
 #include <algorithm>
 #include <atomic>
@@ -40,6 +41,13 @@ class EnvelopeCurvePanel final :
     ,   public EnvelopeCurvePanelContract {
 public:
     bool usesShiftLeftBoxSelection() const override { return true; }
+
+    void setPlaybackCursors(const PlaybackCursorFrame& frame) override {
+        const ScopedLock lock(getRenderLock());
+        if (playbackOverlay.setFrame(frame)) {
+            requestRepaint(PanelDirtyState::Flag::Overlay);
+        }
+    }
 
     Panel& hostedPanel() override {
         return *this;
@@ -376,6 +384,7 @@ public:
 
     void postCurveDraw() override {
         drawEnvelopeBounds();
+        playbackOverlay.draw(*this, Vertex::Time, true, false);
     }
 
     void drawCurvesAndSurfaces() override {
@@ -386,6 +395,7 @@ public:
 
     var automationState() const override {
         auto* root = new DynamicObject();
+        playbackOverlay.appendAutomation(*root, Vertex::Time, true, false);
         root->setProperty("rasterizerRefreshCount", (int64) rasterizerRefreshCount.load());
         root->setProperty("sliceEvaluationCount", (int64) sliceEvaluationCount.load());
 
@@ -1124,6 +1134,7 @@ protected:
         restoreEnvelopeSelection(selection);
     }
 
+    PanelPlaybackOverlay playbackOverlay;
     EnvRasterizer envRasterizer;
     TrimeshPanelEnvironment& environment;
     Mesh& mesh;

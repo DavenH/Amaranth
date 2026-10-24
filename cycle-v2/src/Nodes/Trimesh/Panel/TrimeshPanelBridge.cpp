@@ -342,6 +342,7 @@ int TrimeshPanelBridge::selectedVertexIndexForPanel() const {
 void TrimeshPanelBridge::syncPrimaryAxisContext() {
     interactor3D.setPrimaryViewAxis(model.getPrimaryViewAxis());
     panel3D.setPrimaryViewAxis(model.getPrimaryViewAxis());
+    panel3D.setSlicePosition(model.getMorphPosition()[model.getPrimaryViewAxis()]);
 }
 
 void TrimeshPanelBridge::updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry) {

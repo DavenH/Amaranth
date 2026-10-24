@@ -60,6 +60,10 @@ class NodeCanvas :
     ,   private RenderInvalidationTarget {
 public:
     NodeCanvas();
+    const String& playbackCursorNodeId() { return editorCoordinator.host().nodeId(); }
+    void setPlaybackCursors(const PlaybackCursorFrame& frame) {
+        editorCoordinator.host().setPlaybackCursors(frame);
+    }
     ~NodeCanvas() override;
 
     bool saveGraphToFile(const File& file);

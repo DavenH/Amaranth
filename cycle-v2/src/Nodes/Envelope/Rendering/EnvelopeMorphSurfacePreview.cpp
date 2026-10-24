@@ -50,6 +50,7 @@ struct EnvelopeMorphSurfacePreview::Impl final :
     }
 
     Component* component() { return this; }
+    void setPlaybackCursors(const PlaybackCursorFrame& frame) { panel.setPlaybackCursors(frame); }
 
     void resized() override {
         host.zoomComponent()->setBounds(getLocalBounds().withTrimmedRight(4));
@@ -68,6 +69,7 @@ struct EnvelopeMorphSurfacePreview::Impl final :
     void prepare(Mesh& mesh, GuideCurveSnapshotProvider* guides, uint64_t revision,
             const MorphPosition& morph, int axis, int dimensions, bool gestureActive,
             Range<float> timeRange) {
+        panel.setSlicePosition(morph[axis]);
         if (gestureActive || dimensions == 0) {
             return;
         }
@@ -287,6 +289,10 @@ void EnvelopeMorphSurfacePreview::prepare(Mesh& mesh, GuideCurveSnapshotProvider
 
 void EnvelopeMorphSurfacePreview::render(Rectangle<float> bounds, float scaleFactor) {
     impl->render(bounds, scaleFactor);
+}
+
+void EnvelopeMorphSurfacePreview::setPlaybackCursors(const PlaybackCursorFrame& frame) {
+    impl->setPlaybackCursors(frame);
 }
 
 void EnvelopeMorphSurfacePreview::releaseOpenGLResources() {

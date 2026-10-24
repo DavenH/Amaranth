@@ -44,6 +44,7 @@ bool PreparedCycleEnvelopeBank::prepare(
 
             auto entry = std::make_unique<Entry>();
             entry->bufferIndex = attachment.sourceBufferIndex;
+            entry->nodeKey = (uint64_t) plan.steps[(size_t) sourceStep].nodeId.hashCode64();
             entry->laneCount = laneCount;
             entry->source = source;
             entry->values.resize((size_t) laneCount);
@@ -70,6 +71,7 @@ bool PreparedCycleEnvelopeBank::prepare(
         auto entry = std::make_unique<Entry>();
         entry->laneCount = laneCount;
         entry->pitch = true;
+        entry->nodeKey = (uint64_t) pitchEnvelopeNodeId.hashCode64();
         entry->source = source;
         entry->values.resize((size_t) laneCount, 0.5f);
         entry->active.resize((size_t) laneCount);
@@ -130,19 +132,21 @@ void PreparedCycleEnvelopeBank::applyLifecycleEvent(
 void PreparedCycleEnvelopeBank::advanceLane(
         int laneIndex,
         int sampleCount,
-        double normalizedTimeIncrement) {
+        double normalizedTimeIncrement,
+        PlaybackCursorCapture* cursor) {
     for (auto& entry : entries) {
-        advance(*entry, laneIndex, sampleCount, normalizedTimeIncrement);
+        advance(*entry, laneIndex, sampleCount, normalizedTimeIncrement, cursor);
     }
 }
 
 void PreparedCycleEnvelopeBank::advanceAll(
         int sampleCount,
-        double normalizedTimeIncrement) {
+        double normalizedTimeIncrement,
+        PlaybackCursorCapture* cursor) {
     for (auto& ownedEntry : entries) {
         Entry& entry = *ownedEntry;
         for (int laneIndex = 0; laneIndex < entry.laneCount; ++laneIndex) {
-            advance(entry, laneIndex, sampleCount, normalizedTimeIncrement);
+            advance(entry, laneIndex, sampleCount, normalizedTimeIncrement, cursor);
         }
     }
 }
@@ -205,7 +209,8 @@ void PreparedCycleEnvelopeBank::advance(
         Entry& entry,
         int laneIndex,
         int sampleCount,
-        double normalizedTimeIncrement) {
+        double normalizedTimeIncrement,
+        PlaybackCursorCapture* cursor) {
     if (laneIndex < 0 || laneIndex >= entry.laneCount
             || sampleCount <= 0 || normalizedTimeIncrement <= 0.) {
         return;
@@ -232,6 +237,10 @@ void PreparedCycleEnvelopeBank::advance(
             entry.props,
             1.f);
     entry.values[(size_t) laneIndex] = entry.playback.sustainLevel(voiceIndex);
+    if (cursor != nullptr && cursor->nodeKey == entry.nodeKey) {
+        cursor->envelopeTime = (float) entry.playback.samplePosition(voiceIndex);
+        cursor->hasEnvelopeTime = entry.active[(size_t) laneIndex];
+    }
 }
 
 PreparedCycleEnvelopeBank::Entry* PreparedCycleEnvelopeBank::entryFor(

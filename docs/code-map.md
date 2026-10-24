@@ -79,7 +79,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Graph/GraphValidator.h` — Coordinates graph validation; reuse focused validators beneath it.
 - `cycle-v2/src/Graph/NodeDefinition.h` — Node types, ports, defaults, constraints, and synthesis capability metadata.
 - `cycle-v2/src/Runtime/GraphRuntime.h` — Owns compiled runtime state and graph execution lifecycle.
-- `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Executes realtime graph audio; preserve allocation-free behavior.
+- `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime graph audio; PlaybackCursor captures positions; PreviewTraversal owns Spy release coordinates.
 - `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Runs scoped preview/analysis products without full audio work.
 - `cycle-v2/src/Runtime/NodeModuleRegistry.h` — Registration boundary for node model, DSP, preview, and view modules.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
@@ -90,12 +90,12 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Nodes/Envelope/` — State/playback, surfaces and shared EnvelopeEditCore for panel and headless values/markers.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
 - `cycle-v2/src/Nodes/ImpulseResponse/` — Canonical IR import/analysis; effect processors prepare playback-rate kernels.
-- `cycle-v2/src/UI/NodeWorkspace.h` — Workspace composition and canonical ephemeral controller delivery to audio and previews.
+- `cycle-v2/src/UI/NodeWorkspace.h` — Workspace composition, ephemeral controllers, and audio playback cursor delivery.
 - `cycle-v2/src/UI/NodeCanvas.h` — Canvas orchestrator; delegate interaction, scene, presentation, and commands.
 - `cycle-v2/src/UI/NodeCanvasInteraction.h` — Pointer/gesture routing; preserve semantic command and cost boundaries.
 - `cycle-v2/src/UI/NodeCanvasPresentation.h` — Builds visible canvas presentation from graph/runtime facts.
 - `cycle-v2/src/UI/NodeCanvasScene.h` — Retained node scene and geometry used by hit-testing and rendering.
-- `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement adjustments.
+- `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement; PanelPlaybackOverlay draws bounded audio cursor frames.
 - `cycle-v2/src/UI/NodeCanvasExplanations.cpp` — Preset/node/group explanations, shared editor and attached card orchestration.
 - `cycle-v2/src/UI/NodePreviewRenderer.h` — Compact node preview rendering and reusable preview resources.
 - `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy/probe overview and detail presentation.

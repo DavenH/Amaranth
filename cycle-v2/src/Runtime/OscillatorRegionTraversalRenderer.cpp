@@ -1,4 +1,5 @@
 #include "Runtime/OscillatorRegionTraversalRenderer.h"
+#include "Runtime/PreviewTraversal.h"
 
 #include <Audio/CycleDsp/UnisonColumnMixer.h>
 #include <Util/Arithmetic.h>
@@ -44,8 +45,7 @@ bool OscillatorRegionTraversalRenderer::render(
     }
 
     const double normalizedTimePerColumn = grid.columns > 1
-            ? 1.0 / (double) (grid.columns - 1)
-            : 0.0;
+            ? PreviewTraversal(grid.columns).increment() : 0.0;
     const double secondsPerColumn = normalizedTimePerColumn
             * (double) voiceDurationSeconds;
     const double baseFrequency = CycleDsp::UnisonCore::frequencyForMidiNote(midiNote);

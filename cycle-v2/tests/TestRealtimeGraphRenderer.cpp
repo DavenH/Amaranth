@@ -1480,3 +1480,58 @@ TEST_CASE("Repeated current legato pitches retain an in-flight portamento durati
         }
     }
 }
+
+TEST_CASE("Playback cursor follows rendered morph and clears after note release",
+        "[cycle-v2][runtime][playback-cursor]") {
+    LegatoRender render;
+    const auto key = (uint64_t) String("waveMesh").hashCode64();
+    render.renderer.playbackCursors().request(key);
+    render.send(MidiMessage::noteOn(1, 60, (uint8) 100), 0);
+    render.process();
+    auto frame = render.renderer.playbackCursors().read();
+    REQUIRE(frame.nodeKey == key);
+    REQUIRE(frame.graphRevision == 1);
+    REQUIRE(frame.count == 1);
+    REQUIRE(frame.voices[0].hasMorph);
+    const float firstTime = frame.voices[0].morph[0];
+    render.process(256);
+    frame = render.renderer.playbackCursors().read();
+    REQUIRE(frame.count == 1);
+    REQUIRE(frame.voices[0].morph[0] > firstTime);
+    render.send(MidiMessage::noteOff(1, 60), 512);
+    render.process(512);
+    REQUIRE(render.renderer.playbackCursors().read().count == 0);
+    render.renderer.resetVoices(true);
+    REQUIRE(render.renderer.playbackCursors().read().count == 0);
+}
+
+TEST_CASE("Playback cursors retain overlapping voice positions",
+        "[cycle-v2][runtime][playback-cursor]") {
+    auto graph = legatoGraph(true);
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "voice", "noteMode", "Note Mode", "polyphonic").succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    spec.sampleRate = 48000.;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    RealtimeGraphRenderer renderer;
+    renderer.setPreparedGraph(prepared.get());
+    renderer.playbackCursors().request((uint64_t) String("env").hashCode64());
+    RealtimeMidiEventQueue queue;
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 60, (uint8) 100), MidiEventSource::Hardware, 1.));
+    AudioBuffer<float> output(2, 256);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    renderer.process(queue, channels, 2, 256, spec.sampleRate, 1.);
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 64, (uint8) 100), MidiEventSource::Hardware,
+            1. + 256. / spec.sampleRate));
+    renderer.process(queue, channels, 2, 256, spec.sampleRate, 1. + 256. / spec.sampleRate);
+    const auto frame = renderer.playbackCursors().read();
+    REQUIRE(frame.count == 2);
+    REQUIRE(frame.voices[0].hasEnvelopeTime);
+    REQUIRE(frame.voices[1].hasEnvelopeTime);
+    REQUIRE(frame.voices[0].envelopeTime > frame.voices[1].envelopeTime);
+    renderer.resetVoices(false);
+    REQUIRE(renderer.playbackCursors().read().count == 0);
+}

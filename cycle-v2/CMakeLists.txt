@@ -169,6 +169,8 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MidiControlState.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/RealtimeMidiEventQueue.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/RealtimeGraphRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PlaybackCursor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PanelPlaybackOverlay.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/VoiceNoteState.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ReverbLocalPreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPreviewExecutor.cpp"

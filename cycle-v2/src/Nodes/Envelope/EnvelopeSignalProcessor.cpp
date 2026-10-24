@@ -1,4 +1,5 @@
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Runtime/PreviewTraversal.h"
 #include "Runtime/MorphInputs.h"
 #include <Curve/Rasterization/PreparedMeshSlice.h>
 
@@ -321,6 +322,12 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         renderSegment(outputBuffer, rendered, context.frameCount - rendered, normalizedTimeIncrement);
     }
 
+    auto* cursor = processVoice(context).playbackCursor;
+    if (cursor != nullptr && cursor->nodeKey == context.nodeKey && ready) {
+        cursor->setMorph(preparedMorph);
+        cursor->envelopeTime = (float) playbackPosition();
+        cursor->hasEnvelopeTime = active;
+    }
     outputBuffer.mul(level);
     if (context.captureTraversalGrid) {
         publishTraversalGrid(
@@ -362,10 +369,12 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
         traversalPlayback.noteOn();
         MeshLibrary::EnvProps traversalProps;
         traversalProps.active = true;
-        const double advancement = columns > 1
-                ? 1.0 / (double) (columns - 1)
-                : 1.0;
+        const PreviewTraversal traversal(columns);
+        const double advancement = traversal.increment();
         for (int column = 0; column < values.size(); ++column) {
+            if (traversal.beginsRelease((size_t) column)) {
+                traversalPlayback.noteOff(prepared);
+            }
             traversalPlayback.renderToBuffer(
                     prepared,
                     1,

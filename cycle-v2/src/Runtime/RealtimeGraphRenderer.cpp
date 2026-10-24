@@ -215,6 +215,7 @@ uint64_t RealtimeGraphRenderer::process(
 }
 
 void RealtimeGraphRenderer::resetVoices(bool resetControls) {
+    cursorExchange.publish({});
     for (auto& voice : voices) {
         voice.context.events.clear();
         voice.context.controlEvents.clear();
@@ -560,6 +561,9 @@ void RealtimeGraphRenderer::renderVoices(
         int frameCount,
         double sampleRate,
         AudioPerformanceMetrics::RealtimeSample* performanceSample) {
+    PlaybackCursorFrame cursorFrame;
+    cursorFrame.nodeKey = cursorExchange.requested();
+    cursorFrame.graphRevision = preparedGraph->revision;
     size_t activeCount = 0;
     GraphExecutionOperationCounts operationCounts;
     GraphExecutionOperationCounts* measuredOperations = performanceSample == nullptr
@@ -611,6 +615,9 @@ void RealtimeGraphRenderer::renderVoices(
             voice.context.spectralStageCapture = spectralStageCapture;
             midiControls.populateVoice(voice.context, voice.midiChannel);
 
+            PlaybackCursorCapture cursor;
+            cursor.nodeKey = cursorFrame.nodeKey;
+            voice.context.playbackCursor = cursor.nodeKey != 0 ? &cursor : nullptr;
             preparedGraph->executor.processRealtimeVoiceToMix(
                     preparedGraph->plan,
                     (size_t) frameCount,
@@ -618,6 +625,7 @@ void RealtimeGraphRenderer::renderVoices(
                     voice.context,
                     measuredOperations);
 
+            voice.context.playbackCursor = nullptr;
             voice.normalizedTime = jmin(
                     1.f,
                     voice.normalizedTime
@@ -627,10 +635,14 @@ void RealtimeGraphRenderer::renderVoices(
                 voice.active = false;
             }
             if (voice.active) {
+                if (cursor.hasMorph || cursor.hasEnvelopeTime) {
+                    cursorFrame.voices[cursorFrame.count++] = cursor;
+                }
                 ++activeCount;
             }
         }
     }
+    cursorExchange.publish(cursorFrame);
     if (performanceSample != nullptr) {
         performanceSample->activeVoiceCount = (uint16_t) activeCount;
     }

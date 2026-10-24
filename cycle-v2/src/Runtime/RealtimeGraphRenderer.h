@@ -83,6 +83,8 @@ public:
             double callbackStartSeconds,
             AudioPerformanceMetrics::RealtimeSample* performanceSample = nullptr);
     void resetVoices(bool resetControls);
+    PlaybackCursorExchange& playbackCursors() { return cursorExchange; }
+    const PlaybackCursorExchange& playbackCursors() const { return cursorExchange; }
     Diagnostics diagnostics(const RealtimeMidiEventQueue& events) const {
         return {
                 callbackCounter.load(std::memory_order_acquire),
@@ -149,6 +151,7 @@ private:
     static constexpr size_t maximumEventsPerChannel = 128;
     static constexpr size_t maximumScheduledEvents = RealtimeMidiEventQueue::capacity * 2;
 
+    PlaybackCursorExchange cursorExchange;
     PreparedGraph* preparedGraph {};
     CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
     std::array<Voice, voiceCount> voices;

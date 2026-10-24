@@ -2,6 +2,7 @@
 
 #include "Graph/NodeGraph.h"
 #include "Runtime/PreparedVector.h"
+#include "Runtime/PlaybackCursor.h"
 #include "Runtime/SignalBuffer.h"
 #include "Runtime/SpectralMagnitudeTransfer.h"
 
@@ -176,6 +177,7 @@ struct AudioVoiceControls {
 };
 
 struct AudioVoiceContext {
+    PlaybackCursorCapture* playbackCursor {};
     int voiceIndex {};
     int oscillatorNoteNumber { -1 };
     Buffer<float> oscillatorPitchOffsets;
@@ -259,6 +261,7 @@ struct AudioProcessWorkArena {
 };
 
 struct AudioProcessContext {
+    uint64_t nodeKey {};
     size_t frameCount {};
     bool liveEnvelopeMorph {};
     size_t traversalColumnCount {};

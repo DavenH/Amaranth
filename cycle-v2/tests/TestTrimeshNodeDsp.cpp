@@ -2014,6 +2014,27 @@ TEST_CASE("Primary Trimesh morph rebuilds only the displayed slice",
     REQUIRE(depthMorph.surfaceRebuilds == primaryMorph.surfaceRebuilds + 1);
 }
 
+TEST_CASE("Playback cursor updates leave Trimesh geometry and surfaces untouched",
+        "[cycle-v2][nodes][trimesh][playback-cursor][complexity]") {
+    ScopedJuceInitialiser_GUI juce;
+    const auto graph = TestSupport::authoredTrimeshGraph();
+    const auto& node = *graph.findNode("mesh");
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(node, 128, 64);
+    const auto initial = bridge.getDataSource().getRenderCounters();
+    const auto surface = bridge.getRenderData().surface;
+    PlaybackCursorFrame frame;
+    frame.count = 1;
+    for (const float time : { 0.2f, 0.8f, 0.3f }) {
+        frame.voices[0].setMorph({ time, 0.5f, 0.5f });
+        bridge.getPanel3D().setPlaybackCursors(frame);
+    }
+    const auto after = bridge.getDataSource().getRenderCounters();
+    REQUIRE(after.sliceRebuilds == initial.sliceRebuilds);
+    REQUIRE(after.surfaceRebuilds == initial.surfaceRebuilds);
+    REQUIRE(bridge.getRenderData().surface == surface);
+}
+
 TEST_CASE("Trimesh node model exposes explicit derived revisions", "[cycle-v2][nodes][trimesh]") {
     Node node {
             "mesh",
@@ -2390,6 +2411,16 @@ TEST_CASE("Trimesh spectral traversal columns receive deterministic distinct Gui
         adjacentNoiseDifference += std::abs(firstNoise - secondNoise);
     }
     REQUIRE(adjacentNoiseDifference > 0.01);
+
+    const std::array<MorphPosition, columnCount> heldMorphs {
+            MorphPosition(1.f, 0.5f, 0.5f), MorphPosition(1.f, 0.5f, 0.5f),
+            MorphPosition(1.f, 0.5f, 0.5f), MorphPosition(1.f, 0.5f, 0.5f)
+    };
+    REQUIRE(guided.renderMorphColumnsInto(*mesh, heldMorphs.data(), Vertex::Time,
+            columnCount, Buffer<float>(firstValues.data(), (int) firstValues.size()),
+            PortDomain::SpectralMagnitudeSignal));
+    REQUIRE_FALSE(std::equal(firstValues.begin(), firstValues.begin() + rowCount,
+            firstValues.begin() + rowCount));
 
     mesh->destroy();
 }

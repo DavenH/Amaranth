@@ -4,6 +4,7 @@
 
 #include "Nodes/Envelope/EnvelopeConfiguration.h"
 #include "Nodes/Envelope/EnvelopePitchPreview.h"
+#include "Runtime/PreviewTraversal.h"
 
 namespace CycleV2 {
 
@@ -47,10 +48,12 @@ std::vector<std::vector<float>> EnvelopePitchPreview::renderLanes(
     MeshLibrary::EnvProps props;
     props.active = true;
     props.logarithmic = configuration->logarithmic;
-    const double increment = sampleCount > 1
-            ? 1.0 / (double) (sampleCount - 1)
-            : 1.0;
+    const PreviewTraversal traversal((size_t) sampleCount);
+    const double increment = traversal.increment();
     for (int sample = 0; sample < sampleCount; ++sample) {
+        if (traversal.beginsRelease((size_t) sample)) {
+            playback.noteOff(prepared);
+        }
         for (int lane = 0; lane < laneCount; ++lane) {
             const int voiceIndex = Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex
                     + lane;

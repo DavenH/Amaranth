@@ -1110,3 +1110,17 @@ Evidence: `.context/volume-scale-native.log` (failed attempt) and
 actual native clicks and captures the native cursor for visual review rather
 than gating on that stale cached classification. Other cursor smokes retain
 their existing checks; the inspector's cached-source limitation remains open.
+
+## Playback cursor verification: existing UI fixture failures
+
+2026-10-24: the `[probe],[envelope],[realtime],[playback-cursor]` audit also
+reproduced the existing zero spectral Spy after scratch-cable deletion. The
+comparison morph-capture fixture, canvas Spy editor-centering fixture, and
+Envelope modulation-bundle connection fixture also failed. A comparison binary
+linked the original HEAD versions of EnvelopeSignalProcessor,
+EnvelopePitchPreview, ModulationSource, TrimeshNodeAudioProcessor, and
+OscillatorRegionTraversalRenderer against the same test harness: all these
+failures reproduced. Evidence: `.context/regression-tests.log` and
+`.context/baseline/results.xml`; reproducible case names are in
+`.context/baseline/cases.json`. The dedicated playback-cursor fixture and cost
+contracts are tracked in `cycle-v2-playback-cursors-and-release-previews.md`.

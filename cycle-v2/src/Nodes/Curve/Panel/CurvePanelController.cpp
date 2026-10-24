@@ -588,6 +588,11 @@ public:
         initialiseHost();
     }
 
+    void setPlaybackCursors(const PlaybackCursorFrame& frame) override {
+        panel->setPlaybackCursors(frame);
+        morphSurface.setPlaybackCursors(frame);
+    }
+
     int selectedGuideCubeIndex() override {
         return envelopePanel().selectedEnvelopeCubeIndex();
     }

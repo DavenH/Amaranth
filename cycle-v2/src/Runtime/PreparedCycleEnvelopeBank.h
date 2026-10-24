@@ -26,8 +26,10 @@ public:
     void reset();
     void setVoiceLifecycleSeed(int64_t seed);
     void applyLifecycleEvent(const NoteLifecycleEvent& event);
-    void advanceLane(int laneIndex, int sampleCount, double normalizedTimeIncrement);
-    void advanceAll(int sampleCount, double normalizedTimeIncrement);
+    void advanceLane(int laneIndex, int sampleCount, double normalizedTimeIncrement,
+            PlaybackCursorCapture* cursor = nullptr);
+    void advanceAll(int sampleCount, double normalizedTimeIncrement,
+            PlaybackCursorCapture* cursor = nullptr);
 
     bool contains(int bufferIndex) const;
     float value(int bufferIndex, int laneIndex = -1) const;
@@ -37,6 +39,7 @@ public:
 private:
     struct Entry {
         int bufferIndex { -1 };
+        uint64_t nodeKey {};
         int laneCount { 1 };
         bool pitch {};
         const CycleEnvelopePlaybackSource* source {};
@@ -54,7 +57,8 @@ private:
             Entry& entry,
             int laneIndex,
             int sampleCount,
-            double normalizedTimeIncrement);
+            double normalizedTimeIncrement,
+            PlaybackCursorCapture* cursor);
     Entry* entryFor(int bufferIndex);
     const Entry* entryFor(int bufferIndex) const;
 

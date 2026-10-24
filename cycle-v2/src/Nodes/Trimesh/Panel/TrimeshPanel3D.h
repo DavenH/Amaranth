@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
+#include "UI/PanelPlaybackOverlay.h"
 
 #include <Curve/Mesh/Vertex.h>
 #include <UI/Panels/Panel3D.h>
@@ -37,6 +38,8 @@ public:
     void configureViewport(Range<float> frequencyLimits);
     void setZoomChangedCallback(std::function<void(bool)> callback);
     void setPrimaryViewAxis(int axis);
+    void setPlaybackCursors(const PlaybackCursorFrame& frame);
+    void setSlicePosition(float position);
     bool isPrimaryAxisVertical() const override { return primaryAxisVertical; }
     void setPrimaryAxisVertical(bool vertical) { primaryAxisVertical = vertical; }
     juce::Colour primaryAxisColour() const;
@@ -56,6 +59,7 @@ private:
             Buffer<float> y,
             const std::vector<Buffer<float>>& pitchRamps);
 
+    PanelPlaybackOverlay playbackOverlay;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     std::vector<std::vector<float>> lineGuideTables;
     std::function<void(bool)> zoomChangedCallback;

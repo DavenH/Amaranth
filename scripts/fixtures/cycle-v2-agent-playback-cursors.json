@@ -1,0 +1,30 @@
+{
+  "commands": [
+    {"command": "openGraph", "path": "../../cycle-v2/content/presets/pwm-lead.cyclegraph"},
+    {"command": "openNodeEditor", "nodeId": "timeLayer1", "waitForIdle": true, "idleDelayMs": 150},
+    {"command": "pointer", "event": "down", "targetId": "expanded:timeLayer1.trimeshMorphRail.yellow", "targetX": 0.2, "targetY": 0.5},
+    {"command": "pointer", "event": "drag", "targetId": "expanded:timeLayer1.trimeshMorphRail.yellow", "targetX": 0.78, "targetY": 0.5, "downTargetId": "expanded:timeLayer1.trimeshMorphRail.yellow", "downTargetX": 0.2, "downTargetY": 0.5},
+    {"command": "pointer", "event": "up", "targetId": "expanded:timeLayer1.trimeshMorphRail.yellow", "targetX": 0.78, "targetY": 0.5, "downTargetId": "expanded:timeLayer1.trimeshMorphRail.yellow", "downTargetX": 0.2, "downTargetY": 0.5, "waitForIdle": true, "idleDelayMs": 150},
+    {"command": "assertState", "path": "expandedNodeControls.trimesh.playbackCursors.0.position", "op": "greaterThan", "value": 0.7},
+    {"command": "sendMidi", "type": "noteOn", "note": 48, "velocity": 0.7},
+    {"command": "waitForIdle", "idleDelayMs": 150},
+    {"command": "assertState", "path": "expandedNodeControls.trimesh.playbackVoiceCount", "equals": 1},
+    {"command": "assertState", "path": "expandedNodeControls.trimesh.playbackCursors.0.axis", "equals": "x"},
+    {"command": "sendMidi", "type": "allNotesOff"},
+    {"command": "setNodeParameter", "nodeId": "volumeEnvelope1", "parameterId": "dimensionCount", "value": "3"},
+    {"command": "openNodeEditor", "nodeId": "volumeEnvelope1", "waitForIdle": true, "idleDelayMs": 150},
+    {"command": "sendMidi", "type": "noteOn", "note": 48, "velocity": 0.7},
+    {"command": "waitForIdle", "idleDelayMs": 150},
+    {"command": "assertState", "path": "expandedNodeControls.effect2D.panelState.playbackVoiceCount", "equals": 1},
+    {"command": "assertState", "path": "expandedNodeControls.effect2D.panelState.playbackCursors.0.axis", "equals": "x"},
+    {"command": "assertState", "path": "expandedNodeControls.effect2D.panelState.morphSurface.playbackCursors.0.axis", "equals": "x"},
+    {"command": "assertState", "path": "expandedNodeControls.effect2D.panelState.morphSurface.playbackCursors.1.axis", "equals": "y"},
+    {"command": "sendMidi", "type": "noteOff", "note": 48},
+    {"command": "waitForIdle", "idleDelayMs": 80},
+    {"command": "snapshotState"},
+    {"command": "sendMidi", "type": "allNotesOff"},
+    {"command": "waitForIdle", "idleDelayMs": 3000},
+    {"command": "assertState", "path": "expandedNodeControls.effect2D.panelState.playbackVoiceCount", "equals": 0}
+  ],
+  "quit": false
+}

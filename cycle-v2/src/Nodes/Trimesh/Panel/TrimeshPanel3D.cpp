@@ -160,6 +160,7 @@ void TrimeshPanel3D::appendPrimaryAxisAutomation(DynamicObject& state,
     rectangle->setProperty("y", bounds.getY());
     rectangle->setProperty("width", bounds.getWidth());
     rectangle->setProperty("height", bounds.getHeight());
+    playbackOverlay.appendAutomation(state, primaryViewAxis, primaryAxisVertical, true);
     state.setProperty("primaryAxisBarBounds", rectangle);
     state.setProperty("primaryAxisColour", primaryAxisColour().toString());
     state.setProperty("primaryAxis", primaryAxisVertical ? "y" : "x");
@@ -167,7 +168,22 @@ void TrimeshPanel3D::appendPrimaryAxisAutomation(DynamicObject& state,
             : primaryViewAxis == Vertex::Red ? "red" : "blue");
 }
 
+void TrimeshPanel3D::setPlaybackCursors(const PlaybackCursorFrame& frame) {
+    const ScopedLock lock(getRenderLock());
+    if (playbackOverlay.setFrame(frame)) {
+        requestRepaint(PanelDirtyState::Flag::Overlay);
+    }
+}
+
+void TrimeshPanel3D::setSlicePosition(float position) {
+    const ScopedLock lock(getRenderLock());
+    if (playbackOverlay.setSlice(position)) {
+        requestRepaint(PanelDirtyState::Flag::Overlay);
+    }
+}
+
 void TrimeshPanel3D::postVertsDraw() {
+    playbackOverlay.draw(*this, primaryViewAxis, primaryAxisVertical, true);
     if (auto* renderer = getPanelRenderer()) {
         const auto bounds = primaryAxisBarBounds();
         if (bounds.isEmpty()) {

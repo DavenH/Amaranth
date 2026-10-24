@@ -38,7 +38,7 @@ public:
 
         const auto dimensions = MorphDimensions::trimesh(dimensionCount);
         if (dimensionCount == 0) {
-            return fallback;
+            return capture(inputs, fallback);
         }
         const MorphPosition targets = inputs.resolve(fallback, dimensions, sampleOffset);
         const float time = targets.time;
@@ -60,9 +60,9 @@ public:
                 || (!inputs.hasScratchOverride && inputs.scratch == nullptr)
                 || !Rasterization::ScratchPositionPolicy::shouldApply(
                         scratchDomain, primaryAxis)) {
-            return morph;
+            return capture(inputs, morph);
         }
-        return Rasterization::ScratchPositionPolicy::resolve(
+        return capture(inputs, Rasterization::ScratchPositionPolicy::resolve(
                 morph,
                 scratchDomain,
                 primaryAxis,
@@ -71,7 +71,7 @@ public:
                         : absoluteValue(
                                 inputs.scratch,
                                 sampleOffset,
-                                morph.time.getCurrentValue()));
+                                morph.time.getCurrentValue())));
     }
 
     const MorphPosition& current() const { return smoothedMorph.current(); }
@@ -103,6 +103,13 @@ public:
     }
 
 private:
+    static MorphPosition capture(const TrimeshMorphInputs& inputs, const MorphPosition& position) {
+        if (inputs.playbackCursor != nullptr) {
+            inputs.playbackCursor->setMorph(position);
+        }
+        return position;
+    }
+
     bool initialized {};
     bool snapDepthOnNextResolve {};
     SmoothedMorphPosition smoothedMorph;
