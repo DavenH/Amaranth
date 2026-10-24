@@ -115,9 +115,9 @@ void ReferencePitchEditor::syncFromLibrary() {
     refreshCyclogram();
     panel->clearInteractionState();
     EnvelopeMeshState::replacePointPath(mesh, analysis->pitchPath);
-    panel->refreshRasterizer();
+    prepareCurvePanel();
     panel->updateZoomBounds(true);
-    panel->resetEnvelopeVerticalRange();
+    panel->fitEnvelopeVerticalRange();
     fundamental.slider.setValue(analysis->sample->fundNote,
             juce::NotificationType::dontSendNotification);
     fundamental.refreshValueText();
@@ -200,6 +200,7 @@ juce::var ReferencePitchEditor::exportAutomationState() const {
     };
     result->setProperty("cyclogramBounds", rect(cyclogramBounds()));
     result->setProperty("curveBounds", rect(curveBounds()));
+    result->setProperty("curveView", panel->automationState());
     result->setProperty("surfaceView", cyclogram->automationDiagnostics());
     result->setProperty("pointCount", (int) mesh.getCubes().size());
     result->setProperty("note", (int) fundamental.slider.getValue()

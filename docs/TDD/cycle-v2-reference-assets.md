@@ -152,3 +152,13 @@ Native replay uses the existing native-edit smoke's two-click sequence and
 No application assertions or crashes occurred. Evidence is in
 `.context/reference-editor-native/`, with full-window captures at 1280x900 and
 1000x760, and `.context/final-reference-*-report.json`.
+
+Expanded reference pitch envelopes fit vertically when opened, retargeted or
+restored from history. ReferencePitchEditor prepares the static curve slice
+before calling the existing fitEnvelopeVerticalRange; fitting never runs during
+live pointer movement. The mature zoom panel retains its minimum range/padding
+for nearly flat curves. The expanded-reference fixture asserts the resulting
+vertical range is smaller than the full domain. Standalone build, fixture,
+architecture audit and whitespace checks pass; the sax-growl capture at
+`.context/reference-pitch-fit.png` confirms the fitted view without document edits.
+The editor remains 343 lines with unchanged ownership and algorithms.
