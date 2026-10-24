@@ -185,6 +185,7 @@ public:
         Array<var> primaryAxisButtons;
         Array<var> linkToggles;
         const NodeParameterMap parameters(boundNode);
+        const MorphPosition morph = boundWidget->editorMorphPosition();
         const auto dimensions = MeshDimensionality::dimensions(boundNode);
         state.setProperty("dimensionCount", dimensions.axisCount());
         state.setProperty("surfaceVisible", dimensions.axisCount() > 0);
@@ -207,7 +208,7 @@ public:
             }
             auto* slider = new DynamicObject();
             slider->setProperty("id", axis);
-            slider->setProperty("value", parameters.floatValue(axis, 0.5f));
+            slider->setProperty("value", morph[MeshDimensionality::axisForPort(axis)].getCurrentValue());
             slider->setProperty("minimum", 0.0);
             slider->setProperty("maximum", 1.0);
             morphSliders.add(slider);
@@ -390,16 +391,8 @@ private:
         return commands.beginTrimeshMorphEdit(nodeId, id, value);
     }
 
-    bool updateTrimeshMorphEdit(float value) override {
-        return commands.updateTrimeshMorphEditValue(value);
-    }
-
     bool beginTrimeshMorphPairEdit(const std::array<String, 2>& ids, Point<float> values) override {
         return commands.beginTrimeshMorphPairEdit(nodeId, ids[0], ids[1], values);
-    }
-
-    bool updateTrimeshMorphPairEdit(Point<float> values) override {
-        return commands.updateTrimeshMorphPairEdit(values);
     }
 
     void endTrimeshMorphEdit() override {

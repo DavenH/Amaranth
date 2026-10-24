@@ -324,6 +324,15 @@ Artifact: `.context/native-morph-hover-final-crop.png`.
 
 ## P2: Empty Trimesh test fixture dereferences its first vertex
 
+The 2026-10-23 interaction follow-up seeds the selected-vertex and displayed-slice
+fixtures explicitly: those checks require populated 3D geometry, while factory
+nodes start Static/empty. The new shared cube test initially queried an unbound
+Trimesh widget's render statistics during its Envelope case; LLDB identifies
+`TrimeshWidget::panelRenderStatsForAutomation`, not editor binding, as the null
+mesh access. Query statistics only for the active Trimesh resource. Evidence:
+`.context/trimesh-interaction-regression/cube-crash-lldb.log`. This was a test
+setup error, not a reproduced application failure.
+
 On 2026-10-20, the focused `[trimesh],[envelope],[modulation]` run stopped at
 `TestNodeEditorHost.cpp:4803`: the mesh-edit fixture calls `getVerts().front()`
 on the factory's empty Trimesh model. `TrimeshNodeModelCodec::createDefault()`

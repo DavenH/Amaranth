@@ -1128,6 +1128,12 @@ class NativeEditSmoke:
             for held, name in enumerate(names):
                 before = self.inspect(node_id)
                 initial = {axis: float(self.parameters(before)[axis]) for axis in names}
+                if node_id == "waveMesh":
+                    shown = {item["id"]: item["value"] for item in before["morphSliders"]}
+                else:
+                    shown = {axis: before["effect2D"][axis + "Morph"] for axis in names}
+                before_graph = self.graph_state()
+                before_edit = max(int(event["editId"]) for event in before_graph["causalUpdates"])
                 target = next(target for target in self.command({"command": "inspectPointerTargets"})["targets"]
                         if target["id"] == f"expanded:{node_id}.morphFace.{name}")
                 source = self.point(target["screenBounds"], 0.5, 0.5)
@@ -1139,7 +1145,7 @@ class NativeEditSmoke:
                 selected = self.inspect(node_id)
                 if node_id == "env":
                     for axis in names:
-                        assert abs(selected["effect2D"][axis + "Morph"] - initial[axis]) < 0.0001
+                        assert abs(selected["effect2D"][axis + "Morph"] - shown[axis]) < 0.0001
                 for amount in (0.12, 0.24):
                     destination = (round(source[0] + amount * (first["x"] + second["x"])),
                             round(source[1] + amount * (first["y"] + second["y"])))
@@ -1147,19 +1153,27 @@ class NativeEditSmoke:
                     current = self.inspect(node_id)
                     if node_id == "env":
                         values = {axis: current["effect2D"][axis + "Morph"] for axis in names}
-                        assert abs(values[name] - initial[name]) < 0.0001, (node_id, name, values, initial)
-                        for axis in axes:
-                            assert abs(values[axis] - min(1, initial[axis] + amount)) < 0.035, (node_id, name, axis, values, initial)
+                    else:
+                        values = {item["id"]: item["value"] for item in current["morphSliders"]}
+                        held_graph = self.graph_state()
+                        assert held_graph["documentRevision"] == before_graph["documentRevision"]
+                        assert max(int(event["editId"]) for event in held_graph["causalUpdates"]) == before_edit
+                        assert current["trimesh"]["surfaceRebuildCount"] == before["trimesh"]["surfaceRebuildCount"]
+                    assert abs(values[name] - shown[name]) < 0.0001, (node_id, name, values, shown)
+                    for axis in axes:
+                        assert abs(values[axis] - min(1, shown[axis] + amount)) < 0.035, (node_id, name, axis, values, shown)
                 self.release_drag(destination)
                 after = self.inspect_until(node_id, lambda inspected:
-                        all(float(self.parameters(inspected)[axis]) > initial[axis] + 0.15 for axis in axes),
+                        all(abs(float(self.parameters(inspected)[axis]) - min(1, shown[axis] + .24)) < .035
+                                for axis in axes),
                         timeout_seconds=0.5)
                 if node_id == "env":
                     assert after["model"]["state"]["mesh"] == before["model"]["state"]["mesh"]
                 else:
                     assert self.trimesh_model(after) == self.trimesh_model(before)
                 for axis in axes:
-                    assert float(self.parameters(after)[axis]) > initial[axis] + 0.15
+                    assert abs(float(self.parameters(after)[axis]) - min(1, shown[axis] + .24)) < .035, (
+                            node_id, name, axis, self.parameters(after), shown)
                 assert abs(float(self.parameters(after)[name]) - initial[name]) < 0.0001
                 if node_id == "waveMesh":
                     assert self.parameters(after)["primaryAxis"] == self.parameters(before)["primaryAxis"]
@@ -2357,25 +2371,36 @@ class NativeEditSmoke:
         self.release_drag(destination)
 
     def trimesh_morph_drag_sequence(self):
-        state = self.open_editor("waveMesh", trimesh=True)
-        parameters = self.parameters(state)
-        axis = "red"
-        initial = float(parameters[axis])
-        destination_value = 0.2 if initial > 0.5 else 0.8
-        slider = self.target(f"expanded:waveMesh.trimeshMorphRail.{axis}")
-        source = self.point(slider, initial, 0.5)
-        destination = self.point(slider, destination_value, 0.5)
-
-        self.drag(source, destination, steps=12, step_wait_ms=8)
-
-        edited = float(self.parameters(self.inspect("waveMesh"))[axis])
-        assert abs(edited - destination_value) < 0.08, (
-            "Trimesh morph slider did not follow a native drag",
-            initial,
-            destination_value,
-            edited,
-            slider,
-        )
+        self.open_editor("waveMesh", trimesh=True)
+        for axis in ("red", "blue", "yellow"):
+            state = self.inspect("waveMesh")
+            initial = next(item["value"] for item in state["morphSliders"] if item["id"] == axis)
+            destination_value = 0.2 if initial > 0.5 else 0.8
+            slider = self.target(f"expanded:waveMesh.trimeshMorphRail.{axis}")
+            source = self.point(slider, initial, 0.5)
+            destination = self.point(slider, destination_value, 0.5)
+            before = self.graph_state()
+            before_edit = max(int(event["editId"]) for event in before["causalUpdates"])
+            self.move_pointer(source)
+            self.begin_drag(source)
+            for value in ((initial + destination_value) * .5, destination_value):
+                self.move_held_drag(source, self.point(slider, value, .5))
+                held = self.graph_state()
+                shown = next(item["value"] for item in held["expandedNodeControls"]["morphSliders"]
+                        if item["id"] == axis)
+                assert abs(shown - value) < .08, (axis, value, shown)
+                assert held["documentRevision"] == before["documentRevision"]
+                assert max(int(event["editId"]) for event in held["causalUpdates"]) == before_edit
+                if axis == "yellow":
+                    assert held["expandedNodeControls"]["trimesh"]["surfaceRebuildCount"] == state["trimesh"]["surfaceRebuildCount"]
+            self.release_drag(destination)
+            after = self.graph_state()
+            if axis == "yellow":
+                assert after["documentRevision"] == before["documentRevision"]
+                assert max(int(event["editId"]) for event in after["causalUpdates"]) == before_edit
+            else:
+                assert after["documentRevision"] == before["documentRevision"] + 1
+                assert abs(float(self.parameters(self.inspect("waveMesh"))[axis]) - destination_value) < .08
 
     def contextual_keyboard_shortcut_sequence(self):
         self.open_editor("waveMesh", trimesh=True)

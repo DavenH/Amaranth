@@ -197,6 +197,9 @@ void NodePreviewResources::resetDocumentPreviews() {
     clearCachedSprites();
     initializedTrimeshGuideContexts.clear();
     initializedCurveGuideContexts.clear();
+    for (auto& entry : trimeshWidgets) {
+        entry.second->resetDocumentPresentation();
+    }
     for (auto& entry : curveEditorWidgets) {
         entry.second->resetDocumentPresentation();
     }

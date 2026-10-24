@@ -12,6 +12,7 @@
 #include "Nodes/Trimesh/Model/TrimeshInvalidation.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
 
+#include <array>
 #include <cstdint>
 #include <functional>
 
@@ -30,6 +31,8 @@ public:
             int columns);
     void setMorphEditGestureActive(bool active) { morphEditGestureActive = active; }
     void setPreviewMorphPosition(std::optional<MorphPosition> position);
+    void setEditorMorphPosition(int axis, float value);
+    void resetDocumentPresentation();
     bool applyPreparedGuides(PreparedTrimeshGuides guides);
 
     TrimeshPanel3D& getPanel3D() { return panel3D; }
@@ -72,6 +75,7 @@ private:
     void timerCallback() override;
     void clearInteractionPointers();
     void updateGuideCurveSeeds();
+    MorphPosition resolveMorphPosition(const Node& node);
     void syncPrimaryAxisContext();
     void updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry);
 
@@ -106,6 +110,8 @@ private:
     bool meshEditGestureActive {};
     bool morphEditGestureActive {};
     std::optional<MorphPosition> previewMorph;
+    std::optional<MorphPosition> lastAuthoredMorph;
+    std::array<std::optional<float>, 3> editorMorph;
     bool pendingSelectionChanged {};
 };
 

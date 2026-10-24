@@ -426,19 +426,25 @@ bool NodeEditorCommandService::beginTrimeshMorphEdit(
         const String& nodeId,
         const String& parameterId,
         float value) {
+    return beginTrimeshMorphGesture(nodeId, parameterId, value, false);
+}
+
+bool NodeEditorCommandService::beginTrimeshMorphGesture(
+        const String& nodeId, const String& parameterId, float value, bool paired) {
     const Node* node = findNode(nodeId);
-    if (node == nullptr || node->kind != NodeKind::TrilinearMesh) {
+    if (node == nullptr || node->kind != NodeKind::TrilinearMesh
+            || MeshDimensionality::axisForPort(parameterId) < 0) {
         return false;
     }
-    if (!presentation.beginNodeEditorGesture(
+    const bool navigation = !paired && NodeParameterMap(*node).stringValue(
+            "primaryAxis", "yellow") == parameterId;
+    if (!navigation && !presentation.beginNodeEditorGesture(
                 nodeId, commands, document, false)) {
         return false;
     }
     activeMorphNodeId = nodeId;
     activeMorphParameterId = parameterId;
-    activeMorphSecondaryId.clear();
-    activeMorphPrimaryField = NodeParameterMap(*node).stringValue(
-            "primaryAxis", "yellow") == parameterId ? parameterId : String();
+    activeMorphNavigation = navigation;
     presentation.selectEditedNode(nodeId);
     return updateTrimeshMorphEditValue(value);
 }
@@ -449,21 +455,10 @@ bool NodeEditorCommandService::updateTrimeshMorphEditValue(float value) {
 
 bool NodeEditorCommandService::beginTrimeshMorphPairEdit(
         const String& nodeId, const String& firstId, const String& secondId, Point<float> values) {
-    if (!beginTrimeshMorphEdit(nodeId, firstId, values.x)) {
+    if (!beginTrimeshMorphGesture(nodeId, firstId, values.x, true)) {
         return false;
     }
-    activeMorphSecondaryId = secondId;
-    const Node* node = findNode(nodeId);
-    if (node != nullptr && NodeParameterMap(*node).stringValue("primaryAxis", "yellow") == secondId) {
-        activeMorphPrimaryField = secondId;
-    }
     return updateTrimeshMorphAxisValue(secondId, values.y);
-}
-
-bool NodeEditorCommandService::updateTrimeshMorphPairEdit(Point<float> values) {
-    return !activeMorphSecondaryId.isEmpty()
-            && updateTrimeshMorphAxisValue(activeMorphParameterId, values.x)
-            && updateTrimeshMorphAxisValue(activeMorphSecondaryId, values.y);
 }
 
 bool NodeEditorCommandService::updateTrimeshMorphAxisValue(const String& parameterId, float value) {
@@ -473,6 +468,17 @@ bool NodeEditorCommandService::updateTrimeshMorphAxisValue(const String& paramet
     }
     const String label = parameterId.substring(0, 1).toUpperCase()
             + parameterId.substring(1);
+    if (activeMorphNavigation) {
+        if (auto* widget = resources.findTrimeshWidget(activeMorphNodeId)) {
+            widget->setEditorMorphPosition(
+                    MeshDimensionality::axisForPort(parameterId),
+                    formatTrimeshMorphValue(value).getFloatValue());
+            widget->syncFromNode(*node);
+        }
+        presentation.setNodeEditorStatus("Morph " + label + " = " + String(value, 2));
+        presentation.repaintNodeEditor(false);
+        return true;
+    }
     const auto result = commands.setNodeParameter(
             activeMorphNodeId,
             parameterId,
@@ -498,15 +504,12 @@ void NodeEditorCommandService::endTrimeshMorphEdit() {
     if (activeMorphNodeId.isEmpty()) {
         return;
     }
-    presentation.finishNodeEditorGesture(
-            activeMorphNodeId,
-            commands,
-            document,
-            activeMorphPrimaryField);
+    if (!activeMorphNavigation) {
+        presentation.finishNodeEditorGesture(activeMorphNodeId, commands, document, {});
+    }
     activeMorphNodeId = {};
     activeMorphParameterId = {};
-    activeMorphSecondaryId.clear();
-    activeMorphPrimaryField.clear();
+    activeMorphNavigation = false;
 }
 
 bool NodeEditorCommandService::beginTrimeshVertexParameterEdit(

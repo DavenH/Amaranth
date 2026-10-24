@@ -1,6 +1,8 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
+
 #include "Nodes/Guide/GuideGraphEditor.h"
 #include "Graph/GraphEditor.h"
 #include "Graph/GraphNodeStateEditor.h"
@@ -8,6 +10,8 @@
 #include "Graph/NodeParameterMap.h"
 #include "Graph/GraphSerializer.h"
 #include "Graph/InteractionComplexityDiagnostics.h"
+#include "EnvelopeAuthoringTestSupport.h"
+#include "TrimeshAuthoringTestSupport.h"
 #include "Nodes/Curve/Editor/CurveNodeEditorFactory.h"
 #include "Nodes/Curve/Editor/CurveEditorPrimitives.h"
 #include "Nodes/Curve/Editor/CurveExpandedEditorComponent.h"
@@ -469,6 +473,36 @@ public:
 private:
     CurveEditorWidget widget { NodeKind::Envelope };
 };
+
+class PreviewTrimeshEditorResources final : public NullResources {
+public:
+    TrimeshWidget* trimeshWidget(const Node& node) override {
+        return &previews->trimeshWidget(node, graph);
+    }
+    TrimeshWidget* findTrimeshWidget(const String& nodeId) override {
+        return previews->findTrimeshWidget(nodeId);
+    }
+
+    NodePreviewResources* previews {};
+    const NodeGraph* graph {};
+};
+
+std::array<float, 3> trimeshEditorMorphPosition(const NodeEditorHost& host) {
+    DynamicObject state;
+    host.appendAutomationState(state);
+    const auto* sliders = state.getProperty("morphSliders").getArray();
+    REQUIRE(sliders != nullptr);
+    std::array<float, 3> result {};
+    const char* ids[] { "yellow", "red", "blue" };
+    for (int axis = 0; axis < 3; ++axis) {
+        const auto slider = std::find_if(sliders->begin(), sliders->end(), [&](const var& value) {
+            return value.getProperty("id", {}).toString() == ids[axis];
+        });
+        REQUIRE(slider != sliders->end());
+        result[(size_t) axis] = (float) slider->getProperty("value", {});
+    }
+    return result;
+}
 
 class RecordingVoiceCommands final : public NullCommands {
 public:
@@ -3799,15 +3833,12 @@ TEST_CASE("Discrete typed model commands use one gesture and reject unrelated pu
     REQUIRE_FALSE(document.canUndo());
 }
 
-TEST_CASE("Trimesh primary morph commits refresh graph presentation",
+TEST_CASE("Trimesh primary morph navigation preserves graph and selected vertex",
         "[cycle-v2][editor][trimesh][causal]") {
     ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
     Component owner;
-    NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(
-            NodeKind::TrilinearMesh,
-            "mesh",
-            {}));
+    NodeGraph graph = TestSupport::authoredTrimeshGraph();
     auto editorState = std::make_unique<DynamicObject>();
     editorState->setProperty("selectedVertexId", 2);
     REQUIRE(GraphNodeStateEditor().setNodeEditorState(
@@ -3830,6 +3861,9 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
     const auto selectedParameters = widget.vertexParametersForIndex(selectedVertex);
     REQUIRE(selectedVertex == 2);
     REQUIRE(selectedParameters.size() == 6);
+    const uint64_t documentRevision = document.revision();
+    const uint64_t graphRevision = document.graph().getRevision();
+    const auto model = document.graph().findNode("mesh")->model;
 
     widget.setMorphEditGestureActive(true);
     REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.6f));
@@ -3845,13 +3879,13 @@ TEST_CASE("Trimesh primary morph commits refresh graph presentation",
     commands.endTrimeshMorphEdit();
     widget.setMorphEditGestureActive(false);
 
-    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0.800");
-    REQUIRE(presentation.recordedMovements == 3);
-    REQUIRE(presentation.immediateRefreshes == 0);
-    REQUIRE(presentation.localCommits == 1);
-    REQUIRE(document.canUndo());
-    REQUIRE(document.undo());
     REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0");
+    REQUIRE(document.revision() == documentRevision);
+    REQUIRE(document.graph().getRevision() == graphRevision);
+    REQUIRE(document.graph().findNode("mesh")->model == model);
+    REQUIRE_FALSE(dispatcher.hasTransientEdit());
+    REQUIRE_FALSE(document.canUndo());
+    REQUIRE(presentation.immediateRefreshes == 0);
 }
 
 TEST_CASE("Rejected Trimesh vertex collision leaves no undoable edit",
@@ -4158,13 +4192,18 @@ TEST_CASE("Trimesh morph shortcuts focus, reach poles, toggle links, and preserv
     REQUIRE(owner.getPeer()->handleKeyPress(KeyPress('y')));
     REQUIRE(editor->focusedMorphAxis() == "yellow");
     REQUIRE(blueMorph->hasKeyboardFocus(false));
+    const float initialYellow = NodeParameterMap(*document.graph().findNode("mesh"))
+            .floatValue("yellow", 0.5f);
+    const auto yellowRevision = document.revision();
     REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::rightKey)));
     REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
-            .floatValue("yellow", 0.5f) == Catch::Approx(1.f));
+            .floatValue("yellow", 0.5f) == Catch::Approx(initialYellow));
+    REQUIRE(trimeshEditorMorphPosition(host)[0] == Catch::Approx(1.f));
     REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
             .floatValue("blue", 0.5f) == Catch::Approx(initialBlue));
     REQUIRE(editor->focusedMorphAxis() == "yellow");
-    REQUIRE(document.undo());
+    REQUIRE(document.revision() == yellowRevision);
+    REQUIRE_FALSE(document.canUndo());
 
     REQUIRE(owner.getPeer()->handleKeyPress(KeyPress(KeyPress::downKey)));
     REQUIRE(editor->focusedMorphAxis() == "red");
@@ -4646,12 +4685,10 @@ TEST_CASE("Live primary Trimesh morph keeps graph previews deferred",
     REQUIRE(commands.beginTrimeshMorphEdit("mesh", "yellow", 0.8f));
     commands.endTrimeshMorphEdit();
 
-    REQUIRE(presentation.recordedMovements == 1);
-    REQUIRE(presentation.gestureDownstreamFeedback == std::vector<bool> { false });
-    REQUIRE(presentation.movementLocalProducts
-            == std::vector<std::optional<UpdateProduct>> { std::nullopt });
+    REQUIRE(parameterValueForNode(*document.graph().findNode("mesh"), "yellow") == "0");
+    REQUIRE_FALSE(document.canUndo());
+    REQUIRE_FALSE(dispatcher.hasTransientEdit());
     REQUIRE(presentation.immediateRefreshes == 0);
-    REQUIRE(presentation.localCommits == 1);
 }
 
 TEST_CASE("Live non-primary Trimesh morph commits one undoable gesture",
@@ -5472,24 +5509,298 @@ TEST_CASE("Reduced Envelope diagram gestures follow visible axes and preserve in
     }
 }
 
+TEST_CASE("Hosted Trimesh morph rails follow pointer updates without publishing movement",
+        "[cycle-v2][editor][trimesh][morph-rail][regression][complexity]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    const char* ids[] { "yellow", "red", "blue" };
+    for (const bool unrelatedState : { false, true }) {
+        for (int primary = 0; primary < 3; ++primary) {
+            for (int axis = 0; axis < 3; ++axis) {
+                if (primary != 0 && axis != primary) {
+                    continue;
+                }
+                CAPTURE(unrelatedState, primary, axis);
+                Component owner;
+                owner.setSize(1100, 800);
+                owner.addToDesktop(ComponentPeer::windowIsTemporary);
+                owner.setVisible(true);
+                NodeGraph graph;
+                auto node = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
+                auto mesh = TrimeshMeshFactory::createDefaultMesh("PointerMorphRail");
+                node.model = TrimeshNodeModelState::copyOf(*mesh, 1);
+                mesh->destroy();
+                graph.addNode(std::move(node));
+                graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+                graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+                graph.addEdge({ "voice", "context", "mesh", "context",
+                        PortDomain::DomainContext, ConnectionKind::Signal });
+                graph.addEdge({ "mesh", "out", "out", "time",
+                        PortDomain::TimeSignal, ConnectionKind::Signal });
+                GraphNodeStateEditor stateEditor;
+                REQUIRE(stateEditor.setNodeParameter(
+                        graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
+                REQUIRE(stateEditor.setNodeParameter(
+                        graph, "mesh", "primaryAxis", "Axis", ids[primary]).succeeded());
+                for (const char* id : ids) {
+                    REQUIRE(stateEditor.setNodeParameter(graph, "mesh", id, id, "0.5").succeeded());
+                }
+                if (unrelatedState) {
+                    addUnrelatedInteractionState(graph);
+                }
+                GraphDocument document(std::move(graph));
+                GraphCommandDispatcher dispatcher(document);
+                RecordingPresentation presentation;
+                presentation.refreshMode = ProbeRefreshMode::LiveLatest;
+                PreviewTrimeshEditorResources resources;
+                NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+                NodePreviewResources previews(commands);
+                GraphPresentationModel previewControls;
+                REQUIRE(previewControls.refresh(document.graph(), document.revision()));
+                REQUIRE(previewControls.previewMorphForNode(*document.graph().findNode("mesh")).has_value());
+                previews.setDurableGraph(&document.graph());
+                previews.setPreviewControls(previewControls);
+                resources.previews = &previews;
+                resources.graph = &document.graph();
+                NodeEditorHost host(owner, commands, presentation, resources);
+                REQUIRE(host.bind(document.graph().findNode("mesh"), owner.getLocalBounds(), document.revision()));
+                auto* editor = dynamic_cast<TrimeshExpandedEditorComponent*>(host.component());
+                REQUIRE(editor != nullptr);
+                auto& widget = *previews.findTrimeshWidget("mesh");
+                const auto content = editor->getLocalBounds().toFloat().withTrimmedTop(34.f).reduced(10.f, 8.f);
+                const auto regions = TrimeshWidget::expandedControlHitRegions(content, true, "gain", 3);
+                const auto region = std::find_if(regions.begin(), regions.end(), [&](const auto& value) {
+                    return value.kind == TrimeshExpandedHitRegionKind::MorphControl
+                            && value.parameterId == ids[axis];
+                });
+                REQUIRE(region != regions.end());
+                const auto rail = region->bounds.reduced(8.f, 12.f);
+                const auto source = rail.getCentre();
+                auto* input = editor->getComponentAt(source.roundToInt());
+                REQUIRE(input != nullptr);
+                REQUIRE(input->getComponentID() == "trimesh.morph." + String(ids[axis]));
+                const auto inputSource = input->getLocalPoint(editor, source);
+                Image image(Image::RGB, editor->getWidth(), editor->getHeight(), true);
+                Graphics graphics(image);
+                editor->paint(graphics);
+                const auto before = trimeshEditorMorphPosition(host);
+                const auto model = document.graph().findNode("mesh")->model;
+                const uint64_t revision = document.revision();
+                const uint64_t graphRevision = document.graph().getRevision();
+                const uint64_t surfaceRebuilds = widget.panelRenderStatsForAutomation().surfaceRebuildCount;
+                int publications {};
+                document.setListener([&](uint64_t, const GraphChangeSet&) { ++publications; });
+                input->mouseDown(curvePanelMouseEvent(
+                        *input, inputSource, ModifierKeys::leftButtonModifier, inputSource, false));
+                Point<float> destination;
+                for (const float value : { 0.2f, 0.8f }) {
+                    destination = { rail.getX() + value * rail.getWidth(), source.y };
+                    InteractionComplexityDiagnostics::reset();
+                    input->mouseDrag(curvePanelMouseEvent(
+                            *input, input->getLocalPoint(editor, destination),
+                            ModifierKeys::leftButtonModifier, inputSource, true));
+                    editor->paint(graphics);
+                    const auto counts = InteractionComplexityDiagnostics::counts();
+                    REQUIRE(counts.graphCopies == 0);
+                    REQUIRE(counts.audioSamplesCopied == 0);
+                    REQUIRE(counts.meshCopies == 0);
+                    REQUIRE(counts.modelSerializations == 0);
+                    REQUIRE(counts.validationNodeVisits == 0);
+                    REQUIRE(counts.validationEdgeVisits == 0);
+                    REQUIRE(publications == 0);
+                    REQUIRE(document.revision() == revision);
+                    REQUIRE(document.graph().getRevision() == graphRevision);
+                    REQUIRE(dispatcher.editingGraph().getRevision() == graphRevision);
+                    REQUIRE(document.graph().findNode("mesh")->model == model);
+                    REQUIRE_FALSE(document.canUndo());
+                    const auto actual = trimeshEditorMorphPosition(host);
+                    CHECK(actual[(size_t) axis] == Catch::Approx(value).margin(0.025f));
+                    for (int untouched = 0; untouched < 3; ++untouched) {
+                        REQUIRE(NodeParameterMap(*dispatcher.editingGraph().findNode("mesh"))
+                                .floatValue(ids[untouched]) == Catch::Approx(0.5f));
+                        if (untouched != axis) {
+                            REQUIRE(actual[(size_t) untouched] == before[(size_t) untouched]);
+                        }
+                    }
+                    if (axis == primary) {
+                        REQUIRE(widget.panelRenderStatsForAutomation().surfaceRebuildCount == surfaceRebuilds);
+                    }
+                }
+                const auto moved = trimeshEditorMorphPosition(host);
+                const auto movedRebuilds = widget.panelRenderStatsForAutomation().surfaceRebuildCount;
+                InteractionComplexityDiagnostics::reset();
+                input->mouseUp(curvePanelMouseEvent(
+                        *input, input->getLocalPoint(editor, destination), {}, inputSource, true));
+                editor->paint(graphics);
+                REQUIRE(trimeshEditorMorphPosition(host) == moved);
+                REQUIRE(document.graph().findNode("mesh")->model == model);
+                REQUIRE(InteractionComplexityDiagnostics::counts().modelSerializations == 0);
+                previews.trimeshWidget(*document.graph().findNode("mesh"), &document.graph());
+                REQUIRE(host.bind(document.graph().findNode("mesh"), owner.getLocalBounds(), document.revision()));
+                editor->paint(graphics);
+                REQUIRE(trimeshEditorMorphPosition(host) == moved);
+                if (axis == primary) {
+                    REQUIRE(publications == 0);
+                    REQUIRE(document.revision() == revision);
+                    REQUIRE(document.graph().getRevision() == graphRevision);
+                    REQUIRE(dispatcher.editingGraph().getRevision() == graphRevision);
+                    REQUIRE_FALSE(document.canUndo());
+                    REQUIRE_FALSE(document.isDirty());
+                    REQUIRE(widget.panelRenderStatsForAutomation().surfaceRebuildCount == surfaceRebuilds);
+                    REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
+                } else {
+                    REQUIRE(publications == 1);
+                    REQUIRE(document.revision() == revision + 1);
+                    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+                            .floatValue(ids[axis]) == Catch::Approx(moved[(size_t) axis]).margin(0.001f));
+                    REQUIRE(widget.panelRenderStatsForAutomation().surfaceRebuildCount == movedRebuilds);
+                    if (axis == 2) {
+                        REQUIRE(previewControls.refreshPreviewControllerValue(
+                                document.graph(), document.revision(), 1, 32));
+                        previews.refreshControllerPreview(1);
+                        editor->paint(graphics);
+                        const auto controlled = trimeshEditorMorphPosition(host);
+                        REQUIRE(controlled[0] == moved[0]);
+                        REQUIRE(controlled[1] == moved[1]);
+                        REQUIRE(controlled[2] == Catch::Approx(32.f / 127.f));
+                        REQUIRE(document.revision() == revision + 1);
+                        REQUIRE(publications == 1);
+                    }
+                    REQUIRE(document.undo());
+                    REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+                            .floatValue(ids[axis]) == Catch::Approx(0.5f));
+                    REQUIRE_FALSE(document.canUndo());
+                }
+            }
+        }
+    }
+}
+
+TEST_CASE("Trimesh rail close and document reset preserve the correct local morph state",
+        "[cycle-v2][editor][trimesh][morph-lifecycle][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    for (const String action : { "close-secondary", "close-primary", "reset-document" }) {
+        CAPTURE(action);
+        Component owner;
+        owner.setSize(1100, 800);
+        owner.addToDesktop(ComponentPeer::windowIsTemporary);
+        owner.setVisible(true);
+        NodeGraph graph = TestSupport::authoredTrimeshGraph();
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+        graph.addEdge({ "voice", "context", "mesh", "context",
+                PortDomain::DomainContext, ConnectionKind::Signal });
+        graph.addEdge({ "mesh", "out", "out", "time",
+                PortDomain::TimeSignal, ConnectionKind::Signal });
+        const char* ids[] { "yellow", "red", "blue" };
+        for (const char* id : ids) {
+            REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "mesh", id, id, "0.5").succeeded());
+        }
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher dispatcher(document);
+        RecordingPresentation presentation;
+        PreviewTrimeshEditorResources resources;
+        NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+        NodePreviewResources previews(commands);
+        GraphPresentationModel previewControls;
+        REQUIRE(previewControls.refresh(document.graph(), document.revision()));
+        REQUIRE(previewControls.previewMorphForNode(*document.graph().findNode("mesh")).has_value());
+        previews.setDurableGraph(&document.graph());
+        previews.setPreviewControls(previewControls);
+        resources.previews = &previews;
+        resources.graph = &document.graph();
+        NodeEditorHost host(owner, commands, presentation, resources);
+        const auto bind = [&] {
+            REQUIRE(host.bind(document.graph().findNode("mesh"), owner.getLocalBounds(), document.revision()));
+        };
+        bind();
+        const auto before = trimeshEditorMorphPosition(host);
+        const uint64_t revision = document.revision();
+        const uint64_t graphRevision = document.graph().getRevision();
+        const auto model = document.graph().findNode("mesh")->model;
+        int publications {};
+        document.setListener([&](uint64_t, const GraphChangeSet&) { ++publications; });
+        auto* editor = dynamic_cast<TrimeshExpandedEditorComponent*>(host.component());
+        REQUIRE(editor != nullptr);
+        const auto content = editor->getLocalBounds().toFloat().withTrimmedTop(34.f).reduced(10.f, 8.f);
+        const auto regions = TrimeshWidget::expandedControlHitRegions(content, true, "gain", 3);
+        const int axis = action == "close-secondary" ? 1 : 0;
+        const auto region = std::find_if(regions.begin(), regions.end(), [&](const auto& value) {
+            return value.kind == TrimeshExpandedHitRegionKind::MorphControl
+                    && value.parameterId == ids[axis];
+        });
+        REQUIRE(region != regions.end());
+        const auto rail = region->bounds.reduced(8.f, 12.f);
+        const auto source = rail.getCentre();
+        auto* input = editor->getComponentAt(source.roundToInt());
+        REQUIRE(input != nullptr);
+        REQUIRE(input->getComponentID() == "trimesh.morph." + String(ids[axis]));
+        const auto inputSource = input->getLocalPoint(editor, source);
+        input->mouseDown(curvePanelMouseEvent(
+                *input, inputSource, ModifierKeys::leftButtonModifier, inputSource, false));
+        Point<float> destination;
+        for (const float value : { 0.2f, 0.8f }) {
+            destination = { rail.getX() + value * rail.getWidth(), source.y };
+            input->mouseDrag(curvePanelMouseEvent(
+                    *input, input->getLocalPoint(editor, destination),
+                    ModifierKeys::leftButtonModifier, inputSource, true));
+            REQUIRE(trimeshEditorMorphPosition(host)[(size_t) axis] == Catch::Approx(value).margin(0.001f));
+        }
+        const auto moved = trimeshEditorMorphPosition(host);
+        if (action == "reset-document") {
+            input->mouseUp(curvePanelMouseEvent(
+                    *input, input->getLocalPoint(editor, destination), {}, inputSource, true));
+        }
+        host.close();
+        REQUIRE_FALSE(host.hasEditor());
+        if (action == "reset-document") {
+            previews.resetDocumentPreviews();
+        }
+        bind();
+        Image image(Image::RGB, host.component()->getWidth(), host.component()->getHeight(), true);
+        Graphics graphics(image);
+        host.component()->paint(graphics);
+        const auto reopened = trimeshEditorMorphPosition(host);
+        REQUIRE(reopened == (action == "close-primary" ? moved : before));
+        REQUIRE(document.revision() == revision);
+        REQUIRE(document.graph().getRevision() == graphRevision);
+        REQUIRE(dispatcher.editingGraph().getRevision() == graphRevision);
+        REQUIRE(document.graph().findNode("mesh")->model == model);
+        for (const char* id : ids) {
+            REQUIRE(NodeParameterMap(*document.graph().findNode("mesh"))
+                    .floatValue(id) == Catch::Approx(0.5f));
+        }
+        REQUIRE(publications == 0);
+        REQUIRE_FALSE(dispatcher.hasTransientEdit());
+        REQUIRE_FALSE(document.canUndo());
+        REQUIRE_FALSE(document.isDirty());
+    }
+}
+
 TEST_CASE("Both mesh editors publish one undoable gesture for each visible cube face",
-        "[cycle-v2][editor][morph-face]") {
+        "[cycle-v2][editor][morph-face][regression][complexity]") {
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curves;
     for (const auto kind : { NodeKind::Envelope, NodeKind::TrilinearMesh }) {
+        const String nodeId = kind == NodeKind::Envelope ? "env" : "mesh";
         for (int held = 0; held < 3; ++held) {
+            CAPTURE(nodeId, held);
             Component owner;
             owner.setSize(1100, 800);
             if (kind == NodeKind::TrilinearMesh) {
                 owner.addToDesktop(ComponentPeer::windowIsTemporary);
                 owner.setVisible(true);
             }
-            NodeGraph graph;
-            graph.addNode(GraphNodeFactory().createNode(kind, "subject", {}));
+            NodeGraph graph = kind == NodeKind::Envelope
+                    ? TestSupport::authoredEnvelopeGraph()
+                    : TestSupport::authoredTrimeshGraph();
             const char* ids[] { "yellow", "red", "blue" };
-            REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "subject", "dimensionCount", "Dimensions", "3").succeeded());
             for (const char* id : ids) {
-                REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "subject", id, id, "0.5").succeeded());
+                REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, nodeId, id, id, "0.5").succeeded());
+            }
+            if (kind == NodeKind::TrilinearMesh) {
+                addUnrelatedInteractionState(graph);
             }
             GraphDocument document(std::move(graph));
             GraphCommandDispatcher dispatcher(document);
@@ -5497,9 +5808,13 @@ TEST_CASE("Both mesh editors publish one undoable gesture for each visible cube 
             EnvelopeEditorResources resources;
             TrimeshWidget mesh;
             resources.activeTrimesh = &mesh;
+            if (kind == NodeKind::Envelope) {
+                resources.curveEditorWidget(*document.graph().findNode(nodeId))
+                        ->syncFromNode(*document.graph().findNode(nodeId));
+            }
             NodeEditorCommandService service(owner, document, dispatcher, presentation, resources);
             NodeEditorHost host(owner, service, presentation, resources);
-            REQUIRE(host.bind(document.graph().findNode("subject"), owner.getLocalBounds(), document.revision()));
+            REQUIRE(host.bind(document.graph().findNode(nodeId), owner.getLocalBounds(), document.revision()));
             auto* editor = host.component();
             Rectangle<float> diagram;
             if (kind == NodeKind::Envelope) {
@@ -5512,10 +5827,19 @@ TEST_CASE("Both mesh editors publish one undoable gesture for each visible cube 
             const auto axes = MorphSpaceLayout::cubeFaceAxes(held);
             const auto source = space.cubeFacePoint(held, 0.5f, 0.5f);
             const auto parameters = [&] {
-                const NodeParameterMap values(*dispatcher.editingGraph().findNode("subject"));
+                const NodeParameterMap values(*dispatcher.editingGraph().findNode(nodeId));
                 return std::array<float, 3> { values.floatValue(ids[0]), values.floatValue(ids[1]), values.floatValue(ids[2]) };
             };
             const auto before = parameters();
+            const uint64_t documentRevision = document.revision();
+            const uint64_t graphRevision = document.graph().getRevision();
+            const auto model = document.graph().findNode(nodeId)->model;
+            const auto surfaceRebuilds = kind == NodeKind::TrilinearMesh
+                    ? mesh.panelRenderStatsForAutomation().surfaceRebuildCount : 0;
+            int publications {};
+            document.setListener([&](uint64_t, const GraphChangeSet&) { ++publications; });
+            Image image(Image::RGB, editor->getWidth(), editor->getHeight(), true);
+            Graphics graphics(image);
             auto* input = kind == NodeKind::TrilinearMesh
                     ? editor->getComponentAt(source.roundToInt()) : editor;
             REQUIRE(input != nullptr);
@@ -5538,6 +5862,9 @@ TEST_CASE("Both mesh editors publish one undoable gesture for each visible cube 
                 InteractionComplexityDiagnostics::reset();
                 input->mouseDrag(curvePanelMouseEvent(*input, input->getLocalPoint(editor, destination),
                         ModifierKeys::leftButtonModifier, inputSource, true));
+                if (kind == NodeKind::TrilinearMesh) {
+                    editor->paint(graphics);
+                }
                 REQUIRE(InteractionComplexityDiagnostics::counts().graphCopies == 0);
                 REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
                 REQUIRE(InteractionComplexityDiagnostics::counts().modelSerializations == 0);
@@ -5546,6 +5873,19 @@ TEST_CASE("Both mesh editors publish one undoable gesture for each visible cube 
                     const auto local = dynamic_cast<EnvelopeEditorComponent*>(editor)->automationState();
                     actual = { (float) local.getProperty("yellowMorph", {}),
                             (float) local.getProperty("redMorph", {}), (float) local.getProperty("blueMorph", {}) };
+                } else {
+                    actual = trimeshEditorMorphPosition(host);
+                    REQUIRE(parameters() == before);
+                    REQUIRE(document.revision() == documentRevision);
+                    REQUIRE(document.graph().getRevision() == graphRevision);
+                    REQUIRE(dispatcher.editingGraph().getRevision() == graphRevision);
+                    REQUIRE(document.graph().findNode(nodeId)->model == model);
+                    REQUIRE(publications == 0);
+                    REQUIRE_FALSE(document.canUndo());
+                    REQUIRE(mesh.panelRenderStatsForAutomation().surfaceRebuildCount == surfaceRebuilds);
+                    REQUIRE(InteractionComplexityDiagnostics::counts().audioSamplesCopied == 0);
+                    REQUIRE(InteractionComplexityDiagnostics::counts().validationNodeVisits == 0);
+                    REQUIRE(InteractionComplexityDiagnostics::counts().validationEdgeVisits == 0);
                 }
                 for (int axis = 0; axis < 3; ++axis) {
                     REQUIRE(actual[(size_t) axis] == Catch::Approx(next[(size_t) axis]).margin(1.e-5f));
@@ -5556,8 +5896,15 @@ TEST_CASE("Both mesh editors publish one undoable gesture for each visible cube 
             REQUIRE(committed[(size_t) held] == before[(size_t) held]);
             REQUIRE(committed[(size_t) axes[0]] == Catch::Approx(1.f));
             REQUIRE(committed[(size_t) axes[1]] == Catch::Approx(0.f));
+            REQUIRE(publications == 1);
+            REQUIRE(document.revision() == documentRevision + 1);
+            if (kind == NodeKind::TrilinearMesh) {
+                REQUIRE(document.graph().findNode(nodeId)->model == model);
+                REQUIRE(trimeshEditorMorphPosition(host) == committed);
+            }
             REQUIRE(document.undo());
             REQUIRE(parameters() == before);
+            REQUIRE_FALSE(document.canUndo());
         }
     }
 }

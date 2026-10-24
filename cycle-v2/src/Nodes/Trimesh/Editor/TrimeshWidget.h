@@ -67,7 +67,11 @@ class TrimeshWidget {
 public:
     void syncFromNode(const Node& node);
     void syncExpandedFromNode(const Node& node);
+    void resetDocumentPresentation();
     void setMorphEditGestureActive(bool active);
+    void setEditorMorphPosition(int axis, float value);
+    void setMorphControlPreview(std::optional<MorphPosition> position);
+    MorphPosition editorMorphPosition() const;
     void setPreviewMorphPosition(std::optional<MorphPosition> position);
     void syncGuideContext(const NodeGraph& graph, const Node& node);
     void setDisplayDomain(PortDomain domain);
@@ -248,6 +252,7 @@ private:
 
     TrimeshPanelBridge bridge;
     CachedHeatmap compactHeatmap;
+    std::optional<MorphPosition> morphControlPreview;
     juce::String propertyFeedback;
     TrimeshRenderProfile displayProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     int previewMidiNote { 48 };

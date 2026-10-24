@@ -34,8 +34,25 @@ void TrimeshWidget::syncExpandedFromNode(const Node& node) {
     bridge.syncFromNode(node, kExpandedRows, lastExpandedColumnCount);
 }
 
+void TrimeshWidget::resetDocumentPresentation() {
+    morphControlPreview.reset();
+    bridge.resetDocumentPresentation();
+}
+
 void TrimeshWidget::setMorphEditGestureActive(bool active) {
     bridge.setMorphEditGestureActive(active);
+}
+
+void TrimeshWidget::setEditorMorphPosition(int axis, float value) {
+    bridge.setEditorMorphPosition(axis, value);
+}
+
+void TrimeshWidget::setMorphControlPreview(std::optional<MorphPosition> position) {
+    morphControlPreview = std::move(position);
+}
+
+MorphPosition TrimeshWidget::editorMorphPosition() const {
+    return morphControlPreview.value_or(bridge.getModel().getMorphPosition());
 }
 
 void TrimeshWidget::setPreviewMorphPosition(std::optional<MorphPosition> position) {
@@ -229,13 +246,14 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
     const auto selectedParameters = selectedVertexParameters();
     const auto dimensions = MeshDimensionality::dimensions(node);
     const int primaryAxis = model.getPrimaryViewAxis();
+    const MorphPosition morph = editorMorphPosition();
     const NodeParameterMap parameters(node);
     const std::array<TrimeshSidePanelRenderer::AxisState, 3> axes {
             TrimeshSidePanelRenderer::AxisState {
                     "Yellow",
                     "Y",
                     Colour(0xffe0c247),
-                    model.getMorphPosition().time.getCurrentValue(),
+                    morph.time.getCurrentValue(),
                     primaryAxis == Vertex::Time,
                     parameters.boolValue("link.yellow", true)
             },
@@ -243,7 +261,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
                     "Red",
                     "R",
                     Colour(0xffd65a5a),
-                    model.getMorphPosition().red.getCurrentValue(),
+                    morph.red.getCurrentValue(),
                     primaryAxis == Vertex::Red,
                     parameters.boolValue("link.red", true)
             },
@@ -251,7 +269,7 @@ void TrimeshWidget::paintExpanded(Graphics& g, const Node& node, Rectangle<float
                     "Blue",
                     "B",
                     Colour(0xff5f91e8),
-                    model.getMorphPosition().blue.getCurrentValue(),
+                    morph.blue.getCurrentValue(),
                     primaryAxis == Vertex::Blue,
                     parameters.boolValue("link.blue", true)
             }

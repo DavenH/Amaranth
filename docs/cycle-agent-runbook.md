@@ -117,6 +117,15 @@ editor displays effective coordinates without publishing them as authored morph.
 Keep a pinned Spy/reference for comparison, make one targeted edit, audition and
 undo when needed. Refine the running preset directly through these commands.
 
+Trimesh's primary morph rail navigates the local slice without a graph edit,
+including on release. Secondary rails and cube gestures keep movement local and
+commit saved fallback coordinates on release. An unchanged live controller must
+not overwrite manual editor navigation; a changed controller resumes preview on
+its axis. Explicit `setNodeParameter` remains available for saved fallback edits.
+Run `python3 scripts/test_cycle_v2_trimesh_interaction_publication.py` for the
+actual-app pointer/readback, edit-ID, document, surface and commit/undo checks;
+hosted editor tests also assert zero copies and serialization during movement.
+
 ## Whole Model Import And Compatibility
 
 Use `inspectSynthesisCapabilities` to discover `authoring` bounds and each model's
