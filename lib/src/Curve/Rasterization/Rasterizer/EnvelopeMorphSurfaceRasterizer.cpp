@@ -19,7 +19,8 @@ void EnvelopeMorphSurfaceRasterizer::renderSurface(
         std::vector<Column>& columns,
         int crossSectionResolution,
         int morphAxis,
-        const MorphPosition& baseMorph) {
+        const MorphPosition& baseMorph,
+        std::optional<Range<float>> timeRange) {
     if (columns.empty() || crossSectionResolution <= 0) {
         clearTrilinearOutput();
         return;
@@ -33,7 +34,10 @@ void EnvelopeMorphSurfaceRasterizer::renderSurface(
         return;
     }
 
-    float inverseCrossSectionResolution = 1.f / float(crossSectionResolution);
+    const float sampleStart = timeRange.has_value() ? timeRange->getStart() : 0.f;
+    const float sampleInterval = timeRange.has_value()
+            ? timeRange->getLength() / float(jmax(1, crossSectionResolution - 1))
+            : 1.f / float(crossSectionResolution);
     float inverseSurfaceResolution = columns.size() > 1
                                          ? 1.f / float(columns.size() - 1)
                                          : 0.f;
@@ -46,7 +50,7 @@ void EnvelopeMorphSurfaceRasterizer::renderSurface(
 
         auto waveformSampler = sampler();
         if (waveformSampler.isSampleable()) {
-            waveformSampler.samplePerfectly(inverseCrossSectionResolution, column, 0.f);
+            waveformSampler.samplePerfectly(sampleInterval, column, sampleStart);
         } else {
             column.zero();
         }

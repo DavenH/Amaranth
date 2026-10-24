@@ -840,6 +840,21 @@ state. Report: `/private/tmp/cycle-v2-envelope-link-session2`.
 Current status: open; distinguish selection/editor-state publication from a
 durable document edit. Envelope link toggles themselves remain session-only.
 
+Incidental 2026-10-24 hosted-test setup failure: the new Envelope selection
+fixture accessed null `Panel::grabTex` in `Interactor::resizeFinalBoxSelection`
+(`Interactor.cpp:949`) before graphics initialization; its initial pointer also
+fell above the fitted viewport. LLDB evidence is in
+`.context/envelope-interaction-regression/focused-tests-crash-lldb.log`. The
+actual-app selection fixture passes. Keep texture-dependent enclosed-selection
+checks in the actual/native app, and hosted pointer checks inside the viewport;
+this was not an observed production crash.
+
+The same follow-up's prepared-surface tests also caught `Mesh.cpp:186` assertions
+and empty scalar/rail data when plain `Mesh` tried to read an `EnvelopeMesh` XML
+container. The surface now preserves the source mesh type through the mature
+copy path. Numerical full-range and source-replacement tests retain coverage;
+see `cycle-v2-envelope-interaction-feedback.md`.
+
 ## P3: With-spies Trimesh morph fixture expects a value absent after load
 
 On 2026-09-18, `cycle-v2-agent-trimesh-morph-selection.json` failed its undo

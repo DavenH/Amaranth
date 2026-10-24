@@ -28,14 +28,19 @@ public:
     void zoomUpdated(int updateSource) override;
     void doZoomExtra(bool commandDown) override;
     void updateBackground(bool onlyVerticalBackground = false) override;
-    void postVertsDraw() override {}
+    void postVertsDraw() override;
     bool usesCachedSurface() const override { return !sharedCanvasMode; }
     void setSharedCanvasMode(bool shouldUseSharedCanvas) { sharedCanvasMode = shouldUseSharedCanvas; }
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
     void configureViewport(Range<float> frequencyLimits);
     void setZoomChangedCallback(std::function<void(bool)> callback);
-    void setPrimaryViewAxis(int axis) { primaryViewAxis = axis; }
+    void setPrimaryViewAxis(int axis);
+    bool isPrimaryAxisVertical() const override { return primaryAxisVertical; }
+    void setPrimaryAxisVertical(bool vertical) { primaryAxisVertical = vertical; }
+    juce::Colour primaryAxisColour() const;
+    juce::Rectangle<float> primaryAxisBarBounds() const;
+    void appendPrimaryAxisAutomation(juce::DynamicObject& state) const;
     void setPitchSpansColumns(bool shouldSpan);
     void setPreviewMidiNote(int midiNote);
     void setLineGuideTables(std::vector<std::vector<float>> tables);
@@ -57,6 +62,7 @@ private:
     int appliedMaterialStyleSignature { -2 };
     bool pitchSpansColumns {};
     bool sharedCanvasMode {};
+    bool primaryAxisVertical {};
 };
 
 }

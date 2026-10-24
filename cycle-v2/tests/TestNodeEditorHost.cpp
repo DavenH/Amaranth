@@ -19,11 +19,13 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Nodes/Envelope/EnvelopePurpose.h"
+#include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "Nodes/Envelope/Editor/EnvelopeAxisScaleSelector.h"
 #include "Nodes/Envelope/Editor/EnvelopeEditorComponent.h"
 #include "Nodes/Envelope/Rendering/EnvelopeMorphSurfacePreview.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
 #include <UI/Panels/ZoomPanel.h>
+#include <UI/Panels/PanelInputHostComponent.h>
 #include "Nodes/Guide/Editor/GuideCurveEditorComponent.h"
 #include "Nodes/Guide/GuideHeatmapAsset.h"
 #include "Nodes/ImpulseResponse/Editor/ImpulseResponseEditorComponent.h"
@@ -61,6 +63,7 @@
 #include <Curve/Curve.h>
 #include <Curve/Mesh/VertCube.h>
 #include <Curve/Mesh/Vertex.h>
+#include <Curve/Rasterization/Rasterizer/EnvelopeMorphSurfaceRasterizer.h>
 
 using namespace CycleV2;
 using namespace juce;
@@ -141,7 +144,7 @@ TEST_CASE("Curve preview snapshots are reused until a rendering dependency chang
         "[cycle-v2][node-editor-host][performance]") {
     CurvePanelPreviewRenderCache cache;
     const CurvePanelPreviewRenderCache::Key initial {
-            180.f, 96.f, 2.f, 7, 11, 13, 17
+            180.f, 96.f, 2.f, 7, 11, 13, 17, { 0.1f, 0.2f, 0.7f, 0.6f }
     };
 
     REQUIRE_FALSE(cache.canReuse(initial));
@@ -169,12 +172,50 @@ TEST_CASE("Curve preview snapshots are reused until a rendering dependency chang
     changed = initial;
     ++changed.invalidationGeneration;
     REQUIRE_FALSE(cache.canReuse(changed));
+    changed = initial;
+    changed.view.translate(0.1f, 0.f);
+    REQUIRE_FALSE(cache.canReuse(changed));
+    changed = initial;
+    changed.view.translate(0.f, 0.1f);
+    REQUIRE_FALSE(cache.canReuse(changed));
+    changed = initial;
+    changed.view.setWidth(0.5f);
+    REQUIRE_FALSE(cache.canReuse(changed));
+    changed = initial;
+    changed.view.setHeight(0.4f);
+    REQUIRE_FALSE(cache.canReuse(changed));
 
     cache.invalidate();
     REQUIRE_FALSE(cache.canReuse(initial));
     const auto diagnostics = cache.diagnostics();
     REQUIRE(diagnostics.hits == 1);
-    REQUIRE(diagnostics.misses == 9);
+    REQUIRE(diagnostics.misses == 13);
+}
+
+TEST_CASE("Curve framebuffer snapshots preserve channels while flipping rows and normalizing alpha",
+        "[cycle-v2][node-editor-host][curve-snapshot][regression]") {
+    std::array<PixelARGB, 4> pixels;
+    pixels[0].setARGB(0, 17, 36, 91);
+    pixels[1].setARGB(64, 193, 28, 47);
+    pixels[2].setARGB(128, 61, 174, 32);
+    pixels[3].setARGB(255, 43, 72, 219);
+    bool visible {};
+    const auto image = curvePanelSnapshotFromPixels(pixels.data(), 2, 2, visible);
+    REQUIRE(visible);
+    REQUIRE(image.getPixelAt(0, 0) == Colour::fromRGB(61, 174, 32));
+    REQUIRE(image.getPixelAt(1, 0) == Colour::fromRGB(43, 72, 219));
+    REQUIRE(image.getPixelAt(0, 1) == Colour::fromRGB(17, 36, 91));
+    REQUIRE(image.getPixelAt(1, 1) == Colour::fromRGB(193, 28, 47));
+
+    PixelARGB dark;
+    dark.setARGB(0, 80, 40, 40);
+    REQUIRE(curvePanelSnapshotFromPixels(&dark, 1, 1, visible).isValid());
+    REQUIRE_FALSE(visible);
+    dark.setARGB(0, 81, 40, 40);
+    REQUIRE(curvePanelSnapshotFromPixels(&dark, 1, 1, visible).isValid());
+    REQUIRE(visible);
+    REQUIRE_FALSE(curvePanelSnapshotFromPixels(nullptr, 1, 1, visible).isValid());
+    REQUIRE_FALSE(visible);
 }
 
 TEST_CASE("Curve document replacement clears snapshots and changes preview identity",
@@ -3405,6 +3446,149 @@ TEST_CASE("Envelope view retains depth lines without storage-only point markers"
     REQUIRE((bool) state.getProperty("blueLinked", false));
 }
 
+TEST_CASE("Hosted Envelope hover and box selection keep geometry and graph preparation unchanged",
+        "[cycle-v2][editor][envelope][selection][hover][complexity][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    for (const bool unrelatedState : { false, true }) {
+        CAPTURE(unrelatedState);
+        Component owner;
+        owner.setSize(1100, 800);
+        owner.addToDesktop(ComponentPeer::windowIsTemporary);
+        owner.setVisible(true);
+        auto graph = TestSupport::authoredEnvelopeGraph();
+        if (unrelatedState) {
+            addUnrelatedInteractionState(graph);
+        }
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher dispatcher(document);
+        RecordingPresentation presentation;
+        EnvelopeEditorResources resources;
+        auto& widget = *resources.curveEditorWidget(*document.graph().findNode("env"));
+        widget.syncFromNode(*document.graph().findNode("env"));
+        NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+        NodeEditorHost host(owner, commands, presentation, resources);
+        REQUIRE(host.bind(document.graph().findNode("env"), owner.getLocalBounds(), document.revision()));
+        auto* editor = dynamic_cast<EnvelopeEditorComponent*>(host.component());
+        REQUIRE(editor != nullptr);
+        auto* input = editor->getComponentAt(editor->panelBoundsForAutomation().getCentre().roundToInt());
+        REQUIRE(dynamic_cast<PanelInputHostComponent*>(input) != nullptr);
+        Image image(Image::RGB, editor->getWidth(), editor->getHeight(), true);
+        Graphics graphics(image);
+        editor->paint(graphics);
+        const auto initial = widget.automationState();
+        const char* preparationCounters[] {
+                "rasterizerRefreshCount", "sliceEvaluationCount", "panelPreparationCount", "panelLayoutCount"
+        };
+        for (const char* counter : preparationCounters) {
+            REQUIRE(initial.hasProperty(counter));
+        }
+        const auto surfaceRebuilds = initial.getProperty("morphSurface", {}).getProperty("rebuildCount", {});
+        const auto modelRevision = widget.modelRevision();
+        const auto contentRevision = widget.contentRevision();
+        const auto documentRevision = document.revision();
+        const auto graphRevision = document.graph().getRevision();
+        const auto model = document.graph().findNode("env")->model;
+        int publications {};
+        document.setListener([&](uint64_t, const GraphChangeSet&) { ++publications; });
+        const auto zoom = initial.getProperty("zoom", {});
+        const auto panelPoint = [&](float x, float y) {
+            return Point<float>(input->getWidth() * (x - (float) zoom.getProperty("x", {}))
+                            / (float) zoom.getProperty("w", {}),
+                    input->getHeight() * (1.f - (y - (float) zoom.getProperty("y", {}))
+                            / (float) zoom.getProperty("h", {})));
+        };
+        const auto unchangedPreparation = [&] {
+            const auto counts = InteractionComplexityDiagnostics::counts();
+            REQUIRE(counts.graphCopies == 0);
+            REQUIRE(counts.audioSamplesCopied == 0);
+            REQUIRE(counts.meshCopies == 0);
+            REQUIRE(counts.modelSerializations == 0);
+            REQUIRE(counts.validationNodeVisits == 0);
+            REQUIRE(counts.validationEdgeVisits == 0);
+            REQUIRE(document.revision() == documentRevision);
+            REQUIRE(document.graph().getRevision() == graphRevision);
+            REQUIRE(dispatcher.editingGraph().getRevision() == graphRevision);
+            REQUIRE(document.graph().findNode("env")->model == model);
+            REQUIRE(widget.modelRevision() == modelRevision);
+            REQUIRE(widget.contentRevision() == contentRevision);
+            const auto panelState = widget.automationState();
+            for (const char* counter : preparationCounters) {
+                REQUIRE(panelState.getProperty(counter, {}) == initial.getProperty(counter, {}));
+            }
+            REQUIRE(widget.automationState().getProperty("morphSurface", {})
+                    .getProperty("rebuildCount", {}) == surfaceRebuilds);
+            REQUIRE(publications == 0);
+            REQUIRE(presentation.recordedMovements == 0);
+            REQUIRE(presentation.scheduledRefreshes == 0);
+            REQUIRE(presentation.immediateRefreshes == 0);
+            REQUIRE(presentation.gestureCommits == 0);
+            REQUIRE(presentation.localCommits == 0);
+            REQUIRE_FALSE(document.canUndo());
+            REQUIRE_FALSE(document.isDirty());
+        };
+        const auto* intercepts = initial.getProperty("intercepts", {}).getArray();
+        REQUIRE(intercepts != nullptr);
+        REQUIRE(intercepts->size() >= 4);
+        std::vector<float> hoveredPhases;
+        for (const int index : { 1, intercepts->size() - 2 }) {
+            const auto& intercept = intercepts->getReference(index);
+            const auto position = panelPoint(intercept.getProperty("x", {}), intercept.getProperty("y", {}));
+            InteractionComplexityDiagnostics::reset();
+            input->mouseMove(curvePanelMouseEvent(*input, position, {}, position, false));
+            editor->paint(graphics);
+            unchangedPreparation();
+            const auto state = widget.automationState();
+            REQUIRE((bool) state.getProperty("hasCurrentCube", false));
+            hoveredPhases.push_back(state.getProperty("currentVertex", {}).getProperty("x", {}));
+        }
+        REQUIRE(std::abs(hoveredPhases.front() - hoveredPhases.back()) > 0.05f);
+        std::vector<float> knotPositions { 0.f, (float) input->getWidth() };
+        for (const auto& intercept : *intercepts) {
+            const float x = panelPoint(intercept.getProperty("x", {}), 0.f).x;
+            if (x > 0.f && x < (float) input->getWidth()) {
+                knotPositions.push_back(x);
+            }
+        }
+        std::sort(knotPositions.begin(), knotPositions.end());
+        float gapStart {};
+        float gapWidth {};
+        for (size_t index = 1; index < knotPositions.size(); ++index) {
+            const float width = knotPositions[index] - knotPositions[index - 1];
+            if (width > gapWidth) {
+                gapStart = knotPositions[index - 1];
+                gapWidth = width;
+            }
+        }
+        REQUIRE(gapWidth > 20.f);
+        const Point<float> source(gapStart + gapWidth * 0.2f, input->getHeight() * 0.1f);
+        REQUIRE(input->getLocalBounds().toFloat().contains(source));
+        const ModifierKeys boxModifiers(ModifierKeys::leftButtonModifier | ModifierKeys::shiftModifier);
+        InteractionComplexityDiagnostics::reset();
+        input->mouseDown(curvePanelMouseEvent(*input, source, boxModifiers, source, false));
+        REQUIRE((bool) widget.automationState().getProperty("boxSelecting", false));
+        unchangedPreparation();
+        Point<float> destination;
+        for (const float width : { 0.5f, 0.8f }) {
+            destination = { gapStart + gapWidth * width, input->getHeight() * 0.9f };
+            REQUIRE(input->getLocalBounds().toFloat().contains(destination));
+            InteractionComplexityDiagnostics::reset();
+            input->mouseDrag(curvePanelMouseEvent(*input, destination, boxModifiers, source, true));
+            editor->paint(graphics);
+            REQUIRE((bool) widget.automationState().getProperty("boxSelecting", false));
+            unchangedPreparation();
+        }
+        REQUIRE(widget.automationState().getProperty("movingVertexCount", {})
+                == initial.getProperty("movingVertexCount", {}));
+        InteractionComplexityDiagnostics::reset();
+        input->mouseUp(curvePanelMouseEvent(*input, destination, {}, source, true));
+        editor->paint(graphics);
+        unchangedPreparation();
+        REQUIRE_FALSE(dynamic_cast<PanelInputHostComponent*>(input)->isPointerGestureActive());
+        REQUIRE_FALSE(dispatcher.hasTransientEdit());
+    }
+}
+
 TEST_CASE("Envelope preview sync defers selection work until host initialization",
         "[cycle-v2][node-editor-host][envelope][preview][preset]") {
     ScopedJuceInitialiser_GUI juce;
@@ -5392,6 +5576,200 @@ TEST_CASE("Envelope surface coalesces gesture updates and restores authored scal
     mesh->destroy();
 }
 
+TEST_CASE("Envelope surfaces put time on x and retain the primary morph rails and colour bar",
+        "[cycle-v2][editor][envelope][morph-surface][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    const auto graph = TestSupport::authoredEnvelopeGraph();
+    EnvelopeNodeModel model;
+    REQUIRE(model.syncFromNode(*graph.findNode("env")));
+    TrimeshPanelEnvironment environment;
+    EnvelopeMorphSurfacePreview surface(environment, [] {});
+    surface.component()->setBounds(0, 0, 400, 300);
+    const char* ids[] { "yellow", "red", "blue" };
+    for (int index = 0; index < 3; ++index) {
+        CAPTURE(index);
+        surface.prepare(model.getMesh(), nullptr, model.revision(),
+                { 0.5f, 0.5f, 0.5f }, MorphDimensions::axes[(size_t) index], 3, false);
+        const auto state = surface.automationState();
+        REQUIRE(state.getProperty("timeAxis", {}).toString() == "x");
+        REQUIRE(state.getProperty("primaryAxis", {}).toString() == "y");
+        REQUIRE(state.getProperty("primaryViewAxis", {}).toString() == ids[index]);
+        REQUIRE(state.getProperty("primaryAxisColour", {}).toString()
+                == colourForMorphDimension(static_cast<MorphDimension>(index)).toString());
+        const auto viewport = rectangleProperty(state.getProperty("zoomControls", {}), "viewport");
+        const auto bar = rectangleProperty(state, "primaryAxisBarBounds");
+        REQUIRE(bar.getX() == Catch::Approx(1.f));
+        REQUIRE(bar.getY() == Catch::Approx(1.f));
+        REQUIRE(bar.getWidth() == Catch::Approx(3.f));
+        REQUIRE(bar.getHeight() == Catch::Approx(viewport.getHeight() - 2.f));
+        const auto* rails = state.getProperty("vertexRails", {}).getArray();
+        REQUIRE(rails != nullptr);
+        REQUIRE(rails->size() >= 3);
+        std::vector<float> railTimes;
+        for (const auto& rail : *rails) {
+            const float startX = rail.getProperty("startX", {});
+            const float endX = rail.getProperty("endX", {});
+            const float startY = rail.getProperty("startY", {});
+            const float endY = rail.getProperty("endY", {});
+            REQUIRE(startX == Catch::Approx(endX).margin(0.0001f));
+            REQUIRE(std::abs(endY - startY) > 0.9f);
+            railTimes.push_back(startX);
+        }
+        const auto extremes = std::minmax_element(railTimes.begin(), railTimes.end());
+        REQUIRE(*extremes.second - *extremes.first > 0.5f);
+    }
+}
+
+TEST_CASE("Envelope transposed surfaces sample and align rails across the full release extent",
+        "[cycle-v2][editor][envelope][morph-surface][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    const auto graph = TestSupport::authoredEnvelopeGraph();
+    EnvelopeNodeModel model;
+    REQUIRE(model.syncFromNode(*graph.findNode("env")));
+    for (auto* vertex : model.getMesh().getVerts()) {
+        const float time = vertex->values[Vertex::Phase];
+        vertex->values[Vertex::Amp] = time < 0.8f ? 0.15f : time < 1.05f ? 0.3f : 0.9f;
+        vertex->values[Vertex::Curve] = 0.5f;
+    }
+    REQUIRE(model.synchronizeFromMesh(nullptr));
+    TrimeshPanelEnvironment environment;
+    EnvelopeMorphSurfacePreview surface(environment, [] {});
+    surface.component()->setBounds(0, 0, 400, 300);
+    const Range<float> fullTimeRange(0.f, 1.5f);
+    surface.prepare(model.getMesh(), nullptr, model.revision(),
+            { 0.5f, 0.5f, 0.5f }, Vertex::Red, 3, false, fullTimeRange);
+    const auto state = surface.automationState();
+    REQUIRE((float) state.getProperty("timeMinimum", {}) == Catch::Approx(fullTimeRange.getStart()));
+    REQUIRE((float) state.getProperty("timeMaximum", {}) == Catch::Approx(fullTimeRange.getEnd()));
+    const auto* samples = state.getProperty("timeSamples", {}).getArray();
+    REQUIRE(samples != nullptr);
+    REQUIRE(samples->size() == (int) state.getProperty("columnCount", {}));
+    REQUIRE(samples->size() > 1);
+    const float timeStep = fullTimeRange.getLength() / (float) (samples->size() - 1);
+    REQUIRE((float) state.getProperty("sampleTimeStep", {}) == Catch::Approx(timeStep));
+    REQUIRE((float) samples->getLast().getProperty("time", {}) == Catch::Approx(fullTimeRange.getEnd()));
+
+    Rasterization::EnvelopeMorphSurfaceRasterizer reference;
+    MorphPosition centreMorph { 0.5f, 0.5f, 0.5f };
+    const int morphRows = state.getProperty("rowCount", {});
+    REQUIRE(morphRows > 1);
+    centreMorph.red.setValueDirect((float) (morphRows / 2) / (float) (morphRows - 1));
+    reference.setMorphPosition(centreMorph);
+    reference.renderWaveformOnly(&model.getMesh());
+    REQUIRE(reference.sampler().isSampleable());
+    std::vector<float> expected((size_t) samples->size());
+    reference.sampler().samplePerfectly(timeStep,
+            Buffer<float>(expected.data(), (int) expected.size()), fullTimeRange.getStart());
+    for (int index = 0; index < samples->size(); ++index) {
+        const auto& sample = samples->getReference(index);
+        REQUIRE((float) sample.getProperty("time", {})
+                == Catch::Approx(fullTimeRange.getStart() + (float) index * timeStep).margin(0.0001f));
+        REQUIRE((float) sample.getProperty("value", {})
+                == Catch::Approx(jlimit(0.f, 1.f, expected[(size_t) index] + 0.5f)).margin(0.0001f));
+    }
+    const int lateIndex = roundToInt(1.2f / timeStep);
+    REQUIRE((float) samples->getReference(lateIndex).getProperty("time", {}) > 1.f);
+    REQUIRE((float) samples->getReference(lateIndex).getProperty("value", {})
+            > (float) samples->getReference(roundToInt(0.5f / timeStep)).getProperty("value", {}) + 0.4f);
+    const auto* rails = state.getProperty("vertexRails", {}).getArray();
+    REQUIRE(rails != nullptr);
+    REQUIRE(std::any_of(rails->begin(), rails->end(), [](const var& rail) {
+        return std::abs((float) rail.getProperty("startX", {}) - 1.25f) < 0.0001f
+                && std::abs((float) rail.getProperty("endX", {}) - 1.25f) < 0.0001f;
+    }));
+}
+
+TEST_CASE("Envelope cached surfaces retain their prepared mesh until topology can be refreshed",
+        "[cycle-v2][editor][envelope][morph-surface][lifecycle][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    const auto graph = TestSupport::authoredEnvelopeGraph();
+    EnvelopeNodeModel model;
+    REQUIRE(model.syncFromNode(*graph.findNode("env")));
+    auto& sourceMesh = model.getMesh();
+    TrimeshPanelEnvironment environment;
+    EnvelopeMorphSurfacePreview surface(environment, [] {});
+    surface.component()->setBounds(0, 0, 400, 300);
+    const Range<float> timeRange(0.f, 1.75f);
+    surface.prepare(sourceMesh, nullptr, 1, { 0.5f, 0.5f, 0.5f }, Vertex::Red, 3, false, timeRange);
+    const auto before = surface.automationState();
+    sourceMesh.destroy();
+    EnvelopeMeshState::initialiseDefault(sourceMesh);
+    for (auto* cube : sourceMesh.getCubes()) {
+        for (int corner = 0; corner < VertCube::numVerts; ++corner) {
+            bool yellow {};
+            bool red {};
+            bool blue {};
+            VertCube::getPoles(corner, yellow, red, blue);
+            auto* vertex = cube->getVertex(corner);
+            vertex->values[Vertex::Time] = yellow ? 1.f : 0.f;
+            vertex->values[Vertex::Phase] *= 1.2f;
+            vertex->values[Vertex::Amp] = 0.85f;
+        }
+    }
+    const auto requireSameRows = [&](const var& actual, const char* property,
+                                     std::initializer_list<const char*> fields) {
+        const auto* previousRows = before.getProperty(property, {}).getArray();
+        const auto* actualRows = actual.getProperty(property, {}).getArray();
+        REQUIRE(previousRows != nullptr);
+        REQUIRE(actualRows != nullptr);
+        REQUIRE(actualRows->size() == previousRows->size());
+        for (int index = 0; index < previousRows->size(); ++index) {
+            for (const char* field : fields) {
+                REQUIRE(actualRows->getReference(index).getProperty(field, {})
+                        == previousRows->getReference(index).getProperty(field, {}));
+            }
+        }
+    };
+    InteractionComplexityDiagnostics::reset();
+    surface.prepare(sourceMesh, nullptr, 2, { 0.5f, 0.5f, 0.5f }, Vertex::Red, 3, true, timeRange);
+    const auto held = surface.automationState();
+    REQUIRE(held.getProperty("rebuildCount", {}) == before.getProperty("rebuildCount", {}));
+    requireSameRows(held, "timeSamples", { "time", "value" });
+    requireSameRows(held, "vertexRails", { "startX", "startY", "endX", "endY" });
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 0);
+    surface.prepare(sourceMesh, nullptr, 2, { 0.5f, 0.5f, 0.5f }, Vertex::Red, 3, false, timeRange);
+    const auto refreshed = surface.automationState();
+    REQUIRE((int64) refreshed.getProperty("rebuildCount", {})
+            == (int64) before.getProperty("rebuildCount", {}) + 1);
+    REQUIRE((float) refreshed.getProperty("centreValue", {}) == Catch::Approx(0.85f).margin(0.0001f));
+    REQUIRE(InteractionComplexityDiagnostics::counts().meshCopies == 1);
+    const auto* rails = refreshed.getProperty("vertexRails", {}).getArray();
+    REQUIRE(rails != nullptr);
+    REQUIRE(std::any_of(rails->begin(), rails->end(), [](const var& rail) {
+        return std::abs((float) rail.getProperty("startX", {}) - 1.5f) < 0.0001f;
+    }));
+}
+
+TEST_CASE("Trimesh primary morph colour bars follow the view axis along the surface bottom",
+        "[cycle-v2][editor][trimesh][morph-surface][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    auto graph = TestSupport::authoredTrimeshGraph();
+    TrimeshPanelBridge bridge;
+    bridge.syncFromNode(*graph.findNode("mesh"), 128, 64);
+    bridge.getPanel3DHostComponent()->setBounds(0, 0, 400, 300);
+    const char* ids[] { "yellow", "red", "blue" };
+    for (int index = 0; index < 3; ++index) {
+        CAPTURE(index);
+        REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                graph, "mesh", "primaryAxis", "Axis", ids[index]).succeeded());
+        bridge.syncFromNode(*graph.findNode("mesh"), 128, 64);
+        const auto& panel = bridge.getPanel3D();
+        const auto bar = panel.primaryAxisBarBounds();
+        const auto bounds = panel.getLocalBounds().toFloat();
+        REQUIRE_FALSE(panel.isPrimaryAxisVertical());
+        REQUIRE(panel.primaryAxisColour()
+                == colourForMorphDimension(static_cast<MorphDimension>(index)));
+        REQUIRE(bar.getX() == Catch::Approx(1.f));
+        REQUIRE(bar.getBottom() == Catch::Approx(bounds.getHeight() - 1.f));
+        REQUIRE(bar.getWidth() == Catch::Approx(bounds.getWidth() - 2.f));
+        REQUIRE(bar.getHeight() == Catch::Approx(3.f));
+    }
+}
+
 TEST_CASE("Morph keyboard hints disappear only when their slider disappears",
         "[cycle-v2][mesh-dimensions][editor][regression]") {
     ScopedJuceInitialiser_GUI juce;
@@ -5454,20 +5832,19 @@ TEST_CASE("Morph keyboard hints disappear only when their slider disappears",
 }
 
 TEST_CASE("Reduced Envelope diagram gestures follow visible axes and preserve inactive positions",
-        "[cycle-v2][editor][envelope][axis-lock]") {
+        "[cycle-v2][editor][envelope][axis-lock][morph-cursor][regression]") {
     ScopedJuceInitialiser_GUI juce;
     CurveTableScope curveTables;
     for (const int count : { 1, 2 }) {
         Component owner;
         owner.setBounds(0, 0, 1100, 800);
-        NodeGraph graph;
-        graph.addNode(GraphNodeFactory().createNode(NodeKind::Envelope, "env", {}));
-        REQUIRE(GraphNodeStateEditor().setNodeParameter(
-                graph, "env", "dimensionCount", "Curve morphing", String(count)).succeeded());
+        NodeGraph graph = TestSupport::authoredEnvelopeGraph(count);
         GraphDocument document(std::move(graph));
         GraphCommandDispatcher dispatcher(document);
         RecordingPresentation presentation;
         EnvelopeEditorResources resources;
+        resources.curveEditorWidget(*document.graph().findNode("env"))
+                ->syncFromNode(*document.graph().findNode("env"));
         NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
         NodeEditorHost host(owner, commands, presentation, resources);
         REQUIRE(host.bind(document.graph().findNode("env"), owner.getLocalBounds(), document.revision()));
@@ -5479,20 +5856,53 @@ TEST_CASE("Reduced Envelope diagram gestures follow visible axes and preserve in
                     parameters.floatValue("red", 0.5f), parameters.floatValue("blue", 0.5f) };
         };
         const auto before = values();
+        const auto documentRevision = document.revision();
+        const auto graphRevision = document.graph().getRevision();
+        const auto model = document.graph().findNode("env")->model;
         const auto input = rectangleProperty(editor->automationState(), "morphInputBounds");
         REQUIRE_FALSE(input.isEmpty());
         const auto source = input.getCentre();
+        const MorphSpaceLayout space(
+                rectangleProperty(editor->automationState(), "morphPlaneBounds"), MorphDimensions(count));
+        Image image(Image::RGB, editor->getWidth(), editor->getHeight(), true);
+        Graphics graphics(image);
         editor->mouseDown(curvePanelMouseEvent(*editor, source,
                 ModifierKeys::leftButtonModifier, source, false));
-        editor->mouseDrag(curvePanelMouseEvent(*editor, input.getBottomLeft(),
-                ModifierKeys::leftButtonModifier, source, true));
-        const auto held = editor->automationState();
-        REQUIRE((double) held.getProperty(count == 1 ? "yellowMorph" : "redMorph", {}) == Catch::Approx(0.f));
-        if (count == 2) {
-            REQUIRE((double) held.getProperty("blueMorph", {}) == Catch::Approx(0.f));
+        for (const float value : { 0.f, 1.f }) {
+            const auto destination = value == 0.f ? input.getBottomLeft() : input.getTopRight();
+            InteractionComplexityDiagnostics::reset();
+            editor->mouseDrag(curvePanelMouseEvent(*editor, destination,
+                    ModifierKeys::leftButtonModifier, source, true));
+            editor->paint(graphics);
+            const auto held = editor->automationState();
+            const float yellow = held.getProperty("yellowMorph", {});
+            const float red = held.getProperty("redMorph", {});
+            const float blue = held.getProperty("blueMorph", {});
+            REQUIRE((count == 1 ? yellow : red) == Catch::Approx(value));
+            REQUIRE((float) held.getProperty("displayYellowMorph", {}) == Catch::Approx(yellow));
+            REQUIRE((float) held.getProperty("displayRedMorph", {}) == Catch::Approx(red));
+            REQUIRE((float) held.getProperty("displayBlueMorph", {}) == Catch::Approx(blue));
+            if (count == 2) {
+                REQUIRE(blue == Catch::Approx(value));
+                REQUIRE(yellow == Catch::Approx(before[0]));
+            } else {
+                REQUIRE(red == Catch::Approx(before[1]));
+                REQUIRE(blue == Catch::Approx(before[2]));
+            }
+            const auto expectedCursor = space.project(red, blue, yellow);
+            const auto cursor = held.getProperty("morphCursor", {});
+            REQUIRE((float) cursor.getProperty("x", {}) == Catch::Approx(expectedCursor.x).margin(0.01f));
+            REQUIRE((float) cursor.getProperty("y", {}) == Catch::Approx(expectedCursor.y).margin(0.01f));
+            REQUIRE(document.revision() == documentRevision);
+            REQUIRE(document.graph().getRevision() == graphRevision);
+            REQUIRE(dispatcher.editingGraph().getRevision() == graphRevision);
+            REQUIRE(document.graph().findNode("env")->model == model);
+            REQUIRE_FALSE(document.canUndo());
+            const auto operations = InteractionComplexityDiagnostics::counts();
+            REQUIRE(operations.graphCopies == 0);
+            REQUIRE(operations.meshCopies == 0);
+            REQUIRE(operations.modelSerializations == 0);
         }
-        editor->mouseDrag(curvePanelMouseEvent(*editor, input.getTopRight(),
-                ModifierKeys::leftButtonModifier, source, true));
         editor->mouseUp(curvePanelMouseEvent(*editor, input.getTopRight(), {}, source, true));
         const auto after = values();
         if (count == 1) {
@@ -5506,6 +5916,124 @@ TEST_CASE("Reduced Envelope diagram gestures follow visible axes and preserve in
         }
         REQUIRE(document.undo());
         REQUIRE(values() == before);
+    }
+}
+
+TEST_CASE("Reduced Trimesh diagrams route pointer gestures to live local morph cursors",
+        "[cycle-v2][editor][trimesh][morph-cursor][regression][complexity]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    for (const int count : { 1, 2 }) {
+        CAPTURE(count);
+        Component owner;
+        owner.setSize(1100, 800);
+        owner.addToDesktop(ComponentPeer::windowIsTemporary);
+        owner.setVisible(true);
+        auto graph = TestSupport::authoredTrimeshGraph(count);
+        const char* ids[] { "yellow", "red", "blue" };
+        const char* values[] { "0.4", "0.3", "0.7" };
+        for (int axis = 0; axis < 3; ++axis) {
+            REQUIRE(GraphNodeStateEditor().setNodeParameter(
+                    graph, "mesh", ids[axis], ids[axis], values[axis]).succeeded());
+        }
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher dispatcher(document);
+        RecordingPresentation presentation;
+        NullResources resources;
+        TrimeshWidget widget;
+        resources.activeTrimesh = &widget;
+        NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+        NodeEditorHost host(owner, commands, presentation, resources);
+        REQUIRE(host.bind(document.graph().findNode("mesh"), owner.getLocalBounds(), document.revision()));
+        auto* editor = dynamic_cast<TrimeshExpandedEditorComponent*>(host.component());
+        REQUIRE(editor != nullptr);
+        const auto content = editor->getLocalBounds().toFloat().withTrimmedTop(34.f).reduced(10.f, 8.f);
+        const auto regions = TrimeshWidget::expandedControlHitRegions(content, true, "gain", count);
+        const auto diagram = std::find_if(regions.begin(), regions.end(), [](const auto& region) {
+            return region.kind == TrimeshExpandedHitRegionKind::MorphSpace;
+        });
+        REQUIRE(diagram != regions.end());
+        const MorphSpaceLayout space(widget.morphDiagramBounds(content), MorphDimensions::trimesh(count));
+        const auto source = space.project(0.5f, 0.7f, 0.5f);
+        REQUIRE(diagram->bounds.contains(source));
+        auto* input = editor->getComponentAt(source.roundToInt());
+        REQUIRE(input != nullptr);
+        REQUIRE(input->getComponentID() == "trimesh.morphSpace");
+        const auto inputSource = input->getLocalPoint(editor, source);
+        const auto before = std::array<float, 3> { 0.4f, 0.3f, 0.7f };
+        const auto documentRevision = document.revision();
+        const auto graphRevision = document.graph().getRevision();
+        const auto model = document.graph().findNode("mesh")->model;
+        Image image(Image::RGB, editor->getWidth(), editor->getHeight(), true);
+        Graphics graphics(image);
+        editor->paint(graphics);
+        const auto surfaceRebuilds = widget.panelRenderStatsForAutomation().surfaceRebuildCount;
+        int publications {};
+        document.setListener([&](uint64_t, const GraphChangeSet&) { ++publications; });
+        input->mouseDown(curvePanelMouseEvent(
+                *input, inputSource, ModifierKeys::leftButtonModifier, inputSource, false));
+        Point<float> destination;
+        for (const float yellow : { 0.2f, 0.8f }) {
+            const float red = count == 2 ? 1.f - yellow : before[1];
+            destination = space.project(red, before[2], yellow);
+            InteractionComplexityDiagnostics::reset();
+            input->mouseDrag(curvePanelMouseEvent(
+                    *input, input->getLocalPoint(editor, destination),
+                    ModifierKeys::leftButtonModifier, inputSource, true));
+            editor->paint(graphics);
+            const auto morph = widget.editorMorphPosition();
+            const auto local = std::array<float, 3> { (float) morph.time, (float) morph.red, (float) morph.blue };
+            REQUIRE(local[0] == Catch::Approx(yellow).margin(0.001f));
+            REQUIRE(local[1] == Catch::Approx(red).margin(0.001f));
+            REQUIRE(local[2] == Catch::Approx(before[2]).margin(0.001f));
+            DynamicObject state;
+            host.appendAutomationState(state);
+            const auto cursor = state.getProperty("morphCursor");
+            REQUIRE((float) cursor.getProperty("x", {}) == Catch::Approx(destination.x).margin(0.01f));
+            REQUIRE((float) cursor.getProperty("y", {}) == Catch::Approx(destination.y).margin(0.01f));
+            REQUIRE(document.revision() == documentRevision);
+            REQUIRE(document.graph().getRevision() == graphRevision);
+            REQUIRE(dispatcher.editingGraph().getRevision() == graphRevision);
+            REQUIRE(document.graph().findNode("mesh")->model == model);
+            REQUIRE(widget.panelRenderStatsForAutomation().surfaceRebuildCount == surfaceRebuilds);
+            REQUIRE(publications == 0);
+            REQUIRE_FALSE(document.canUndo());
+            for (int axis = 0; axis < 3; ++axis) {
+                REQUIRE(NodeParameterMap(*dispatcher.editingGraph().findNode("mesh"))
+                        .floatValue(ids[axis]) == Catch::Approx(before[(size_t) axis]));
+            }
+            const auto operations = InteractionComplexityDiagnostics::counts();
+            REQUIRE(operations.graphCopies == 0);
+            REQUIRE(operations.meshCopies == 0);
+            REQUIRE(operations.modelSerializations == 0);
+        }
+        input->mouseUp(curvePanelMouseEvent(
+                *input, input->getLocalPoint(editor, destination), {}, inputSource, true));
+        const auto durable = [&] {
+            const NodeParameterMap parameters(*document.graph().findNode("mesh"));
+            return std::array<float, 3> { parameters.floatValue("yellow"),
+                    parameters.floatValue("red"), parameters.floatValue("blue") };
+        };
+        REQUIRE(document.graph().findNode("mesh")->model == model);
+        REQUIRE_FALSE(dispatcher.hasTransientEdit());
+        if (count == 1) {
+            REQUIRE(durable() == before);
+            REQUIRE((float) widget.editorMorphPosition().time == Catch::Approx(0.8f));
+            REQUIRE(document.revision() == documentRevision);
+            REQUIRE(document.graph().getRevision() == graphRevision);
+            REQUIRE(publications == 0);
+            REQUIRE_FALSE(document.canUndo());
+            REQUIRE_FALSE(document.isDirty());
+        } else {
+            REQUIRE(durable()[0] == Catch::Approx(0.8f));
+            REQUIRE(durable()[1] == Catch::Approx(0.2f));
+            REQUIRE(durable()[2] == Catch::Approx(before[2]));
+            REQUIRE(document.revision() == documentRevision + 1);
+            REQUIRE(publications == 1);
+            REQUIRE(document.undo());
+            REQUIRE(durable() == before);
+            REQUIRE_FALSE(document.canUndo());
+        }
     }
 }
 

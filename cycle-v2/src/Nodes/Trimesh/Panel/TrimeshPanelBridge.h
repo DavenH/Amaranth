@@ -36,6 +36,7 @@ public:
     bool applyPreparedGuides(PreparedTrimeshGuides guides);
 
     TrimeshPanel3D& getPanel3D() { return panel3D; }
+    const TrimeshPanel3D& getPanel3D() const { return panel3D; }
     TrimeshPanel2D& getPanel2D() { return panel2D; }
     const TrimeshPanel2D& getPanel2D() const { return panel2D; }
     TrimeshPanelDataSource& getDataSource() { return dataSource; }

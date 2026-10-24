@@ -411,14 +411,18 @@ Rectangle<float> EnvelopeEditorComponent::editorPanelBounds() const {
     return MeshEditorLayout(body, MeshDimensionality::dimensions(node).axisCount()).curve();
 }
 
+MorphPosition EnvelopeEditorComponent::displayedMorphPosition() const {
+    const MorphPosition local { (float) impl->yellowMorph.slider.getValue(),
+            (float) impl->redMorph.slider.getValue(), (float) impl->blueMorph.slider.getValue() };
+    return impl->draggingMorph ? local : widget.effectiveMorphPosition().value_or(local);
+}
+
 void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
     const auto controls = editorControlBounds();
     const auto dimensions = MeshDimensionality::dimensions(node);
     const int selectedAxis = MorphDimensions::axes[(size_t) impl->viewAxis];
     const int surfaceAxis = dimensions.active(selectedAxis) ? selectedAxis : dimensions.primaryAxis();
-    const MorphPosition effective = widget.effectiveMorphPosition().value_or(
-            MorphPosition { (float) impl->yellowMorph.slider.getValue(),
-                    (float) impl->redMorph.slider.getValue(), (float) impl->blueMorph.slider.getValue() });
+    const MorphPosition effective = displayedMorphPosition();
     widget.prepareEnvelopeMorphSurface(surfaceAxis, effective);
     impl->presentation.draw(
             graphics,
@@ -656,6 +660,28 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty("redMorph", impl->redMorph.slider.getValue());
     state.setProperty("enabled", impl->enabled.getToggleState());
     state.setProperty("blueMorph", impl->blueMorph.slider.getValue());
+    const MorphPosition displayed = displayedMorphPosition();
+    state.setProperty("displayYellowMorph", (float) displayed.time);
+    state.setProperty("displayRedMorph", (float) displayed.red);
+    state.setProperty("displayBlueMorph", (float) displayed.blue);
+    const MorphSpaceLayout space(impl->presentation.planeBounds(controls), MeshDimensionality::dimensions(node));
+    const auto cursor = space.project(displayed.red, displayed.blue, displayed.time);
+    auto* cursorState = new DynamicObject();
+    cursorState->setProperty("x", cursor.x);
+    cursorState->setProperty("y", cursor.y);
+    state.setProperty("morphCursor", cursorState);
+    Array<var> primaryAxes;
+    for (int axis = 0; axis < 3; ++axis) {
+        const auto bounds = impl->presentation.axisBounds(controls, axis);
+        if (!bounds.isEmpty()) {
+            auto* button = new DynamicObject();
+            button->setProperty("id", axis == 0 ? "yellow" : axis == 1 ? "red" : "blue");
+            button->setProperty("bounds", editorBoundsToVar(bounds));
+            button->setProperty("selected", impl->viewAxis == axis);
+            primaryAxes.add(button);
+        }
+    }
+    state.setProperty("primaryAxisButtons", primaryAxes);
     if (const auto effective = widget.effectiveMorphPosition()) {
         state.setProperty("effectiveYellowMorph", (float) effective->time);
         state.setProperty("effectiveRedMorph", (float) effective->red);
@@ -1039,11 +1065,13 @@ bool EnvelopeEditorComponent::dragMorph(Point<float> position) {
         }
         return true;
     }
-    const auto plane = impl->presentation.morphInputBounds(editorControlBounds());
+    const MorphSpaceLayout space(impl->presentation.planeBounds(editorControlBounds()),
+            MeshDimensionality::dimensions(node));
+    const auto coordinates = space.reducedCoordinates(position);
     const bool oneDimension = impl->presentation.getDimensionCount() == 1;
     auto& horizontal = impl->morph(oneDimension ? 0 : 1).slider;
-    const float u = jlimit(0.f, 1.f, (position.x - plane.getX()) / plane.getWidth());
-    const float v = jlimit(0.f, 1.f, (plane.getBottom() - position.y) / plane.getHeight());
+    const float u = coordinates.x;
+    const float v = coordinates.y;
     const bool horizontalChanged = static_cast<float>(horizontal.getValue()) != u;
     const bool verticalChanged = !oneDimension && static_cast<float>(impl->blueMorph.slider.getValue()) != v;
     if (!horizontalChanged && !verticalChanged) {

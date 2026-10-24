@@ -132,6 +132,7 @@ public:
     std::vector<TrimeshVertexMarker> vertexMarkers();
     const TrimeshRenderData& renderDataForAutomation() const;
     TrimeshPanelRenderStats panelRenderStatsForAutomation() const;
+    void appendSurfaceAutomation(juce::DynamicObject& state) const;
     const juce::String& guideContextKey() const { return guideConfigurationKey; }
     bool showsOutputScale() const { return true; }
     juce::String outputScaleParameterId() const {

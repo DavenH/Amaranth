@@ -1185,6 +1185,142 @@ class NativeEditSmoke:
                 for axis in names:
                     assert abs(float(self.parameters(undone)[axis]) - initial[axis]) < 0.0001
 
+    def envelope_feedback_sequence(self):
+        self.command({"command": "openGraph",
+                "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph")})
+        self.command({"command": "resizeWindow", "width": 1400, "height": 900})
+        initial = self.open_editor("env")
+        panel = self.target("expanded:env.panel2D")
+        panel_state = initial["effect2D"]["panelState"]
+        zoom = panel_state["zoom"]
+        before = self.graph_state()
+
+        def vertex_point(intercept):
+            return self.point(panel,
+                    (intercept["x"] - zoom["x"]) / zoom["w"],
+                    1 - (intercept["y"] - zoom["y"]) / zoom["h"])
+
+        def assert_presentation_only(context):
+            state = self.inspect("env")
+            graph = self.graph_state()
+            for field in ("documentRevision", "documentGraphRevision", "graphRevision"):
+                assert graph[field] == before[field], (context, field, before[field], graph[field])
+            assert self.model_revision(state) == self.model_revision(initial), context
+            assert state["model"]["state"] == initial["model"]["state"], context
+            assert max((int(event["editId"]) for event in graph["causalUpdates"]), default=0) == max(
+                    (int(event["editId"]) for event in before["causalUpdates"]), default=0), context
+            current_panel = state["effect2D"]["panelState"]
+            assert current_panel["rasterizerRefreshCount"] == panel_state["rasterizerRefreshCount"], context
+            assert current_panel["morphSurface"]["rebuildCount"] == panel_state["morphSurface"]["rebuildCount"], context
+            assert current_panel["morphSurface"]["snapshotReadbackCount"] == panel_state["morphSurface"]["snapshotReadbackCount"], context
+            return current_panel
+
+        # Use actual exported intercepts, including the sloping sustain segment,
+        # so highlight feedback is checked independently of authored coordinates.
+        for intercept in panel_state["intercepts"][2:4]:
+            self.move_pointer(vertex_point(intercept))
+            hovered = assert_presentation_only("Envelope vertex hover")
+            assert hovered["hasCurrentCube"] and "currentVertex" in hovered, hovered
+            assert abs(hovered["currentVertex"]["x"] - intercept["x"]) < .01, (hovered, intercept)
+        self.capture("envelope-hover", self.target("expanded:env"))
+
+        source = self.point(panel, .01, .01)
+        first = self.point(panel, .55, .65)
+        second = self.point(panel, .85, .95)
+        self.focus_app()
+        # Keep modifier and pointer events in one native input process; cliclick
+        # carries its modifier flags within a command sequence.
+        selection_input = subprocess.Popen([CLICK, "-w", "20", "kd:shift",
+                f"m:{source[0]},{source[1]}", f"dd:{source[0]},{source[1]}",
+                f"dm:{first[0]},{first[1]}", "w:1800",
+                f"dm:{second[0]},{second[1]}", "w:1800",
+                f"du:{second[0]},{second[1]}", "ku:shift"])
+        try:
+            self.inspect_until("env", lambda state:
+                    state["effect2D"]["panelState"]["selectionBox"]["width"] > panel["width"] * .5,
+                    timeout_seconds=2)
+            first_selection = assert_presentation_only("Envelope held selection")
+            assert first_selection["boxSelecting"]
+            self.inspect_until("env", lambda state:
+                    state["effect2D"]["panelState"]["selectionBox"]["width"] > panel["width"] * .75,
+                    timeout_seconds=3)
+            second_selection = assert_presentation_only("Envelope second selection update")
+            assert second_selection["boxSelecting"]
+            assert second_selection["selectionBox"]["width"] > first_selection["selectionBox"]["width"]
+            self.capture("envelope-box-selection", self.target("expanded:env"))
+            assert selection_input.wait(timeout=5) == 0
+        finally:
+            if selection_input.poll() is None:
+                selection_input.terminate()
+                selection_input.wait(timeout=3)
+            subprocess.run([CLICK, f"du:{second[0]},{second[1]}", "ku:shift"], check=True)
+        time.sleep(SETTLE_SECONDS)
+        selected = assert_presentation_only("Envelope selection release")
+        assert selected["movingVertexCount"] > 0, selected
+
+        for node_id in ("env", "waveMesh"):
+            self.open_editor(node_id)
+            self.command({"command": "pointer", "event": "click",
+                    "targetId": f"expanded:{node_id}.meshDimensions.two",
+                    "waitForIdle": True, "idleDelayMs": 150})
+            initial_controls = self.inspect(node_id)
+            initial_graph = self.graph_state()
+            kind = "envelopeAction" if node_id == "env" else "trimeshMorphSpace"
+            target = next(item for item in self.command({"command": "inspectPointerTargets"})["targets"]
+                    if item["id"].startswith(f"expanded:{node_id}.{kind}.")
+                    and (node_id != "env" or item["id"].endswith(".morphSpace")))
+            plane = target["screenBounds"]
+            source = self.point(plane, .2, .3)
+            self.begin_drag(source)
+            previous_cursor = None
+            for x, y in ((.4, .45), (.7, .8)):
+                destination = self.point(plane, x, y)
+                self.move_held_drag(source, destination)
+                controls = self.inspect(node_id)
+                feedback = controls["effect2D"] if node_id == "env" else controls
+                cursor = feedback["morphCursor"]
+                if previous_cursor is not None:
+                    assert abs(cursor["x"] - previous_cursor["x"]) > 5, (node_id, cursor, previous_cursor)
+                    assert abs(cursor["y"] - previous_cursor["y"]) > 5, (node_id, cursor, previous_cursor)
+                previous_cursor = cursor
+                held_graph = self.graph_state()
+                for field in ("documentRevision", "documentGraphRevision", "graphRevision"):
+                    assert held_graph[field] == initial_graph[field], (node_id, field)
+                assert controls["model"] == initial_controls["model"], node_id
+                assert held_graph["performance"]["audioPlanCopyCount"] == initial_graph["performance"]["audioPlanCopyCount"], node_id
+                # Envelope records its local curve preview in the causal trace;
+                # those tokens do not identify graph/model publications.
+                if node_id == "waveMesh":
+                    assert max((int(event["editId"]) for event in held_graph["causalUpdates"]), default=0) == max(
+                            (int(event["editId"]) for event in initial_graph["causalUpdates"]), default=0), node_id
+            self.capture(f"plane-{node_id}-held", self.target(f"expanded:{node_id}"))
+            self.release_drag(destination)
+            committed = self.graph_state()
+            assert committed["documentRevision"] == initial_graph["documentRevision"] + 1, node_id
+            self.key_chord("z")
+            restored = self.inspect(node_id)
+            assert self.parameters(restored) == self.parameters(initial_controls), node_id
+
+        for width, height, size in ((1400, 900, "normal"), (1100, 800, "compact")):
+            self.command({"command": "resizeWindow", "width": width, "height": height})
+            for node_id in ("env", "waveMesh"):
+                self.open_editor(node_id)
+                self.command({"command": "pointer", "event": "click",
+                        "targetId": f"expanded:{node_id}.meshDimensions.three",
+                        "waitForIdle": True, "idleDelayMs": 150})
+                for axis in ("yellow", "red", "blue"):
+                    family = "envelopePrimaryAxis" if node_id == "env" else "trimeshPrimaryAxis"
+                    self.primary_click(self.point(self.target(f"expanded:{node_id}.{family}.{axis}"), .5, .5))
+                    inspected = self.inspect(node_id)
+                    surface = inspected["effect2D"]["panelState"]["morphSurface"] if node_id == "env" else inspected["trimesh"]
+                    assert surface["primaryViewAxis"] == axis, (node_id, axis, surface)
+                    assert surface["primaryAxis"] == ("y" if node_id == "env" else "x"), surface
+                    bar = surface["primaryAxisBarBounds"]
+                    assert (bar["height"] > bar["width"]) == (node_id == "env"), bar
+                    if node_id == "env":
+                        assert len(surface["vertexRails"]) >= 3 and surface["maximum"] > .8, surface
+                    self.capture(f"surface-{node_id}-{size}-{axis}", self.target(f"expanded:{node_id}"))
+
     def envelope_scales_sequence(self):
         self.command({"command": "openGraph",
                 "path": os.path.join(REPO, "cycle-v2", "resources", "default.cyclegraph")})
@@ -2548,6 +2684,7 @@ class NativeEditSmoke:
             "envelope": self.envelope_sequence,
             "envelope-markers": self.envelope_markers_sequence,
             "cube-faces": self.cube_faces_sequence,
+            "envelope-feedback": self.envelope_feedback_sequence,
             "envelope-scales": self.envelope_scales_sequence,
             "envelope-release": self.envelope_release_sequence,
             "guide-previews": self.guide_preview_sequence,
@@ -2584,6 +2721,7 @@ if __name__ == "__main__":
         "envelope",
         "envelope-markers",
         "cube-faces", "envelope-scales",
+        "envelope-feedback",
         "envelope-release",
         "guide-previews",
         "intercept-visuals",

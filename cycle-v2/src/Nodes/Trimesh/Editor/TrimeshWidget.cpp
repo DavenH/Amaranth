@@ -3,6 +3,7 @@
 #include "Graph/NodeParameterMap.h"
 #include "Graph/MeshDimensionality.h"
 #include "UI/Editors/MorphControlLayout.h"
+#include "UI/Editors/MorphSpaceLayout.h"
 #include "UI/Editors/MeshEditorLayout.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "Nodes/Trimesh/Editor/TrimeshGuideAttachmentTarget.h"
@@ -431,6 +432,10 @@ const TrimeshRenderData& TrimeshWidget::renderDataForAutomation() const {
     return bridge.getRenderData();
 }
 
+void TrimeshWidget::appendSurfaceAutomation(DynamicObject& state) const {
+    bridge.getPanel3D().appendPrimaryAxisAutomation(state);
+}
+
 TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {
     const auto snapshot = bridge.getInteractor2D().rasterizerSnapshot();
     const auto samples = snapshot.waveY();
@@ -820,8 +825,10 @@ std::vector<TrimeshExpandedHitRegion> TrimeshWidget::expandedControlHitRegions(
         });
     }
 
-    if (dimensionCount == 3) {
-        regions.push_back({ TrimeshExpandedHitRegionKind::MorphSpace, reduced.diagram(), {}, {} });
+    if (dimensionCount > 0) {
+        const MorphSpaceLayout space(reduced.diagram(), dimensions);
+        regions.push_back({ TrimeshExpandedHitRegionKind::MorphSpace,
+                dimensionCount == 3 ? reduced.diagram() : space.inputBounds(), {}, {} });
     }
 
     const Rectangle<float> parameterArea = reduced.vertices();

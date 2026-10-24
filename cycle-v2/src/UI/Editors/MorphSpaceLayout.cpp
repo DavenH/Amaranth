@@ -101,6 +101,19 @@ Point<float> MorphSpaceLayout::project(float red, float blue, float yellow) cons
             surface.getBottom() - surface.getHeight() * values[planeAxes[1]] };
 }
 
+Rectangle<float> MorphSpaceLayout::inputBounds() const {
+    return dimensions.axisCount() == 1
+            ? surface.withSizeKeepingCentre(surface.getWidth(), 24.f) : surface;
+}
+
+Point<float> MorphSpaceLayout::reducedCoordinates(Point<float> position) const {
+    if (surface.isEmpty()) {
+        return {};
+    }
+    return { jlimit(0.f, 1.f, (position.x - surface.getX()) / surface.getWidth()),
+            jlimit(0.f, 1.f, (surface.getBottom() - position.y) / surface.getHeight()) };
+}
+
 std::array<int, 2> MorphSpaceLayout::cubeFaceAxes(int heldAxis) {
     return heldAxis == 0 ? std::array<int, 2> { 1, 2 }
             : heldAxis == 1 ? std::array<int, 2> { 0, 2 } : std::array<int, 2> { 0, 1 };

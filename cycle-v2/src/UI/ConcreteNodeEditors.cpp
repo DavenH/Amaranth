@@ -13,6 +13,7 @@
 #include "UI/ModulationNodeEditors.h"
 #include "UI/NodeEditorHost.h"
 #include "UI/Editors/MeshEditorLayout.h"
+#include "UI/Editors/MorphSpaceLayout.h"
 
 namespace CycleV2 {
 
@@ -202,6 +203,12 @@ public:
         state.setProperty("phaseMode", editor->phaseModeValue());
         state.setProperty("phaseModeVisible", editor->phaseModeVisible());
         state.setProperty("focusedMorphAxis", editor->focusedMorphAxis());
+        const MorphSpaceLayout space(editor->morphDiagramBounds(), dimensions);
+        const auto cursor = space.project(morph.red, morph.blue, morph.time);
+        auto* cursorState = new DynamicObject();
+        cursorState->setProperty("x", cursor.x);
+        cursorState->setProperty("y", cursor.y);
+        state.setProperty("morphCursor", cursorState);
         for (const auto& axis : { String("yellow"), String("red"), String("blue") }) {
             if (!MeshDimensionality::inputActive(boundNode, axis)) {
                 continue;
@@ -236,6 +243,7 @@ public:
         state.setProperty("linkToggles", linkToggles);
 
         auto* meshState = new DynamicObject();
+        boundWidget->appendSurfaceAutomation(*meshState);
         const int vertexCount = static_cast<int>(boundWidget->vertexMarkers().size());
         const int selectedVertexIndex = boundWidget->selectedVertexIndexForPanel();
         meshState->setProperty("vertexCount", vertexCount);

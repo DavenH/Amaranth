@@ -1,0 +1,22 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/resources/default.cyclegraph" },
+    { "command": "resizeWindow", "width": 1400, "height": 900 },
+    { "command": "openNodeEditor", "nodeId": "env", "waitForIdle": true, "idleDelayMs": 200 },
+    { "command": "resetCanvasPerformance" },
+    { "command": "snapshotState" },
+    { "command": "pointer", "event": "move", "targetId": "expanded:env.panel2D", "targetX": 0.519, "targetY": 0.2994, "waitForIdle": true, "idleDelayMs": 100 },
+    { "command": "snapshotState" },
+    { "command": "pointer", "event": "move", "targetId": "expanded:env.panel2D", "targetX": 0.7, "targetY": 0.8, "waitForIdle": true, "idleDelayMs": 100 },
+    { "command": "snapshotState" },
+    { "command": "pointer", "event": "down", "targetId": "expanded:env.panel2D", "targetX": 0.01, "targetY": 0.01, "shift": true },
+    { "command": "pointer", "event": "drag", "targetId": "expanded:env.panel2D", "downTargetId": "expanded:env.panel2D", "targetX": 0.55, "targetY": 0.65, "downTargetX": 0.01, "downTargetY": 0.01, "shift": true, "waitForIdle": true, "idleDelayMs": 100 },
+    { "command": "snapshotState" },
+    { "command": "pointer", "event": "drag", "targetId": "expanded:env.panel2D", "downTargetId": "expanded:env.panel2D", "targetX": 0.8, "targetY": 0.9, "downTargetX": 0.01, "downTargetY": 0.01, "shift": true, "waitForIdle": true, "idleDelayMs": 100 },
+    { "command": "snapshotState" },
+    { "command": "pointer", "event": "up", "targetId": "expanded:env.panel2D", "downTargetId": "expanded:env.panel2D", "targetX": 0.8, "targetY": 0.9, "downTargetX": 0.01, "downTargetY": 0.01, "shift": true, "waitForIdle": true, "idleDelayMs": 100 },
+    { "command": "snapshotState" },
+    { "command": "inspectCanvasPerformance", "maxPreviewRequests": 0 }
+  ],
+  "quit": false
+}

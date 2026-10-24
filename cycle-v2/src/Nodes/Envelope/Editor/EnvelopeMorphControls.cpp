@@ -31,8 +31,7 @@ Rectangle<float> EnvelopeMorphControls::morphInputBounds(Rectangle<float> contro
         return diagram;
     }
     const MorphSpaceLayout space(diagram, MorphDimensions(dimensionCount));
-    return dimensionCount == 1 ? space.surface.withSizeKeepingCentre(space.surface.getWidth(), 24.f)
-            : space.surface;
+    return space.inputBounds();
 }
 
 Rectangle<float> EnvelopeMorphControls::morphGroupLabelBounds(Rectangle<float> controls) const {

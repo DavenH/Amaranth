@@ -24,6 +24,7 @@ private:
     Rectangle<float> morphSurfaceBounds() const;
     Rectangle<float> editorPanelBounds() const override;
     Rectangle<float> editorControlBounds() const override;
+    MorphPosition displayedMorphPosition() const;
     void paintEditor(Graphics&) override;
     void layoutEditor() override;
     void syncEditorFromNode() override;

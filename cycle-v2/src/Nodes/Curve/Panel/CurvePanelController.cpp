@@ -1,7 +1,10 @@
 #include "Nodes/Curve/Panel/CurvePanelController.h"
 #include "Nodes/Envelope/Rendering/EnvelopeMorphSurfacePreview.h"
 
+#include <atomic>
 #include <optional>
+#include <UI/Panels/Panel.h>
+#include <UI/Panels/ZoomPanel.h>
 
 #include "Graph/NodeParameterMap.h"
 #include "Nodes/Curve/Panel/ConcreteCurvePanels.h"
@@ -62,8 +65,10 @@ public:
     void render(
             Rectangle<float> bounds,
             Rectangle<float> clipBounds,
-            float scaleFactor) override {
-        host->render(usesZoomHost() ? host->contentBounds(bounds) : bounds, clipBounds, scaleFactor);
+            float scaleFactor,
+            uint64_t presentationRevision) override {
+        host->render(usesZoomHost() ? host->contentBounds(bounds) : bounds, clipBounds, scaleFactor,
+                publicationRevision, transientContentRevision, presentationRevision);
     }
 
     bool renderPreview(
@@ -113,6 +118,9 @@ public:
         var state = panel != nullptr ? panel->automationState() : var(new DynamicObject());
         if (auto* object = state.getDynamicObject()) {
             object->setProperty("modelRevision", (int64) publicationRevision);
+            object->setProperty("panelPreparationCount", (int64) panelPreparationCount.load());
+            object->setProperty("panelLayoutCount", (int64) host->layoutCount());
+            host->appendRenderDiagnostics(*object);
             object->setProperty("zoomControls", host->zoomControlsState());
             object->setProperty("domainModel", domainModelName());
             object->setProperty("curveResizeCursor", host->usesCursor(MouseCursor::UpDownResizeCursor));
@@ -243,6 +251,7 @@ private:
     }
 
     void prepareCurvePanel() override {
+        ++panelPreparationCount;
         applyPanelSettings();
         panel->refreshRasterizer();
     }
@@ -289,6 +298,7 @@ private:
     }
 
     CurvePanelControllerDelegate* controllerDelegate {};
+    std::atomic<uint64_t> panelPreparationCount {};
     bool editChanged {};
 };
 
@@ -665,8 +675,10 @@ public:
     Component* morphSurfaceComponent() override { return morphSurface.component(); }
 
     void prepareMorphSurface(int axis, const MorphPosition& morph) override {
+        const auto& viewport = panel->hostedPanel().getZoomPanel()->rect;
         morphSurface.prepare(adapter.mesh(), guideCurveProvider.get(), contentRevision(),
-                morph, axis, adapter.dimensionCount(), surfaceGestureActive);
+                morph, axis, adapter.dimensionCount(), surfaceGestureActive,
+                { viewport.xMinimum, viewport.xMaximum });
     }
 
     void renderMorphSurface(Rectangle<float> bounds, float scaleFactor) override {
@@ -693,9 +705,13 @@ public:
     }
 
     void setDimensions(int count, bool yellowLinked) override {
+        const bool dimensionsChanged = adapter.dimensionCount() != count;
         this->yellowLinked = yellowLinked;
         adapter.setDimensionCount(count);
         envelopePanel().setEnvelopeDimensions(count, yellowLinked);
+        if (dimensionsChanged) {
+            panel->refreshRasterizer();
+        }
     }
 
     void setAxisLinks(bool redLinked, bool blueLinked) override {
@@ -770,8 +786,11 @@ private:
     }
 
     void synchronizeSelection() override {
-        adapter.modelPublication(
-                envelopePanel().selectedEnvelopeCubeForModel(), publicationRevision);
+        // Selection stays in the panel until a mesh edit publishes its selected cube.
+    }
+
+    void prepareCurvePanel() override {
+        // Envelope mutations refresh the slice before repaint; overlays consume that prepared state.
     }
 
     void applyDomainPanelSettings() override {
