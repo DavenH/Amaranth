@@ -85,7 +85,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
 - `cycle-v2/src/Graph/MeshDimensionality.h` — Shared axis eligibility and projection; GraphMeshGuideRemap preserves rail targets.
-- `cycle-v2/src/UI/Editors/` — Shared editor geometry, cube-face input, property/morph controls, usable travel and keyboard interaction.
+- `cycle-v2/src/UI/Editors/` — Shared morph reconciliation, diagram/input geometry, property controls and keyboard interaction.
 - `cycle-v2/src/Nodes/Curve/` — Curve codecs, stable identities, editor adapters and shared panel/zoom/GL hosts.
 - `cycle-v2/src/Nodes/Envelope/` — State/playback, surfaces and shared EnvelopeEditCore for panel and headless values/markers.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.

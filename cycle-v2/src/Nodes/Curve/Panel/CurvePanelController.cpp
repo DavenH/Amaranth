@@ -605,8 +605,19 @@ public:
         return adapter.effectiveMorphPosition();
     }
 
+    bool setEditorMorphPosition(int axis, float value) override {
+        return adapter.setEditorMorphPosition(axis, value);
+    }
+
+    bool restoreEditorMorphGesture() override {
+        return adapter.restoreEditorMorphGesture();
+    }
+
     void resetDocumentPresentation() override {
         CurvePanelControllerBase::resetDocumentPresentation();
+        adapter.resetDocumentPresentation();
+        surfaceGestureActive = false;
+        applyPanelSettings();
         frameOnNextNodeSync = true;
     }
 
@@ -615,6 +626,12 @@ public:
         auto& typedPanel = envelopePanel();
         typedPanel.setEnvelopeBipolar(purpose == EnvelopePurpose::Pitch);
         if (!adapter.needsNodeSync(node)) {
+            const int previousDimensions = adapter.dimensionCount();
+            adapter.syncAuthoredMorph(node);
+            applyPanelSettings();
+            if (previousDimensions != adapter.dimensionCount()) {
+                panel->refreshRasterizer();
+            }
             return;
         }
 
@@ -686,6 +703,7 @@ public:
     }
 
     void setEditGestureActive(bool active) override {
+        adapter.setMorphEditGestureActive(active);
         surfaceGestureActive = active;
         if (!active) {
             requestRepaint();

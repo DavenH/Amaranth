@@ -91,6 +91,18 @@ void CurveEditorWidget::setPreviewMorphPosition(std::optional<MorphPosition> pos
     }
 }
 
+void CurveEditorWidget::setEditorMorphPosition(int axis, float value) {
+    if (controller->setEditorMorphPosition(axis, value)) {
+        ++previewPresentationRevision;
+    }
+}
+
+void CurveEditorWidget::restoreEditorMorphGesture() {
+    if (controller->restoreEditorMorphGesture()) {
+        ++previewPresentationRevision;
+    }
+}
+
 std::optional<MorphPosition> CurveEditorWidget::effectiveMorphPosition() const {
     return controller->effectiveMorphPosition();
 }

@@ -25,6 +25,10 @@ private:
     Rectangle<float> editorPanelBounds() const override;
     Rectangle<float> editorControlBounds() const override;
     MorphPosition displayedMorphPosition() const;
+    void bindMorphControl(int axis);
+    void beginMorphGesture();
+    void cancelMorphGesture();
+    bool setLocalMorphValue(int axis, float value);
     void paintEditor(Graphics&) override;
     void layoutEditor() override;
     void syncEditorFromNode() override;

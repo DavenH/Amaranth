@@ -528,6 +528,18 @@ public:
     const NodeGraph* graph {};
 };
 
+class PreviewEnvelopeEditorResources final : public NullResources {
+public:
+    CurveEditorWidget* curveEditorWidget(const Node& node) override {
+        return &previews->curveEditorWidget(node);
+    }
+    void syncCurveGuideContext(CurveEditorWidget&, const Node& node) override {
+        previews->syncCurveEditorWidget(node);
+    }
+
+    NodePreviewResources* previews {};
+};
+
 std::array<float, 3> trimeshEditorMorphPosition(const NodeEditorHost& host) {
     DynamicObject state;
     host.appendAutomationState(state);
@@ -5828,6 +5840,245 @@ TEST_CASE("Morph keyboard hints disappear only when their slider disappears",
         bind();
         REQUIRE(focused().isEmpty());
         REQUIRE_FALSE(hint()->isVisible());
+    }
+}
+
+TEST_CASE("Envelope morph gestures survive live preview injection release and settled rebinds",
+        "[cycle-v2][editor][envelope][morph-preview][complexity][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    CurveTableScope curves;
+    for (const int count : { 2, 3 }) {
+        CAPTURE(count);
+        Component owner;
+        owner.setSize(1100, 800);
+        owner.addToDesktop(ComponentPeer::windowIsTemporary);
+        owner.setVisible(true);
+        auto graph = TestSupport::authoredEnvelopeGraph(count);
+        GraphNodeFactory factory;
+        GraphNodeStateEditor stateEditor;
+        const char* axes[] { "yellow", "red", "blue" };
+        const int controllers[] { 71, 73, 74 };
+        for (int axis = 0; axis < 3; ++axis) {
+            if (!MorphDimensions(count).active(MorphDimensions::axes[(size_t) axis])) {
+                continue;
+            }
+            const String sourceId = "cc" + String(controllers[axis]);
+            graph.addNode(factory.createNode(NodeKind::ModulationSource, sourceId, {}));
+            REQUIRE(stateEditor.setNodeParameter(graph, sourceId, "source", "Source", "midiCC").succeeded());
+            REQUIRE(stateEditor.setNodeParameter(graph, sourceId, "controller", "Controller", String(controllers[axis])).succeeded());
+            graph.addEdge({ sourceId, "value", "env", axes[axis],
+                    PortDomain::ControlSignal, ConnectionKind::Signal });
+        }
+        graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+        graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
+        graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
+        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        GraphEditor graphEditor;
+        REQUIRE(graphEditor.connect(graph, { "mesh", "out", false }, { "multiply", "left", true }).succeeded());
+        REQUIRE(graphEditor.connect(graph, { "env", "env", false }, { "multiply", "right", true }).succeeded());
+        REQUIRE(graphEditor.connect(graph, { "multiply", "out", false }, { "out", "time", true }).succeeded());
+        GraphDocument document(std::move(graph));
+        GraphCommandDispatcher dispatcher(document);
+        RecordingPresentation presentation;
+        PreviewEnvelopeEditorResources resources;
+        NodeEditorCommandService commands(owner, document, dispatcher, presentation, resources);
+        NodePreviewResources previews(commands);
+        GraphPresentationModel previewControls;
+        previewControls.stagePreviewControllerValue(71, 32);
+        previewControls.stagePreviewControllerValue(73, 48);
+        previewControls.stagePreviewControllerValue(74, 96);
+        REQUIRE(previewControls.refresh(document.graph(), document.revision()));
+        const auto injected = previewControls.previewMorphForNode(*document.graph().findNode("env"));
+        REQUIRE(injected.has_value());
+        REQUIRE((float) injected->red == Catch::Approx(48.f / 127.f));
+        REQUIRE((float) injected->blue == Catch::Approx(96.f / 127.f));
+        previews.setDurableGraph(&document.graph());
+        previews.setPreviewControls(previewControls);
+        resources.previews = &previews;
+        previews.syncCurveEditorWidget(*document.graph().findNode("env"));
+        NodeEditorHost host(owner, commands, presentation, resources);
+        const auto bind = [&] {
+            REQUIRE(host.bind(document.graph().findNode("env"), owner.getLocalBounds(), document.revision()));
+        };
+        bind();
+        auto* editor = dynamic_cast<EnvelopeEditorComponent*>(host.component());
+        REQUIRE(editor != nullptr);
+        auto& widget = previews.curveEditorWidget(*document.graph().findNode("env"));
+        const auto effective = widget.effectiveMorphPosition();
+        REQUIRE(effective.has_value());
+        const auto initial = std::array<float, 3> { (float) effective->time, (float) effective->red, (float) effective->blue };
+        const auto durableBefore = std::array<float, 3> { 0.4f, 0.3f, 0.7f };
+        const uint64_t revision = document.revision();
+        const uint64_t graphRevision = document.graph().getRevision();
+        const auto model = document.graph().findNode("env")->model;
+        int publications {};
+        document.setListener([&](uint64_t, const GraphChangeSet&) { ++publications; });
+        const MorphSpaceLayout space(rectangleProperty(editor->automationState(), "morphPlaneBounds"), MorphDimensions(count));
+        const auto source = count == 3 ? space.cubeFacePoint(0, 0.5f, 0.5f)
+                : space.project(initial[1], initial[2], initial[0]);
+        REQUIRE(editor->getComponentAt(source.roundToInt()) == editor);
+        Image image(Image::RGB, editor->getWidth(), editor->getHeight(), true);
+        Graphics graphics(image);
+        const auto coordinates = [&](std::array<float, 3> expected, bool checkControls) {
+            const auto state = editor->automationState();
+            const char* displayed[] { "displayYellowMorph", "displayRedMorph", "displayBlueMorph" };
+            const char* resolved[] { "effectiveYellowMorph", "effectiveRedMorph", "effectiveBlueMorph" };
+            for (int axis = 0; axis < 3; ++axis) {
+                REQUIRE((float) state.getProperty(displayed[axis], {})
+                        == Catch::Approx(expected[(size_t) axis]).margin(0.001f));
+                REQUIRE((float) state.getProperty(resolved[axis], {})
+                        == Catch::Approx(expected[(size_t) axis]).margin(0.001f));
+            }
+            if (checkControls) {
+                REQUIRE((float) state.getProperty("redMorph", {}) == Catch::Approx(expected[1]).margin(0.001f));
+                REQUIRE((float) state.getProperty("blueMorph", {}) == Catch::Approx(expected[2]).margin(0.001f));
+            }
+            const auto cursor = state.getProperty("morphCursor", {});
+            const auto expectedCursor = space.project(expected[1], expected[2], expected[0]);
+            REQUIRE((float) cursor.getProperty("x", {}) == Catch::Approx(expectedCursor.x).margin(0.01f));
+            REQUIRE((float) cursor.getProperty("y", {}) == Catch::Approx(expectedCursor.y).margin(0.01f));
+        };
+        editor->mouseDown(curvePanelMouseEvent(*editor, source, ModifierKeys::leftButtonModifier, source, false));
+        Point<float> destination;
+        auto final = initial;
+        for (const Point<float> target : { Point<float>(0.2f, 0.8f), Point<float>(0.7f, 0.25f) }) {
+            final[1] = target.x;
+            final[2] = target.y;
+            destination = space.project(final[1], final[2], final[0]);
+            if (count == 3) {
+                destination = source + destination - space.project(initial[1], initial[2], initial[0]);
+            }
+            InteractionComplexityDiagnostics::reset();
+            editor->mouseDrag(curvePanelMouseEvent(*editor, destination, ModifierKeys::leftButtonModifier, source, true));
+            previews.syncCurveEditorWidget(*document.graph().findNode("env"));
+            bind();
+            editor->paint(graphics);
+            coordinates(final, true);
+            REQUIRE(publications == 0);
+            REQUIRE(document.revision() == revision);
+            REQUIRE(document.graph().getRevision() == graphRevision);
+            REQUIRE(dispatcher.editingGraph().getRevision() == graphRevision);
+            REQUIRE(document.graph().findNode("env")->model == model);
+            REQUIRE_FALSE(document.canUndo());
+            const auto operations = InteractionComplexityDiagnostics::counts();
+            REQUIRE(operations.graphCopies == 0);
+            REQUIRE(operations.meshCopies == 0);
+            REQUIRE(operations.modelSerializations == 0);
+        }
+        editor->mouseUp(curvePanelMouseEvent(*editor, destination, {}, source, true));
+        editor->paint(graphics);
+        coordinates(final, true);
+        REQUIRE(publications == 1);
+        REQUIRE(document.revision() == revision + 1);
+        for (int settled = 0; settled < 2; ++settled) {
+            REQUIRE(previewControls.refresh(document.graph(), document.revision(), document.lastChange()));
+            previews.syncCurveEditorWidget(*document.graph().findNode("env"));
+            bind();
+            editor->paint(graphics);
+            coordinates(final, true);
+            REQUIRE(publications == 1);
+        }
+        const auto committedRevision = document.revision();
+        const auto committedGraphRevision = document.graph().getRevision();
+        const auto committedModel = document.graph().findNode("env")->model;
+        // Exercise the round trip while the prior manual value still owns Blue.
+        for (const int controllerChangesWhileHeld : { 0, 2, 1 }) {
+            CAPTURE(controllerChangesWhileHeld);
+            const auto cancelEffective = widget.effectiveMorphPosition();
+            REQUIRE(cancelEffective.has_value());
+            const auto cancelInitial = std::array<float, 3> {
+                    (float) cancelEffective->time, (float) cancelEffective->red, (float) cancelEffective->blue
+            };
+            const auto cancelSource = count == 3 ? space.cubeFacePoint(0, 0.5f, 0.5f)
+                    : space.project(cancelInitial[1], cancelInitial[2], cancelInitial[0]);
+            auto pending = cancelInitial;
+            pending[1] = 0.1f;
+            pending[2] = 0.9f;
+            auto cancelDestination = space.project(pending[1], pending[2], pending[0]);
+            if (count == 3) {
+                cancelDestination = cancelSource + cancelDestination
+                        - space.project(cancelInitial[1], cancelInitial[2], cancelInitial[0]);
+            }
+            editor->mouseDown(curvePanelMouseEvent(
+                    *editor, cancelSource, ModifierKeys::leftButtonModifier, cancelSource, false));
+            editor->mouseDrag(curvePanelMouseEvent(
+                    *editor, cancelDestination, ModifierKeys::leftButtonModifier, cancelSource, true));
+            previews.syncCurveEditorWidget(*document.graph().findNode("env"));
+            editor->paint(graphics);
+            coordinates(pending, true);
+            auto reopened = cancelInitial;
+            if (controllerChangesWhileHeld > 0) {
+                const int previousController = previewControls.previewControllerValue(74);
+                REQUIRE(previewControls.refreshPreviewControllerValue(document.graph(), document.revision(), 74, 59));
+                previews.refreshControllerPreview(74);
+                reopened[2] = 59.f / 127.f;
+                if (controllerChangesWhileHeld == 2) {
+                    REQUIRE(previewControls.refreshPreviewControllerValue(
+                            document.graph(), document.revision(), 74, previousController));
+                    previews.refreshControllerPreview(74);
+                    reopened[2] = (float) previousController / 127.f;
+                }
+            }
+            REQUIRE(publications == 1);
+            host.close();
+            REQUIRE_FALSE(host.hasEditor());
+            REQUIRE_FALSE(dispatcher.hasTransientEdit());
+            REQUIRE_FALSE((bool) widget.automationState().getProperty("surfaceGestureActive", true));
+            REQUIRE(document.revision() == committedRevision);
+            REQUIRE(document.graph().getRevision() == committedGraphRevision);
+            REQUIRE(dispatcher.editingGraph().getRevision() == committedGraphRevision);
+            REQUIRE(document.graph().findNode("env")->model == committedModel);
+            REQUIRE(publications == 1);
+            REQUIRE(document.canUndo());
+            REQUIRE_FALSE(document.canRedo());
+            previews.syncCurveEditorWidget(*document.graph().findNode("env"));
+            bind();
+            editor = dynamic_cast<EnvelopeEditorComponent*>(host.component());
+            REQUIRE(editor != nullptr);
+            editor->paint(graphics);
+            coordinates(reopened, false);
+            REQUIRE((float) editor->automationState().getProperty("redMorph", {}) == Catch::Approx(final[1]));
+            REQUIRE((float) editor->automationState().getProperty("blueMorph", {}) == Catch::Approx(final[2]));
+            REQUIRE_FALSE((bool) widget.automationState().getProperty("surfaceGestureActive", true));
+            REQUIRE(document.revision() == committedRevision);
+            REQUIRE(publications == 1);
+        }
+        REQUIRE(previewControls.refreshPreviewControllerValue(document.graph(), document.revision(), 74, 83));
+        previews.refreshControllerPreview(74);
+        editor->paint(graphics);
+        auto controlled = final;
+        controlled[2] = 83.f / 127.f;
+        coordinates(controlled, false);
+        REQUIRE(publications == 1);
+        REQUIRE(document.revision() == revision + 1);
+        const NodeParameterMap committed(*document.graph().findNode("env"));
+        REQUIRE(committed.floatValue("yellow") == Catch::Approx(durableBefore[0]));
+        REQUIRE(committed.floatValue("red") == Catch::Approx(final[1]).margin(0.001f));
+        REQUIRE(committed.floatValue("blue") == Catch::Approx(final[2]).margin(0.001f));
+        REQUIRE(dispatcher.setNodeParameter("env", "red", "Red", "0.45").changed);
+        REQUIRE(document.graph().findNode("env")->model == committedModel);
+        previews.syncCurveEditorWidget(*document.graph().findNode("env"));
+        const auto reconciled = widget.effectiveMorphPosition();
+        REQUIRE(reconciled.has_value());
+        REQUIRE((float) reconciled->red == Catch::Approx(48.f / 127.f));
+        REQUIRE((float) reconciled->blue == Catch::Approx(controlled[2]));
+        bind();
+        editor->paint(graphics);
+        auto authoredChange = controlled;
+        authoredChange[1] = 48.f / 127.f;
+        coordinates(authoredChange, false);
+        REQUIRE((float) editor->automationState().getProperty("redMorph", {}) == Catch::Approx(0.45f));
+        REQUIRE(document.graph().findNode("env")->model == committedModel);
+        REQUIRE(publications == 2);
+        REQUIRE(document.undo());
+        REQUIRE(NodeParameterMap(*document.graph().findNode("env")).floatValue("red") == Catch::Approx(final[1]));
+        REQUIRE(document.canUndo());
+        REQUIRE(document.undo());
+        const NodeParameterMap undone(*document.graph().findNode("env"));
+        for (int axis = 0; axis < 3; ++axis) {
+            REQUIRE(undone.floatValue(axes[axis]) == Catch::Approx(durableBefore[(size_t) axis]));
+        }
+        REQUIRE_FALSE(document.canUndo());
     }
 }
 

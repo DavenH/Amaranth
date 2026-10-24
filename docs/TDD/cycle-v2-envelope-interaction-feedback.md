@@ -3,6 +3,9 @@
 Status: Implemented and verified on 2026-10-24. Follow-up to Trimesh interaction
 publication on 2026-10-23.
 
+Follow-up: Envelope morph persistence regression fixed and verified on
+2026-10-24, including controller reconciliation and settled positions.
+
 ## Contract
 
 Envelope hover and Shift-drag box selection update local highlights and selection
@@ -14,6 +17,15 @@ remain independent of unrelated graph/audio state.
 Reduced morph-plane dragging displays its current local cursor throughout the
 gesture. Held coordinates must survive repaint/rebinding; release uses the
 existing single undoable transaction and cancellation restores the controls.
+Cube gestures start from the displayed effective coordinates. An unchanged
+controller preview must not replace manually edited coordinates during a gesture,
+after release, or when reopening the editor. A changed controller resumes preview
+only on its changed axis; undo, redo and document replacement reconcile through
+the existing model/presentation lifecycle. Reuse Trimesh's morph reconciliation
+policy rather than introducing another competing editor state machine.
+Closing a held morph editor restores the preceding authored/manual positions
+without publishing. A controller change during that gesture retains ownership,
+including an A→B→A sequence; general mesh-gesture cancellation is unchanged.
 Trimesh's reduced diagram must expose a real pointer region: the 2D plane edits
 Yellow/Red through the existing pair gesture, and the 1D Yellow line retains
 primary navigation's zero-edit semantics, including release. Static has no
@@ -91,6 +103,18 @@ exact final app. Reports, logs and captures are under
 
 ## Baseline evidence
 
+The morph follow-up is reproduced with the actual app and native input. With
+live Red/Blue previews at 0.261682/0.251969 and saved controls at 0.5/0.5,
+pressing the cube jumps to the saved controls. Two held updates reach 0.66/0.427;
+release saves those values once but returns the displayed cursor to the old
+preview. Reopening the editor preserves the wrong display. The reduced plane
+likewise saves 0.7/0.2 but displays its old controller coordinates after release.
+The new settled-position checker rejects the before-fix report at the cube
+press; the native cube checker also rejects the held cursor/panel disagreement.
+Evidence is retained as `morph-full-baseline-report.json`,
+`morph-baseline-rejection.log` and `morph-native-baseline.log` in the artifact
+directory above.
+
 The instrumented actual-app fixture keeps document revision 2, graph/model
 revisions and edit IDs unchanged, but its five hover/selection checkpoints
 increase rasterizer refreshes 9 → 20, slice evaluations 18 → 40, panel
@@ -105,6 +129,58 @@ and JUCE paints averaging 2.30 ms (max 3.86 ms). There were zero preview request
 These describe this host/build and establish neither a 350 ms reproduction nor
 a universal frame-rate target. Reports and baseline rejection are under
 `.context/envelope-interaction-regression/`.
+
+## Morph persistence follow-up verification
+
+The final actual-app morph report contains 18 checkpoints: cube press, two held
+updates, release/reopen, a second face, undo/redo, controller takeover, reduced
+plane movement and document reset. Press now retains 0.261682/0.251969; the cube
+finishes at 0.421683/0.178635 and retains those effective/displayed coordinates
+after release and reopening. The plane retains 0.7/0.2. Held updates keep
+document/graph/model revisions and audio-plan copy counts fixed; each release
+publishes once and stores matching model/control coordinates.
+
+Focused tests pass 14 cases / 3,171 assertions, including the new 500-assertion
+live-preview regression for both dimensionalities. It exercises repeated
+preview injection, held/settled rebinding, close rollback after a prior manual
+commit, changed controllers and A→B→A ordering, parameter-only authored sync
+with the same model pointer, and undo. Related controller/Guide/zoom/reload and
+keyboard coverage passes 25 cases / 1,596 assertions. The earlier Trimesh
+actual-app publication/controller fixture also passes after extracting its
+reconciliation policy.
+
+Native `cube-faces envelope-feedback` passes all three cube faces in both
+families, held cursor/panel agreement, unchanged held graph/model/audio counters,
+settled positions after release, reduced-plane release persistence, hover and
+Shift-selection, plus every primary-axis annotation at both window sizes.
+Captures are retained under `morph-native/` and the app is relaunched with the
+pre-test graph snapshot restored.
+
+The selection fixture still performs no additional preparation: rasterizer
+refreshes remain 24, slice evaluations 45, panel preparations 0, layouts 6 and
+surface readbacks 19 throughout hover, two held box updates and release. These
+are cumulative counters on the reused app instance; unchanged deltas are the
+contract. Reports and logs use the `morph-` prefix in the artifact directory.
+
+The shared `EditorMorphPosition` replaces Trimesh's former reconciliation
+algorithm and adds a small per-axis checkpoint for cancellation. Controller
+changes advance per-axis generations so rollback cannot revive stale manual
+ownership. Envelope adapters retain authored candidates during a held rebind;
+explicit editor updates change only the selected face's axes. Both local
+overrides are composed before the existing single slice-preparation path runs.
+Parameter-only dimension increases refresh the slice once; unchanged syncs
+retain the preparation guards.
+
+Production size/responsibility review: EnvelopeEditorComponent grows
+1,152 → 1,199 lines for existing control/gesture composition; its adapter grows
+146 → 188 for existing morph presentation ownership. CurvePanelController grows
+848 → 866 for forwarding/lifecycle and the dimension boundary; the expanded
+curve base grows 446 → 452 by extracting its existing control cancellation.
+TrimeshPanelBridge shrinks 492 → 464; shared reconciliation is 63 implementation
+and 32 header lines. Widget forwarding adds 12 implementation lines. No owner
+grows by 200 lines, no domain algorithm is duplicated, and held pointer work
+does not copy graphs/meshes or serialize models. Architecture, code-map,
+whitespace and production-style reviews pass.
 
 ## Prepared surface mesh lifetime
 

@@ -279,47 +279,19 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
 }
 
 void TrimeshPanelBridge::setPreviewMorphPosition(std::optional<MorphPosition> position) {
-    for (size_t index = 0; index < MorphDimensions::axes.size(); ++index) {
-        const int axis = MorphDimensions::axes[index];
-        if (previewMorph.has_value() != position.has_value()
-                || (position.has_value() && (*position)[axis].getTargetValue()
-                        != (*previewMorph)[axis].getTargetValue())) {
-            editorMorph[index].reset();
-        }
-    }
-    previewMorph = std::move(position);
+    editorMorph.setPreview(std::move(position));
 }
 
 MorphPosition TrimeshPanelBridge::resolveMorphPosition(const Node& node) {
-    const MorphPosition authoredMorph = MeshDimensionality::position(node);
-    MorphPosition effectiveMorph = previewMorph.value_or(authoredMorph);
-    for (size_t index = 0; index < MorphDimensions::axes.size(); ++index) {
-        const int axis = MorphDimensions::axes[index];
-        if (!morphEditGestureActive && lastAuthoredMorph.has_value()
-                && authoredMorph[axis].getTargetValue() != (*lastAuthoredMorph)[axis].getTargetValue()) {
-            editorMorph[index].reset();
-        }
-        if (editorMorph[index].has_value()) {
-            effectiveMorph[axis].setValueDirect(*editorMorph[index]);
-        }
-    }
-    lastAuthoredMorph = authoredMorph;
-    return effectiveMorph;
+    return editorMorph.resolve(MeshDimensionality::position(node), morphEditGestureActive);
 }
 
 void TrimeshPanelBridge::setEditorMorphPosition(int axis, float value) {
-    for (size_t index = 0; index < MorphDimensions::axes.size(); ++index) {
-        if (MorphDimensions::axes[index] == axis) {
-            editorMorph[index] = jlimit(0.f, 1.f, value);
-            return;
-        }
-    }
+    editorMorph.setValue(axis, value);
 }
 
 void TrimeshPanelBridge::resetDocumentPresentation() {
-    editorMorph = {};
-    previewMorph.reset();
-    lastAuthoredMorph.reset();
+    editorMorph.reset();
     morphEditGestureActive = false;
 }
 

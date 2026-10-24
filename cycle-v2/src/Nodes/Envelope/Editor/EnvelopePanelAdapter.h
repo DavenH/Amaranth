@@ -2,6 +2,7 @@
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Curve/Panel/CurvePanelAdapterTypes.h"
+#include "UI/Editors/EditorMorphPosition.h"
 
 #include <JuceHeader.h>
 
@@ -21,6 +22,8 @@ public:
     const EnvelopeMesh& mesh() const { return model.getMesh(); }
     bool needsNodeSync(const Node& node) const;
     bool syncFromNode(const Node& node);
+    void syncAuthoredMorph(const Node& node);
+    void resetDocumentPresentation();
     VertCube* selectedMeshCube() const { return model.selectedMeshCube(); }
     void initialiseDefaultMesh();
     String serializedMeshState();
@@ -29,6 +32,9 @@ public:
     bool registerMeshEdit();
 
     void setMorph(const MorphPosition& position);
+    bool setEditorMorphPosition(int axis, float value);
+    void setMorphEditGestureActive(bool active);
+    bool restoreEditorMorphGesture();
     bool setPreviewMorphPosition(std::optional<MorphPosition> position);
     MorphPosition effectiveMorphPosition() const { return { morphYellow, morphRed, morphBlue }; }
     int dimensionCount() const { return dimensions; }
@@ -41,11 +47,13 @@ public:
 
     const String& lastNodeId() const { return syncedNodeId; }
 private:
-    void refreshEffectiveMorph();
+    void refreshEffectiveMorph(bool preserveValues);
 
     int dimensions { 2 };
     MorphPosition authoredMorph { 0.f, 0.5f, 0.5f };
-    std::optional<MorphPosition> previewMorph;
+    EditorMorphPosition editorMorph;
+    std::optional<EditorMorphPosition::Checkpoint> morphGestureStart;
+    bool morphEditGestureActive {};
     float morphYellow {};
     float morphRed { 0.5f };
     float morphBlue { 0.5f };

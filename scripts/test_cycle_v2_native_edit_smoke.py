@@ -1131,7 +1131,7 @@ class NativeEditSmoke:
                 if node_id == "waveMesh":
                     shown = {item["id"]: item["value"] for item in before["morphSliders"]}
                 else:
-                    shown = {axis: before["effect2D"][axis + "Morph"] for axis in names}
+                    shown = {axis: before["effect2D"]["display" + axis.title() + "Morph"] for axis in names}
                 before_graph = self.graph_state()
                 before_edit = max(int(event["editId"]) for event in before_graph["causalUpdates"])
                 target = next(target for target in self.command({"command": "inspectPointerTargets"})["targets"]
@@ -1145,20 +1145,34 @@ class NativeEditSmoke:
                 selected = self.inspect(node_id)
                 if node_id == "env":
                     for axis in names:
-                        assert abs(selected["effect2D"][axis + "Morph"] - shown[axis]) < 0.0001
+                        assert abs(selected["effect2D"]["display" + axis.title() + "Morph"] - shown[axis]) < 0.0011, (
+                                "Envelope cube press jumped", axis,
+                                selected["effect2D"]["display" + axis.title() + "Morph"], shown[axis])
                 for amount in (0.12, 0.24):
                     destination = (round(source[0] + amount * (first["x"] + second["x"])),
                             round(source[1] + amount * (first["y"] + second["y"])))
                     self.move_held_drag(source, destination)
                     current = self.inspect(node_id)
                     if node_id == "env":
-                        values = {axis: current["effect2D"][axis + "Morph"] for axis in names}
+                        values = {axis: current["effect2D"]["display" + axis.title() + "Morph"] for axis in names}
+                        for axis in names:
+                            effective = current["effect2D"]["effective" + axis.title() + "Morph"]
+                            assert abs(effective - values[axis]) < .0011, (
+                                    "Envelope held cursor/panel mismatch", name, axis, effective, values[axis])
+                        for axis in axes:
+                            assert abs(current["effect2D"][axis + "Morph"] - values[axis]) < .0011, (
+                                    "Envelope held edit differs from cursor", name, axis, values)
                     else:
                         values = {item["id"]: item["value"] for item in current["morphSliders"]}
-                        held_graph = self.graph_state()
-                        assert held_graph["documentRevision"] == before_graph["documentRevision"]
-                        assert max(int(event["editId"]) for event in held_graph["causalUpdates"]) == before_edit
                         assert current["trimesh"]["surfaceRebuildCount"] == before["trimesh"]["surfaceRebuildCount"]
+                    held_graph = self.graph_state()
+                    for field in ("documentRevision", "documentGraphRevision", "graphRevision"):
+                        assert held_graph[field] == before_graph[field], (node_id, name, field)
+                    assert current["model"] == before["model"], (node_id, name)
+                    assert held_graph["performance"]["audioPlanCopyCount"] == before_graph["performance"]["audioPlanCopyCount"], (
+                            node_id, name)
+                    if node_id == "waveMesh":
+                        assert max(int(event["editId"]) for event in held_graph["causalUpdates"]) == before_edit
                     assert abs(values[name] - shown[name]) < 0.0001, (node_id, name, values, shown)
                     for axis in axes:
                         assert abs(values[axis] - min(1, shown[axis] + amount)) < 0.035, (node_id, name, axis, values, shown)
@@ -1169,6 +1183,11 @@ class NativeEditSmoke:
                         timeout_seconds=0.5)
                 if node_id == "env":
                     assert after["model"]["state"]["mesh"] == before["model"]["state"]["mesh"]
+                    for axis in names:
+                        for prefix in ("display", "effective"):
+                            assert abs(after["effect2D"][prefix + axis.title() + "Morph"] - values[axis]) < .0011, (
+                                    "Envelope cube release snapped back", name, axis,
+                                    after["effect2D"][prefix + axis.title() + "Morph"], values[axis])
                 else:
                     assert self.trimesh_model(after) == self.trimesh_model(before)
                 for axis in axes:
@@ -1297,6 +1316,17 @@ class NativeEditSmoke:
             self.release_drag(destination)
             committed = self.graph_state()
             assert committed["documentRevision"] == initial_graph["documentRevision"] + 1, node_id
+            final_controls = self.inspect(node_id)
+            final_feedback = final_controls["effect2D"] if node_id == "env" else final_controls
+            for coordinate in ("x", "y"):
+                assert abs(final_feedback["morphCursor"][coordinate] - previous_cursor[coordinate]) < .1, (
+                        "Plane cursor snapped back after release", node_id, final_feedback["morphCursor"], previous_cursor)
+            if node_id == "env":
+                for axis in ("red", "blue"):
+                    assert abs(final_feedback["display" + axis.title() + "Morph"]
+                            - float(self.parameters(final_controls)[axis])) < .0011, (
+                            "Envelope plane release differs from saved position", axis,
+                            final_feedback["display" + axis.title() + "Morph"], self.parameters(final_controls)[axis])
             self.key_chord("z")
             restored = self.inspect(node_id)
             assert self.parameters(restored) == self.parameters(initial_controls), node_id

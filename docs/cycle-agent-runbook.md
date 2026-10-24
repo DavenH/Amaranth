@@ -130,6 +130,10 @@ Run `python3 scripts/test_cycle_v2_envelope_interaction_feedback.py` for actual-
 Envelope hover and Shift-box-selection checks. The report compares edit/model
 revisions and rasterizer, slice, panel-preparation, layout and surface counters;
 unchanged graph revisions alone do not establish cheap pointer feedback.
+Add `--morph` to check Envelope cube/plane coordinates across press, held updates,
+release, editor reopening, undo/redo, controller takeover and document reset.
+The cursor, effective panel position and saved coordinates are checked separately;
+publication alone cannot establish that a morph gesture stays where released.
 `python3 scripts/test_cycle_v2_native_edit_smoke.py envelope-feedback` exercises
 physical highlights, selection, reduced-plane cursor movement and both surface
 orientations. Set `CYCLE_V2_NATIVE_CAPTURE_DIR` under `.context/` to retain normal

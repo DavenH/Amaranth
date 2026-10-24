@@ -11,6 +11,7 @@
 #include "Nodes/Trimesh/Panel/TrimeshInteractor3D.h"
 #include "Nodes/Trimesh/Model/TrimeshInvalidation.h"
 #include "Nodes/Trimesh/Dsp/TrimeshGuidePreparation.h"
+#include "UI/Editors/EditorMorphPosition.h"
 
 #include <array>
 #include <cstdint>
@@ -110,9 +111,7 @@ private:
     bool pendingMeshEditSourceIs3D {};
     bool meshEditGestureActive {};
     bool morphEditGestureActive {};
-    std::optional<MorphPosition> previewMorph;
-    std::optional<MorphPosition> lastAuthoredMorph;
-    std::array<std::optional<float>, 3> editorMorph;
+    EditorMorphPosition editorMorph;
     bool pendingSelectionChanged {};
 };
 

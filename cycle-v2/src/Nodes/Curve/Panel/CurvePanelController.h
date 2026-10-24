@@ -54,6 +54,8 @@ public:
     virtual void resetDocumentPresentation() = 0;
     virtual void setEditGestureActive(bool) {}
     virtual bool setPreviewMorphPosition(std::optional<MorphPosition>) { return false; }
+    virtual bool setEditorMorphPosition(int, float) { return false; }
+    virtual bool restoreEditorMorphGesture() { return false; }
     virtual Rectangle<float> panelContentBounds(Rectangle<float> bounds) const { return bounds; }
     virtual void releaseSharedGlResources() = 0;
     virtual int vertexCountForAutomation() const = 0;
