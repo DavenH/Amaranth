@@ -139,6 +139,7 @@ ComparisonDock::ComparisonDock(
     pitchEditor->setVisible(false);
     pitchEditor->onEdited = [this] { refreshCaptures(); };
     pitchEditor->onClose = [this] { closePitchEditor(); };
+    pitchEditor->onAuditionToggle = [this] { toggleAudition(); };
     pitchEditor->onRenderRequested = [this] { canvas.requestComparisonRendering(); };
     viewport.setViewedComponent(strip.get(), false);
     viewport.setScrollBarsShown(false, true, false, true);

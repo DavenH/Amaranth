@@ -194,3 +194,14 @@ Evidence: `.context/reference-tray-scroll-report.json`,
 `.context/reference-pitch-zoom-check/` (including the full-window capture), and
 `.context/reference-zoom-scroll-tests.log`. Broader native replay still has the
 previously recorded input-delivery limitation; focused semantic gestures pass.
+
+Space in the expanded reference toggles that reference's audition. The editor
+emits an audition action and ComparisonDock calls its existing toggleAudition;
+decoding, playback, stop behavior and card feedback keep their existing owners.
+The canvas's expanded-editor key route takes precedence over preset transport.
+The six production lines add no new state, audio path or policy owner. The
+standalone build, space-audition fixture, architecture audit, semantic map and
+whitespace checks pass. Native Space checks pass with both panel and pitch-curve
+focus, including nonzero captured audio, stop, unchanged preset transport and
+clean document state. Evidence: `.context/reference-space-report.json` and
+`.context/reference-space-native/`.

@@ -281,6 +281,10 @@ void ReferencePitchEditor::scrollBarMoved(juce::ScrollBar*, double) {
 }
 
 bool ReferencePitchEditor::keyPressed(const juce::KeyPress& key) {
+    if (key == juce::KeyPress::spaceKey && onAuditionToggle) {
+        onAuditionToggle();
+        return true;
+    }
     if (key == juce::KeyPress::escapeKey && onClose) {
         onClose();
         return true;

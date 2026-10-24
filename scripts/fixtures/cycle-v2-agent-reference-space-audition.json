@@ -1,0 +1,17 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph" },
+    { "command": "selectReference", "referenceId": "factory:sax-growl" },
+    { "command": "openReferencePitchEditor", "referenceId": "factory:sax-growl", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "key", "key": "space" },
+    { "command": "assertState", "path": "comparison.auditioning", "equals": true },
+    { "command": "assertState", "path": "performance.previewPlaying", "equals": false },
+    { "command": "captureLiveAudio", "durationMs": 200, "peakGreaterThan": 0.001 },
+    { "command": "key", "key": "space" },
+    { "command": "assertState", "path": "comparison.auditioning", "equals": false },
+    { "command": "assertState", "path": "comparison.pitchEditor.visible", "equals": true },
+    { "command": "assertState", "path": "comparison.selectedReferenceId", "equals": "factory:sax-growl" },
+    { "command": "assertState", "path": "documentDirty", "equals": false }
+  ],
+  "quit": true
+}

@@ -42,6 +42,7 @@ public:
 
     std::function<void()> onEdited;
     std::function<void()> onClose;
+    std::function<void()> onAuditionToggle;
     std::function<void()> onRenderRequested;
 
 private:
