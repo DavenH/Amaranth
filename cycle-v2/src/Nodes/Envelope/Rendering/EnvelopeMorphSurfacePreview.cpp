@@ -17,7 +17,8 @@
 namespace CycleV2 {
 
 struct EnvelopeMorphSurfacePreview::Impl final :
-        private CurvePanelHostDelegate
+        Component
+    ,   private CurvePanelHostDelegate
     ,   private Panel3D::DataRetriever {
     Impl(TrimeshPanelEnvironment& panelEnvironment, std::function<void()> repaint) :
             environment (panelEnvironment)
@@ -35,6 +36,7 @@ struct EnvelopeMorphSurfacePreview::Impl final :
         panel.setPrimaryAxisVertical(true);
         panel.setUseVertices(false);
         panel.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::EnvelopeSignal));
+        addAndMakeVisible(host.zoomComponent());
     }
 
     ~Impl() override {
@@ -47,7 +49,21 @@ struct EnvelopeMorphSurfacePreview::Impl final :
         }
     }
 
-    Component* component() { return host.zoomComponent(); }
+    Component* component() { return this; }
+
+    void resized() override {
+        host.zoomComponent()->setBounds(getLocalBounds().withTrimmedRight(4));
+    }
+
+    Rectangle<float> axisBarBounds() const {
+        return { (float) getWidth() - 3.f, 1.f, 3.f,
+                jmax(0.f, (float) panel.getLocalBounds().getHeight() - 2.f) };
+    }
+
+    void paint(Graphics& graphics) override {
+        graphics.setColour(panel.primaryAxisColour());
+        graphics.fillRect(axisBarBounds());
+    }
 
     void prepare(Mesh& mesh, GuideCurveSnapshotProvider* guides, uint64_t revision,
             const MorphPosition& morph, int axis, int dimensions, bool gestureActive,
@@ -145,7 +161,7 @@ struct EnvelopeMorphSurfacePreview::Impl final :
             timeSamples.add(sample);
         }
         state->setProperty("timeSamples", timeSamples);
-        panel.appendPrimaryAxisAutomation(*state);
+        panel.appendPrimaryAxisAutomation(*state, axisBarBounds());
         Array<var> rails;
         const auto& pairs = interactor.getInterceptPairs();
         for (size_t index = 0; index + 1 < pairs.size(); index += 2) {
@@ -167,7 +183,9 @@ struct EnvelopeMorphSurfacePreview::Impl final :
     void render(Rectangle<float> bounds, float scaleFactor) {
         const ScopedLock renderLock(panel.getRenderLock());
         const ScopedLock lock(gridLock);
-        host.render(host.contentBounds(bounds), bounds, scaleFactor, 0, rebuildCount);
+        const auto frame = host.zoomComponent()->getBounds().toFloat()
+                .translated(bounds.getX(), bounds.getY());
+        host.render(host.contentBounds(frame), frame, scaleFactor, 0, rebuildCount);
     }
     void releaseOpenGLResources() { host.releaseSharedGlResources(); }
 

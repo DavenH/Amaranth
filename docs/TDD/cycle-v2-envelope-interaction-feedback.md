@@ -37,8 +37,16 @@ below, and the selected primary morph coordinate vertically. Vertex rails remain
 visible in the same coordinate system, including release time beyond 1. The
 surface samples the curve's full fixed time bounds; each zoom host retains its
 own viewport. Annotate the primary view axis with its colour: the Trimesh
-surface's horizontal edge and the Envelope surface's vertical
-edge. All primary choices and both compact and normal layouts must agree.
+surface's horizontal edge and a vertical bar to the right of the Envelope
+surface's zoom slider, separated by 1 px. All primary choices and both compact
+and normal layouts must agree.
+
+The Envelope surface component owns this outer decoration and reserves 4 px
+beside its ZoomPanel child. Rendering and readback use the child's viewport;
+the colour bar stays in JUCE painting outside the scrollbar. Placement checks
+pass at 1400 × 900 and 1100 × 800 with the same 1 px gap. Existing focused
+surface, coalescing and live-preview tests pass 6 cases / 1,202 assertions.
+The normal-size capture is `axis-right-normal.png` in the artifact directory.
 
 ## Ownership and deletion targets
 

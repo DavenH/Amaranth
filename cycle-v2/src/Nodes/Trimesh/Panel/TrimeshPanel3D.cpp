@@ -149,11 +149,12 @@ Colour TrimeshPanel3D::primaryAxisColour() const {
 
 Rectangle<float> TrimeshPanel3D::primaryAxisBarBounds() const {
     auto bounds = getLocalBounds().toFloat().reduced(1.f);
-    return primaryAxisVertical ? bounds.removeFromLeft(3.f) : bounds.removeFromBottom(3.f);
+    return primaryAxisVertical ? Rectangle<float>() : bounds.removeFromBottom(3.f);
 }
 
-void TrimeshPanel3D::appendPrimaryAxisAutomation(DynamicObject& state) const {
-    const auto bounds = primaryAxisBarBounds();
+void TrimeshPanel3D::appendPrimaryAxisAutomation(DynamicObject& state,
+        std::optional<Rectangle<float>> barBounds) const {
+    const auto bounds = barBounds.value_or(primaryAxisBarBounds());
     auto* rectangle = new DynamicObject();
     rectangle->setProperty("x", bounds.getX());
     rectangle->setProperty("y", bounds.getY());
@@ -169,6 +170,9 @@ void TrimeshPanel3D::appendPrimaryAxisAutomation(DynamicObject& state) const {
 void TrimeshPanel3D::postVertsDraw() {
     if (auto* renderer = getPanelRenderer()) {
         const auto bounds = primaryAxisBarBounds();
+        if (bounds.isEmpty()) {
+            return;
+        }
         const Colour colour = primaryAxisColour();
         renderer->setCurrentColour(colour.getFloatRed(), colour.getFloatGreen(), colour.getFloatBlue(), 1.f);
         renderer->fillRect(bounds.getX(), bounds.getY(), bounds.getRight(), bounds.getBottom(), false);

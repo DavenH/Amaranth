@@ -6,6 +6,7 @@
 #include <UI/Panels/Panel3D.h>
 
 #include <functional>
+#include <optional>
 #include <vector>
 
 namespace CycleV2 {
@@ -40,7 +41,8 @@ public:
     void setPrimaryAxisVertical(bool vertical) { primaryAxisVertical = vertical; }
     juce::Colour primaryAxisColour() const;
     juce::Rectangle<float> primaryAxisBarBounds() const;
-    void appendPrimaryAxisAutomation(juce::DynamicObject& state) const;
+    void appendPrimaryAxisAutomation(juce::DynamicObject& state,
+            std::optional<juce::Rectangle<float>> barBounds = std::nullopt) const;
     void setPitchSpansColumns(bool shouldSpan);
     void setPreviewMidiNote(int midiNote);
     void setLineGuideTables(std::vector<std::vector<float>> tables);

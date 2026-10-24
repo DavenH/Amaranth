@@ -5584,7 +5584,7 @@ TEST_CASE("Envelope surface coalesces gesture updates and restores authored scal
     const auto zoom = committed.getProperty("zoomControls", {});
     REQUIRE((bool) zoom.getProperty("horizontal", {}).getProperty("visible", false));
     REQUIRE((bool) zoom.getProperty("vertical", {}).getProperty("visible", false));
-    REQUIRE(rectangleProperty(zoom, "viewport") == Rectangle<float>(0.f, 0.f, 392.f, 292.f));
+    REQUIRE(rectangleProperty(zoom, "viewport") == Rectangle<float>(0.f, 0.f, 388.f, 292.f));
     mesh->destroy();
 }
 
@@ -5609,9 +5609,11 @@ TEST_CASE("Envelope surfaces put time on x and retain the primary morph rails an
         REQUIRE(state.getProperty("primaryViewAxis", {}).toString() == ids[index]);
         REQUIRE(state.getProperty("primaryAxisColour", {}).toString()
                 == colourForMorphDimension(static_cast<MorphDimension>(index)).toString());
-        const auto viewport = rectangleProperty(state.getProperty("zoomControls", {}), "viewport");
+        const auto zoom = state.getProperty("zoomControls", {});
+        const auto viewport = rectangleProperty(zoom, "viewport");
+        const auto slider = rectangleProperty(zoom, "vertical");
         const auto bar = rectangleProperty(state, "primaryAxisBarBounds");
-        REQUIRE(bar.getX() == Catch::Approx(1.f));
+        REQUIRE(bar.getX() == Catch::Approx(slider.getRight() + 1.f));
         REQUIRE(bar.getY() == Catch::Approx(1.f));
         REQUIRE(bar.getWidth() == Catch::Approx(3.f));
         REQUIRE(bar.getHeight() == Catch::Approx(viewport.getHeight() - 2.f));
