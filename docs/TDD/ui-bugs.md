@@ -324,6 +324,15 @@ Artifact: `.context/native-morph-hover-final-crop.png`.
 
 ## P2: Empty Trimesh test fixture dereferences its first vertex
 
+The 2026-10-23 interaction follow-up seeds the selected-vertex and displayed-slice
+fixtures explicitly: those checks require populated 3D geometry, while factory
+nodes start Static/empty. The new shared cube test initially queried an unbound
+Trimesh widget's render statistics during its Envelope case; LLDB identifies
+`TrimeshWidget::panelRenderStatsForAutomation`, not editor binding, as the null
+mesh access. Query statistics only for the active Trimesh resource. Evidence:
+`.context/trimesh-interaction-regression/cube-crash-lldb.log`. This was a test
+setup error, not a reproduced application failure.
+
 On 2026-10-20, the focused `[trimesh],[envelope],[modulation]` run stopped at
 `TestNodeEditorHost.cpp:4803`: the mesh-edit fixture calls `getVerts().front()`
 on the factory's empty Trimesh model. `TrimeshNodeModelCodec::createDefault()`
@@ -830,6 +839,21 @@ state. Report: `/private/tmp/cycle-v2-envelope-link-session2`.
 
 Current status: open; distinguish selection/editor-state publication from a
 durable document edit. Envelope link toggles themselves remain session-only.
+
+Incidental 2026-10-24 hosted-test setup failure: the new Envelope selection
+fixture accessed null `Panel::grabTex` in `Interactor::resizeFinalBoxSelection`
+(`Interactor.cpp:949`) before graphics initialization; its initial pointer also
+fell above the fitted viewport. LLDB evidence is in
+`.context/envelope-interaction-regression/focused-tests-crash-lldb.log`. The
+actual-app selection fixture passes. Keep texture-dependent enclosed-selection
+checks in the actual/native app, and hosted pointer checks inside the viewport;
+this was not an observed production crash.
+
+The same follow-up's prepared-surface tests also caught `Mesh.cpp:186` assertions
+and empty scalar/rail data when plain `Mesh` tried to read an `EnvelopeMesh` XML
+container. The surface now preserves the source mesh type through the mature
+copy path. Numerical full-range and source-replacement tests retain coverage;
+see `cycle-v2-envelope-interaction-feedback.md`.
 
 ## P3: With-spies Trimesh morph fixture expects a value absent after load
 

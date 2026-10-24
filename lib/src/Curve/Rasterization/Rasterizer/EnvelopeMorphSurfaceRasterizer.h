@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <optional>
 
 #include <Array/Column.h>
 #include <Curve/Rasterization/Rasterizer/TrilinearMeshRasterizer.h>
@@ -16,7 +17,8 @@ public:
             std::vector<Column>& columns,
             int crossSectionResolution,
             int morphAxis,
-            const MorphPosition& baseMorph);
+            const MorphPosition& baseMorph,
+            std::optional<Range<float>> timeRange = std::nullopt);
     void cleanUp();
     void reset() { cleanUp(); }
 

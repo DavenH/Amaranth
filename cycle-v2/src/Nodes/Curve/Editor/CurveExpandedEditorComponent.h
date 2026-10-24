@@ -84,6 +84,7 @@ protected:
     void beginTransaction();
     void commitTransaction();
     bool cancelTransaction();
+    bool cancelControlTransaction();
     void setStatusMessage(const String& message);
     void requestRepaint();
     void refreshEditorSubject();

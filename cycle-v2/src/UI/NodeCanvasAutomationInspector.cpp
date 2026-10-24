@@ -428,6 +428,15 @@ public:
         }
         addEnvelopeModeTargets(targets, node, panel, *curveEditorState);
         addEnvelopeActionTargets(targets, node, panel, *curveEditorState);
+        if (const auto* axes = curveEditorState->getProperty("primaryAxisButtons").getArray()) {
+            for (const auto& axis : *axes) {
+                const String id = axis.getProperty("id", {}).toString();
+                const auto bounds = AutomationValueEncoder::rectangleFromVar(axis.getProperty("bounds", {}))
+                        .translated(panel.getX(), panel.getY());
+                targets.add(pointerTargetToVar("expanded:" + node.id + ".envelopePrimaryAxis." + id,
+                        "envelopePrimaryAxis", bounds, node.id));
+            }
+        }
         if ((int) curveEditorState->getProperty("dimensionCount") == 3) {
             addMorphFaceTargets(targets, node, AutomationValueEncoder::rectangleFromVar(
                     curveEditorState->getProperty("morphPlaneBounds")).translated(panel.getX(), panel.getY()));

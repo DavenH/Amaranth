@@ -25,6 +25,9 @@ std::optional<juce::Rectangle<int>> curvePanelFramebufferReadBounds(
         float scaleFactor,
         juce::Rectangle<int> viewport);
 
+juce::Image curvePanelSnapshotFromPixels(
+        const juce::PixelARGB* pixels, int width, int height, bool& hasVisibleContent);
+
 class CurvePanelEnvironment {
 public:
     TrimeshPanelEnvironment& services() { return environment; }
@@ -59,6 +62,7 @@ public:
         uint64_t contentRevision {};
         uint64_t presentationRevision {};
         uint64_t invalidationGeneration {};
+        juce::Rectangle<float> view;
 
         bool operator==(const Key& other) const;
     };
@@ -75,7 +79,7 @@ public:
 
 private:
     Key renderedKey;
-    bool valid {};
+    std::atomic<bool> valid {};
     std::atomic<uint64_t> hits {};
     std::atomic<uint64_t> misses {};
 };
@@ -113,7 +117,8 @@ public:
     Component* zoomComponentIfCreated();
     Rectangle<float> contentBounds(Rectangle<float> frame) const;
     var zoomControlsState() const;
-    void render(Rectangle<float> bounds, Rectangle<float> clipBounds, float scaleFactor);
+    void render(Rectangle<float> bounds, Rectangle<float> clipBounds, float scaleFactor,
+            uint64_t modelRevision = 0, uint64_t contentRevision = 0, uint64_t presentationRevision = 0);
     bool renderPreview(
             Rectangle<float> bounds,
             float scaleFactor,
@@ -125,6 +130,8 @@ public:
     bool paintPreviewSnapshot(Graphics& graphics, Rectangle<float> bounds) const;
     bool hasVisiblePreviewSnapshot() const { return previewSnapshot.hasVisibleSnapshot(); }
     uint64_t previewSnapshotRevision() const { return previewSnapshot.revision(); }
+    uint64_t layoutCount() const { return renderLayoutCount.load(); }
+    void appendRenderDiagnostics(DynamicObject& state) const;
     bool usesCursor(const MouseCursor& cursor) const;
     void resetDocumentPresentation();
     void releaseSharedGlResources();
@@ -142,6 +149,8 @@ private:
 
     void initialiseComponent();
     void initialiseSharedGlResources();
+    void updateRenderLayout(Rectangle<float> bounds, float scaleFactor);
+    bool hasPendingRenderChanges() const;
     bool captureRenderedPanelImage(
             Rectangle<float> bounds,
             float scaleFactor,
@@ -170,8 +179,17 @@ private:
     CurvePanelSnapshotCache previewSnapshot;
     CurvePanelSnapshotCache expandedSnapshot;
     CurvePanelPreviewRenderCache previewRenderCache;
+    CurvePanelPreviewRenderCache expandedRenderCache;
     RenderInvalidationAccumulator invalidation;
     std::atomic<uint64_t> previewInvalidationGeneration {};
+    std::atomic<uint64_t> expandedInvalidationGeneration {};
+    std::atomic<uint64_t> renderLayoutCount {};
+    mutable std::atomic<uint64_t> snapshotReadbackCount {};
+    mutable std::atomic<uint64_t> snapshotReadbackMicroseconds {};
+    mutable std::atomic<uint64_t> snapshotConversionMicroseconds {};
+    Rectangle<float> lastRenderBounds;
+    Rectangle<float> lastRenderZoom;
+    float lastRenderScaleFactor {};
     bool componentInitialised {};
     std::atomic<bool> sharedGlResourcesInitialised {};
     std::atomic<bool> renderSurfaceVisible {};

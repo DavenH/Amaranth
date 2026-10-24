@@ -21,30 +21,16 @@ uint64_t panelRevisionFor(const TrimeshNodeModel& model) {
             revisions.columns3D);
 }
 
-String morphParameterForAxis(int axis) {
-    if (axis == Vertex::Time) {
-        return "yellow";
-    }
-    if (axis == Vertex::Red) {
-        return "red";
-    }
-    if (axis == Vertex::Blue) {
-        return "blue";
-    }
-    return {};
-}
-
 int panelMidiNoteFor(
-        const NodeParameterMap& parameters,
+        const MorphPosition& morph,
         int keyScaleAxis,
         int previewMidiNote) {
-    const String parameterId = morphParameterForAxis(keyScaleAxis);
-    if (parameterId.isEmpty()) {
+    if (keyScaleAxis != Vertex::Time && keyScaleAxis != Vertex::Red && keyScaleAxis != Vertex::Blue) {
         return previewMidiNote;
     }
 
     return Arithmetic::getGraphicNoteForValue(
-            parameters.floatValue(parameterId, 0.5f),
+            morph[keyScaleAxis].getTargetValue(),
             Range<int>(Constants::LowestMidiNote, Constants::HighestMidiNote));
 }
 
@@ -132,7 +118,8 @@ void TrimeshPanelBridge::syncFromNode(
     environment.setAxisLinks(yellowLinked, redLinked, blueLinked);
     const bool spectral = renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal
             || renderProfile.getDomain() == PortDomain::SpectralPhaseSignal;
-    panelMidiNote = panelMidiNoteFor(parameters, previewKeyScaleAxis, previewMidiNote);
+    const MorphPosition effectiveMorph = resolveMorphPosition(node);
+    panelMidiNote = panelMidiNoteFor(effectiveMorph, previewKeyScaleAxis, previewMidiNote);
     panel2D.setPreviewMidiNote(panelMidiNote);
     panel3D.setPreviewMidiNote(panelMidiNote);
 
@@ -146,7 +133,7 @@ void TrimeshPanelBridge::syncFromNode(
                     morphEditGestureActive
                             ? TrimeshSelectionSyncPolicy::PreserveCurrent
                             : TrimeshSelectionSyncPolicy::SynchronizeFromNode,
-                    previewMorph);
+                    effectiveMorph);
     if (meshReplaced) {
         stopTimer();
         pendingMeshEdit = false;
@@ -292,7 +279,20 @@ void TrimeshPanelBridge::refreshAfterMeshEdit(TrimeshMeshEditEvent event) {
 }
 
 void TrimeshPanelBridge::setPreviewMorphPosition(std::optional<MorphPosition> position) {
-    previewMorph = std::move(position);
+    editorMorph.setPreview(std::move(position));
+}
+
+MorphPosition TrimeshPanelBridge::resolveMorphPosition(const Node& node) {
+    return editorMorph.resolve(MeshDimensionality::position(node), morphEditGestureActive);
+}
+
+void TrimeshPanelBridge::setEditorMorphPosition(int axis, float value) {
+    editorMorph.setValue(axis, value);
+}
+
+void TrimeshPanelBridge::resetDocumentPresentation() {
+    editorMorph.reset();
+    morphEditGestureActive = false;
 }
 
 void TrimeshPanelBridge::flushPendingMeshEdit(bool gestureComplete) {

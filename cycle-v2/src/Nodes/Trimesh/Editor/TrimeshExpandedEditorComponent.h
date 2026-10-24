@@ -27,10 +27,8 @@ public:
     virtual void setTrimeshPrimaryAxisValue(const juce::String& axis) = 0;
     virtual void toggleTrimeshLinkAxisValue(const juce::String& axis) = 0;
     virtual bool beginTrimeshMorphEdit(const juce::String& id, float value) = 0;
-    virtual bool updateTrimeshMorphEdit(float value) = 0;
     virtual bool beginTrimeshMorphPairEdit(
             const std::array<juce::String, 2>& ids, juce::Point<float> values) { return false; }
-    virtual bool updateTrimeshMorphPairEdit(juce::Point<float> values) { return false; }
     virtual void endTrimeshMorphEdit() = 0;
     virtual bool beginTrimeshOutputScaleEdit(const juce::String& id, float value) = 0;
     virtual bool updateTrimeshOutputScaleEdit(float value) = 0;
@@ -96,6 +94,10 @@ private:
     juce::Rectangle<int> phaseModeSelectorBounds() const;
     void setLocalOutputScale(const juce::String& id, float value);
     void setLocalMorphPairValues(juce::Point<float> values);
+    void cancelMorphControlEdit();
+    void finishMorphEdit();
+    void finishMorphPairEdit();
+    void setCommittedMorphValue(const juce::String& id, float value);
     void setLocalMorphValue(const juce::String& id, float value);
     void setTrimeshPrimaryAxis(const juce::String& axis) override;
     void toggleTrimeshLinkAxis(const juce::String& axis) override;
@@ -139,7 +141,10 @@ private:
     PropertySegmentedSelector phaseModeSelector;
     Node node;
     std::array<juce::String, 2> activeMorphPairIds;
+    juce::Point<float> activeMorphPairInitialValues;
+    juce::Point<float> activeMorphPairValues;
     juce::String activeMorphParameterId;
+    float activeMorphInitialValue {};
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     juce::MouseCursor panel2DCursor { juce::MouseCursor::NormalCursor };
     juce::MouseCursor panel3DCursor { juce::MouseCursor::NormalCursor };

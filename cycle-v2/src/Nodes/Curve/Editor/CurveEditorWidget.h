@@ -28,6 +28,8 @@ public:
     void renderEnvelopeMorphSurface(Rectangle<float> bounds, float scaleFactor);
     void setEditGestureActive(bool active);
     void setPreviewMorphPosition(std::optional<MorphPosition> position);
+    void setEditorMorphPosition(int axis, float value);
+    void restoreEditorMorphGesture();
     std::optional<MorphPosition> effectiveMorphPosition() const;
     Rectangle<float> panelContentBounds(Rectangle<float> frame) const;
     void fitEnvelopeVerticalRange();

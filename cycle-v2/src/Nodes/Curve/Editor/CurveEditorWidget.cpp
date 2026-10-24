@@ -91,6 +91,18 @@ void CurveEditorWidget::setPreviewMorphPosition(std::optional<MorphPosition> pos
     }
 }
 
+void CurveEditorWidget::setEditorMorphPosition(int axis, float value) {
+    if (controller->setEditorMorphPosition(axis, value)) {
+        ++previewPresentationRevision;
+    }
+}
+
+void CurveEditorWidget::restoreEditorMorphGesture() {
+    if (controller->restoreEditorMorphGesture()) {
+        ++previewPresentationRevision;
+    }
+}
+
 std::optional<MorphPosition> CurveEditorWidget::effectiveMorphPosition() const {
     return controller->effectiveMorphPosition();
 }
@@ -187,7 +199,7 @@ void CurveEditorWidget::renderExpandedPanelOpenGL(
         return;
     }
 
-    controller->render(bounds, clipBounds, scaleFactor);
+    controller->render(bounds, clipBounds, scaleFactor, previewPresentationRevision);
 }
 
 void CurveEditorWidget::renderGuideExpandedPanelOpenGL(
@@ -198,7 +210,7 @@ void CurveEditorWidget::renderGuideExpandedPanelOpenGL(
         return;
     }
 
-    controller->render(bounds, clipBounds, scaleFactor);
+    controller->render(bounds, clipBounds, scaleFactor, previewPresentationRevision);
 }
 
 bool CurveEditorWidget::renderGuidePreviewSnapshotOpenGL(
