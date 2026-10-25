@@ -60,7 +60,8 @@ private:
             SignalPayload& output,
             size_t requestedColumns,
             const AudioProcessWorkArena* arena,
-            double releaseDuration);
+            double releaseDuration,
+            double noteOffTime);
 
     static constexpr size_t defaultTraversalColumns = 8;
     Rasterization::EnvelopePlaybackEngine playback;

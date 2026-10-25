@@ -274,7 +274,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
                     output,
                     context.traversalColumnCount,
                     context.workArena,
-                    context.previewReleaseDuration);
+                    context.previewReleaseDuration, context.previewNoteOffTime);
         }
         publishSingleOutput(context, std::move(output));
         return;
@@ -335,7 +335,7 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
                 output,
                 context.traversalColumnCount,
                 context.workArena,
-                context.previewReleaseDuration);
+                context.previewReleaseDuration, context.previewNoteOffTime);
     }
     publishSingleOutput(context, std::move(output));
 }
@@ -344,7 +344,8 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
         SignalPayload& output,
         size_t requestedColumns,
         const AudioProcessWorkArena* arena,
-        double releaseDuration) {
+        double releaseDuration,
+        double noteOffTime) {
     if (output.block.samples.empty()) {
         clearTraversalGrid(output.traversalGrid);
         return;
@@ -376,7 +377,7 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
         traversalPlayback.noteOn();
         MeshLibrary::EnvProps traversalProps;
         traversalProps.active = true;
-        const PreviewTraversal traversal(columns, releaseDuration);
+        const PreviewTraversal traversal(columns, releaseDuration, noteOffTime);
         for (int column = 0; column < values.size(); ++column) {
             if (traversal.beginsRelease((size_t) column)) {
                 traversalPlayback.noteOff(prepared);
@@ -410,6 +411,7 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
             arena);
 
     output.traversalGrid.metadata.releaseDuration = releaseDuration;
+    output.traversalGrid.metadata.noteOffTime = noteOffTime;
     const int rows = (int) output.traversalGrid.rows;
     for (size_t column = 0; column < columns; ++column) {
         Buffer<float>(

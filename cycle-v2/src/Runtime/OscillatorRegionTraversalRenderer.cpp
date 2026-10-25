@@ -19,6 +19,7 @@ void OscillatorRegionTraversalRenderer::prepare(
             : context.lanes;
     pitchEnvelope = std::dynamic_pointer_cast<const EnvelopeConfiguration>(context.pitchEnvelope);
     cachedReleaseDuration = -1.;
+    cachedNoteOffTime = 1.;
     pitchEnvelopeUnitValues = context.pitchEnvelopeUnitValues;
     pitchEnvelopeUnitValuesByLane = context.pitchEnvelopeUnitValuesByLane;
     workspace.resize((int) (3 * maximumRowCount));
@@ -34,11 +35,13 @@ bool OscillatorRegionTraversalRenderer::render(
             || workspace.size() < (int) (3 * grid.rows)) {
         return false;
     }
-    if (pitchEnvelope != nullptr && cachedReleaseDuration != grid.metadata.releaseDuration) {
+    if (pitchEnvelope != nullptr && (cachedReleaseDuration != grid.metadata.releaseDuration
+            || cachedNoteOffTime != grid.metadata.noteOffTime)) {
         pitchEnvelopeUnitValuesByLane = EnvelopePitchPreview::renderLanes(
                 pitchEnvelope, layout.order, EnvelopePitchPreview::defaultSampleCount,
-                EnvelopePitchPreview::unisonPreviewSeed, grid.metadata.releaseDuration);
+                EnvelopePitchPreview::unisonPreviewSeed, grid.metadata.releaseDuration, grid.metadata.noteOffTime);
         cachedReleaseDuration = grid.metadata.releaseDuration;
+        cachedNoteOffTime = grid.metadata.noteOffTime;
     }
     workspace.resetPlacement();
     Buffer<float> source = workspace.place((int) grid.rows);
@@ -54,7 +57,7 @@ bool OscillatorRegionTraversalRenderer::render(
                 0.5f) * level;
     }
 
-    const PreviewTraversal traversal(grid.columns, grid.metadata.releaseDuration);
+    const PreviewTraversal traversal(grid.columns, grid.metadata.releaseDuration, grid.metadata.noteOffTime);
     const double baseFrequency = CycleDsp::UnisonCore::frequencyForMidiNote(midiNote);
     for (size_t column = 0; column < grid.columns; ++column) {
         const double normalizedTimePerColumn = grid.columns > 1 ? traversal.increment(column) : 0.;

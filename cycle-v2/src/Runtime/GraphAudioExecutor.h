@@ -21,6 +21,7 @@ struct NodeAudioResult {
     std::vector<std::pair<String, SignalPayload>> outputs;
     std::vector<SignalTraversalGrid> probeTraversalGrids;
     double previewReleaseDuration {};
+    double previewNoteOffTime { 1. };
 };
 
 struct GraphAudioResult {
@@ -99,14 +100,16 @@ public:
             size_t frameCount,
             AudioProcessTiming timing,
             const AudioVoiceContext& voice,
-            size_t traversalColumnCount) const;
+            size_t traversalColumnCount,
+            double previewNoteOffTime = 1.) const;
     GraphAudioResult processProbes(
             const GraphExecutionPlan& plan,
             const std::vector<CompiledSignalProbe>& probes,
             size_t frameCount,
             AudioProcessTiming timing,
             const AudioVoiceContext& voice,
-            size_t traversalColumnCount) const;
+            size_t traversalColumnCount,
+            double previewNoteOffTime = 1.) const;
     GraphAudioResultView processIncremental(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,
@@ -165,6 +168,7 @@ private:
         int capturedStepIndex { -1 };
         const std::vector<uint8_t>* capturedSteps {};
         bool envelopeTimingOnly {};
+        double noteOffTime { 1. };
     };
 
     struct IncrementalDiagnosticExecution {
@@ -269,6 +273,7 @@ private:
 
     mutable std::unique_ptr<GraphAudioExecutor> envelopeTimingExecutor;
     mutable double cachedPreviewReleaseDuration {};
+    mutable double cachedPreviewNoteOffTime { 1. };
     mutable AudioProcessWorkArena workArena;
     mutable AudioProcessWorkArena voiceMixArena;
     mutable std::vector<SignalPayload> bufferSlots;

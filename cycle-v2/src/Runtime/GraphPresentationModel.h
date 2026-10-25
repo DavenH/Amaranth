@@ -119,7 +119,8 @@ public:
             const NodeGraph& graph,
             const String& probeId,
             size_t rasterRowCount,
-            int midiNote);
+            int midiNote,
+            double noteOffTime = 1.);
     std::vector<std::optional<GraphPreviewResult::SignalProbePreview>> captureProbePreviews(
             const NodeGraph& graph,
             const std::vector<String>& probeIds,

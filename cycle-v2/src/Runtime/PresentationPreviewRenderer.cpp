@@ -58,7 +58,8 @@ GraphPreviewResult::SignalProbePreview captureSelectedProbe(
         size_t frameCount,
         int midiNote,
         const std::array<int, 128>& controllerValues,
-        GraphPresentationPerformanceMetrics& performance) {
+        GraphPresentationPerformanceMetrics& performance,
+        double noteOffTime) {
     GraphAudioExecutor captureExecutor;
 
     AudioVoiceContext voice;
@@ -75,7 +76,8 @@ GraphPreviewResult::SignalProbePreview captureSelectedProbe(
             frameCount,
             {},
             voice,
-            kExpandedProbeColumnCount);
+            kExpandedProbeColumnCount,
+            noteOffTime);
     performance.record(
             GraphPresentationPerformanceMetrics::Stage::ExpandedProbeExecution,
             performance.timestamp() - executionStartedAt);
@@ -214,14 +216,15 @@ PresentationPreviewRenderer::captureProbePreview(
         size_t rasterRowCount,
         int midiNote,
         const std::array<int, 128>& controllerValues,
-        GraphPresentationPerformanceMetrics& performance) const {
+        GraphPresentationPerformanceMetrics& performance,
+        double noteOffTime) const {
     const uint64_t startedAt = performance.timestamp();
     const auto address = probeAddressFor(graph, plan, probeId);
     if (!address.has_value()) {
         return std::nullopt;
     }
     auto preview = captureSelectedProbe(
-            plan, *address, rasterRowCount, midiNote, controllerValues, performance);
+            plan, *address, rasterRowCount, midiNote, controllerValues, performance, noteOffTime);
     const auto recordTotal = [&] {
         performance.record(
                 GraphPresentationPerformanceMetrics::Stage::ExpandedProbeTotal,

@@ -770,6 +770,11 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("probeDetailRows", (int) state.probeDetailRows);
     root->setProperty("probeDetailReleaseDuration", state.probeDetailReleaseDuration);
     root->setProperty("probeDetailNoteOffPosition", state.probeDetailNoteOffPosition);
+    root->setProperty("probeDetailNoteOffTime", state.probeDetailNoteOffTime);
+    root->setProperty("probeDetailRenderedNoteOffTime", state.probeDetailRenderedNoteOffTime);
+    root->setProperty("probeDetailRenderCount", (int64) state.probeDetailRenderCount);
+    root->setProperty("probeDetailContentRevision", String(state.probeDetailContentRevision));
+    root->setProperty("probeDetailReleaseDragging", state.probeDetailReleaseDragging);
     root->setProperty("compileSucceeded", compileResult.succeeded());
     root->setProperty("validationIssueCount", (int) compileResult.validationIssues.size());
     root->setProperty("compileIssueCount", (int) compileResult.compileIssues.size());
@@ -1124,6 +1129,15 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 "probeDetail:" + state.probeDetailId,
                 "probeDetail",
                 state.probeDetailBounds));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "probeDetail:" + state.probeDetailId + ".release",
+                "probeReleaseHandle", state.probeDetailReleaseBounds));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "probeDetail:" + state.probeDetailId + ".releaseIcon",
+                "probeReleaseIcon", state.probeDetailReleaseIconBounds));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "probeDetail:" + state.probeDetailId + ".voice",
+                "probeVoiceTimeline", state.probeDetailVoiceBounds));
     }
 
     const GraphPresentationSnapshot& presentationSnapshot = context.presentation.snapshot();

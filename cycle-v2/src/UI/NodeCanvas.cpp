@@ -512,7 +512,10 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
         probeCanvasState.hoveredProbeId = {};
         hoveredEdgeIndex = -1;
         hoveredQuickCreatePortId = {};
-        setMouseCursor(MouseCursor::NormalCursor);
+        const bool releaseHandle = probeDetailState.releaseHitTest(
+                SignalProbeDetailView::boundsFor(editorContentBounds()), position);
+        setMouseCursor(releaseHandle ? MouseCursor::LeftRightResizeCursor : MouseCursor::NormalCursor);
+        resolvedHoverText = releaseHandle ? "Drag to audition note release" : String {};
         const bool canvasChanged = paletteChanged
                 || previousGuideId.isNotEmpty()
                 || previousProbeId.isNotEmpty()
@@ -693,6 +696,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             probeDetailState.close();
             notifyOverlayOcclusionChanged();
             requestCanvasRepaint();
+            return;
+        }
+        if (probeDetailState.beginReleaseDrag(detail, event.position)) {
+            setMouseCursor(MouseCursor::LeftRightResizeCursor);
+            repaint(detail.getSmallestIntegerContainer());
             return;
         }
         if (detail.contains(event.position)) {
@@ -1056,6 +1064,11 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
+    if (probeDetailState.releaseDragging) {
+        probeDetailState.dragRelease(event.position);
+        repaint(SignalProbeDetailView::boundsFor(editorContentBounds()).getSmallestIntegerContainer());
+        return;
+    }
     if (informationCardMouseDrag(event)) {
         return;
     }
@@ -1157,6 +1170,13 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
+    if (probeDetailState.releaseDragging) {
+        if (probeDetailState.endReleaseDrag(event.position)) {
+            refreshProbeDetail();
+        }
+        repaint(SignalProbeDetailView::boundsFor(editorContentBounds()).getSmallestIntegerContainer());
+        return;
+    }
     if (informationCardMouseUp()) {
         return;
     }
@@ -1422,6 +1442,10 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 
     if (key == KeyPress::escapeKey) {
         if (probeDetailState.isOpen()) {
+            if (probeDetailState.cancelReleaseDrag()) {
+                repaint(SignalProbeDetailView::boundsFor(editorContentBounds()).getSmallestIntegerContainer());
+                return true;
+            }
             probeDetailState.close();
             notifyOverlayOcclusionChanged();
             requestCanvasRepaint();
@@ -1637,7 +1661,7 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             guideShelfState,
             probeCanvasState,
             dockInteraction->focus(),
-            probeDetailState,
+            &probeDetailState,
             globalUnisonPreviewContext,
             liveOutputMeterLevels,
             interaction.spectralPan() != nullptr
@@ -2047,7 +2071,8 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
             commands.editingGraph(),
             probeId,
             captureResolution,
-            midiNote);
+            midiNote,
+            probeDetailState.probeId == probeId ? probeDetailState.noteOffTime : 1.);
     if (!preview.has_value()) {
         probeDetailState.close();
         notifyOverlayOcclusionChanged();
@@ -2081,7 +2106,7 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
 }
 
 void NodeCanvas::refreshProbeDetail() {
-    if (!probeDetailState.isOpen()) {
+    if (!probeDetailState.isOpen() || probeDetailState.releaseDragging) {
         return;
     }
 
@@ -2206,6 +2231,15 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.probeDetailRows = probeDetailState.renderResult.gridRows;
     result.probeDetailReleaseDuration = probeDetailState.releaseDuration;
     result.probeDetailNoteOffPosition = probeDetailState.noteOffPosition();
+    result.probeDetailNoteOffTime = probeDetailState.displayedNoteOffTime();
+    result.probeDetailRenderedNoteOffTime = probeDetailState.noteOffTime;
+    result.probeDetailRenderCount = probeDetailState.renderCount;
+    result.probeDetailContentRevision = probeDetailState.renderResult.contentRevision;
+    result.probeDetailReleaseDragging = probeDetailState.releaseDragging;
+    const auto detail = SignalProbeDetailView::boundsFor(editorContentBounds());
+    result.probeDetailReleaseBounds = SignalProbeDetailView::releaseHandleBounds(detail, probeDetailState);
+    result.probeDetailReleaseIconBounds = SignalProbeDetailView::releaseIconBounds(detail, probeDetailState);
+    result.probeDetailVoiceBounds = SignalProbeDetailView::voiceBounds(detail, probeDetailState);
     result.probeDetailBounds = probeDetailState.isOpen()
             ? SignalProbeDetailView::boundsFor(editorContentBounds())
             : Rectangle<float> {};

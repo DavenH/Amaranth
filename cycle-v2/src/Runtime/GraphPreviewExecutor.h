@@ -44,6 +44,7 @@ struct GraphPreviewResult {
         int frequencyMidiNote { 48 };
         bool connected {};
         double releaseDuration {};
+        double noteOffTime { 1. };
     };
 
     std::vector<NodePreviewResult> nodes;

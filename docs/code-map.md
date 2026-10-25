@@ -98,7 +98,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement; PanelPlaybackOverlay draws bounded audio cursor frames.
 - `cycle-v2/src/UI/NodeCanvasExplanations.cpp` — Preset/node/group explanations, shared editor and attached card orchestration.
 - `cycle-v2/src/UI/NodePreviewRenderer.h` — Node/Spy previews, shared heatmap bounds and Trimesh harmonic lanes.
-- `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy/probe overview and detail presentation.
+- `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy overview/detail; SignalProbeDetailView owns capture-free note-off dragging.
 - `cycle-v2/src/UI/InlinePresetBrowser.h` — Preset sidebar workflow and selection behavior.
 - `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and suite export.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.

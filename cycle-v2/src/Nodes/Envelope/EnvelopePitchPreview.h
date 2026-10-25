@@ -18,7 +18,8 @@ public:
             int laneCount,
             int sampleCount,
             uint32_t seed,
-            double releaseDuration = 0.);
+            double releaseDuration = 0.,
+            double noteOffTime = 1.);
 };
 
 }

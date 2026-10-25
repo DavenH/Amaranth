@@ -441,6 +441,7 @@ GraphPreviewResult::SignalProbePreview captureCompiledProbe(
     preview.frequencySampling = grid->metadata.frequencySampling;
     preview.frequencyMidiNote = grid->metadata.frequencyMidiNote;
     preview.releaseDuration = grid->metadata.releaseDuration;
+    preview.noteOffTime = grid->metadata.noteOffTime;
     return preview;
 }
 

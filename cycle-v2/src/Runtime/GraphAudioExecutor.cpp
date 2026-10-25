@@ -142,7 +142,8 @@ GraphAudioResult GraphAudioExecutor::processProbe(
         size_t frameCount,
         AudioProcessTiming timing,
         const AudioVoiceContext& voice,
-        size_t traversalColumnCount) const {
+        size_t traversalColumnCount,
+        double previewNoteOffTime) const {
     if (probe.sourceStepIndex < 0
             || (size_t) probe.sourceStepIndex >= plan.steps.size()) {
         return {};
@@ -156,7 +157,10 @@ GraphAudioResult GraphAudioExecutor::processProbe(
             CompleteDiagnosticExecution {
                     traversalColumnCount,
                     &activeSteps,
-                    probe.sourceStepIndex
+                    probe.sourceStepIndex,
+                    nullptr,
+                    false,
+                    previewNoteOffTime
             });
 }
 
@@ -166,7 +170,8 @@ GraphAudioResult GraphAudioExecutor::processProbes(
         size_t frameCount,
         AudioProcessTiming timing,
         const AudioVoiceContext& voice,
-        size_t traversalColumnCount) const {
+        size_t traversalColumnCount,
+        double previewNoteOffTime) const {
     std::vector<int> sources;
     sources.reserve(probes.size());
     for (const auto& probe : probes) {
@@ -189,7 +194,9 @@ GraphAudioResult GraphAudioExecutor::processProbes(
                     traversalColumnCount,
                     &activeSteps,
                     -1,
-                    &capturedSteps
+                    &capturedSteps,
+                    false,
+                    previewNoteOffTime
             });
 }
 
@@ -261,6 +268,7 @@ void GraphAudioExecutor::clearIncrementalCache() const {
 void GraphAudioExecutor::resetExecutionState() const {
     envelopeTimingExecutor.reset();
     cachedPreviewReleaseDuration = 0.;
+    cachedPreviewNoteOffTime = 1.;
     clearIncrementalCache();
     processorCache.clear();
     preparedVoices.clear();
@@ -429,7 +437,10 @@ GraphAudioResult GraphAudioExecutor::processInternal(
     const bool timingOnly = completeDiagnostics != nullptr && completeDiagnostics->envelopeTimingOnly;
     const double releaseDuration = captureDiagnostics && !timingOnly
             ? measurePreviewRelease(plan, voice, timing) : 0.;
-    const bool timelineChanged = releaseDuration != cachedPreviewReleaseDuration;
+    const double noteOffTime = completeDiagnostics != nullptr
+            ? jlimit(0., 1., completeDiagnostics->noteOffTime) : 1.;
+    const bool timelineChanged = releaseDuration != cachedPreviewReleaseDuration
+            || noteOffTime != cachedPreviewNoteOffTime;
     GraphAudioResult result;
     result.previewReleaseDuration = releaseDuration;
     if (incrementalResult != nullptr) {
@@ -518,7 +529,8 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         }
         const bool hasCachedResult = captureDiagnostics
                 && diagnosticCache[stepIndex].has_value()
-                && diagnosticCache[stepIndex]->previewReleaseDuration == releaseDuration;
+                && diagnosticCache[stepIndex]->previewReleaseDuration == releaseDuration
+                && diagnosticCache[stepIndex]->previewNoteOffTime == noteOffTime;
         const bool explicitlyDirty = timelineChanged || dirtyNodes == nullptr || (*dirtyNodes)[stepIndex] != 0;
         if (captureDiagnostics && hasCachedResult && !explicitlyDirty) {
             const auto& cachedOutputs = diagnosticCache[stepIndex]->outputs;
@@ -547,6 +559,7 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         context.voiceView = &voice;
         context.captureTraversalGrid = captureDiagnostics && !timingOnly;
         context.previewReleaseDuration = releaseDuration;
+        context.previewNoteOffTime = noteOffTime;
         context.outputs.clear();
         if (operationCounts != nullptr) {
             ++operationCounts->contextPatches;
@@ -692,6 +705,7 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 std::move(probeTraversalGrids)
         };
         nodeResult.previewReleaseDuration = releaseDuration;
+        nodeResult.previewNoteOffTime = noteOffTime;
         if (incrementalResult != nullptr) {
             stagedDiagnosticResults[stepIndex] = std::move(nodeResult);
         } else {
@@ -722,6 +736,7 @@ GraphAudioResult GraphAudioExecutor::processInternal(
 
     if (captureDiagnostics && !timingOnly) {
         cachedPreviewReleaseDuration = releaseDuration;
+        cachedPreviewNoteOffTime = noteOffTime;
     }
     return result;
 }

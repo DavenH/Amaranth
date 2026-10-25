@@ -545,7 +545,8 @@ GraphPresentationModel::captureProbePreview(
         const NodeGraph& graph,
         const String& probeId,
         size_t rasterRowCount,
-        int midiNote) {
+        int midiNote,
+        double noteOffTime) {
     if (!current.compileResult.succeeded() || rasterRowCount == 0) {
         return std::nullopt;
     }
@@ -556,7 +557,8 @@ GraphPresentationModel::captureProbePreview(
             rasterRowCount,
             midiNote,
             current.previewControllerValues,
-            performance);
+            performance,
+            noteOffTime);
 }
 
 std::vector<std::optional<GraphPreviewResult::SignalProbePreview>>

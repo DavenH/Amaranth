@@ -64,6 +64,7 @@ struct TraversalGridAxisResolution {
 
 struct TraversalGridMetadata {
     double releaseDuration {};
+    double noteOffTime { 1. };
     TraversalGridArity arity { TraversalGridArity::Empty };
     TraversalGridLayout layout { TraversalGridLayout::ColumnsThenRows };
     TraversalGridAxis columnAxis { TraversalGridAxis::None };
@@ -268,6 +269,7 @@ struct AudioProcessContext {
     size_t traversalColumnCount {};
     double traversalDurationSeconds {};
     double previewReleaseDuration { -1. };
+    double previewNoteOffTime { 1. };
     AudioProcessTiming timing;
     const AudioVoiceContext* voiceView {};
     AudioVoiceContext voice;

@@ -283,7 +283,7 @@ private:
                 : context.timing.sampleRate > 0.0
                         ? (double) context.frameCount / context.timing.sampleRate
                         : 0.0;
-        const PreviewTraversal traversal(grid.columns, grid.metadata.releaseDuration);
+        const PreviewTraversal traversal(grid.columns, grid.metadata.releaseDuration, grid.metadata.noteOffTime);
         for (size_t column = 0; column < grid.columns; ++column) {
             const double columnSeconds = grid.columns > 1
                     ? traversalSeconds * traversal.increment(column > 0 ? column - 1 : 0) : 0.;
@@ -446,6 +446,7 @@ private:
                 TraversalGridAxis::Time,
                 defaultTraversalRowAxisForDomain(output.domain));
         metadata.releaseDuration = std::max(0., context.previewReleaseDuration);
+        metadata.noteOffTime = context.previewNoteOffTime;
         metadata.frequencyMidiNote = processVoice(context).controls.noteNumber;
         if (metadata.rowAxis == TraversalGridAxis::Frequency) {
             metadata.frequencySampling = TraversalGridFrequencySampling::LinearBins;
@@ -459,7 +460,7 @@ private:
 
         Mesh& mesh = currentMesh();
         trimeshGridDsp.setCyclic(outputPort.domain == PortDomain::TimeSignal);
-        const PreviewTraversal traversal(columnCount, metadata.releaseDuration);
+        const PreviewTraversal traversal(columnCount, metadata.releaseDuration, metadata.noteOffTime);
         traversalMorphs.resize(columnCount);
         for (size_t column = 0; column < columnCount; ++column) {
             MorphPosition columnMorph = morph;

@@ -29,7 +29,8 @@ public:
             size_t rasterRowCount,
             int midiNote,
             const std::array<int, 128>& controllerValues,
-            GraphPresentationPerformanceMetrics& performance) const;
+            GraphPresentationPerformanceMetrics& performance,
+            double noteOffTime = 1.) const;
     std::vector<std::optional<GraphPreviewResult::SignalProbePreview>> captureProbePreviews(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,

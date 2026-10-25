@@ -5,6 +5,7 @@
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Nodes/Envelope/EnvelopePitchPreview.h"
 #include "Runtime/PreviewTraversal.h"
 #include "Graph/GraphCompiler.h"
 #include "Runtime/GraphAudioExecutor.h"
@@ -332,4 +333,127 @@ TEST_CASE("Morphed release timing invalidates every cached Spy timeline",
     GraphPreviewExecutor().renderIncremental(compiled.plan, after, {}, dirty, 40, previews);
     REQUIRE(previews.previewReleaseDuration == Catch::Approx(1.8999));
     REQUIRE(previews.renderedNodeCount > 1);
+}
+
+TEST_CASE("Spy note-off auditions preserve the axis and hold the chosen morph slice",
+        "[cycle-v2][preview][release-audition]") {
+    constexpr size_t columns = 401;
+    for (const double release : { 0., 0.2, 1.5 }) {
+        const PreviewTraversal normal(columns, release);
+        for (const double noteOff : { 0., 0.2, 0.7, 1. }) {
+            const PreviewTraversal audition(columns, release, noteOff);
+            double elapsed = 0.;
+            size_t releases = 0;
+            for (size_t column = 0; column < columns; ++column) {
+                if (audition.beginsRelease(column)) {
+                    REQUIRE(elapsed == Catch::Approx(noteOff).margin(0.01));
+                    ++releases;
+                }
+                if (column + 1 < columns) {
+                    REQUIRE(audition.increment(column) == normal.increment(column));
+                    elapsed += audition.increment(column);
+                }
+            }
+            REQUIRE(elapsed == Catch::Approx(1. + release));
+            REQUIRE(releases == (noteOff < 1. || release > 0. ? 1 : 0));
+            REQUIRE(audition.morphPosition(columns - 1) == Catch::Approx(noteOff).margin(0.01));
+            REQUIRE(audition.noteOffPosition()
+                    == Catch::Approx(normal.noteOffPosition() * noteOff).margin(1. / (double) (columns - 1)));
+        }
+    }
+}
+
+TEST_CASE("Scoped Spy auditions release envelopes early and do not leak into normal captures",
+        "[cycle-v2][preview][release-audition]") {
+    const auto graph = NodeGraph::createDemoGraph();
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    setEnvelopeTiming(compiled.plan, "env", loopEnvelope(0.8f));
+    setEnvelopeTiming(compiled.plan, "scratchEnv", loopEnvelope(0.8f));
+    const CompiledSignalProbe volume { "volume", compiled.plan.dependencyIndex.stepIndexById.at("env"), 0 };
+    const CompiledSignalProbe scratch { "scratch", compiled.plan.dependencyIndex.stepIndexById.at("scratchEnv"), 0 };
+    AudioVoiceContext voice;
+    voice.events = { { NoteLifecycleType::NoteOn, 0, 0 } };
+    GraphAudioExecutor executor;
+    const auto normal = executor.processProbe(compiled.plan, volume, 8, {}, voice, 401);
+    const auto early = executor.processProbes(compiled.plan, { volume, scratch }, 8, {}, voice, 401, 0.2);
+    const auto& held = envelopeGrid(normal, "env");
+    const auto& released = envelopeGrid(early, "env");
+    REQUIRE(released.metadata.noteOffTime == 0.2);
+    REQUIRE(released.metadata.releaseDuration == held.metadata.releaseDuration);
+    REQUIRE(envelopeGrid(early, "scratchEnv").metadata.noteOffTime == 0.2);
+    for (size_t column = 0; column < 50; ++column) {
+        REQUIRE(released.values[column * released.rows] == held.values[column * held.rows]);
+    }
+    REQUIRE(released.values[200 * released.rows] == Catch::Approx(0.f).margin(0.005f));
+    REQUIRE(held.values[200 * held.rows] > 0.2f);
+
+    const auto probe = GraphPreviewExecutor().captureProbe(compiled.plan, early, volume);
+    REQUIRE(probe.noteOffTime == 0.2);
+    REQUIRE(DefaultOutputPreview::spectrum(probe).noteOffTime == 0.2);
+    const std::vector<uint8_t> dirty(compiled.plan.steps.size(), 0);
+    const auto restored = executor.processIncrementalIndexed(
+            graph, compiled.plan, 8, dirty, voice, {}, 401);
+    const auto restoredVolume = std::find_if(restored.nodes.begin(), restored.nodes.end(),
+            [](const auto* node) { return node->nodeId == "env"; });
+    REQUIRE(restoredVolume != restored.nodes.end());
+    REQUIRE((*restoredVolume)->output.traversalGrid.metadata.noteOffTime == 1.);
+    REQUIRE((*restoredVolume)->output.traversalGrid.values == held.values);
+}
+
+TEST_CASE("Spy release drags defer capture and preserve their grid through commit and cancel",
+        "[cycle-v2][canvas][probe][detail][release-audition]") {
+    GraphPreviewResult::SignalProbePreview preview;
+    preview.probeId = "probe";
+    preview.gridColumns = 512;
+    preview.gridRows = 512;
+    preview.values.resize(preview.gridColumns * preview.gridRows, 0.5f);
+    preview.releaseDuration = 0.5;
+    SignalProbeDetailState detail;
+    detail.open(std::move(preview), RenderScalePolicy::Unipolar, 1, 60, 512);
+    const Rectangle<float> bounds { 0.f, 0.f, 920.f, 620.f };
+    const auto voice = SignalProbeDetailView::voiceBounds(bounds, detail);
+    const Point<float> start = SignalProbeDetailView::releaseHandleBounds(bounds, detail).getCentre();
+    const auto* storage = detail.renderResult.primary.data();
+    const auto revision = detail.renderResult.contentRevision;
+    REQUIRE(detail.beginReleaseDrag(bounds, start));
+    for (const float movement : { -0.3f, -0.7f }) {
+        detail.dragRelease(start.translated(movement * voice.getWidth(), 0.f));
+        REQUIRE(detail.displayedNoteOffTime() == Catch::Approx(1.f + movement));
+        REQUIRE(detail.noteOffTime == 1.);
+        REQUIRE(detail.renderCount == 1);
+        REQUIRE(detail.renderResult.primary.data() == storage);
+        REQUIRE(detail.renderResult.contentRevision == revision);
+    }
+    REQUIRE(detail.endReleaseDrag(start.translated(-0.7f * voice.getWidth(), 0.f)));
+    REQUIRE(detail.noteOffTime == Catch::Approx(0.3));
+    REQUIRE(detail.renderCount == 1); // The input owner requests the one capture after commit.
+    REQUIRE_FALSE(detail.endReleaseDrag(start));
+    auto handle = SignalProbeDetailView::releaseHandleBounds(bounds, detail).getCentre();
+    REQUIRE(detail.beginReleaseDrag(bounds, handle));
+    REQUIRE_FALSE(detail.endReleaseDrag(handle));
+    const auto icon = SignalProbeDetailView::releaseIconBounds(bounds, detail).getCentre();
+    REQUIRE(detail.beginReleaseDrag(bounds, icon));
+    detail.dragRelease(icon.translated(-2.f * voice.getWidth(), 0.f));
+    REQUIRE(detail.displayedNoteOffTime() == 0.);
+    REQUIRE(detail.cancelReleaseDrag());
+    REQUIRE(detail.noteOffTime == Catch::Approx(0.3));
+    REQUIRE_FALSE(detail.endReleaseDrag(icon));
+    handle = SignalProbeDetailView::releaseHandleBounds(bounds, detail).getCentre();
+    REQUIRE(detail.beginReleaseDrag(bounds, handle));
+    REQUIRE(detail.endReleaseDrag(handle.translated(2.f * voice.getWidth(), 0.f)));
+    REQUIRE(detail.noteOffTime == 1.);
+    REQUIRE(detail.renderResult.primary.data() == storage);
+}
+
+TEST_CASE("Spy pitch lanes take release from the auditioned note-off",
+        "[cycle-v2][preview][release-audition]") {
+    const auto configuration = loopEnvelope(0.8f);
+    const auto held = EnvelopePitchPreview::renderLanes(configuration, 2, 401, 123, 0.2);
+    const auto early = EnvelopePitchPreview::renderLanes(configuration, 2, 401, 123, 0.2, 0.2);
+    REQUIRE(early.size() == held.size());
+    for (size_t lane = 0; lane < early.size(); ++lane) {
+        REQUIRE(early[lane][200] == Catch::Approx(0.f).margin(0.005f));
+        REQUIRE(held[lane][200] > 0.2f);
+    }
 }

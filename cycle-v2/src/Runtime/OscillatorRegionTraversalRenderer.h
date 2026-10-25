@@ -22,6 +22,7 @@ private:
 
     float voiceDurationSeconds { 1.f };
     double cachedReleaseDuration { -1. };
+    double cachedNoteOffTime { 1. };
     std::shared_ptr<const EnvelopeConfiguration> pitchEnvelope;
     CycleDsp::UnisonVoiceLayout layout;
     std::vector<float> pitchEnvelopeUnitValues;
