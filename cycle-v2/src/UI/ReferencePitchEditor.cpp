@@ -6,10 +6,10 @@
 
 #include "Nodes/Curve/Panel/ConcreteCurvePanels.h"
 #include "Nodes/Envelope/EnvelopeMeshState.h"
-#include "UI/CanvasChromePalette.h"
 #include "UI/ReferencePitchEditor.h"
 #include "UI/ComparisonSurfaceView.h"
 #include "UI/CanvasChromeMetrics.h"
+#include "UI/EnvelopePurposeIconRenderer.h"
 #include "UiIconData.h"
 
 using namespace gl;
@@ -78,6 +78,7 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
     configureViewControls();
 
     fundamental.slider.setRange(0, 127, 1);
+    fundamental.label.setVisible(false);
     fundamental.slider.setKeyboardSteps(1, 1);
     fundamental.configureValuePresentation(
             noteLabel,
@@ -354,10 +355,13 @@ juce::Rectangle<int> ReferencePitchEditor::closeBounds() const {
 
 void ReferencePitchEditor::paint(juce::Graphics& graphics) {
     chrome.paint(graphics);
-    graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(13.f);
-    graphics.drawText("Pitch envelope", 12, cyclogram->getBottom() + 6, 130, 28,
-            juce::Justification::centredLeft);
+}
+
+void ReferencePitchEditor::paintOverChildren(juce::Graphics& graphics) {
+    const auto pitch = curveBounds().reduced(6);
+    EnvelopePurposeIconRenderer::paintMonochrome(graphics, EnvelopePurpose::Pitch,
+            pitch.withSize(CanvasChromeMetrics::panelOverlayButtonSize,
+                    CanvasChromeMetrics::panelOverlayButtonSize).toFloat());
 }
 
 void ReferencePitchEditor::resized() {
@@ -365,11 +369,8 @@ void ReferencePitchEditor::resized() {
     auto bounds = getLocalBounds().withTrimmedTop(CanvasChromeMetrics::fullEditorHeaderHeight)
             .reduced(12, 8);
     const int pitchHeight = juce::jlimit(90, 170, bounds.getHeight() / 3);
-    cyclogram->setBounds(bounds.removeFromTop(juce::jmax(0, bounds.getHeight() - pitchHeight - 34)));
+    cyclogram->setBounds(bounds.removeFromTop(juce::jmax(0, bounds.getHeight() - pitchHeight - 6)));
     bounds.removeFromTop(6);
-    auto heading = bounds.removeFromTop(28);
-    const int noteWidth = juce::jmin(320, juce::jmax(0, heading.getWidth() - 145));
-    fundamental.setBounds(heading.removeFromRight(noteWidth), 92, 8, 70);
     if (Component* component = host->zoomComponentIfCreated()) {
         component->setBounds(bounds);
     }
@@ -379,6 +380,10 @@ void ReferencePitchEditor::resized() {
     timeView.setBounds(surface.getX(), surface.getY(), size, size);
     spectrumView.setBounds(surface.getX() + step, surface.getY(), size, size);
     auto pitch = curveBounds().reduced(6);
+    fundamental.setBounds({ pitch.getX() + step + 8, pitch.getY(), 240, size }, 0, 6, 70);
+    fundamental.slider.toFront(false);
+    fundamental.value.toFront(false);
+    fundamental.unit.toFront(false);
     zoomAttack.setBounds(pitch.getRight() - 2 * step - size, pitch.getY(), size, size);
     zoomFit.setBounds(pitch.getRight() - step - size, pitch.getY(), size, size);
     zoomFull.setBounds(pitch.getRight() - size, pitch.getY(), size, size);

@@ -39,6 +39,7 @@ public:
     juce::Rectangle<int> curveBounds() const;
 
     void paint(juce::Graphics& graphics) override;
+    void paintOverChildren(juce::Graphics& graphics) override;
     void resized() override;
     bool keyPressed(const juce::KeyPress& key) override;
 
