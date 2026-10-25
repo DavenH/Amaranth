@@ -180,30 +180,37 @@ void ReferencePitchEditor::refreshCyclogram() {
     if (analysis == nullptr) {
         return;
     }
+    const bool desiredMode = library.spectralViewFor(openedId);
+    if (spectral != desiredMode) {
+        spectral = desiredMode;
+        timeView.setToggleState(!spectral, juce::dontSendNotification);
+        spectrumView.setToggleState(spectral, juce::dontSendNotification);
+        auto camera = cyclogram->camera();
+        camera.y = 0.f;
+        camera.h = 1.f;
+        cyclogram->setCamera(camera);
+    }
     surfaceCache.refresh(*analysis);
     if (displayedGeneration == surfaceCache.generation() && displayedSpectral == spectral) {
         return;
     }
     const auto& surface = surfaceCache.surface(spectral);
     cyclogram->setGrid(surface.values, surface.gridColumns, surface.gridRows,
-            surface.domain, analysis->standardMidiNote(), spectral ? 1.f : 2.f, false, analysis->sample->samplerate);
+            surface.domain, analysis->standardMidiNote(), spectral ? 1.f : 2.f,
+            false, analysis->sample->samplerate, surfaceCache.columnPositions(), (size_t) analysis->maximumRows);
     displayedGeneration = surfaceCache.generation();
     displayedSpectral = spectral;
 }
 
 void ReferencePitchEditor::setSurfaceMode(bool shouldUseSpectrum) {
-    if (spectral == shouldUseSpectrum) {
+    if (!library.setSpectralView(openedId, shouldUseSpectrum)) {
         return;
     }
-    spectral = shouldUseSpectrum;
-    timeView.setToggleState(!spectral, juce::dontSendNotification);
-    spectrumView.setToggleState(spectral, juce::dontSendNotification);
-    auto camera = cyclogram->camera();
-    camera.y = 0.f;
-    camera.h = 1.f;
-    cyclogram->setCamera(camera);
     refreshCyclogram();
     syncTimeZoom(true);
+    if (onViewModeChanged) {
+        onViewModeChanged();
+    }
 }
 
 void ReferencePitchEditor::syncTimeZoom(bool fromSurface) {

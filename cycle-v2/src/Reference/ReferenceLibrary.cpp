@@ -160,6 +160,22 @@ std::vector<juce::String> ReferenceLibrary::openReferenceIds() const {
     return ids;
 }
 
+bool ReferenceLibrary::spectralViewFor(const juce::String& id) const {
+    const auto found = std::find_if(openReferences.begin(), openReferences.end(),
+            [&](const auto& reference) { return reference.id == id; });
+    return found != openReferences.end() && found->spectral;
+}
+
+bool ReferenceLibrary::setSpectralView(const juce::String& id, bool spectral) {
+    const auto found = std::find_if(openReferences.begin(), openReferences.end(),
+            [&](const auto& reference) { return reference.id == id; });
+    if (found == openReferences.end() || found->spectral == spectral) {
+        return false;
+    }
+    found->spectral = spectral;
+    return true;
+}
+
 bool ReferenceLibrary::select(const juce::String& id, juce::String& error) {
     const auto found = std::find_if(entries.begin(), entries.end(), [&](const auto& entry) {
         return entry.id == id;

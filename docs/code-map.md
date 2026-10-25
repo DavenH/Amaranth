@@ -69,7 +69,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/CMakeLists.txt` — CycleV2 app, graph migrator, and test target source lists.
 - `cycle-v2/src/Main.cpp` — App composition root; App/ owns audio engine, graph files and library lifecycle.
 - `cycle-v2/src/App/Automation/` — Socket transport, input, inspection, command routing and semantic authoring adapters.
-- `cycle-v2/src/Reference/` — Reference library, pitch/cyclogram analysis, and numerical automation exports.
+- `cycle-v2/src/Reference/` — Five-second reference loads, cycle-resolution analysis, session view modes, numerical exports.
 - `cycle-v2/src/Graph/NodeGraph.h` — Durable graph data model; read through dispatcher-owned edit views in UI code.
 - `cycle-v2/src/Graph/GraphDocument.h` — Committed graph ownership, publication, and document observers.
 - `cycle-v2/src/Graph/GraphCommandDispatcher.h` — Semantic values, topology, Guides, gestures and staged undoable publication.
@@ -156,7 +156,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Explained examples / sax studies | `scripts/create_cycle_v2_saxophone_articulation.py`, `scripts/create_cycle_v2_saxophone_anchors.py`, `scripts/create_cycle_v2_reed_saxophone.py` | Author expressive, measured-anchor and compact pulse/spectrum/body studies through canonical edits and capture. |
 | Audition comparisons / reference listening | `scripts/report_cycle_auditions.py`, `scripts/create_saxophone_reference_audit.py`, `scripts/cycle_saxophone_reed_audit.py`, `scripts/cycle_study_artifacts.py` | Reuse saved metadata, declared levels, provenance and immutable study boundaries. |
 | Sidebar icons | `cycle-v2/src/UI/LibraryIconRenderer.h`, `cycle-v2/resources/ui-icons/` | Reuse embedded SVGs and shared control geometry for tabs and library actions. |
-| Wave-reference workflow | `cycle-v2/src/UI/ReferenceAssetBrowser.h`, `cycle-v2/src/UI/ReferenceTrayBar.h`, `cycle-v2/src/UI/ReferencePitchEditor.h`, `cycle-v2/src/UI/ReferenceSurfaceCache.h`, `cycle-v2/src/Reference/` | Assets/tray; linked reference surface/pitch editor; ReferenceSurfaceCache caches Cycle 1 harmonic analysis. |
+| Wave-reference workflow | `cycle-v2/src/UI/ReferenceAssetBrowser.h`, `cycle-v2/src/UI/ReferenceTrayBar.h`, `cycle-v2/src/UI/ReferencePitchEditor.h`, `cycle-v2/src/UI/ReferenceSurfaceCache.h`, `cycle-v2/src/Reference/` | Assets/tray; linked cycle-resolution views; per-reference mode pills; cached Cycle 1 harmonic analysis. |
 | Labelled reference / pitch evidence | `scripts/cycle_reference_study.py`, `scripts/cycle_reference_pitch_evidence.py`, `scripts/cycle_saxophone_anchor_analysis.py` | Reuse cached analysis; retain confidence and effective pitch-path provenance. |
 | Preset/graph persistence | `GraphSerializer.h`, product `content/` | Preserve migrations and canonical on-disk formats. |
 

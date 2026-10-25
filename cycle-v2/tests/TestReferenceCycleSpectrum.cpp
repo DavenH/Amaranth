@@ -97,3 +97,17 @@ TEST_CASE("Reference FFTs stretch irregular tracked cycles independently of the 
         REQUIRE(cache.spectrumGeneration() == 1);
     }
 }
+
+TEST_CASE("Reference frequency display caps rows after full harmonic analysis",
+        "[cycle-v2][reference][resolution]") {
+    constexpr int rows = 4096;
+    std::vector<float> magnitudes(rows, 0.2f);
+    magnitudes.front() = 0.6f;
+    const auto profile = TrimeshRenderProfile::fromDomain(PortDomain::SpectralMagnitudeSignal);
+    const auto full = profile.mapSpectrum2DGridToDisplay(magnitudes, 1, rows, 36, false, 96000.0);
+    const auto capped = profile.mapSpectrum2DGridToDisplay(magnitudes, 1, rows, 36, false, 96000.0, 1024);
+    REQUIRE(capped.size() == 1024);
+    REQUIRE(capped.front() == full.front());
+    REQUIRE(capped.back() == full.back());
+    REQUIRE(*std::min_element(capped.begin(), capped.end()) > 0.6f);
+}

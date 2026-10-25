@@ -46,6 +46,7 @@ public:
     std::function<void()> onClose;
     std::function<void()> onAuditionToggle;
     std::function<void()> onRenderRequested;
+    std::function<void()> onViewModeChanged;
 
 private:
     void configureViewControls();

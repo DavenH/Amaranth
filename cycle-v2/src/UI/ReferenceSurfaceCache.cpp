@@ -9,6 +9,7 @@ namespace CycleV2 {
 void ReferenceSurfaceCache::reset() {
     sample = nullptr;
     revision = 0;
+    positions.clear();
     time = {};
     frequency = {};
 }
@@ -20,6 +21,7 @@ bool ReferenceSurfaceCache::refresh(const ReferenceSampleAnalysis& analysis) {
     }
     sample = analysis.sample.get();
     revision = analysis.cyclogramRevision;
+    positions = analysis.cyclePositions;
     time = {};
     time.connected = true;
     time.domain = PortDomain::TimeSignal;
@@ -56,13 +58,15 @@ void ReferenceSurfaceCache::buildSpectrum() {
     cycles.reserve(time.gridColumns);
     harmonics.reserve(time.gridColumns);
     for (size_t index = 0; index < time.gridColumns; ++index) {
-        const float position = (float) index / (float) (time.gridColumns - 1);
+        const float position = positions.empty()
+                ? (float) index / (float) (time.gridColumns - 1) : positions[index];
         cycles.emplace_back(folded.data() + index * (size_t) cycleRows,
                 cycleRows, position, (char) sample->fundNote);
         harmonics.emplace_back(frequency.values.data() + index * frequency.gridRows,
                 (int) frequency.gridRows, position, (char) sample->fundNote);
     }
-    WavePeriodFolding::render(*sample, cycles, sample->size(), true, true, 0.5);
+    WavePeriodFolding::render(*sample, cycles, sample->size(), true, true, 0.5,
+            false, !positions.empty());
     Transform transform;
     WavePeriodSpectrum::render(transform, cycles, harmonics);
 }

@@ -37,6 +37,8 @@ public:
     bool replacePitchPath(std::vector<Vertex2> points);
     bool undoPitchEdit();
     bool redoPitchEdit();
+    bool spectralViewFor(const juce::String& id) const;
+    bool setSpectralView(const juce::String& id, bool spectral);
 
 private:
     struct PitchEdit {
@@ -47,6 +49,7 @@ private:
     struct OpenReference {
         juce::String id;
         ReferenceSampleAnalysis analysis;
+        bool spectral {};
     };
 
     static bool supportedAudioFile(const juce::File& file);

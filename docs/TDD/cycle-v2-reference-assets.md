@@ -2,6 +2,64 @@
 
 Status: Implemented (2026-10-23).
 
+## Cycle-resolution follow-up (2026-10-25)
+
+Status: Implemented.
+
+Load at most five seconds through PitchedSample's decoder, before its existing
+linked-channel peak normalization. Retain the source file. Replace the fixed
+160x256 reference grid with one column per derived cycle, evenly selecting at
+most 1024 cycles across the recording; keep their actual recording times.
+Cyclogram rows follow the next power of two of the longest cycle, capped at
+1024. Spectra retain full power-of-two transforms and physical harmonic bins;
+log-frequency display resampling caps the presented rows at 1024.
+
+WavePeriodFolding and WavePeriodSpectrum remain authoritative. Extend folding
+to accept explicit column times without changing Cycle 1's uniform default.
+ReferenceSampleAnalyzer owns cycle selection. ComparisonSurfaceView and the
+shared scalar renderer translate irregular column geometry, including fallback;
+they do not analyze audio. Cache products by analysis revision, never on zoom.
+ReferenceLibrary owns each open reference's session view mode. Expanded editor
+and tray use that mode; a neutral 32x22 icon pill on each card toggles it.
+No preset/document writes, graph updates, or new DSP implementations.
+
+Verify five-second trim/normalization at multiple rates, uncapped and evenly
+decimated cycle selection (including 1536/2048), row caps without harmonic loss,
+time alignment, cache reuse, mode synchronization/isolation, both modes and
+pill geometry in production-size captures. Delete fixed-grid defaults and the
+tray's unconditional time-domain presentation.
+
+Completion: selected cycles retain their timestamps through folding, both cached
+products and the presentation adapter. The scalar renderer draws texture strips
+at those positions; uniform callers retain a single quad. Its shaderless texture
+path shares the geometry, and Panel3D's older surface fallback uses the same
+column coordinates. Explicit cycle folding preserves the final complete cycle
+by zero-padding missing wrap context, with scratch space sized for raw cycles
+even when presented phase rows are capped. Cycle 1's default remains uniform.
+Mode changes update session state without saving library metadata or presets.
+
+Review: 308 production C++ lines added, 80 removed. ComparisonDock grows
+774→862 lines, retaining card composition, GL lifetime and event routing;
+ReferenceLibrary owns mode policy and ReferenceSurfaceCache owns analysis reuse.
+ReferencePitchEditor remains 493 lines and ComparisonSurfaceView 404, composing
+the existing curve, zoom, material and panel owners. Shared Panel3D (1132 lines)
+and GLScalarSurfaceRenderer (911) gain only column geometry; their existing
+render/preparation collaborators retain algorithms, upload policy and lifecycle.
+No new domain-kind branches, graph mutations or independent DSP core remain.
+
+Evidence: both Cycle/CycleV2 builds pass; 22 focused reference/display cases and
+19 shared material cases pass. The cycle fixture uses exact-length recordings
+of 32, 1024, 1536 and 2048 irregular cycles, compares selected waveforms against
+the complete render and checks a nonblank last column. Decode tests prove a
+five-second bound at 44.1/96 kHz, normalization after trimming and linked stereo
+gain. The live view script passes linked navigation, unchanged analysis on
+zoom/toggles, matching tray/editor times, both pill directions, close/reopen
+retention, narrow layout, audition and unchanged document state. Native Space
+audition still passes all five focus contexts. Sax-growl presents 431x512 phase
+and 431x201 harmonic grids. Logs, captures and reports are under
+`.context/reference-cycle-resolution-*`. Architecture audit, map and whitespace
+checks pass. Both fixed-grid defaults and the tray's time-only path are removed.
+
 ## Contract
 
 Wave References has a persistent disclosure control below the canvas. Its session

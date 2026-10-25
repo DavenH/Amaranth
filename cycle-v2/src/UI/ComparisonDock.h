@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <memory>
+#include <map>
 #include <vector>
 
 #include "Reference/ReferenceLibrary.h"
@@ -14,6 +15,7 @@ namespace CycleV2 {
 class StandaloneAudioEngine;
 class ComparisonSurfaceView;
 class ReferencePitchEditor;
+class ReferenceSurfaceCache;
 
 class ComparisonDock : public juce::Component,
                        public juce::DragAndDropTarget {
@@ -58,9 +60,12 @@ private:
         std::vector<float> surface;
         const std::vector<float>* sampleSurface {};
         const PitchedSample* sampleIdentity {};
+        const std::vector<float>* positions {};
+        double sampleRate { 44100.0 };
         uint64_t surfaceRevision {};
         size_t columns {};
         size_t rows {};
+        size_t maximumRows {};
         PortDomain domain { PortDomain::TimeSignal };
         int midiNote {};
         float displayGain { 1.f };
@@ -74,6 +79,7 @@ private:
     };
 
     class CardStrip;
+    class ModeButton;
 
     void showAddMenu();
     void showCardMenu(const Card& card, juce::Point<int> position);
@@ -96,6 +102,8 @@ private:
     std::vector<std::unique_ptr<ComparisonSurfaceView>> surfaceViews;
     std::vector<std::unique_ptr<ComparisonSurfaceView>> retiredViews;
     std::unique_ptr<CardStrip> strip;
+    std::vector<std::unique_ptr<ModeButton>> modeButtons;
+    std::map<juce::String, std::unique_ptr<ReferenceSurfaceCache>> referenceSurfaces;
     std::unique_ptr<ReferencePitchEditor> pitchEditor;
     juce::Viewport viewport;
     std::function<void(int)> heightChangeCallback;

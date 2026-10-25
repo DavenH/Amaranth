@@ -12,12 +12,14 @@ public:
     const GraphPreviewResult::SignalProbePreview& surface(bool spectral);
     int generation() const { return buildCount; }
     int spectrumGeneration() const { return spectrumBuildCount; }
+    const std::vector<float>& columnPositions() const { return positions; }
 
 private:
     void buildSpectrum();
 
     const PitchedSample* sample {};
     uint64_t revision {};
+    std::vector<float> positions;
     GraphPreviewResult::SignalProbePreview time;
     GraphPreviewResult::SignalProbePreview frequency;
     int buildCount {};

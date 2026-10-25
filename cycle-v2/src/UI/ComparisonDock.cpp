@@ -10,6 +10,8 @@
 #include "UI/ComparisonSurfaceView.h"
 #include "UI/ReferencePitchEditor.h"
 #include "UI/ReferenceAssetBrowser.h"
+#include "UI/ReferenceSurfaceCache.h"
+#include "UiIconData.h"
 #include "UI/WorkspaceDock.h"
 
 namespace CycleV2 {
@@ -39,6 +41,11 @@ juce::Rectangle<float> closeBounds(juce::Rectangle<float> card) {
 juce::Rectangle<float> playBounds(juce::Rectangle<float> card) {
     card.removeFromRight(26.f);
     return card.removeFromTop(kCardTitleHeight).removeFromRight(26.f);
+}
+
+juce::Rectangle<float> modeBounds(juce::Rectangle<float> card) {
+    card.removeFromRight(56.f);
+    return card.removeFromTop(kCardTitleHeight).removeFromRight(32.f).withSizeKeepingCentre(32.f, 22.f);
 }
 
 }
@@ -124,6 +131,39 @@ private:
     ComparisonDock& owner;
 };
 
+class ComparisonDock::ModeButton final : public juce::Button {
+public:
+    ModeButton() : juce::Button("Reference view mode") {
+        time = juce::Drawable::createFromSVG(*juce::parseXML(UiIconData::referenceCyclogram));
+        frequency = juce::Drawable::createFromSVG(*juce::parseXML(UiIconData::referenceSpectrogram));
+        setMouseCursor(juce::MouseCursor::PointingHandCursor);
+        setMouseClickGrabsKeyboardFocus(false);
+    }
+
+    void setSpectral(bool spectral) {
+        setToggleState(spectral, juce::dontSendNotification);
+        setTooltip(spectral ? "Spectrogram · switch to cyclogram" : "Cyclogram · switch to spectrogram");
+        setTitle(spectral ? "Show cyclogram" : "Show spectrogram");
+    }
+
+    void paintButton(juce::Graphics& graphics, bool hovered, bool down) override {
+        const auto bounds = getLocalBounds().toFloat().reduced(0.5f);
+        graphics.setColour(CanvasChromePalette::text.withAlpha(down ? 0.17f : hovered ? 0.12f : 0.06f));
+        graphics.fillRoundedRectangle(bounds, bounds.getHeight() * 0.5f);
+        graphics.setColour(hasKeyboardFocus(false) ? CanvasChromePalette::text : CanvasChromePalette::border);
+        graphics.drawRoundedRectangle(bounds, bounds.getHeight() * 0.5f, 1.f);
+        const auto* icon = getToggleState() ? frequency.get() : time.get();
+        if (icon != nullptr) {
+            icon->drawWithin(graphics, bounds.withSizeKeepingCentre(17.f, 17.f),
+                    juce::RectanglePlacement::centred, 1.f);
+        }
+    }
+
+private:
+    std::unique_ptr<juce::Drawable> time;
+    std::unique_ptr<juce::Drawable> frequency;
+};
+
 ComparisonDock::ComparisonDock(
         NodeCanvas& canvasToUse,
         ReferenceLibrary& libraryToUse,
@@ -143,6 +183,7 @@ ComparisonDock::ComparisonDock(
     pitchEditor->onClose = [this] { closePitchEditor(); };
     pitchEditor->onAuditionToggle = [this] { toggleAudition(); };
     pitchEditor->onRenderRequested = [this] { canvas.requestComparisonRendering(); };
+    pitchEditor->onViewModeChanged = [this] { refreshCaptures(); };
     viewport.setViewedComponent(strip.get(), false);
     viewport.setScrollBarsShown(false, true, false, true);
     viewport.setScrollBarThickness(7);
@@ -415,6 +456,13 @@ void ComparisonDock::updateCards() {
     auto previousCards = std::move(cards);
     const auto* analysis = library.selectedAnalysis();
     auto open = library.openReferenceIds();
+    for (auto iterator = referenceSurfaces.begin(); iterator != referenceSurfaces.end();) {
+        if (std::find(open.begin(), open.end(), iterator->first) == open.end()) {
+            iterator = referenceSurfaces.erase(iterator);
+        } else {
+            ++iterator;
+        }
+    }
     for (const auto& id : open) {
         const auto* sampleAnalysis = library.analysisFor(id);
         const auto record = std::find_if(library.records().begin(), library.records().end(),
@@ -423,14 +471,25 @@ void ComparisonDock::updateCards() {
             continue;
         }
         Card card;
+        auto& cache = referenceSurfaces[id];
+        if (cache == nullptr) {
+            cache = std::make_unique<ReferenceSurfaceCache>();
+        }
+        cache->refresh(*sampleAnalysis);
+        card.spectral = library.spectralViewFor(id);
+        const auto& surface = cache->surface(card.spectral);
         card.id = record->id;
         card.title = record->name;
-        card.displayGain = 2.f;
-        card.sampleSurface = &sampleAnalysis->cyclogram;
+        card.displayGain = card.spectral ? 1.f : 2.f;
+        card.domain = surface.domain;
+        card.sampleSurface = &surface.values;
+        card.positions = &cache->columnPositions();
+        card.sampleRate = sampleAnalysis->sample->samplerate;
         card.sampleIdentity = sampleAnalysis->sample.get();
         card.surfaceRevision = sampleAnalysis->cyclogramRevision;
-        card.columns = (size_t) sampleAnalysis->columns;
-        card.rows = (size_t) sampleAnalysis->rows;
+        card.columns = surface.gridColumns;
+        card.rows = surface.gridRows;
+        card.maximumRows = (size_t) sampleAnalysis->maximumRows;
         card.midiNote = sampleAnalysis->standardMidiNote();
         card.sample = true;
         card.connected = true;
@@ -476,8 +535,25 @@ void ComparisonDock::updateCards() {
         camera = surfaceViews.front()->camera();
     }
     auto previousViews = std::move(surfaceViews);
+    modeButtons.resize(cards.size());
     for (size_t index = 0; index < cards.size(); ++index) {
         const auto& card = cards[index];
+        if (card.sample) {
+            if (modeButtons[index] == nullptr) {
+                modeButtons[index] = std::make_unique<ModeButton>();
+                strip->addAndMakeVisible(*modeButtons[index]);
+            }
+            auto& button = *modeButtons[index];
+            button.setSpectral(card.spectral);
+            button.setBounds(modeBounds(cardBounds((int) index, viewport.getHeight())).toNearestInt());
+            button.onClick = [this, id = card.id] {
+                library.setSpectralView(id, !library.spectralViewFor(id));
+                grabKeyboardFocus();
+                refreshCaptures();
+            };
+        } else {
+            modeButtons[index].reset();
+        }
         if (!card.connected || card.surfaceValues().empty()) {
             surfaceViews.push_back(nullptr);
             continue;
@@ -513,10 +589,17 @@ void ComparisonDock::updateCards() {
         const bool sampleUnchanged = viewWasVisible && card.sample
                 && oldCard != previousCards.end()
                 && oldCard->sampleIdentity == card.sampleIdentity
+                && oldCard->spectral == card.spectral
                 && oldCard->surfaceRevision == card.surfaceRevision;
         if (!sampleUnchanged) {
-            view->setGrid(card.surfaceValues(), card.columns, card.rows,
-                    card.domain, card.midiNote, card.displayGain);
+            if (card.sample) {
+                view->setGrid(card.surfaceValues(), card.columns, card.rows,
+                        card.domain, card.midiNote, card.displayGain, false, card.sampleRate,
+                        *card.positions, card.maximumRows);
+            } else {
+                view->setGrid(card.surfaceValues(), card.columns, card.rows,
+                        card.domain, card.midiNote, card.displayGain);
+            }
         }
         view->onCameraChanged = [this, source = index](const ZoomRect& camera) {
             for (size_t target = 0; target < surfaceViews.size(); ++target) {
@@ -649,7 +732,7 @@ void ComparisonDock::paintCard(
 
     auto titleBounds = bounds.removeFromTop(kCardTitleHeight);
     auto textBounds = titleBounds.reduced(9.f, 2.f);
-    textBounds.removeFromRight(card.sample ? 52.f : 26.f);
+    textBounds.removeFromRight(card.sample ? 88.f : 26.f);
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(13.f);
     graphics.drawText(card.title, textBounds,
@@ -706,6 +789,8 @@ ComparisonDock::pointerTargetsForAutomation() const {
         const auto origin = getLocalPoint(strip.get(), juce::Point<int>()).toFloat();
         const auto& card = cards[(size_t) index];
         if (card.sample) {
+            targets.push_back({ "comparison.mode." + card.id,
+                    modeBounds(bounds).translated(origin.x, origin.y) });
             targets.push_back({ "comparison.card." + card.id,
                     bounds.translated(origin.x, origin.y) });
             targets.push_back({ "comparison.play." + card.id,
@@ -742,6 +827,9 @@ void ComparisonDock::resized() {
                             + (float) cards.size() * (kCardWidth + kCardGap))),
             viewport.getHeight());
     for (size_t index = 0; index < surfaceViews.size(); ++index) {
+        if (index < modeButtons.size() && modeButtons[index] != nullptr) {
+            modeButtons[index]->setBounds(modeBounds(cardBounds((int) index, viewport.getHeight())).toNearestInt());
+        }
         if (surfaceViews[index] == nullptr) {
             continue;
         }

@@ -39,7 +39,9 @@ def check(record, output):
             assert value["curveView"]["releaseEnabled"] is False
             assert value["curveView"]["interactionXMaximum"] == 1
             assert value["curveView"]["zoom"]["xMaximum"] == 1
-            assert value["surfaceView"]["gridColumns"] == 160
+            assert 160 < value["surfaceView"]["gridColumns"] <= 1024
+            assert 4 <= value["surfaceView"]["gridRows"] <= 1024
+            assert value["surfaceView"]["uniformColumnSpacing"] is False
             upper, lower = value["cyclogramBounds"], value["curveBounds"]
             assert upper["x"] == lower["x"] and upper["width"] == lower["width"]
             evidence["states"][label] = value
@@ -102,6 +104,10 @@ def check(record, output):
             click("spectrum")
             spectral = editor("spectrum")
             assert spectral["surfaceMode"] == "spectrum" and spectral["spectrumGeneration"] == 1
+            card = next(card for card in state()["comparison"]["cards"] if card["id"] == "factory:sax-growl")
+            assert card["spectral"]
+            assert card["surfaceView"]["gridColumns"] == spectral["surfaceView"]["gridColumns"]
+            assert card["surfaceView"]["lastColumnTime"] == spectral["surfaceView"]["lastColumnTime"]
             assert spectral["curveView"]["zoom"] == fitted["curveView"]["zoom"]
             click("zoomFull")
             full = editor("full-spectrum")
@@ -128,6 +134,16 @@ def check(record, output):
                 toggled = editor("toggle-" + mode)
                 assert toggled["surfaceGeneration"] == initial["surfaceGeneration"]
                 assert toggled["spectrumGeneration"] == 1
+            # The card's pill changes the same per-reference mode, including while expanded.
+            invoke({"command": "pointer", "event": "click", "targetId": "comparison.mode.factory:sax-growl"})
+            assert editor("tray-pill-spectrum")["surfaceMode"] == "spectrum"
+            click("close")
+            assert not state()["comparison"]["pitchEditor"]["visible"]
+            capture("tray-spectrogram")
+            invoke({"command": "openReferencePitchEditor", "referenceId": "factory:sax-growl"})
+            assert editor("reopened-spectrum")["surfaceMode"] == "spectrum"
+            invoke({"command": "pointer", "event": "click", "targetId": "comparison.mode.factory:sax-growl"})
+            assert editor("tray-pill-time")["surfaceMode"] == "time"
             invoke({"command": "resizeWindow", "width": 1000, "height": 760})
             click("zoomFit")
             editor("smaller-window")

@@ -916,7 +916,13 @@ void Panel3D::drawSurface() {
 
     float slope = (grid.back().x - grid.front().x) / float(draw.sizeX - 1);
 
-    scaledX.ramp(0, slope);
+    if (dataRetriever->hasUniformColumnSpacing()) {
+        scaledX.ramp(0, slope);
+    } else {
+        for (int index = 0; index < draw.sizeX; ++index) {
+            scaledX[index] = grid[(size_t) index].x;
+        }
+    }
     applyScaleX(scaledX);
 
     PanelRenderer* panelRenderer = ::getPanelRenderer(this);
@@ -960,6 +966,14 @@ bool Panel3D::drawScalarSurface(const vector<Column>& grid) {
     data.valueScale = volumeScale;
     data.valueOffset = volumeTrans;
     data.hasStableRevision = dataRetriever->hasStableScalarSurfaceRevision();
+    if (!dataRetriever->hasUniformColumnSpacing()) {
+        scaledX.resize(draw.sizeX);
+        for (int index = 0; index < draw.sizeX; ++index) {
+            scaledX[index] = grid[(size_t) index].x;
+        }
+        applyScaleX(scaledX);
+        data.columnPositions = scaledX.get();
+    }
 
     PanelRenderer* renderer = ::getPanelRenderer(this);
     jassert(renderer != nullptr);

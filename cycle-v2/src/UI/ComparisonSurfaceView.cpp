@@ -27,7 +27,8 @@ namespace {
 class ComparisonGridSource final : public Panel3D::DataRetriever {
 public:
     void setGrid(const std::vector<float>& values, size_t columns, size_t rows,
-            PortDomain domain, int note, float sourceGain, bool includesDc, double sampleRate) {
+            PortDomain domain, int note, float sourceGain, bool includesDc, double sampleRate,
+            const std::vector<float>& positions, size_t maximumRows) {
         const juce::ScopedLock lock(gridLock);
         panelColumns.clear();
         if (columns < 2 || rows < 2 || values.size() < columns * rows) {
@@ -38,14 +39,19 @@ public:
         const auto profile = TrimeshRenderProfile::fromDomain(domain);
         const int legacyNote = note + LogRegionMapping::legacyMidiNoteBias;
         if (domain == PortDomain::SpectralMagnitudeSignal || domain == PortDomain::SpectralPhaseSignal) {
-            displayStorage = profile.mapSpectrum2DGridToDisplay(values, columns, rows, legacyNote, includesDc, sampleRate);
+            const size_t displayRows = maximumRows > 0 ? std::min(rows, maximumRows) : rows;
+            displayStorage = profile.mapSpectrum2DGridToDisplay(values, columns, rows,
+                    legacyNote, includesDc, sampleRate, displayRows);
+            rows = displayRows;
         } else {
             displayStorage = profile.mapGridToDisplay(values, columns, rows, legacyNote, sourceGain);
         }
         panelColumns.reserve(columns);
+        uniformColumns = positions.size() != columns;
         for (size_t index = 0; index < columns; ++index) {
             panelColumns.emplace_back(displayStorage.data() + index * rows,
-                    (int) rows, (float) index / (float) (columns - 1), (char) legacyNote);
+                    (int) rows, uniformColumns ? (float) index / (float) (columns - 1)
+                            : positions[index], (char) legacyNote);
         }
         ++revision;
     }
@@ -61,12 +67,14 @@ public:
     juce::CriticalSection& getGridLock() override { return gridLock; }
     uint64_t getScalarSurfaceRevision() const override { return revision; }
     bool hasStableScalarSurfaceRevision() const override { return true; }
+    bool hasUniformColumnSpacing() const override { return uniformColumns; }
 
 private:
     std::vector<float> displayStorage;
     std::vector<Column> panelColumns;
     juce::CriticalSection gridLock;
     uint64_t revision {};
+    bool uniformColumns { true };
 };
 
 // Read-only signals arrive with both amplitude and frequency mapped for display.
@@ -162,9 +170,11 @@ public:
     }
 
     void setGrid(const std::vector<float>& values, size_t columns, size_t rows,
-            PortDomain domain, int note, float displayGain, bool includesDc, double sampleRate) {
+            PortDomain domain, int note, float displayGain, bool includesDc, double sampleRate,
+            const std::vector<float>& positions, size_t maximumRows) {
         const juce::ScopedLock lock(panel.getRenderLock());
-        source.setGrid(values, columns, rows, domain, note, displayGain, includesDc, sampleRate);
+        source.setGrid(values, columns, rows, domain, note, displayGain, includesDc,
+                sampleRate, positions, maximumRows);
         panel.setSignalDomain(domain);
         panel.setPreviewMidiNote(note + LogRegionMapping::legacyMidiNoteBias, sampleRate);
         panel.bakeTexturesNextRepaint();
@@ -267,6 +277,11 @@ public:
         result->setProperty("height", inputHost->getHeight());
         result->setProperty("gridColumns", (int) source.columns().size());
         result->setProperty("gridRows", source.columns().empty() ? 0 : source.columns().front().size());
+        result->setProperty("uniformColumnSpacing", source.hasUniformColumnSpacing());
+        if (!source.columns().empty()) {
+            result->setProperty("firstColumnTime", source.columns().front().x);
+            result->setProperty("lastColumnTime", source.columns().back().x);
+        }
         auto* view = new juce::DynamicObject();
         const auto& rect = panel.getZoomPanel()->rect;
         view->setProperty("x", rect.x);
@@ -332,8 +347,11 @@ void ComparisonSurfaceView::setGrid(
         int note,
         float displayGain,
         bool includesDc,
-        double sampleRate) {
-    impl->setGrid(values, columns, rows, domain, note, displayGain, includesDc, sampleRate);
+        double sampleRate,
+        const std::vector<float>& positions,
+        size_t maximumRows) {
+    impl->setGrid(values, columns, rows, domain, note, displayGain, includesDc,
+            sampleRate, positions, maximumRows);
 }
 
 void ComparisonSurfaceView::setCamera(const ZoomRect& camera) {
