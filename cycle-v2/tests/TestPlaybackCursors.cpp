@@ -11,6 +11,8 @@
 #include "Runtime/GraphPreviewExecutor.h"
 #include "Runtime/TrimeshMorphResolver.h"
 #include "UI/PanelPlaybackOverlay.h"
+#include "UI/SignalProbeDetailView.h"
+#include "Runtime/DefaultOutputPreview.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -200,6 +202,8 @@ TEST_CASE("Spy timeline fits both short and long complete releases",
             REQUIRE(elapsed == Catch::Approx(1. + release));
             REQUIRE((double) noteOff / (double) (columns - 1)
                     == Catch::Approx(1. / (1. + release)).margin(1. / (double) (columns - 1)));
+            REQUIRE(traversal.noteOffPosition()
+                    == Catch::Approx((double) noteOff / (double) (columns - 1)));
             for (size_t column = noteOff; column < columns; ++column) {
                 REQUIRE(traversal.morphPosition(column) == 1.f);
             }
@@ -250,6 +254,23 @@ TEST_CASE("All Spy captures share the longest preset envelope tail",
     voice.events = { { NoteLifecycleType::NoteOn, 0, 0 } };
     const auto result = executor.process(graph, compiled.plan, 8, {}, voice, 201);
     REQUIRE(result.previewReleaseDuration == Catch::Approx(1.8999));
+    const auto previews = GraphPreviewExecutor().render(
+            compiled.plan, result, graph.getSignalProbes(), 201);
+    REQUIRE(previews.defaultOutput.has_value());
+    for (const bool spectrum : { false, true }) {
+        auto preview = spectrum ? DefaultOutputPreview::spectrum(*previews.defaultOutput)
+                                : *previews.defaultOutput;
+        REQUIRE(preview.releaseDuration == Catch::Approx(result.previewReleaseDuration));
+        const size_t columns = preview.gridColumns;
+        SignalProbeDetailState detail;
+        detail.open(std::move(preview), RenderScalePolicy::Unipolar, 0, 60, 201);
+        size_t noteOff = 0;
+        const PreviewTraversal traversal(columns, result.previewReleaseDuration);
+        while (!traversal.beginsRelease(noteOff) && noteOff + 1 < columns) {
+            ++noteOff;
+        }
+        REQUIRE(detail.noteOffPosition() == Catch::Approx((double) noteOff / (double) (columns - 1)));
+    }
     size_t timedGrids = 0;
     for (const auto& node : result.nodes) {
         const auto& grid = node.output.traversalGrid;

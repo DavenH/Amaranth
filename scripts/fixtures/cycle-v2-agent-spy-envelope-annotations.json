@@ -1,0 +1,23 @@
+{
+  "commands": [
+    {"command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph"},
+    {"command": "pointer", "event": "doubleClick", "targetId": "spy:probe"},
+    {"command": "assertState", "path": "probeDetailOpen", "equals": true},
+    {"command": "assertState", "path": "probeDetailColumns", "equals": 512},
+    {"command": "assertState", "path": "probeDetailReleaseDuration", "op": "greaterThan", "value": 0},
+    {"command": "assertState", "path": "probeDetailNoteOffPosition", "op": "lessThan", "value": 1},
+    {"command": "assertState", "path": "probeDetailNoteOffPosition", "op": "greaterThan", "value": 0},
+    {"command": "screenshot", "area": "canvas", "path": "../../.context/spy-adsr-detail-time.png"},
+    {"command": "pointer", "event": "doubleClick", "targetId": "probeDetail:probe"},
+    {"command": "assertState", "path": "probeDetailOpen", "equals": false},
+    {"command": "pointer", "event": "doubleClick", "targetId": "spy:default-output"},
+    {"command": "assertState", "path": "probeDetailId", "equals": "default-output"},
+    {"command": "assertState", "path": "probeDetailReleaseDuration", "op": "greaterThan", "value": 0},
+    {"command": "assertState", "path": "probeDetailNoteOffPosition", "op": "lessThan", "value": 1},
+    {"command": "assertState", "path": "probeDetailNoteOffPosition", "op": "greaterThan", "value": 0},
+    {"command": "screenshot", "area": "canvas", "path": "../../.context/spy-adsr-detail-spectrum.png"},
+    {"command": "pointer", "event": "doubleClick", "targetId": "probeDetail:default-output"},
+    {"command": "assertState", "path": "probeDetailOpen", "equals": false}
+  ],
+  "quit": false
+}

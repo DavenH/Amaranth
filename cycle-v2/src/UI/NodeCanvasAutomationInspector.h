@@ -69,6 +69,8 @@ struct NodeCanvasAutomationPresentation {
     size_t probeDetailResolution {};
     size_t probeDetailColumns {};
     size_t probeDetailRows {};
+    double probeDetailReleaseDuration {};
+    float probeDetailNoteOffPosition { 1.f };
     juce::Rectangle<float> probeDetailBounds;
     juce::Rectangle<float> canvasContentBounds;
     juce::Rectangle<float> editorContentBounds;

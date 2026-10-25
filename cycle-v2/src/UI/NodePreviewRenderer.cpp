@@ -240,8 +240,7 @@ bool drawHeatmapImage(
         return false;
     }
 
-    const Rectangle<float> content = area.reduced(
-            jmin(area.getWidth(), area.getHeight()) * 0.024f);
+    const Rectangle<float> content = NodePreviewRenderer::heatmapBounds(area);
     graphics.setImageResamplingQuality(
             highQuality
                     ? Graphics::highResamplingQuality
@@ -496,6 +495,10 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
         image.desaturate();
     }
     return image;
+}
+
+Rectangle<float> NodePreviewRenderer::heatmapBounds(Rectangle<float> area) {
+    return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
 }
 
 Rectangle<float> NodePreviewRenderer::boundsFor(

@@ -26,7 +26,11 @@ a broad automation change.
 
 Use the coordinator with an explicit product. `run` builds the exact standalone
 target incrementally, launches through NSWorkspace, validates the returned PID,
-and reuses that workspace's healthy session. `--no-build` opts out of freshness
+and reuses that workspace's healthy session. That session may also be in use by
+the user. Use `--clean` for automated fixtures while the user is working in the
+app: it creates an isolated run PID and socket and leaves the persistent session
+intact. Use only the socket returned by that run; do not reuse a socket from an
+earlier artifact. `--no-build` opts out of freshness
 building. Default reports and screenshots live under
 `.context/cycle-automation/<product>/<run-id>/`.
 

@@ -15,8 +15,10 @@ struct SignalProbeDetailState {
     int ordinal {};
     int midiNote { 60 };
     size_t resolution {};
+    double releaseDuration {};
 
     bool isOpen() const { return probeId.isNotEmpty(); }
+    float noteOffPosition() const;
     void open(
             GraphPreviewResult::SignalProbePreview previewToUse,
             RenderScalePolicy scalePolicyToUse,

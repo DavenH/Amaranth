@@ -25,6 +25,9 @@ public:
     float morphPosition(size_t column) const {
         return (float) std::min(1., (double) column / (double) sustainIntervals);
     }
+    float noteOffPosition() const {
+        return (float) sustainIntervals / (float) (sustainIntervals + releaseIntervals);
+    }
     bool beginsRelease(size_t column) const {
         return releaseDuration > 0. && releaseIntervals > 0 && column == sustainIntervals;
     }

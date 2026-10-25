@@ -66,6 +66,7 @@ generate_svg_data(
     effectEnable zoomAttack zoomFull
     envelopeLoop envelopeSustain envelopeZoomFit envelopeZoomFull
     envelopeScaleLinear envelopeScaleLogarithmic
+    spyEnvelopeNormal spyEnvelopeRelease
 )
 
 file(GLOB_RECURSE APP_SOURCES

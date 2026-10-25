@@ -2204,6 +2204,8 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.probeDetailResolution = probeDetailState.resolution;
     result.probeDetailColumns = probeDetailState.renderResult.gridColumns;
     result.probeDetailRows = probeDetailState.renderResult.gridRows;
+    result.probeDetailReleaseDuration = probeDetailState.releaseDuration;
+    result.probeDetailNoteOffPosition = probeDetailState.noteOffPosition();
     result.probeDetailBounds = probeDetailState.isOpen()
             ? SignalProbeDetailView::boundsFor(editorContentBounds())
             : Rectangle<float> {};

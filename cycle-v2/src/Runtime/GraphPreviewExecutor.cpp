@@ -440,6 +440,7 @@ GraphPreviewResult::SignalProbePreview captureCompiledProbe(
     preview.channelLayout = payload.channelLayout;
     preview.frequencySampling = grid->metadata.frequencySampling;
     preview.frequencyMidiNote = grid->metadata.frequencyMidiNote;
+    preview.releaseDuration = grid->metadata.releaseDuration;
     return preview;
 }
 

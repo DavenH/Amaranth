@@ -1306,3 +1306,12 @@ including empty factory-mesh expectations, missing preset fixtures and a frame
 latch tolerance. All reproduce with the prior DSP baseline binary. Exact cases
 and comparisons: `.context/full-tail-regressions.xml`,
 `.context/full-tail-baseline-cases.json`, `.context/full-tail-baseline.xml`.
+
+## Open: empty Guide fixtures emit SignalBuffer assertions in passing tests
+
+2026-10-25: the focused `[detail],[release-timing]` selection passes all twelve
+cases but logs three `SignalBuffer.h:123` assertions after empty
+`CycleV2GuidePreparationRasterizer` meshes. These are incidental to Spy header
+painting; no app assertion or crash was observed in the isolated annotation
+fixture. Evidence: `.context/spy-adsr-tests.log`. Investigate empty Guide input
+materialization separately from the passing release-duration assertions.

@@ -43,6 +43,7 @@ struct GraphPreviewResult {
                 TraversalGridFrequencySampling::LinearBins };
         int frequencyMidiNote { 48 };
         bool connected {};
+        double releaseDuration {};
     };
 
     std::vector<NodePreviewResult> nodes;

@@ -138,3 +138,66 @@ lifetime. GraphCompiler shrinks 1581→1579 by sharing pitch-preview constants.
 NodeCanvasAutomationInspector 1321→1322 only exposes the measured duration.
 No graph mutations, UI clocks, domain algorithms or per-pixel scalar math were
 added to these orchestration owners.
+
+## Expanded Spy envelope annotations
+
+Status: Complete
+
+The expanded Spy reserves a 30px top annotation band. A small ADSR outline
+shades attack/decay/sustain above held voice time and shades the descending tail
+above release time. A note-off tick aligns those regions to the actual sampled
+column boundary, including the preset-dependent longest release. A zero-tail
+preview displays only the normal icon. Time and spectrum views retain the same
+annotations because both preserve traversal columns.
+
+Ownership: traversal-grid metadata supplies release duration through the probe
+DTO; `PreviewTraversal::noteOffPosition` owns the sampled boundary. Detail state
+and its existing painter translate those facts into display geometry. No graph
+mutation, DSP policy, clocks, or second timing calculation is introduced.
+
+Icon brief:
+
+| Item | Meaning | Silhouette / distinguishing shade | Accent |
+| --- | --- | --- | --- |
+| Normal | Held voice ADS | Complete ADSR, filled rising/decay/sustain body | Existing blue focus |
+| Release | Note-off tail | Same outline, filled descending triangle | Same blue focus |
+
+These are wide data diagrams: noninteractive annotation box 36×30px, vector
+canvas 36×24px with 0px horizontal and 3px vertical margins, SVG viewBox 48×32,
+live area x=4..44/y=5..27 before the 2.4-unit rounded stroke. Their shared full
+outline remains visible; highlight geometry and fill position distinguish the
+modes without depending on different colors. SVG sources use the existing
+UiIconData pipeline and cached JUCE drawables. No new source boundary is needed.
+
+Visual baseline: `.context/spy-adsr-before.png`. All automated app captures use
+coordinator `--clean`, which launches an isolated run PID and unique socket;
+the default persistent session can also be the user's interactive instance.
+
+Pass A renders both SVGs at native 36×24 and enlarged 144×96, verifying shaded
+regions by pixels: `.context/spy-adsr-icons-pass-a.png`. Pass B inspects actual
+time and spectrum details. It exposed the renderer's existing heatmap inset;
+that rectangle is now exposed by `NodePreviewRenderer::heatmapBounds` and reused
+by the header so the note-off tick aligns with data rather than outer padding.
+The shared geometry formula is unchanged.
+
+Pass C reviews the final family sheet and both app views after alignment:
+`.context/spy-adsr-icons-pass-c.png`, `.context/spy-adsr-detail-time.png` and
+`.context/spy-adsr-detail-spectrum.png`. Normal and release use the same outline,
+stroke, margins and colors, with deliberately different filled regions. No
+remaining recognition or legibility issue was found.
+
+Verification: both app/test targets build; 12 focused detail and release-timing
+cases pass (939 assertions), and the isolated 18-command app fixture passes for
+time and spectrum Spies. SVG XML, code-map, architecture and whitespace checks
+pass. The existing empty-Guide SignalBuffer assertions are recorded in
+`audio-bugs.md`; GUI initialization in the raster review test avoids font-cache
+shutdown assertions. Final evidence: `.context/spy-adsr-tests-final.log` and
+`.context/spy-adsr-ui-final-report.json`.
+
+Size review: NodeCanvas 3613→3615 and NodeCanvasAutomationInspector 1322→1324
+only forward/export two presentation facts; they retain their existing canvas
+orchestration and automation responsibilities. Detail state/painter own header
+presentation. NodePreviewRenderer 969→973 shares its existing inset geometry;
+preview resources, semantic mapping and image caching remain its stable
+collaborators. GraphPreviewExecutor 660→661 copies existing grid metadata into
+its probe product; it adds no new timing policy or preparation lifecycle.
