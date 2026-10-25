@@ -27,7 +27,8 @@ Image renderPreview(
             preview.frequencySampling,
             preview.frequencyMidiNote
     };
-    const Image heatmap = NodePreviewRenderer::createRuntimeHeatmapImage(renderResult);
+    const Image heatmap = NodePreviewRenderer::createRuntimeHeatmapImage(
+            renderResult, false, 0.f, height);
     if (!heatmap.isValid()) {
         return {};
     }
@@ -35,7 +36,8 @@ Image renderPreview(
     Image result(Image::RGB, width, height, true);
     Graphics graphics(result);
     graphics.fillAll(CanvasChromePalette::insetBackground);
-    graphics.setImageResamplingQuality(Graphics::highResamplingQuality);
+    graphics.setImageResamplingQuality(preview.domain == PortDomain::SpectralMagnitudeSignal
+            ? Graphics::lowResamplingQuality : Graphics::highResamplingQuality);
     graphics.drawImage(heatmap, result.getBounds().toFloat());
 
     graphics.setColour(CanvasChromePalette::border.withAlpha(0.24f));

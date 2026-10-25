@@ -72,6 +72,8 @@ public:
             const std::vector<float>& source,
             size_t columns,
             size_t rows) const;
+    std::vector<float> mapSpectrumValuesToDisplay(
+            const std::vector<float>& source, size_t columns, size_t rows) const;
     std::vector<float> mapSpectrum2DGridToDisplay(
             const std::vector<float>& source,
             size_t columns,

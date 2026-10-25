@@ -201,3 +201,54 @@ presentation. NodePreviewRenderer 969→973 shares its existing inset geometry;
 preview resources, semantic mapping and image caching remain its stable
 collaborators. GraphPreviewExecutor 660→661 copies existing grid metadata into
 its probe product; it adds no new timing policy or preparation lifecycle.
+
+## Harmonic lanes in spectrum Spies
+
+Status: Complete
+
+Reuse `TrimeshSurfaceRenderer::createTrimeshImage` and its stepped magnitude
+bands (the CPU counterpart of shared `Panel3D::drawLogSurface`) for linear-bin
+magnitude Spies. Each harmonic retains one color throughout its logarithmic
+lane; vertical resampling must not blend adjacent harmonics. Existing Spy
+contrast normalization and spectral value scaling remain authoritative. A source
+row offset translates FFT's DC-inclusive layout to Trimesh's first-harmonic
+layout. Time, phase and non-Spy products retain their current presentation.
+
+`TrimeshRenderProfile` exposes its existing value-only spectral mapping so the
+Spy adapter can omit continuous logarithmic interpolation. The shared renderer
+owns lane geometry, gradient lookup and note-dependent placement. Cache images
+are rasterized at display height, and Spy magnitude draws use nearest-neighbor
+resampling. Delete the smooth-frequency mapping path for magnitude Spies; add
+no audio/model state, controls, graph mutations or new sampling algorithms.
+
+Acceptance: distinct solid lanes at compact/expanded sizes and multiple notes,
+DC exclusion, unchanged gain normalization and source samples, actual-app
+spectrum screenshot preserving ADSR annotations, focused tests, build/audits.
+
+Implemented through the existing stepped renderer. `firstHarmonicRow` is a
+layout fact (zero for Trimesh, one for FFT-inclusive Spies); the original
+Trimesh band boundaries and gradient lookup are unchanged. Spectral value
+mapping has one owner in `TrimeshRenderProfile`, and its former private grid
+wrapper is removed. Both preview image caches and preset thumbnails request
+final display height and preserve sharp row boundaries while scaling.
+
+The native-image test alternates silent/full harmonics, with a large DC value,
+at notes 36/60/84 and heights 64/537. Every pixel is exactly one of the two
+source gradient colors, the fundamental lane remains silent despite DC, both
+colors remain present, and source samples are unchanged. Existing contrast,
+Trimesh-band and ADSR/timing checks remain covered. The isolated 18-command app
+fixture passes and the expanded spectrum visibly retains separate lanes with
+its ADSR header: `.context/spy-harmonics-expanded.png`.
+
+Both build targets and architecture/code-map/whitespace checks pass. The broad
+27-case selection has three preexisting failures (five assertions), all
+confirmed in the prior baseline executable and recorded in `ui-bugs.md`.
+Evidence: `.context/spy-harmonics-tests-focused.log`,
+`.context/spy-harmonics-ui-report.json`, `.context/spy-harmonics-baseline.log`,
+`.context/spy-harmonics-baseline-compact.log`.
+
+Size/responsibility review: NodePreviewRenderer 973→1004 retains its existing
+preview product adaptation and image-cache ownership. Harmonic geometry stays
+in TrimeshSurfaceRenderer (191→196), while TrimeshRenderProfile shrinks 407→382
+by removing its redundant mapping wrapper. No audio preparation, graph state,
+interaction lifecycle, or new family of domain decisions moves into UI code.

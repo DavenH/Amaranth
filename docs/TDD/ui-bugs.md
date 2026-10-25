@@ -1131,3 +1131,15 @@ Without that wait, deferred audio-plan publication can adopt after the next
 note-on and clear that new voice, making cursor-count assertions race the edit.
 The sequential 27-command fixture now passes; no cursor or audio-clock workaround
 was added. Evidence: `.context/full-tail-ui-report.json`.
+
+## Existing spectral preview fixture mismatches confirmed during Spy lane work
+
+2026-10-25: a 27-case spectral/detail/timing selection passes 24 cases. Existing
+`Magnitude mesh heatmaps consume the full unipolar colour scale` and
+`Phase mesh heatmaps convert bipolar values exactly once` fail four exact-color
+assertions. `Compact and expanded Trimesh views sample the same spectral source`
+fails `compact.columns < expanded.columns` with 1 < 1 on its empty mesh. All
+five assertions reproduce in the prior `.context/baseline/CycleV2_baseline_tests`
+binary. Evidence: `.context/spy-harmonics-tests.log`,
+`.context/spy-harmonics-baseline.log`, `.context/spy-harmonics-baseline-compact.log`.
+The new solid-lane, DC exclusion, contrast and actual-app annotation checks pass.

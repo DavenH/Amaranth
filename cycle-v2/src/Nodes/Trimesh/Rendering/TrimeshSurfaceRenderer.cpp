@@ -16,11 +16,13 @@ Image createSteppedMagnitudeImage(
         const TrimeshRenderProfile& profile,
         bool opaque,
         int displayHeight) {
-    const std::vector<float>& values = renderData.linearFrequencySurface;
+    const std::vector<float>& values = renderData.linearFrequencySurface.empty()
+            ? renderData.surface : renderData.linearFrequencySurface;
     if (values.size() < (size_t) renderData.columns * (size_t) renderData.rows) {
         return {};
     }
 
+    const int firstHarmonicRow = jlimit(0, renderData.rows - 2, renderData.firstHarmonicRow);
     const int width = renderData.columns;
     const int height = jmax(2, displayHeight > 0 ? displayHeight : renderData.rows);
     const Image gradient = profile.getSurfaceStyle().gradientImage();
@@ -47,7 +49,7 @@ Image createSteppedMagnitudeImage(
         if (midiNote != previousNote) {
             std::fill(bandAtPixel.begin(), bandAtPixel.end(), -1);
             const Buffer<float> ramp = LogRegions::getDefaultRegion(midiNote);
-            bandCount = jmin(renderData.rows, ramp.size()) - 1;
+            bandCount = jmin(renderData.rows - firstHarmonicRow, ramp.size()) - 1;
             bandColours.resize((size_t) bandCount);
             const float displayHeightScale = (float) height / (1.f - ramp.front());
             for (int band = 0; band < bandCount; ++band) {
@@ -63,7 +65,8 @@ Image createSteppedMagnitudeImage(
         }
 
         const size_t columnOffset = (size_t) column * (size_t) renderData.rows;
-        std::copy_n(values.data() + columnOffset, bandCount, scaledValues.data());
+        std::copy_n(values.data() + columnOffset + (size_t) firstHarmonicRow,
+                bandCount, scaledValues.data());
         Buffer<float> indicesAsFloat(scaledValues.data(), bandCount);
         indicesAsFloat.clip(0.f, (float) (gradientWidth - 1) / (float) gradientWidth)
                 .mul((float) gradientWidth);

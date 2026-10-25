@@ -199,26 +199,6 @@ std::vector<float> mapSpectralValuesToDisplay(
     return surface;
 }
 
-std::vector<float> mapSpectralGridToDisplay(
-        const std::vector<float>& source,
-        size_t columns,
-        size_t rows,
-        PortDomain domain,
-        float magnitudeTension,
-        int midiNote) {
-    return logarithmicRowsToDisplay(
-            mapSpectralValuesToDisplay(
-                    source,
-                    columns,
-                    rows,
-                    domain,
-                    magnitudeTension),
-            columns,
-            rows,
-            midiNote,
-            true);
-}
-
 }
 
 TrimeshRenderProfile TrimeshRenderProfile::fromDomain(PortDomain domain) {
@@ -265,6 +245,11 @@ std::vector<float> TrimeshRenderProfile::mapGridToDisplay(
     return surface;
 }
 
+std::vector<float> TrimeshRenderProfile::mapSpectrumValuesToDisplay(
+        const std::vector<float>& source, size_t columns, size_t rows) const {
+    return source.empty() ? source : mapSpectralValuesToDisplay(source, columns, rows, domain, 500.f);
+}
+
 std::vector<float> TrimeshRenderProfile::mapSpectrum2DGridToDisplay(
         const std::vector<float>& source,
         size_t columns,
@@ -277,13 +262,9 @@ std::vector<float> TrimeshRenderProfile::mapSpectrum2DGridToDisplay(
             && domain != PortDomain::SpectralPhaseSignal) {
         return mapGridToDisplay(source, columns, rows, midiNote);
     }
-    return mapSpectralGridToDisplay(
-            source,
-            columns,
-            rows,
-            domain,
-            500.f,
-            midiNote);
+    return logarithmicRowsToDisplay(
+            mapSpectrumValuesToDisplay(source, columns, rows),
+            columns, rows, midiNote, true);
 }
 
 std::vector<float> TrimeshRenderProfile::mapTrimeshValuesToDisplay(
