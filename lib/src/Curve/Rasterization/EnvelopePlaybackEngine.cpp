@@ -82,6 +82,18 @@ namespace Rasterization {
         };
     }
 
+    double EnvelopePlaybackEngine::releaseDuration(const PreparedEnvelopePlaybackView& prepared) {
+        if (!EnvelopePlaybackPolicy().hasReleaseCurve(prepared.display.intercepts, prepared.sustainIndex)) {
+            return 0.;
+        }
+        EnvelopeReleaseContext context;
+        context.bipolar = prepared.scalingMode == PointScalingMode::Bipolar;
+        context.sustainIndex = prepared.sustainIndex;
+        const int index = EnvelopeReleasePolicy().releaseIndex(context);
+        return jmax(0., (double) prepared.display.intercepts.back().x
+                - (double) prepared.display.intercepts[(size_t) index].x);
+    }
+
     double EnvelopePlaybackEngine::boundary(const PreparedEnvelopePlaybackView& prepared) const {
         EnvelopePlaybackContext context;
         context.loopIndex = prepared.loopIndex;

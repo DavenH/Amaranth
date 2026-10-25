@@ -6,6 +6,9 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Runtime/PreviewTraversal.h"
+#include "Graph/GraphCompiler.h"
+#include "Runtime/GraphAudioExecutor.h"
+#include "Runtime/GraphPreviewExecutor.h"
 #include "Runtime/TrimeshMorphResolver.h"
 #include "UI/PanelPlaybackOverlay.h"
 
@@ -14,7 +17,8 @@ using namespace juce;
 
 namespace {
 
-std::shared_ptr<const EnvelopeConfiguration> loopEnvelope() {
+std::shared_ptr<const EnvelopeConfiguration> loopEnvelope(
+        float end = 1.5f, float blueEnd = -1.f, bool enabled = true) {
     EnvelopeNodeModel model;
     auto& mesh = model.getMesh();
     mesh.destroy();
@@ -29,7 +33,7 @@ std::shared_ptr<const EnvelopeConfiguration> loopEnvelope() {
             values[Vertex::Time] = time ? 1.f : 0.f;
             values[Vertex::Red] = red ? 1.f : 0.f;
             values[Vertex::Blue] = blue ? 1.f : 0.f;
-            values[Vertex::Phase] = phases[index];
+            values[Vertex::Phase] = index == 4 ? (blue && blueEnd > 0.f ? blueEnd : end) : phases[index];
             values[Vertex::Amp] = amps[index];
             values[Vertex::Curve] = 0.5f;
         }
@@ -39,7 +43,8 @@ std::shared_ptr<const EnvelopeConfiguration> loopEnvelope() {
     mesh.sustainCubes.insert(mesh.getCubes()[2]);
     REQUIRE(model.synchronizeFromMesh(nullptr));
     return EnvelopeSignalProcessor::buildConfiguration(
-            { { "purpose", "Purpose", "scratch" } },
+            { { "purpose", "Purpose", "scratch" }, { "dimensionCount", "Dimensions", "3" },
+                    { "enabled", "Enabled", enabled ? "1" : "0" } },
             CurveNodeModelState::copyOf(model, 0.f, 0.5f, model.revision()));
 }
 
@@ -134,11 +139,11 @@ TEST_CASE("Envelope overlays keep Phase horizontal and morph vertical",
 
 TEST_CASE("Spy grids hold their x=1 waveshape throughout release columns",
         "[cycle-v2][preview][playback-cursor]") {
-    const PreviewTraversal traversal(101);
+    const PreviewTraversal traversal(101, 0.25);
     REQUIRE(traversal.morphPosition(0) == 0.f);
     REQUIRE(traversal.morphPosition(40) == Catch::Approx(0.5f));
     REQUIRE(traversal.morphPosition(80) == 1.f);
-    REQUIRE(traversal.beginsRelease(81));
+    REQUIRE(traversal.beginsRelease(80));
     for (size_t column = 81; column < 101; ++column) {
         REQUIRE(traversal.morphPosition(column) == 1.f);
     }
@@ -164,8 +169,146 @@ TEST_CASE("Spy envelope traversal leaves its sustain loop for release",
     const auto& grid = context.outputs.front().traversalGrid;
     REQUIRE(grid.isValid());
     REQUIRE(grid.columns == 101);
-    const float releaseStart = grid.values[81 * grid.rows];
+    const double duration = Rasterization::EnvelopePlaybackEngine::releaseDuration(
+            configuration->rasterizer->preparedPlaybackView());
+    REQUIRE(grid.metadata.releaseDuration == Catch::Approx(duration));
+    const PreviewTraversal traversal(grid.columns, duration);
+    size_t noteOff = 0;
+    while (!traversal.beginsRelease(noteOff)) {
+        ++noteOff;
+    }
+    const float releaseStart = grid.values[noteOff * grid.rows];
     const float releaseEnd = grid.values[100 * grid.rows];
     REQUIRE(releaseEnd < releaseStart - 0.05f);
-    REQUIRE(releaseEnd < 0.7f);
+    REQUIRE(releaseEnd == Catch::Approx(0.f).margin(0.005f));
+}
+
+TEST_CASE("Spy timeline fits both short and long complete releases",
+        "[cycle-v2][preview][release-timing]") {
+    for (const double release : { 0., 0.05, 0.85, 2. }) {
+        for (const size_t columns : { 8u, 101u, 512u }) {
+            const PreviewTraversal traversal(columns, release);
+            double elapsed = 0.;
+            size_t noteOff = columns - 1;
+            for (size_t column = 0; column + 1 < columns; ++column) {
+                if (traversal.beginsRelease(column)) {
+                    REQUIRE(elapsed == Catch::Approx(1.));
+                    noteOff = column;
+                }
+                elapsed += traversal.increment(column);
+            }
+            REQUIRE(elapsed == Catch::Approx(1. + release));
+            REQUIRE((double) noteOff / (double) (columns - 1)
+                    == Catch::Approx(1. / (1. + release)).margin(1. / (double) (columns - 1)));
+            for (size_t column = noteOff; column < columns; ++column) {
+                REQUIRE(traversal.morphPosition(column) == 1.f);
+            }
+        }
+    }
+}
+
+TEST_CASE("Envelope tail measurement uses its actual release entry policy",
+        "[cycle-v2][envelope][release-timing]") {
+    const auto configuration = loopEnvelope();
+    auto prepared = configuration->rasterizer->preparedPlaybackView();
+    // The mature rasterizer inserts a sustain floor point at 0.6001 for unipolar release.
+    REQUIRE(Rasterization::EnvelopePlaybackEngine::releaseDuration(prepared) == Catch::Approx(0.8999));
+    prepared.scalingMode = Rasterization::PointScalingMode::Bipolar;
+    REQUIRE(Rasterization::EnvelopePlaybackEngine::releaseDuration(prepared) == Catch::Approx(0.9));
+    prepared.sustainIndex = (int) prepared.display.intercepts.size() - 1;
+    REQUIRE(Rasterization::EnvelopePlaybackEngine::releaseDuration(prepared) == 0.);
+}
+
+namespace {
+
+void setEnvelopeTiming(GraphExecutionPlan& plan, const String& id,
+        std::shared_ptr<const EnvelopeConfiguration> configuration) {
+    const int index = plan.dependencyIndex.stepIndexById.at(id);
+    auto& published = plan.steps[(size_t) index].configuration;
+    published.value = std::move(configuration);
+    ++published.revision;
+}
+
+const SignalTraversalGrid& envelopeGrid(const GraphAudioResult& result, const String& id) {
+    const auto found = std::find_if(result.nodes.begin(), result.nodes.end(),
+            [&](const auto& node) { return node.nodeId == id; });
+    REQUIRE(found != result.nodes.end());
+    return found->output.traversalGrid;
+}
+
+}
+
+TEST_CASE("All Spy captures share the longest preset envelope tail",
+        "[cycle-v2][preview][release-timing]") {
+    const auto graph = NodeGraph::createDemoGraph();
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    setEnvelopeTiming(compiled.plan, "env", loopEnvelope(0.8f));
+    setEnvelopeTiming(compiled.plan, "scratchEnv", loopEnvelope(2.5f));
+    GraphAudioExecutor executor;
+    AudioVoiceContext voice;
+    voice.events = { { NoteLifecycleType::NoteOn, 0, 0 } };
+    const auto result = executor.process(graph, compiled.plan, 8, {}, voice, 201);
+    REQUIRE(result.previewReleaseDuration == Catch::Approx(1.8999));
+    size_t timedGrids = 0;
+    for (const auto& node : result.nodes) {
+        const auto& grid = node.output.traversalGrid;
+        if (grid.isValid() && grid.metadata.columnAxis == TraversalGridAxis::Time) {
+            REQUIRE(grid.metadata.releaseDuration == Catch::Approx(1.8999));
+            ++timedGrids;
+        }
+    }
+    REQUIRE(timedGrids > 2);
+    for (const String& id : { "env", "scratchEnv" }) {
+        const auto& grid = envelopeGrid(result, id);
+        REQUIRE(grid.metadata.releaseDuration == Catch::Approx(1.8999));
+        REQUIRE(grid.values[(grid.columns - 1) * grid.rows] == Catch::Approx(0.f).margin(0.005f));
+    }
+    // The longer scratch envelope is outside this scoped volume-envelope capture.
+    const CompiledSignalProbe probe { "volume", compiled.plan.dependencyIndex.stepIndexById.at("env"), 0 };
+    const auto scoped = executor.processProbe(compiled.plan, probe, 8, {}, voice, 201);
+    REQUIRE(scoped.previewReleaseDuration == Catch::Approx(result.previewReleaseDuration));
+    REQUIRE(envelopeGrid(scoped, "env").values == envelopeGrid(result, "env").values);
+
+    setEnvelopeTiming(compiled.plan, "scratchEnv", loopEnvelope(2.5f, -1.f, false));
+    const auto disabled = executor.process(graph, compiled.plan, 8, {}, voice, 201);
+    REQUIRE(disabled.previewReleaseDuration == Catch::Approx(0.1999));
+    setEnvelopeTiming(compiled.plan, "env", loopEnvelope(0.8f, -1.f, false));
+    const auto bypassed = executor.process(graph, compiled.plan, 8, {}, voice, 201);
+    REQUIRE(bypassed.previewReleaseDuration == 0.);
+}
+
+TEST_CASE("Morphed release timing invalidates every cached Spy timeline",
+        "[cycle-v2][preview][release-timing]") {
+    const auto graph = NodeGraph::createDemoGraph();
+    auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    setEnvelopeTiming(compiled.plan, "env", loopEnvelope(0.8f));
+    setEnvelopeTiming(compiled.plan, "scratchEnv", loopEnvelope(1.5f, 2.5f));
+    GraphAudioExecutor executor;
+    AudioVoiceContext voice;
+    voice.events = { { NoteLifecycleType::NoteOn, 0, 0 } };
+    std::vector<uint8_t> dirty(compiled.plan.steps.size(), 1);
+    const auto before = executor.processIncrementalIndexed(graph, compiled.plan, 8, dirty, voice, {}, 201);
+    REQUIRE(before.previewReleaseDuration == Catch::Approx(0.8999));
+    GraphPreviewResult previews = GraphPreviewExecutor().render(compiled.plan, before, {}, 40);
+    std::fill(dirty.begin(), dirty.end(), 0);
+    dirty[(size_t) compiled.plan.dependencyIndex.stepIndexById.at("scratchEnv")] = 1;
+    voice.controls.controllers[1] = 1.f;
+    const auto cancelled = executor.processIncrementalIndexed(
+            graph, compiled.plan, 8, dirty, voice, [] { return false; }, 201);
+    REQUIRE(cancelled.cancelled);
+    const CompiledSignalProbe scratch { "scratch",
+            compiled.plan.dependencyIndex.stepIndexById.at("scratchEnv"), 0 };
+    const auto scoped = executor.processProbe(compiled.plan, scratch, 8, {}, voice, 201);
+    REQUIRE(scoped.previewReleaseDuration == Catch::Approx(1.8999));
+    const auto after = executor.processIncrementalIndexed(graph, compiled.plan, 8, dirty, voice, {}, 201);
+    REQUIRE(after.previewReleaseDuration == Catch::Approx(1.8999));
+    const auto volume = std::find_if(after.nodes.begin(), after.nodes.end(),
+            [](const auto* node) { return node->nodeId == "env"; });
+    REQUIRE(volume != after.nodes.end());
+    REQUIRE((*volume)->output.traversalGrid.metadata.releaseDuration == Catch::Approx(1.8999));
+    GraphPreviewExecutor().renderIncremental(compiled.plan, after, {}, dirty, 40, previews);
+    REQUIRE(previews.previewReleaseDuration == Catch::Approx(1.8999));
+    REQUIRE(previews.renderedNodeCount > 1);
 }

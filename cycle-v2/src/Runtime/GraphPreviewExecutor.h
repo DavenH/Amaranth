@@ -30,6 +30,7 @@ bool nodePreviewResultsHaveEqualContent(
         const NodePreviewResult& second);
 
 struct GraphPreviewResult {
+    double previewReleaseDuration {};
     struct SignalProbePreview {
         String probeId;
         std::vector<float> values;

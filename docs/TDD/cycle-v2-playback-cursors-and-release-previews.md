@@ -16,11 +16,14 @@ Envelope time is Phase, distinct from the yellow morph dimension; its surface
 keeps time horizontal and morph vertical. Voice ADSR, loops and release jumps
 remain owned by the shared playback engine, including cyclewise scratch/pitch.
 
-Spy traversal reserves approximately 20% of columns for release. The preceding
-80% samples normalized voice time [0,1]. Release holds the unscratched mesh at
-x=1; scratch envelopes advance through their authored release. Guide noise
-continues changing with column index. Shared preview traversal coordinates own
-this policy, independently of editor surface coordinates.
+Spy traversal covers normalized voice time [0,1], followed by the longest
+prepared envelope release in the preset. The release proportion varies with the
+preset. Release holds the unscratched mesh at x=1; scratch envelopes advance
+through their authored release. Guide noise continues changing with column
+index. Shared preview traversal coordinates own this policy, independently of
+editor surface coordinates. The release span comes from the same routed note-on
+preparation and shared release policy used by audio, including preview MIDI/CC
+inputs and pitch-envelope bipolar release entry.
 
 ## Completion and deletion targets
 
@@ -53,12 +56,13 @@ forwards the frame to the bound widget without preview reconciliation. Equal
 frames do not repaint. No graph commands, model publications, mesh copies,
 surface rebuilds, or slice rasterization occur during cursor-only movement.
 
-`PreviewTraversal` owns the 80/20 sampling schedule: note-off follows the x=1
-column, and the remaining columns advance approximately another quarter of the
-normalized voice duration. Unscratched mesh morph holds at 1 while scratch
-follows the shared engine's release. Per-column Guide noise seeds keep advancing.
-This schedule applies to Spy products, not editor surface grids. The old
-sustain-only envelope traversal and alternate mesh-grid path are removed.
+`PreviewTraversal` places note-off at x=1 and extends the shared time axis by
+the longest prepared envelope release. Held and release column counts follow
+their durations, with the final column including the release endpoint. Shorter
+envelopes finish on that same axis. Unscratched mesh morph holds at 1 while
+scratch follows the shared engine's release. Per-column Guide noise seeds keep
+advancing. This schedule applies to Spy products, not editor surface grids.
+The original fixed-quarter/80–20 sampling path is removed.
 
 The exact standalone target builds. The committed
 `cycle-v2-agent-playback-cursors.json` app fixture passes all 25 commands,
@@ -90,3 +94,47 @@ shrinks 522→503 lines by using one morph-grid path. No existing orchestration
 file takes ownership of playback semantics or release policy. Architecture and
 code-map audits pass their structural checks; existing size triggers were
 reviewed with the cohesion reasons above.
+
+## Complete-tail timing and cache ownership
+
+`GraphPreviewTiming.cpp` measures the envelope dependency closure through the
+existing executor at one sample with grid capture disabled. It prepares the
+same routed MIDI/CC note-on shapes as audio; it does not execute a second
+full-graph preview or rebuild meshes. `EnvelopePlaybackEngine::releaseDuration`
+uses the shared release-entry policy, including the unipolar sustain floor and
+bipolar sustain entry. Disabled envelopes do not extend the horizon. All timing
+is in normalized voice units: total duration is voice duration multiplied by
+(1 + longest release span).
+
+The common horizon travels with diagnostic products and traversal-grid
+metadata. Envelope, mesh, pitch and phase previews use it; FFT/IFFT preserve the timeline
+metadata while translating signal domains. Compiler pitch
+previews retain their ordinary held-note scope; Spy phase composition requests
+pitch lanes for the full horizon explicitly. The timing pass is diagnostic-only;
+realtime execution retains its allocation/lock-free contract.
+
+Each cached node records its horizon. Changed timing invalidates even nodes
+outside the edited node's ordinary downstream closure, including after scoped
+captures or cancelled incremental work. Local-editor rendering preserves the
+published Spy horizon until deferred probes are refreshed. Oscillator region
+reuse now also checks scope membership, preventing cached banks from retaining
+Envelope processors evicted during a full-to-scoped preparation change.
+
+Verification: all 16 focused CTest cases pass. They cover short/long/no releases,
+disabled envelopes, shared maximum timing, complete endpoints, actual routed
+morph timing, scoped and cancelled capture sequences, existing cursor behavior,
+Guide noise and realtime allocation/lock counts. The standalone builds and the
+27-command app fixture passes. App snapshots confirm different horizons for
+Pwm Lead, Brass Section and Icycle. Artifacts: `.context/full-tail-ctest-final.log`,
+`.context/full-tail-ui-final-report.json`, and
+`.context/full-tail-preset-timelines.json`. Eight failing cases in the broader
+Unison/grid selection reproduce with the prior DSP baseline binary; evidence
+is in `.context/full-tail-regressions.xml` and `.context/full-tail-baseline.xml`.
+
+The final large-file review keeps measurement orchestration in the dedicated
+50-line timing file and release semantics in the shared engine. GraphAudioExecutor
+1289 lines (from 1258) only coordinates timing, cache validity and processor
+lifetime. GraphCompiler shrinks 1581→1579 by sharing pitch-preview constants.
+NodeCanvasAutomationInspector 1321→1322 only exposes the measured duration.
+No graph mutations, UI clocks, domain algorithms or per-pixel scalar math were
+added to these orchestration owners.

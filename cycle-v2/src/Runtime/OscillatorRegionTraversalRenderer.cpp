@@ -1,5 +1,7 @@
 #include "Runtime/OscillatorRegionTraversalRenderer.h"
 #include "Runtime/PreviewTraversal.h"
+#include "Nodes/Envelope/EnvelopeConfiguration.h"
+#include "Nodes/Envelope/EnvelopePitchPreview.h"
 
 #include <Audio/CycleDsp/UnisonColumnMixer.h>
 #include <Util/Arithmetic.h>
@@ -15,6 +17,8 @@ void OscillatorRegionTraversalRenderer::prepare(
     layout = context.unison != nullptr && !context.unison->isEnabled()
             ? CycleDsp::UnisonVoiceLayout {}
             : context.lanes;
+    pitchEnvelope = std::dynamic_pointer_cast<const EnvelopeConfiguration>(context.pitchEnvelope);
+    cachedReleaseDuration = -1.;
     pitchEnvelopeUnitValues = context.pitchEnvelopeUnitValues;
     pitchEnvelopeUnitValuesByLane = context.pitchEnvelopeUnitValuesByLane;
     workspace.resize((int) (3 * maximumRowCount));
@@ -30,6 +34,12 @@ bool OscillatorRegionTraversalRenderer::render(
             || workspace.size() < (int) (3 * grid.rows)) {
         return false;
     }
+    if (pitchEnvelope != nullptr && cachedReleaseDuration != grid.metadata.releaseDuration) {
+        pitchEnvelopeUnitValuesByLane = EnvelopePitchPreview::renderLanes(
+                pitchEnvelope, layout.order, EnvelopePitchPreview::defaultSampleCount,
+                EnvelopePitchPreview::unisonPreviewSeed, grid.metadata.releaseDuration);
+        cachedReleaseDuration = grid.metadata.releaseDuration;
+    }
     workspace.resetPlacement();
     Buffer<float> source = workspace.place((int) grid.rows);
     Buffer<float> shifted = workspace.place((int) grid.rows);
@@ -44,12 +54,11 @@ bool OscillatorRegionTraversalRenderer::render(
                 0.5f) * level;
     }
 
-    const double normalizedTimePerColumn = grid.columns > 1
-            ? PreviewTraversal(grid.columns).increment() : 0.0;
-    const double secondsPerColumn = normalizedTimePerColumn
-            * (double) voiceDurationSeconds;
+    const PreviewTraversal traversal(grid.columns, grid.metadata.releaseDuration);
     const double baseFrequency = CycleDsp::UnisonCore::frequencyForMidiNote(midiNote);
     for (size_t column = 0; column < grid.columns; ++column) {
+        const double normalizedTimePerColumn = grid.columns > 1 ? traversal.increment(column) : 0.;
+        const double secondsPerColumn = normalizedTimePerColumn * (double) voiceDurationSeconds;
         Buffer<float> destination(
                 grid.values.data() + column * grid.rows,
                 (int) grid.rows);

@@ -724,14 +724,12 @@ std::vector<CompiledVoiceContext> compileVoiceContexts(
                 const auto envelope = std::dynamic_pointer_cast<const EnvelopeConfiguration>(
                         context.pitchEnvelope);
                 if (envelope != nullptr) {
-                    constexpr int previewSamples = 129;
-                    constexpr uint32_t unisonPreviewSeed = 0x554e4953u;
                     context.pitchEnvelopeUnitValuesByLane
                             = EnvelopePitchPreview::renderLanes(
                                     envelope,
                                     context.lanes.order,
-                                    previewSamples,
-                                    unisonPreviewSeed);
+                                    EnvelopePitchPreview::defaultSampleCount,
+                                    EnvelopePitchPreview::unisonPreviewSeed);
                     if (!context.pitchEnvelopeUnitValuesByLane.empty()) {
                         context.pitchEnvelopeUnitValues
                                 = context.pitchEnvelopeUnitValuesByLane.front();

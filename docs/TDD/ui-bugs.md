@@ -1124,3 +1124,10 @@ failures reproduced. Evidence: `.context/regression-tests.log` and
 `.context/baseline/results.xml`; reproducible case names are in
 `.context/baseline/cases.json`. The dedicated playback-cursor fixture and cost
 contracts are tracked in `cycle-v2-playback-cursors-and-release-previews.md`.
+
+The 2026-10-25 complete-tail follow-up made the playback fixture wait for the
+first audition's release tail to retire before changing Envelope dimensionality.
+Without that wait, deferred audio-plan publication can adopt after the next
+note-on and clear that new voice, making cursor-count assertions race the edit.
+The sequential 27-command fixture now passes; no cursor or audio-clock workaround
+was added. Evidence: `.context/full-tail-ui-report.json`.

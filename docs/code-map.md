@@ -79,7 +79,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Graph/GraphValidator.h` — Coordinates graph validation; reuse focused validators beneath it.
 - `cycle-v2/src/Graph/NodeDefinition.h` — Node types, ports, defaults, constraints, and synthesis capability metadata.
 - `cycle-v2/src/Runtime/GraphRuntime.h` — Owns compiled runtime state and graph execution lifecycle.
-- `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime graph audio; PlaybackCursor captures positions; PreviewTraversal owns Spy release coordinates.
+- `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime audio and cursor capture; GraphPreviewTiming measures tails for shared PreviewTraversal coordinates.
 - `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Runs scoped preview/analysis products without full audio work.
 - `cycle-v2/src/Runtime/NodeModuleRegistry.h` — Registration boundary for node model, DSP, preview, and view modules.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.

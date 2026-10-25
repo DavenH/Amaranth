@@ -1287,3 +1287,22 @@ Astral, Guitar 3 G, and pitch-independent preset fixtures. No incidental app
 crash was observed. Exact cases and assertions: `.context/baseline/cases.json`
 and `.context/baseline/results.xml`. The focused cursor, envelope lifecycle,
 Guide-noise and realtime allocation/lock contracts pass separately.
+
+## Resolved: scoped preview preparation could retain a freed Envelope source
+
+2026-10-25: the complete-tail test alternates a full demo-graph capture with a
+scoped volume-envelope capture, then disables its scratch envelope and captures
+the full graph again. LLDB stopped in `PreparedCycleEnvelopeBank::adopt` while
+calling a freed source's `cycleEnvelopeConfiguration`. Region cache eligibility
+compared mesh configuration revisions but did not compare preparation scope;
+the scoped pass could evict a source while retaining its oscillator bank.
+Region reuse now requires matching scoped step membership. The full/scoped,
+disabled-envelope and cancelled-capture contracts pass in
+`TestPlaybackCursors.cpp`. Evidence: `.context/full-tail-crash-lldb.log` and
+`.context/full-tail-ctest-fixed.log`.
+
+The wider Unison/grid follow-up retains eight failing cases (nine assertions),
+including empty factory-mesh expectations, missing preset fixtures and a frame
+latch tolerance. All reproduce with the prior DSP baseline binary. Exact cases
+and comparisons: `.context/full-tail-regressions.xml`,
+`.context/full-tail-baseline-cases.json`, `.context/full-tail-baseline.xml`.

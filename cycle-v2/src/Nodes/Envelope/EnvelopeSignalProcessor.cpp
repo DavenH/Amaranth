@@ -273,7 +273,8 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
             publishTraversalGrid(
                     output,
                     context.traversalColumnCount,
-                    context.workArena);
+                    context.workArena,
+                    context.previewReleaseDuration);
         }
         publishSingleOutput(context, std::move(output));
         return;
@@ -333,7 +334,8 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
         publishTraversalGrid(
                 output,
                 context.traversalColumnCount,
-                context.workArena);
+                context.workArena,
+                context.previewReleaseDuration);
     }
     publishSingleOutput(context, std::move(output));
 }
@@ -341,7 +343,8 @@ void EnvelopeSignalProcessor::process(AudioProcessContext& context) {
 void EnvelopeSignalProcessor::publishTraversalGrid(
         SignalPayload& output,
         size_t requestedColumns,
-        const AudioProcessWorkArena* arena) {
+        const AudioProcessWorkArena* arena,
+        double releaseDuration) {
     if (output.block.samples.empty()) {
         clearTraversalGrid(output.traversalGrid);
         return;
@@ -358,6 +361,10 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
         return;
     }
 
+    if (releaseDuration < 0.) {
+        releaseDuration = current->enabled
+                ? Rasterization::EnvelopePlaybackEngine::releaseDuration(preparedPlaybackView()) : 0.;
+    }
     if (!current->enabled) {
         values.set(current->neutralValue);
     } else {
@@ -369,8 +376,7 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
         traversalPlayback.noteOn();
         MeshLibrary::EnvProps traversalProps;
         traversalProps.active = true;
-        const PreviewTraversal traversal(columns);
-        const double advancement = traversal.increment();
+        const PreviewTraversal traversal(columns, releaseDuration);
         for (int column = 0; column < values.size(); ++column) {
             if (traversal.beginsRelease((size_t) column)) {
                 traversalPlayback.noteOff(prepared);
@@ -378,7 +384,7 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
             traversalPlayback.renderToBuffer(
                     prepared,
                     1,
-                    advancement,
+                    traversal.increment((size_t) column),
                     Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
                     traversalProps,
                     1.f);
@@ -403,6 +409,7 @@ void EnvelopeSignalProcessor::publishTraversalGrid(
                     TraversalGridAxis::Repeated),
             arena);
 
+    output.traversalGrid.metadata.releaseDuration = releaseDuration;
     const int rows = (int) output.traversalGrid.rows;
     for (size_t column = 0; column < columns; ++column) {
         Buffer<float>(

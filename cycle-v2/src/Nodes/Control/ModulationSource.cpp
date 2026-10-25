@@ -83,7 +83,7 @@ public:
 
         if (configuration->mode == ModulationSourceMode::VoiceTime
                 && controls.traverseVoiceTime) {
-            const PreviewTraversal traversal(context.pointCount);
+            const PreviewTraversal traversal(context.pointCount, controls.previewReleaseDuration);
             for (size_t column = 0; column < context.pointCount; ++column) {
                 context.primary[column] = traversal.morphPosition(column);
             }

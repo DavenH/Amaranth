@@ -20,9 +20,11 @@ struct NodeAudioResult {
     SignalPayload output;
     std::vector<std::pair<String, SignalPayload>> outputs;
     std::vector<SignalTraversalGrid> probeTraversalGrids;
+    double previewReleaseDuration {};
 };
 
 struct GraphAudioResult {
+    double previewReleaseDuration {};
     SignalPayload output;
     std::vector<NodeAudioResult> nodes;
     bool cancelled {};
@@ -30,6 +32,7 @@ struct GraphAudioResult {
 };
 
 struct GraphAudioResultView {
+    double previewReleaseDuration {};
     const SignalPayload* output {};
     std::vector<const NodeAudioResult*> nodes;
     bool cancelled {};
@@ -161,6 +164,7 @@ private:
         const std::vector<uint8_t>* activeSteps {};
         int capturedStepIndex { -1 };
         const std::vector<uint8_t>* capturedSteps {};
+        bool envelopeTimingOnly {};
     };
 
     struct IncrementalDiagnosticExecution {
@@ -219,6 +223,8 @@ private:
         std::vector<OscillatorRegion*> oscillatorRegionByStep;
     };
 
+    double measurePreviewRelease(
+            const GraphExecutionPlan& plan, const AudioVoiceContext& voice, AudioProcessTiming timing) const;
     void removeUnreferencedProcessors() const;
     static PreparedVoice::OscillatorRegion* oscillatorRegionForStep(
             PreparedVoice& voice,
@@ -261,6 +267,8 @@ private:
 
     static constexpr int globalProcessorIndex = -1;
 
+    mutable std::unique_ptr<GraphAudioExecutor> envelopeTimingExecutor;
+    mutable double cachedPreviewReleaseDuration {};
     mutable AudioProcessWorkArena workArena;
     mutable AudioProcessWorkArena voiceMixArena;
     mutable std::vector<SignalPayload> bufferSlots;

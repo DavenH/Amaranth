@@ -976,6 +976,7 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty(
             "previewRenderCount",
             static_cast<int>(context.presentation.previewRenderCount()));
+    root->setProperty("previewReleaseDuration", previewResult.previewReleaseDuration);
     root->setProperty("previewStats", previewStats);
     root->setProperty("probePreviewStats", probePreviewStats);
 
