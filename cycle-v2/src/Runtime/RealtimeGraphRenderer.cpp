@@ -222,6 +222,7 @@ void RealtimeGraphRenderer::resetVoices(bool resetControls) {
         voice.context.noteRetargets.clear();
         voice.context.oscillatorPitchOffsets.nullify();
         voice.notes.reset();
+        voice.playbackCursor = {};
         voice.active = false;
         voice.released = false;
         voice.normalizedTime = 0.f;
@@ -526,6 +527,7 @@ RealtimeGraphRenderer::Voice& RealtimeGraphRenderer::allocateVoice(
     }
     selected->velocity = (float) event.data2 / 127.f;
     selected->normalizedTime = 0.f;
+    selected->playbackCursor = {};
     selected->active = true;
     selected->released = false;
     return *selected;
@@ -615,8 +617,13 @@ void RealtimeGraphRenderer::renderVoices(
             voice.context.spectralStageCapture = spectralStageCapture;
             midiControls.populateVoice(voice.context, voice.midiChannel);
 
-            PlaybackCursorCapture cursor;
-            cursor.nodeKey = cursorFrame.nodeKey;
+            // Oscillator frames can span callbacks; keep the last resolved
+            // position while their already-rendered audio is consumed.
+            auto& cursor = voice.playbackCursor;
+            if (cursor.nodeKey != cursorFrame.nodeKey) {
+                cursor = {};
+                cursor.nodeKey = cursorFrame.nodeKey;
+            }
             voice.context.playbackCursor = cursor.nodeKey != 0 ? &cursor : nullptr;
             preparedGraph->executor.processRealtimeVoiceToMix(
                     preparedGraph->plan,

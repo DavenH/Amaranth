@@ -109,6 +109,7 @@ private:
 
     struct Voice {
         AudioVoiceContext context;
+        PlaybackCursorCapture playbackCursor;
         MidiEventSource source { MidiEventSource::PerformanceKeyboard };
         uint64_t startOrder {};
         int midiChannel { 1 };

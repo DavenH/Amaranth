@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
@@ -1533,5 +1534,62 @@ TEST_CASE("Playback cursors retain overlapping voice positions",
     REQUIRE(frame.voices[1].hasEnvelopeTime);
     REQUIRE(frame.voices[0].envelopeTime > frame.voices[1].envelopeTime);
     renderer.resetVoices(false);
+    REQUIRE(renderer.playbackCursors().read().count == 0);
+}
+
+TEST_CASE("Polyphonic mesh cursors persist between oscillator frame renders",
+        "[cycle-v2][runtime][playback-cursor]") {
+    const bool fixedTime = GENERATE(false, true);
+    auto graph = legatoGraph();
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "voice", "pitchIndependentSpectralControl", "Spectral Clock",
+            fixedTime ? "true" : "false").succeeded());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(
+            graph, "voice", "noteMode", "Note Mode", "polyphonic").succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 64;
+    spec.sampleRate = 48000.;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    RealtimeGraphRenderer renderer;
+    renderer.setPreparedGraph(prepared.get());
+    renderer.playbackCursors().request((uint64_t) String("waveMesh").hashCode64());
+    RealtimeMidiEventQueue queue;
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 24, (uint8) 100), MidiEventSource::Hardware, 1.));
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 31, (uint8) 100), MidiEventSource::Hardware, 1.));
+    AudioBuffer<float> output(2, 64);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    std::array<float, 2> previous {};
+    for (int block = 0; block < 100; ++block) {
+        INFO("audio block " << block);
+        renderer.process(queue, channels, 2, 64, spec.sampleRate, 1. + block * 64. / spec.sampleRate);
+        const auto frame = renderer.playbackCursors().read();
+        REQUIRE(frame.count == 2);
+        for (size_t index = 0; index < frame.count; ++index) {
+            REQUIRE(frame.voices[index].hasMorph);
+            REQUIRE(frame.voices[index].morph[0] >= previous[index]);
+            previous[index] = frame.voices[index].morph[0];
+        }
+    }
+    REQUIRE(previous[0] > 0.f);
+    REQUIRE(previous[1] > 0.f);
+    renderer.playbackCursors().request((uint64_t) String("another-editor").hashCode64());
+    renderer.process(queue, channels, 2, 64, spec.sampleRate, 1. + 100. * 64. / spec.sampleRate);
+    REQUIRE(renderer.playbackCursors().read().count == 0);
+    renderer.playbackCursors().request((uint64_t) String("waveMesh").hashCode64());
+    for (int block = 101; block < 133; ++block) {
+        renderer.process(queue, channels, 2, 64, spec.sampleRate, 1. + block * 64. / spec.sampleRate);
+    }
+    REQUIRE(renderer.playbackCursors().read().count == 2);
+    renderer.resetVoices(false);
+    REQUIRE(renderer.playbackCursors().read().count == 0);
+    const double restartedAt = 1. + 133. * 64. / spec.sampleRate;
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 24, (uint8) 100), MidiEventSource::Hardware, restartedAt));
+    renderer.process(queue, channels, 2, 64, spec.sampleRate, restartedAt);
+    const auto restarted = renderer.playbackCursors().read();
+    REQUIRE(restarted.count == 1);
+    REQUIRE(restarted.voices[0].morph[0] < previous[0]);
+    renderer.setPreparedGraph(nullptr);
     REQUIRE(renderer.playbackCursors().read().count == 0);
 }

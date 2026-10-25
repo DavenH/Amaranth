@@ -1143,3 +1143,13 @@ five assertions reproduce in the prior `.context/baseline/CycleV2_baseline_tests
 binary. Evidence: `.context/spy-harmonics-tests.log`,
 `.context/spy-harmonics-baseline.log`, `.context/spy-harmonics-baseline-compact.log`.
 The new solid-lane, DC exclusion, contrast and actual-app annotation checks pass.
+
+## Cursor continuity verification: window video recorder failure
+
+2026-10-25: isolated coordinator runs with `--video` exited before producing a
+fixture report or video, reporting only `Video recorder failed:` with empty
+stderr. The same 129-command fixture runs through `--clean` without video.
+Evidence: `.context/cycle-automation/cycle-v2/bc957235467c/run.json` and
+`.context/cursor-flicker-before-ui.json`. No app assertion or crash was observed;
+the recorder failure remains outside the cursor fix. Temporal verification uses
+per-callback regression tests and repeated actual-app state samples.

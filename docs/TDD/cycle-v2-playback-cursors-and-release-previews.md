@@ -252,3 +252,48 @@ preview product adaptation and image-cache ownership. Harmonic geometry stays
 in TrimeshSurfaceRenderer (191→196), while TrimeshRenderProfile shrinks 407→382
 by removing its redundant mapping wrapper. No audio preparation, graph state,
 interaction lifecycle, or new family of domain decisions moves into UI code.
+
+## Polyphonic cursor continuity correction
+
+Status: Complete
+
+A 64-sample callback with two low notes deterministically published two mesh
+cursors on block 0 and none on block 1 while both notes remained active. A fresh
+callback-local capture incorrectly equated reuse of already-rendered oscillator
+audio with voice inactivity. The panel then drew its static primary slice. This
+was not a graph/presentation morph publication conflict.
+
+RealtimeGraphRenderer::Voice now owns the last actual capture for the requested
+editor. Oscillator/envelope owners update it when they resolve fresh state;
+callbacks consuming existing audio retain it. New-note allocation, renderer/graph
+reset and requested-editor changes clear the capture. Voice retirement still
+excludes it immediately. Publication remains bounded at eight captures without
+extra rendering, audio-thread allocation/locks or an invented UI clock.
+
+The regression covers low-note polyphony across 100 small callbacks under both
+oscillator clocks, continued progress, editor switches, same-slot note reuse and
+renderer/graph resets. All ten cursor/realtime allocation cases pass with 1,143
+assertions; another thirteen legato cases pass with 13,294 assertions.
+
+The isolated app fixture holds MIDI notes 24 and 31 in Pwm Lead and samples the
+expanded timeLayer1 Trimesh at 60 checkpoints. Before the fix only nine samples
+contained both cursors; 36 dropped one and fifteen dropped both while two audio
+voices remained active. The same assertions fail against that baseline report.
+After the fix all sixty samples retain both moving scratch-resolved cursors,
+then note release retires them. Graph/model revisions, audio-plan copy counts,
+preview products and surface rebuild counts remain unchanged.
+
+Evidence: `.context/cursor-flicker-before-tests.log`,
+`.context/cursor-flicker-before-ui.json`, `.context/cursor-flicker-tests.log`,
+`.context/cursor-flicker-legato-tests.log`, and
+`.context/polyphonic-cursor-continuity/report.json`. Both app and test targets
+build; style/whitespace and architecture/code-map checks pass. The window video
+recorder failed before capture and is recorded in ui-bugs.md; repeated state
+samples and deterministic per-callback assertions establish temporal behavior.
+
+Size review: RealtimeGraphRenderer.cpp 770→779 remains the owner of bounded voice
+lifecycle and graph execution. This change adds one fixed-size capture to its voice
+record and reset/update hooks at existing lifecycle sites; morph/envelope and
+oscillator algorithms remain with their stable processor collaborators. Its
+187-line header and unchanged UI/graph layers add no duplicated rendering,
+preparation, publication or timing policy.
