@@ -208,6 +208,17 @@ PresetPresentationDecodeResult readPresentation(
         }
     }
 
+    if (const auto* times = object->getProperty("spyNoteOffTimes").getDynamicObject()) {
+        for (const auto& entry : times->getProperties()) {
+            const auto& value = entry.value;
+            const double time = (double) value;
+            if ((value.isDouble() || value.isInt() || value.isInt64())
+                    && std::isfinite(time) && time >= 0. && time < 1.) {
+                result.presentation.spyNoteOffTimes.emplace(entry.name.toString(), time);
+            }
+        }
+    }
+
     const juce::var pinsValue = object->getProperty("comparisonSpyPins");
     if (const auto* pins = pinsValue.getArray()) {
         for (const auto& item : *pins) {
@@ -260,7 +271,8 @@ bool PresetPresentation::empty() const {
             && !outputSpyPosition.has_value()
             && outputSpyVisible
             && outputSpyFrequencyView
-            && comparisonSpyPins.empty();
+            && comparisonSpyPins.empty()
+            && spyNoteOffTimes.empty();
 }
 
 juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentation) {
@@ -321,6 +333,13 @@ juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentat
     }
     if (!presentation.outputSpyFrequencyView) {
         result->setProperty("outputSpyFrequencyView", false);
+    }
+    if (!presentation.spyNoteOffTimes.empty()) {
+        auto times = std::make_unique<juce::DynamicObject>();
+        for (const auto& [probeId, time] : presentation.spyNoteOffTimes) {
+            times->setProperty(juce::Identifier(probeId), time);
+        }
+        result->setProperty("spyNoteOffTimes", juce::var(times.release()));
     }
     if (!presentation.comparisonSpyPins.empty()) {
         juce::Array<juce::var> pins;

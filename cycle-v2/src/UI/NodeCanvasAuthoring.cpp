@@ -157,6 +157,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::loadGraph(const File& file) {
     }
 
     clearDocumentSelection();
+    presentation.setProbeNoteOffTimes(document.presentation().spyNoteOffTimes);
     refreshPresentation();
     return restoredDocumentResult("Opened " + file.getFileName());
 }
@@ -176,6 +177,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::loadSnapshot(const File& file) {
     }
 
     clearDocumentSelection();
+    presentation.setProbeNoteOffTimes(document.presentation().spyNoteOffTimes);
     refreshPresentation();
     return restoredDocumentResult("Loaded snapshot");
 }

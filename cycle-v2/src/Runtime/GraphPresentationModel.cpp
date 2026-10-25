@@ -576,6 +576,22 @@ GraphPresentationModel::captureProbePreviews(
             midiNote, current.previewControllerValues, performance);
 }
 
+double GraphPresentationModel::probeNoteOffTime(const String& probeId) const {
+    const auto found = current.probeNoteOffTimes.find(probeId);
+    return found != current.probeNoteOffTimes.end() ? found->second : 1.;
+}
+
+void GraphPresentationModel::commitProbePreview(GraphPreviewResult::SignalProbePreview preview) {
+    scheduler.cancelAndWait();
+    if (preview.noteOffTime < 1.) {
+        current.probeNoteOffTimes[preview.probeId] = preview.noteOffTime;
+    } else {
+        current.probeNoteOffTimes.erase(preview.probeId);
+    }
+    PresentationPreviewRenderer::publishProbePreview(current, std::move(preview));
+    ++presentationRevision;
+}
+
 bool GraphPresentationModel::prepareProbeCaptureForNode(
         const NodeGraph& graph,
         const String& nodeId) {

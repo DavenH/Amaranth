@@ -214,6 +214,8 @@ public:
         object->setProperty("domain", labelForDomain(preview.domain));
         object->setProperty("gridColumns", (int) preview.gridColumns);
         object->setProperty("gridRows", (int) preview.gridRows);
+        object->setProperty("noteOffTime", preview.noteOffTime);
+        object->setProperty("releaseDuration", preview.releaseDuration);
         object->setProperty("sampleCount", (int) preview.values.size());
         object->setProperty("absoluteSum", absoluteTotal);
         return object;
@@ -986,6 +988,10 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("previewReleaseDuration", previewResult.previewReleaseDuration);
     root->setProperty("previewStats", previewStats);
     root->setProperty("probePreviewStats", probePreviewStats);
+    if (previewResult.defaultOutput.has_value()) {
+        root->setProperty("defaultOutputPreviewStats",
+                AutomationValueEncoder::probePreviewStatsToVar(*previewResult.defaultOutput));
+    }
 
     if (state.expandedNodeId.isNotEmpty()) {
         root->setProperty("expandedNodeControls", inspectNodeControls(state.expandedNodeId, state));

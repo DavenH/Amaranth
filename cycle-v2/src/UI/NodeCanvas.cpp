@@ -244,6 +244,7 @@ NodeCanvas::NodeCanvas() :
     probeCanvasState.outputSpyVisible = document.presentation().outputSpyVisible;
     probeCanvasState.defaultOutputView = document.presentation().outputSpyFrequencyView
             ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
+    presentation.setProbeNoteOffTimes(document.presentation().spyNoteOffTimes);
     dockInteraction = std::make_unique<WorkspaceDockInteractionController>(
             commands,
             graph,
@@ -384,7 +385,8 @@ void NodeCanvas::paint(Graphics& g) {
     const NodeCanvasPresentationFrame frame = presentationFrame();
     const Rectangle<int> status = statusRepaintBounds(
             frame.utilityBounds, frame.keyboardExtraControllerCount);
-    if (!status.isEmpty() && status.contains(g.getClipBounds())) {
+    if (!probeDetailState.isOpen() && frame.canvasOcclusion.isEmpty()
+            && !status.isEmpty() && status.contains(g.getClipBounds())) {
         canvasPresentation.paintStatus(g, frame);
         return;
     }
@@ -513,9 +515,8 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
         hoveredEdgeIndex = -1;
         hoveredQuickCreatePortId = {};
         const bool releaseHandle = probeDetailState.releaseHitTest(
-                SignalProbeDetailView::boundsFor(editorContentBounds()), position);
+                probeDetailBounds(), position);
         setMouseCursor(releaseHandle ? MouseCursor::LeftRightResizeCursor : MouseCursor::NormalCursor);
-        resolvedHoverText = releaseHandle ? "Drag to audition note release" : String {};
         const bool canvasChanged = paletteChanged
                 || previousGuideId.isNotEmpty()
                 || previousProbeId.isNotEmpty()
@@ -688,7 +689,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     guideShelfState.selectedGuideId = {};
     guideShelfState.hoveredGuideId = {};
     if (probeDetailState.isOpen()) {
-        const Rectangle<float> detail = SignalProbeDetailView::boundsFor(editorContentBounds());
+        const Rectangle<float> detail = probeDetailBounds();
         if (SignalProbeDetailView::dismissesOnClick(
                 detail,
                 event.position,
@@ -1066,7 +1067,7 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
     lastMousePosition = event.position;
     if (probeDetailState.releaseDragging) {
         probeDetailState.dragRelease(event.position);
-        repaint(SignalProbeDetailView::boundsFor(editorContentBounds()).getSmallestIntegerContainer());
+        repaint(probeDetailBounds().getSmallestIntegerContainer());
         return;
     }
     if (informationCardMouseDrag(event)) {
@@ -1172,9 +1173,12 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     lastMousePosition = event.position;
     if (probeDetailState.releaseDragging) {
         if (probeDetailState.endReleaseDrag(event.position)) {
+            if (commands.setSpyNoteOffTime(probeDetailState.probeId, probeDetailState.noteOffTime)) {
+                notifyGraphDocumentStateChanged();
+            }
             refreshProbeDetail();
         }
-        repaint(SignalProbeDetailView::boundsFor(editorContentBounds()).getSmallestIntegerContainer());
+        requestCanvasRepaint();
         return;
     }
     if (informationCardMouseUp()) {
@@ -1443,7 +1447,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
     if (key == KeyPress::escapeKey) {
         if (probeDetailState.isOpen()) {
             if (probeDetailState.cancelReleaseDrag()) {
-                repaint(SignalProbeDetailView::boundsFor(editorContentBounds()).getSmallestIntegerContainer());
+                repaint(probeDetailBounds().getSmallestIntegerContainer());
                 return true;
             }
             probeDetailState.close();
@@ -1674,7 +1678,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             extraMidiControllerCount(),
             &informationCards,
             focusedInformationGroup,
-            informationCardPreview()
+            informationCardPreview(),
+            probeDetailBounds()
     };
 }
 
@@ -1705,6 +1710,10 @@ Point<float> NodeCanvas::viewportCentreWorld() const {
 
 Rectangle<float> NodeCanvas::canvasContentBounds() const {
     return workspaceDockLayout().content;
+}
+
+Rectangle<float> NodeCanvas::probeDetailBounds() const {
+    return SignalProbeDetailView::boundsFor(canvasContentBounds());
 }
 
 Rectangle<float> NodeCanvas::canvasUtilityBounds() const {
@@ -2072,11 +2081,16 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
             probeId,
             captureResolution,
             midiNote,
-            probeDetailState.probeId == probeId ? probeDetailState.noteOffTime : 1.);
+            probeDetailState.probeId == probeId
+                    ? probeDetailState.noteOffTime : presentation.probeNoteOffTime(probeId));
     if (!preview.has_value()) {
         probeDetailState.close();
         notifyOverlayOcclusionChanged();
         return;
+    }
+
+    if (preview->noteOffTime != presentation.probeNoteOffTime(probeId)) {
+        presentation.commitProbePreview(*preview);
     }
 
     if (probeId == DefaultOutputProbeResolver::probeId
@@ -2236,12 +2250,12 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.probeDetailRenderCount = probeDetailState.renderCount;
     result.probeDetailContentRevision = probeDetailState.renderResult.contentRevision;
     result.probeDetailReleaseDragging = probeDetailState.releaseDragging;
-    const auto detail = SignalProbeDetailView::boundsFor(editorContentBounds());
+    const auto detail = probeDetailBounds();
     result.probeDetailReleaseBounds = SignalProbeDetailView::releaseHandleBounds(detail, probeDetailState);
     result.probeDetailReleaseIconBounds = SignalProbeDetailView::releaseIconBounds(detail, probeDetailState);
     result.probeDetailVoiceBounds = SignalProbeDetailView::voiceBounds(detail, probeDetailState);
     result.probeDetailBounds = probeDetailState.isOpen()
-            ? SignalProbeDetailView::boundsFor(editorContentBounds())
+            ? probeDetailBounds()
             : Rectangle<float> {};
     result.canvasContentBounds = canvasContentBounds();
     result.editorContentBounds = editorContentBounds();
@@ -2916,7 +2930,7 @@ Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
         return guideEditorCoordinator.bounds();
     }
     if (probeDetailState.isOpen()) {
-        return SignalProbeDetailView::boundsFor(editorContentBounds());
+        return probeDetailBounds();
     }
 
     const Node* expandedNode = queries.findNode(expandedNodeId);

@@ -60,6 +60,7 @@ public:
     void paint(
             Graphics& graphics,
             Rectangle<float> availableContent,
+            Rectangle<float> detailBounds,
             const SignalProbeDetailState& state);
 
 private:

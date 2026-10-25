@@ -7,6 +7,8 @@
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
 #include "Nodes/Envelope/EnvelopePitchPreview.h"
 #include "Runtime/PreviewTraversal.h"
+#include "Runtime/GraphPresentationModel.h"
+#include "Graph/GraphSerializer.h"
 #include "Graph/GraphCompiler.h"
 #include "Runtime/GraphAudioExecutor.h"
 #include "Runtime/GraphPreviewExecutor.h"
@@ -456,4 +458,55 @@ TEST_CASE("Spy pitch lanes take release from the auditioned note-off",
         REQUIRE(early[lane][200] == Catch::Approx(0.f).margin(0.005f));
         REQUIRE(held[lane][200] > 0.2f);
     }
+}
+
+TEST_CASE("Spy release auditions survive collapse and refresh without changing node previews",
+        "[cycle-v2][preview][release-audition]") {
+    const File preset = File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets/baroque-flute.cyclegraph");
+    const auto graph = GraphSerializer().fromJsonString(preset.loadFileAsString());
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(graph, 1));
+    const auto nodes = presentation.previewResult().nodes;
+    const auto audioRevision = presentation.audioPlanRevision();
+    const auto compilations = presentation.compilationCount();
+    auto captured = presentation.captureProbePreview(graph, "default-output", 512, 48, 0.35);
+    REQUIRE(captured.has_value());
+    presentation.commitProbePreview(std::move(*captured));
+    REQUIRE(presentation.probeNoteOffTime("default-output") == 0.35);
+    REQUIRE(presentation.probeNoteOffTime("another-spy") == 1.);
+    REQUIRE(presentation.previewResult().defaultOutput->noteOffTime == 0.35);
+    REQUIRE(presentation.previewResult().defaultOutputSpectrum->noteOffTime == 0.35);
+    auto probeCapture = presentation.captureProbePreview(graph, "probe", 512, 48, 0.55);
+    REQUIRE(probeCapture.has_value());
+    presentation.commitProbePreview(std::move(*probeCapture));
+    REQUIRE(presentation.probeNoteOffTime("probe") == 0.55);
+    REQUIRE(presentation.previewResult().probes.front().noteOffTime == 0.55);
+    REQUIRE(presentation.previewResult().probeSpectra.front()->noteOffTime == 0.55);
+    REQUIRE(presentation.probeNoteOffTime("default-output") == 0.35);
+    for (size_t index = 0; index < nodes.size(); ++index) {
+        REQUIRE(nodePreviewResultsHaveEqualContent(nodes[index], presentation.previewResult().nodes[index]));
+    }
+    REQUIRE(presentation.audioPlanRevision() == audioRevision);
+    REQUIRE(presentation.compilationCount() == compilations);
+
+    REQUIRE(presentation.refreshPreviewMidiNote(graph, 1, 60));
+    REQUIRE(presentation.previewResult().defaultOutput->noteOffTime == 0.35);
+    REQUIRE(presentation.previewResult().defaultOutputSpectrum->noteOffTime == 0.35);
+    captured = presentation.captureProbePreview(graph, "default-output", 512, 60, 1.);
+    REQUIRE(captured.has_value());
+    presentation.commitProbePreview(std::move(*captured));
+    REQUIRE(presentation.probeNoteOffTime("default-output") == 1.);
+    REQUIRE(presentation.snapshot().probeNoteOffTimes.count("default-output") == 0);
+    REQUIRE(presentation.probeNoteOffTime("probe") == 0.55);
+
+    captured = presentation.captureProbePreview(graph, "default-output", 512, 60, 0.2);
+    REQUIRE(captured.has_value());
+    presentation.commitProbePreview(std::move(*captured));
+    presentation.setProbeNoteOffTimes({});
+    GraphChangeSet load;
+    load.topologyChanged = true;
+    REQUIRE(presentation.refresh(graph, 2, load));
+    REQUIRE(presentation.probeNoteOffTime("default-output") == 1.);
+    REQUIRE(presentation.previewResult().defaultOutput->noteOffTime == 1.);
 }

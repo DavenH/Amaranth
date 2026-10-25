@@ -40,12 +40,21 @@ public:
             const std::array<int, 128>& controllerValues,
             GraphPresentationPerformanceMetrics& performance) const;
 
+    static void publishProbePreview(
+            GraphPresentationSnapshot& snapshot,
+            GraphPreviewResult::SignalProbePreview preview);
+
     void resetExecutionState() { audioExecutor.resetExecutionState(); }
     size_t diagnosticProcessCount(const String& nodeId) const {
         return audioExecutor.diagnosticProcessCount(nodeId);
     }
 
 private:
+    void renderProbeAuditions(
+            const NodeGraph& graph,
+            GraphPresentationSnapshot& snapshot,
+            GraphPresentationPerformanceMetrics& performance);
+
     GraphAudioExecutor audioExecutor;
 };
 

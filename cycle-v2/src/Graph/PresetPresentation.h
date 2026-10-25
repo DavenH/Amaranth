@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <map>
 #include <vector>
 
 namespace CycleV2 {
@@ -63,6 +64,7 @@ struct PresetPresentation {
     bool outputSpyVisible { true };
     bool outputSpyFrequencyView { true };
     std::vector<juce::String> comparisonSpyPins;
+    std::map<juce::String, double> spyNoteOffTimes;
 
     bool empty() const;
 };

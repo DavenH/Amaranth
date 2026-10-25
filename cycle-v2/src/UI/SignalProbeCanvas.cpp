@@ -3,6 +3,7 @@
 #include "UI/SignalProbeCanvas.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
+#include "Runtime/PreviewTraversal.h"
 
 #include "UI/CanvasChromePalette.h"
 #include "UI/NodeCableRenderer.h"
@@ -507,6 +508,12 @@ void SignalProbeCanvas::paintCachedPreview(
         });
     }
     previewTileCache.draw(graphics, cache);
+    const auto content = NodePreviewRenderer::heatmapBounds(previewBounds);
+    const float noteOff = PreviewTraversal(
+            preview.gridColumns, preview.releaseDuration, preview.noteOffTime).noteOffPosition();
+    graphics.setColour(CanvasChromePalette::focus.withAlpha(0.5f));
+    graphics.drawVerticalLine(roundToInt(content.getX() + content.getWidth() * noteOff),
+            content.getY(), content.getBottom());
 }
 
 void SignalProbeCanvas::paintCards(

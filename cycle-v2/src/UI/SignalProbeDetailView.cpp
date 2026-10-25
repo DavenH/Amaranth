@@ -185,6 +185,7 @@ bool SignalProbeDetailView::dismissesOnClick(
 void SignalProbeDetailView::paint(
         Graphics& graphics,
         Rectangle<float> availableContent,
+        Rectangle<float> detail,
         const SignalProbeDetailState& state) {
     if (!state.isOpen()) {
         return;
@@ -193,7 +194,6 @@ void SignalProbeDetailView::paint(
     graphics.setColour(kBackdrop);
     graphics.fillRect(availableContent);
 
-    const Rectangle<float> detail = boundsFor(availableContent);
     graphics.setColour(CanvasChromePalette::insetBackground);
     graphics.fillRoundedRectangle(detail, CanvasChromeMetrics::panelCornerRadius);
     graphics.setColour(CanvasChromePalette::border);

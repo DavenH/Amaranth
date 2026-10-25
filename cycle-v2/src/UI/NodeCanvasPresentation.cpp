@@ -647,7 +647,8 @@ void NodeCanvasPresentation::paint(
                 NodeCanvasPresentationStage::DockAndDetail);
         GuideRelationshipPresentation::paintTetherTerminal(graphics, frame);
         if (frame.probeDetailState != nullptr) {
-            signalProbeDetailView.paint(graphics, frame.canvasBounds, *frame.probeDetailState);
+            signalProbeDetailView.paint(
+                    graphics, frame.canvasBounds, frame.probeDetailBounds, *frame.probeDetailState);
         }
     }
 }

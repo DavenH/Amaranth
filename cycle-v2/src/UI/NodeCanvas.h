@@ -396,6 +396,7 @@ private:
     bool cycleSinglePortLayout(const String& nodeId);
     bool cycleOutputSide(const String& nodeId);
     Rectangle<float> canvasContentBounds() const;
+    Rectangle<float> probeDetailBounds() const;
     Rectangle<float> canvasUtilityBounds() const;
     Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;

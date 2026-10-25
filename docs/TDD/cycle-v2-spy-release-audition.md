@@ -4,79 +4,91 @@ Status: Complete
 
 ## Contract and ownership
 
-The expanded Spy note-off boundary and release icon are draggable. The chosen
-note-off is normalized voice time x in [0,1], independent of the extra tail
-width. The full voice-plus-longest-release horizon stays fixed while auditing
-staccato notes. Earlier release holds an unscratched morph at the chosen slice;
-scratch and pitch envelopes use actual shared-engine note-off playback.
+Drag the expanded Spy boundary or release icon to a normalized voice time x in
+[0,1]. The full voice-plus-longest-release horizon stays fixed while auditing
+staccato notes. An unscratched morph holds the chosen slice; scratch and pitch
+envelopes use the shared EnvelopePlaybackEngine note-off playback.
 
-This is an ephemeral expanded-Spy preview setting. No graph publication, undo,
-preset write, audio-plan update, compilation or capture occurs on pointer-down
-or movement. Pointer-up captures the selected probe once if its note-off changed.
-An unchanged click does nothing. Escape cancels an active drag before closing
-the detail; closing/reopening resets the audition. Refreshing the same open Spy
-retains its committed note-off. Other Spies and live MIDI retain normal timing.
+Each Spy stores its committed time in PresetPresentation.spyNoteOffTimes.
+GraphCommandDispatcher changes presentation metadata only on pointer-up. This
+marks the preset dirty without graph publication, undo, audio-plan updates or
+compilation. Unchanged clicks do nothing. Escape cancels a drag before closing
+the detail. Collapsing, reopening and switching preview views retain the value;
+saving and loading a preset restores each Spy independently. Missing settings
+mean x=1, and restoring x=1 removes the override. Live MIDI retains normal timing.
 
-Authoritative behavior: shared EnvelopePlaybackEngine noteOn/noteOff/renderToBuffer
-and the existing PreviewTraversal grid schedule. GraphPresentationModel and
-PresentationPreviewRenderer forward a capture-only time override through the
-scoped diagnostic executor. No second envelope or release algorithm is added.
-FFT/IFFT preserve the grid's timing metadata. Pitch/unison traversal follows the
-same override, including cache invalidation. Diagnostic caches distinguish
-changed note-off settings; realtime execution remains allocation/lock-free.
+SignalProbeDetailState owns constant-size original/preview/committed drag
+coordinates. Movement changes only these scalars and repaints the detail; it
+never captures, hashes or copies a grid. Paint frames borrow the detail state.
+Pointer-up captures the selected probe once and fingerprints the published detail
+once. PresentationPreviewRenderer derives compact time/spectrum products from
+that same capture. GraphPresentationSnapshot carries the settings into downstream
+refreshes, recapturing only auditioned probes whose compact products changed.
+Other node previews and Spies retain their own timing.
 
-The detail state owns the drag (constant size: original/preview/committed
-coordinates), and SignalProbeDetailView owns hit/draw geometry. NodeCanvas only
-routes input and commits an existing probe capture. Paint frames borrow detail
-state instead of copying its grid; the detail hashes captured content once on
-publication, avoiding per-movement image fingerprint work.
+GraphPresentationModel and PresentationPreviewRenderer forward capture timing
+through the scoped diagnostic executor. PreviewTraversal supplies the shared
+sampling schedule; FFT/IFFT retain its metadata. Pitch/unison traversal and cache
+invalidation use the same override. No second envelope algorithm or audio-thread
+allocation is introduced.
 
-## Completion and deletion targets
+## Native input and rendering corrections
 
-- Reuse PreviewTraversal for early note-off, including x=0, x=1 and zero tails.
-- Preserve common fixed horizon, Guide noise, scratch/pitch release and DC-free
-  harmonic lanes; remove the unconditional note-off-at-one sampling assumption.
-- Draw an obvious draggable boundary, support the release icon, and expose a
-  resize cursor and automation targets using the same bounds as hit testing.
-- Verify multiple drag updates leave render/capture, graph/undo, audio-plan and
-  grid identity counters unchanged. Commit exactly once, verify changed signal
-  data, cancel/no-op/clamp sequences, then restore x=1.
-- Run focused runtime and interaction tests, isolated actual-app fixture and
-  screenshot, standalone build, style/diff checks and architecture/code-map
-  audits; review production sizes and commit.
+The detail was painted relative to canvas content but hit tested relative to
+editor content, which excludes the sidebar. This offset the handle by the sidebar
+width contribution. NodeCanvas now computes one rectangle for paint, hit testing,
+occlusion and automation. Both the visible line and the release icon accept
+native drags.
 
-## Verification and size review
+The former handle hover message was suppressed by overlay text policy while
+still requesting a status repaint. The status-only paint shortcut omitted the
+Spy backdrop, exposing an empty undimmed console rectangle. Remove that hover
+message and use the normal clipped paint path whenever an overlay is open.
+Native screenshots verify identical blank status-background pixels before and
+during dragging, including a transition through the information button.
 
-`SignalProbeDetailState` retains only scalar drag coordinates. Its grid storage
-and content revision remain identical through multiple moves, no-op and cancel.
-Paint frames borrow the state, and captured content is fingerprinted once on
-publication. The release icon now sits on the boundary, with a visible triangle
-and thin line over the plot; both icon and line use shared hit/draw geometry.
+Both ADSR SVG annotations use moderate attack, decay and release curves. Their
+shared 48×32 canvas has live x=4..44, y=5..27 and stroke 2.4; the UI renders at
+36×24. The held region is shaded in Normal; only the tail is shaded in Release.
+The release icon sits on the boundary. Compact Spies also draw the committed
+release boundary over the rendered product.
 
-All 26 focused cases pass (7,837 assertions), including early envelope/scratch
-release, pitch lanes, zero/short/long horizons, endpoint clamping, cache return
-from audition to normal rendering, existing cursor behavior, harmonic lanes
-and realtime preparation/allocation contracts. Both build targets succeed.
-The known empty-Guide SignalBuffer assertions remain recorded in audio-bugs.md;
-no new app assertion or crash was observed.
+## Verification
 
-The isolated app fixture passes all 29 commands. Eight snapshots prove two
-movement updates preserve captured content/render count, mouse-up captures
-exactly once and changes content, unchanged clicks and Escape do not capture,
-icon dragging clamps at x=1, and closing/reopening resets the audition. All
-checkpoints preserve document/model revisions, dirty/undo state, audio-plan
-copy count and unrelated preview products. Evidence:
-`.context/spy-note-off-tests-final.log`,
+- Both standalone and test targets build. The 28 focused cases pass with 7,890
+  assertions, covering traversal, envelope/scratch/pitch release, cache timing,
+  harmonic lanes, drag/no-op/cancel/clamping, compact retention, per-Spy preset
+  round trips, unchanged node products and realtime preparation contracts.
+- Another 16 presentation/serialization cases pass with 293 assertions.
+- The isolated semantic fixture passes 35 commands and ten checkpoints. Movement
+  preserves captured content and counts; commit captures once; compact/reopened
+  views retain the value. Model revisions, undo, audio-plan copies and unrelated
+  previews remain unchanged; only a completed changed drag marks metadata dirty.
+- The isolated native test verifies both line and icon, actual mouse delivery,
+  capture deferral, compact/reopen retention, preset save/load, independent preset
+  defaults and status-background stability. ScreenCaptureKit targets the exact
+  isolated PID; the user's running instance is untouched.
+- SVG XML validation, icon coverage/shading, three raster review passes,
+  architecture/code-map audits and whitespace checks pass. No new runtime
+  assertion or crash was observed. Existing empty-Guide SignalBuffer assertions
+  remain recorded in audio-bugs.md.
+
+Evidence: `.context/spy-corrections-tests.log`,
+`.context/spy-corrections-presentation-tests.log`,
 `.context/spy-release-audition/report.json`,
-`.context/spy-release-audition/run.json`, and
-`.context/spy-note-off-expanded.png`.
+`.context/spy-release-audition/native-report.json`,
+`.context/spy-envelope-curves-pass-c.png`, and
+`.context/spy-release-audition/native-releaseIcon-panel.png`.
 
-Architecture/code-map audits and whitespace/style review pass. Large-file
-review: GraphAudioExecutor 1289→1304 only forwards diagnostic timing and keys
-its existing cache; GraphPresentationModel 688→690 only forwards the capture
-setting. NodeCanvas 3615→3649 routes input/capture to detail state, retaining its
-existing orchestration boundary. NodeCanvasAutomationInspector 1324→1338
-exports presentation facts/targets. NodeCanvasPresentation 1534→1533 borrows
-large detail content rather than owning another copy. Gesture state and drawing
-remain in the 237-line SignalProbeDetailView implementation; no new graph,
-audio lifecycle, envelope or transaction policy enters those large owners.
+## Size and responsibility review
+
+NodeCanvas 3649→3663 adds shared bounds, a metadata command and preview routing;
+NodeCanvasPresentation 1533→1534 only consumes those bounds. Their existing
+orchestration roles stay intact; gesture and domain algorithms remain delegated.
+NodeCanvasAuthoring 1043→1045 restores settings at its existing document-load
+boundary. NodeCanvasAutomationInspector 1338→1344 only exports preview metadata.
+GraphCommandDispatcher 827→849 follows its existing presentation-command pattern.
+GraphPresentationModel 690→706 publishes selected products and session snapshots;
+the 356-line PresentationPreviewRenderer owns compact product derivation and
+refresh. SignalProbeCanvas adds only boundary drawing. No new cross-subsystem
+utility, duplicated envelope state machine or unrelated graph work is introduced.

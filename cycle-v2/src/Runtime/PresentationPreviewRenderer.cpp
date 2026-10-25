@@ -6,6 +6,7 @@
 #include "Runtime/GraphPresentationSnapshot.h"
 #include "Runtime/GraphPreviewExecutor.h"
 #include "Graph/DefaultOutputProbeResolver.h"
+#include "Runtime/DefaultOutputPreview.h"
 #include "Nodes/Control/ModulationSource.h"
 
 namespace CycleV2 {
@@ -150,6 +151,7 @@ bool PresentationPreviewRenderer::render(
         performance.record(
                 GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
                 performance.timestamp() - extractionStartedAt);
+        renderProbeAuditions(graph, snapshot, performance);
         previewRendered = true;
         return true;
     }
@@ -204,8 +206,65 @@ bool PresentationPreviewRenderer::render(
     performance.record(
             GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
             performance.timestamp() - extractionStartedAt);
+    if (scope != PresentationRefreshScope::LocalEditor) {
+        renderProbeAuditions(graph, snapshot, performance);
+    }
     previewRendered = true;
     return true;
+}
+
+void PresentationPreviewRenderer::publishProbePreview(
+        GraphPresentationSnapshot& snapshot,
+        GraphPreviewResult::SignalProbePreview preview) {
+    GraphPreviewExecutor::reduceProbeRows(
+            preview, GraphPreviewExecutor::kMinimumProbeSourceFrames);
+    const auto spectrum = preview.domain == PortDomain::TimeSignal
+            ? std::optional<GraphPreviewResult::SignalProbePreview>(
+                    DefaultOutputPreview::spectrum(preview))
+            : std::nullopt;
+    auto& result = snapshot.previewResult;
+    if (preview.probeId == DefaultOutputProbeResolver::probeId) {
+        result.defaultOutputSpectrum = spectrum;
+        result.defaultOutput = DefaultOutputPreview::normalizedTime(preview);
+        return;
+    }
+    for (size_t index = 0; index < result.probes.size(); ++index) {
+        if (result.probes[index].probeId == preview.probeId) {
+            result.probes[index] = std::move(preview);
+            result.probeSpectra.resize(result.probes.size());
+            result.probeSpectra[index] = spectrum;
+            return;
+        }
+    }
+}
+
+void PresentationPreviewRenderer::renderProbeAuditions(
+        const NodeGraph& graph,
+        GraphPresentationSnapshot& snapshot,
+        GraphPresentationPerformanceMetrics& performance) {
+    for (const auto& entry : snapshot.probeNoteOffTimes) {
+        const auto& probeId = entry.first;
+        const double noteOffTime = entry.second;
+        const auto address = probeAddressFor(graph, snapshot.compileResult.plan, probeId);
+        if (!address.has_value()) {
+            continue;
+        }
+        const auto& result = snapshot.previewResult;
+        const auto found = std::find_if(result.probes.begin(), result.probes.end(),
+                [&](const auto& probe) { return probe.probeId == probeId; });
+        const auto* currentPreview = probeId == DefaultOutputProbeResolver::probeId
+                ? (result.defaultOutput.has_value() ? &*result.defaultOutput : nullptr)
+                : (found != result.probes.end() ? &*found : nullptr);
+        if (currentPreview != nullptr && currentPreview->noteOffTime == noteOffTime) {
+            continue;
+        }
+        auto preview = captureProbePreview(graph, snapshot.compileResult.plan,
+                probeId, GraphPreviewExecutor::sourceFrameCountForMidiNote(snapshot.previewMidiNote),
+                snapshot.previewMidiNote, snapshot.previewControllerValues, performance, noteOffTime);
+        if (preview.has_value()) {
+            publishProbePreview(snapshot, std::move(*preview));
+        }
+    }
 }
 
 std::optional<GraphPreviewResult::SignalProbePreview>

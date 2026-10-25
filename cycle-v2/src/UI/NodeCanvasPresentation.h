@@ -69,6 +69,7 @@ struct NodeCanvasPresentationFrame {
     const GroupInformationCardPresentation* informationCards {};
     juce::String focusedInformationGroup;
     std::optional<GroupInformationCardPreview> informationCardPreview;
+    Rectangle<float> probeDetailBounds;
 };
 
 struct NodePortPresentation {

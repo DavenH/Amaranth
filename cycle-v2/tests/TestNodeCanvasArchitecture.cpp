@@ -520,7 +520,7 @@ TEST_CASE("Spy envelope annotations shade the held and release regions distinctl
         icon->drawWithin(nativeGraphics, native.getBounds().toFloat(), RectanglePlacement::centred, 1.f);
         const Colour shade(0xff344e65);
         REQUIRE((native.getPixelAt(11, 16) == shade) == (column == 0));
-        REQUIRE((native.getPixelAt(27, 16) == shade) == (column == 1));
+        REQUIRE((native.getPixelAt(26, 19) == shade) == (column == 1));
         graphics.setColour(Colours::white);
         graphics.drawText(column == 0 ? "Normal" : "Release", column * 220 + 12, 4, 160, 24,
                 Justification::centredLeft);
