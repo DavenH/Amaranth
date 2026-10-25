@@ -267,3 +267,37 @@ Evidence: `.context/reference-views/`, `.context/reference-navigation-tests.log`
 `.context/reference-navigation-expanded-report.json`,
 `.context/reference-shared-controls-report.json` and
 `.context/reference-navigation-native/`. No criteria or deletion targets remain.
+
+## Tray focus and cycle spectrum parity
+
+Status: In Progress (2026-10-25).
+
+Clicking a reference surface or header must establish tray keyboard focus even
+when it is already selected. Space from that context toggles the selected
+reference through ComparisonDock's existing audition owner; canvas Space keeps
+its preset behavior. Verify native click/Space with an ordinary node expanded,
+a reference expanded and no reference editor, plus stop and unchanged transport.
+
+Cycle 1 VisualDsp::calcWaveSpectrogram is authoritative: pitch-sized power-of-two
+cycle buffers from WavePeriodFolding, Transform's DC-free harmonic magnitudes,
+physical harmonic count from LogRegionMapping, and amplitude log tension 500.
+The reference's fixed 256-row cyclogram must not feed its spectral analysis.
+Share the mature folded-cycle FFT extraction with Cycle 1; cache the spectral
+product per analysis revision. Spectrum presentation must use the signal log
+mapping with an explicit harmonic-first layout, not mesh coefficients or a DC
+row. Verify irregular cycle lengths, fundamental/upper harmonic amplitudes,
+DC rejection, grid size and revision caching numerically, then inspect both
+surfaces with their linked time zoom. No analysis or allocation on the audio
+thread or navigation updates; no duplicated folding/FFT/log algorithms.
+
+Tray slice complete: both surface and header selection explicitly focus the
+ComparisonDock, including already-selected references. Its Space handler routes
+to the existing toggleAudition. Native Space checks after direct UI click
+dispatch pass for canvas, node editor, reference editor, reselection and header
+contexts, with captured nonzero audio and unchanged preset transport/revisions.
+The physical-pointer baseline attempt missed selection before reaching Space;
+this is the existing native event timing limitation, isolated by direct UI click
+dispatch in the retained regression. Evidence: `.context/reference-tray-audition/`
+and `.context/reference-tray-audition-before/`. ComparisonDock grows 761→774
+lines for focus, audition routing and a semantic card automation target; it
+continues to delegate playback and source state to their existing owners.

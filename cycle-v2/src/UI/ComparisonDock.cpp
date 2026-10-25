@@ -99,6 +99,7 @@ public:
                 owner.canvas.unpinComparisonSpy(card.id);
             }
         } else if (card.sample) {
+            owner.grabKeyboardFocus();
             const auto play = playBounds(cardBounds(index, getHeight()));
             if (play.contains(event.position)) {
                 if (card.id != owner.library.selectedId()) {
@@ -134,6 +135,7 @@ ComparisonDock::ComparisonDock(
     ,   strip(std::make_unique<CardStrip>(*this))
     ,   pitchEditor(std::make_unique<ReferencePitchEditor>(libraryToUse)) {
     setOpaque(true);
+    setWantsKeyboardFocus(true);
     addAndMakeVisible(*addButton);
     addAndMakeVisible(viewport);
     pitchEditor->setVisible(false);
@@ -344,6 +346,14 @@ void ComparisonDock::closePitchEditor() {
     canvas.requestComparisonRendering();
 }
 
+bool ComparisonDock::keyPressed(const juce::KeyPress& key) {
+    if (key == juce::KeyPress::spaceKey && library.selectedAnalysis() != nullptr) {
+        toggleAudition();
+        return true;
+    }
+    return false;
+}
+
 void ComparisonDock::toggleAudition() {
     if (const auto* analysis = library.selectedAnalysis()) {
         if (audioEngine.isReferenceAuditioningFile(analysis->sample->lastLoadedFilePath)) {
@@ -520,6 +530,7 @@ void ComparisonDock::updateCards() {
         if (card.sample) {
             view->onDoubleClicked = [this, id = card.id] { openPitchEditor(id); };
             view->onClicked = [this, id = card.id] {
+                grabKeyboardFocus();
                 if (id != library.selectedId()) {
                     selectReference(id);
                 }
@@ -695,6 +706,8 @@ ComparisonDock::pointerTargetsForAutomation() const {
         const auto origin = getLocalPoint(strip.get(), juce::Point<int>()).toFloat();
         const auto& card = cards[(size_t) index];
         if (card.sample) {
+            targets.push_back({ "comparison.card." + card.id,
+                    bounds.translated(origin.x, origin.y) });
             targets.push_back({ "comparison.play." + card.id,
                     playBounds(bounds).translated(origin.x, origin.y) });
         }
