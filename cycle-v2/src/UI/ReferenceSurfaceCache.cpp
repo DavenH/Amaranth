@@ -1,6 +1,8 @@
 #include "UI/ReferenceSurfaceCache.h"
 
-#include "Runtime/DefaultOutputPreview.h"
+#include <Algo/FFT.h>
+#include <Audio/WavePeriodFolding.h>
+#include <Audio/WavePeriodSpectrum.h>
 
 namespace CycleV2 {
 
@@ -34,10 +36,35 @@ const GraphPreviewResult::SignalProbePreview& ReferenceSurfaceCache::surface(boo
         return time;
     }
     if (frequency.values.empty() && !time.values.empty()) {
-        frequency = DefaultOutputPreview::spectrum(time);
+        buildSpectrum();
         ++spectrumBuildCount;
     }
     return frequency;
+}
+
+void ReferenceSurfaceCache::buildSpectrum() {
+    const int cycleRows = WavePeriodSpectrum::cycleSize(sample->fundNote, sample->samplerate);
+    frequency.connected = true;
+    frequency.domain = PortDomain::SpectralMagnitudeSignal;
+    frequency.frequencyMidiNote = sample->fundNote;
+    frequency.gridColumns = time.gridColumns;
+    frequency.gridRows = (size_t) WavePeriodSpectrum::harmonicCount(sample->fundNote, sample->samplerate);
+    frequency.values.resize(frequency.gridColumns * frequency.gridRows);
+    std::vector<float> folded(time.gridColumns * (size_t) cycleRows);
+    std::vector<Column> cycles;
+    std::vector<Column> harmonics;
+    cycles.reserve(time.gridColumns);
+    harmonics.reserve(time.gridColumns);
+    for (size_t index = 0; index < time.gridColumns; ++index) {
+        const float position = (float) index / (float) (time.gridColumns - 1);
+        cycles.emplace_back(folded.data() + index * (size_t) cycleRows,
+                cycleRows, position, (char) sample->fundNote);
+        harmonics.emplace_back(frequency.values.data() + index * frequency.gridRows,
+                (int) frequency.gridRows, position, (char) sample->fundNote);
+    }
+    WavePeriodFolding::render(*sample, cycles, sample->size(), true, true, 0.5);
+    Transform transform;
+    WavePeriodSpectrum::render(transform, cycles, harmonics);
 }
 
 }

@@ -14,6 +14,7 @@
 #include <UI/Panels/PanelHostContext.h>
 #include <UI/Panels/PanelInputHostComponent.h>
 #include <UI/Panels/ZoomPanel.h>
+#include <Util/LogRegionMapping.h>
 
 #include <atomic>
 
@@ -26,36 +27,35 @@ namespace {
 class ComparisonGridSource final : public Panel3D::DataRetriever {
 public:
     void setGrid(const std::vector<float>& values, size_t columns, size_t rows,
-            PortDomain domain, int note, float sourceGain) {
+            PortDomain domain, int note, float sourceGain, bool includesDc, double sampleRate) {
         const juce::ScopedLock lock(gridLock);
-        storage = values;
         panelColumns.clear();
-        if (columns < 2 || rows < 2 || storage.size() < columns * rows) {
-            storage.clear();
+        if (columns < 2 || rows < 2 || values.size() < columns * rows) {
             displayStorage.clear();
             ++revision;
             return;
         }
-        displayStorage = TrimeshRenderProfile::fromDomain(domain)
-                .mapGridToDisplay(storage, columns, rows, note, sourceGain);
+        const auto profile = TrimeshRenderProfile::fromDomain(domain);
+        const int legacyNote = note + LogRegionMapping::legacyMidiNoteBias;
+        if (domain == PortDomain::SpectralMagnitudeSignal || domain == PortDomain::SpectralPhaseSignal) {
+            displayStorage = profile.mapSpectrum2DGridToDisplay(values, columns, rows, legacyNote, includesDc, sampleRate);
+        } else {
+            displayStorage = profile.mapGridToDisplay(values, columns, rows, legacyNote, sourceGain);
+        }
         panelColumns.reserve(columns);
         for (size_t index = 0; index < columns; ++index) {
-            panelColumns.emplace_back(storage.data() + index * rows,
-                    (int) rows, (float) index / (float) (columns - 1), (char) note);
+            panelColumns.emplace_back(displayStorage.data() + index * rows,
+                    (int) rows, (float) index / (float) (columns - 1), (char) legacyNote);
         }
         ++revision;
     }
 
     Buffer<float> getColumnArray() override {
-        return storage.empty()
-                ? Buffer<float>() : Buffer<float>(storage.data(), (int) storage.size());
+        return displayStorage.empty()
+                ? Buffer<float>() : Buffer<float>(displayStorage.data(), (int) displayStorage.size());
     }
 
-    Buffer<float> getScalarSurfaceArray() override {
-        return displayStorage.empty()
-                ? Buffer<float>()
-                : Buffer<float>(displayStorage.data(), (int) displayStorage.size());
-    }
+    Buffer<float> getScalarSurfaceArray() override { return getColumnArray(); }
     const std::vector<Column>& getColumns() override { return panelColumns; }
     const std::vector<Column>& columns() const { return panelColumns; }
     juce::CriticalSection& getGridLock() override { return gridLock; }
@@ -63,11 +63,34 @@ public:
     bool hasStableScalarSurfaceRevision() const override { return true; }
 
 private:
-    std::vector<float> storage;
     std::vector<float> displayStorage;
     std::vector<Column> panelColumns;
     juce::CriticalSection gridLock;
     uint64_t revision {};
+};
+
+// Read-only signals arrive with both amplitude and frequency mapped for display.
+// The mesh editor's stepped harmonic path expects a different, unmapped grid.
+class ComparisonPanel final : public TrimeshPanel3D {
+public:
+    ComparisonPanel(SingletonRepo* repo, Panel3D::DataRetriever& source) :
+            SingletonAccessor(repo, "ComparisonSurfacePanel")
+        ,   TrimeshPanel3D(repo, source) {}
+
+    void setSignalDomain(PortDomain domain) {
+        const auto profile = TrimeshRenderProfile::fromDomain(domain);
+        setRenderProfile(profile);
+        material = profile.getSurfaceStyle().surfaceMaterial();
+        haveLogarithmicY = false;
+    }
+
+    bool getScalarSurfaceMaterial(ScalarSurfaceMaterial& result) const override {
+        result = material;
+        return true;
+    }
+
+private:
+    ScalarSurfaceMaterial material { ScalarSurfaceMaterial::timeDomain() };
 };
 
 class ComparisonInputHost final : public PanelInputHostComponent {
@@ -139,10 +162,11 @@ public:
     }
 
     void setGrid(const std::vector<float>& values, size_t columns, size_t rows,
-            PortDomain domain, int note, float displayGain) {
-        source.setGrid(values, columns, rows, domain, note, displayGain);
-        panel.setRenderProfile(TrimeshRenderProfile::fromDomain(domain));
-        panel.setPreviewMidiNote(note);
+            PortDomain domain, int note, float displayGain, bool includesDc, double sampleRate) {
+        const juce::ScopedLock lock(panel.getRenderLock());
+        source.setGrid(values, columns, rows, domain, note, displayGain, includesDc, sampleRate);
+        panel.setSignalDomain(domain);
+        panel.setPreviewMidiNote(note + LogRegionMapping::legacyMidiNoteBias, sampleRate);
         panel.bakeTexturesNextRepaint();
         snapshotPending = true;
         owner.repaint();
@@ -283,7 +307,7 @@ private:
     ComparisonGridSource source;
     Rasterization::TrilinearMeshRasterizer rasterizer;
     TrimeshInteractor3D interactor;
-    TrimeshPanel3D panel;
+    ComparisonPanel panel;
     std::unique_ptr<PanelInputHostComponent> inputHost;
     CommonGL* graphics {};
     std::unique_ptr<GLPanelRenderer> renderer;
@@ -306,8 +330,10 @@ void ComparisonSurfaceView::setGrid(
         size_t rows,
         PortDomain domain,
         int note,
-        float displayGain) {
-    impl->setGrid(values, columns, rows, domain, note, displayGain);
+        float displayGain,
+        bool includesDc,
+        double sampleRate) {
+    impl->setGrid(values, columns, rows, domain, note, displayGain, includesDc, sampleRate);
 }
 
 void ComparisonSurfaceView::setCamera(const ZoomRect& camera) {

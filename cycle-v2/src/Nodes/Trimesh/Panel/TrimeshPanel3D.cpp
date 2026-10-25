@@ -71,7 +71,9 @@ void TrimeshPanel3D::drawSpectralHarmonics() {
 
     const int firstNote = pitchSpansColumns
             ? Constants::LowestMidiNote : previewMidiNote;
-    const Buffer<float> firstRamp = LogRegions::getDefaultRegion(firstNote);
+    const Buffer<float> firstRamp = !pitchSpansColumns && !previewHarmonics.empty()
+            ? Buffer<float>(previewHarmonics.data(), (int) previewHarmonics.size())
+            : LogRegions::getDefaultRegion(firstNote);
     const int pointCount = pitchSpansColumns ? width : 2;
     const Range<int> midiRange(Constants::LowestMidiNote, Constants::HighestMidiNote);
     std::vector<Buffer<float>> pitchRamps;
@@ -86,7 +88,7 @@ void TrimeshPanel3D::drawSpectralHarmonics() {
         const int midiNote = pitchSpansColumns
                 ? Arithmetic::getGraphicNoteForValue(x[i], midiRange)
                 : previewMidiNote;
-        pitchRamps.push_back(LogRegions::getDefaultRegion(midiNote));
+        pitchRamps.push_back(pitchSpansColumns ? LogRegions::getDefaultRegion(midiNote) : firstRamp);
     }
     applyScaleX(x);
 
@@ -206,12 +208,20 @@ void TrimeshPanel3D::setPitchSpansColumns(bool shouldSpan) {
     requestRepaint();
 }
 
-void TrimeshPanel3D::setPreviewMidiNote(int midiNote) {
-    if (previewMidiNote == midiNote) {
+void TrimeshPanel3D::setPreviewMidiNote(int midiNote, double sampleRate) {
+    if (previewMidiNote == midiNote && previewSampleRate == sampleRate) {
         return;
     }
 
+    const ScopedLock lock(getRenderLock());
     previewMidiNote = midiNote;
+    previewSampleRate = sampleRate;
+    previewHarmonics.clear();
+    if (sampleRate != LogRegionMapping::defaultSampleRate) {
+        const LogRegionMapping mapping(midiNote, sampleRate);
+        previewHarmonics.resize((size_t) mapping.regionSize());
+        mapping.fillDisplayUnits(Buffer<float>(previewHarmonics.data(), (int) previewHarmonics.size()));
+    }
     dirtyState.mark(PanelDirtyState::Flag::StaticVisual);
     requestRepaint();
 }

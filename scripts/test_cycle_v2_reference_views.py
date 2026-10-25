@@ -13,6 +13,8 @@ from cycle_automation_support.operations import preflight, write_logs
 from cycle_automation_support.profiles import PRODUCTS, ROOT
 from cycle_automation_support.registry import lease
 from cycle_automation_support.session import Session
+from assert_png_stats import region_stats
+from compare_png_psnr import read_png_rgb
 
 
 def check(record, output):
@@ -108,6 +110,19 @@ def check(record, output):
             click("zoomFit")
             editor("spectrum-fitted")
             capture("spectrogram")
+            items = {item["id"]: item for item in invoke({"command": "inspectPointerTargets"})["targets"]}
+            origin = items["comparisonWorkspace"]["screenBounds"]
+            plot = items["referencePitch.cyclogram"]["bounds"]
+            region = (origin["x"] + plot["x"] + 12, origin["y"] + plot["y"] + 40,
+                      plot["width"] - 24, plot["height"] - 52)
+            plot_image = output / "spectrogram-plot.png"
+            subprocess.run([str(compiled_helper("capture_cycle_screenshot.swift")),
+                            str(record["pid"]), str(plot_image), ",".join(str(v) for v in region)], check=True)
+            width, height, rgb = read_png_rgb(plot_image)
+            mean, contrast = region_stats(rgb, width, (0, 0, width, height))
+            evidence["spectralContrast"] = {"mean": mean, "stddev": contrast}
+            # Drawing raw FFT amplitudes bypasses the log mapping and leaves this plot almost black.
+            assert contrast > 0.02, evidence["spectralContrast"]
             for mode in ("time", "spectrum", "time"):
                 click(mode)
                 toggled = editor("toggle-" + mode)

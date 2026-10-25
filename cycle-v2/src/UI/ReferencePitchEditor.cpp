@@ -186,7 +186,7 @@ void ReferencePitchEditor::refreshCyclogram() {
     }
     const auto& surface = surfaceCache.surface(spectral);
     cyclogram->setGrid(surface.values, surface.gridColumns, surface.gridRows,
-            surface.domain, analysis->standardMidiNote(), spectral ? 1.f : 2.f);
+            surface.domain, analysis->standardMidiNote(), spectral ? 1.f : 2.f, false, analysis->sample->samplerate);
     displayedGeneration = surfaceCache.generation();
     displayedSpectral = spectral;
 }

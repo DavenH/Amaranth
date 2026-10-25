@@ -954,6 +954,14 @@ unipolar material and value mapping were untouched by the concurrent bipolar
 palette change. Current status: open; reconcile the heatmap's actual mapping
 and derivative sampling with this reference assertion.
 
+The 2026-10-25 reference-spectrum check again failed the same three magnitude
+edge pixels and the phase heatmap's midpoint pixel (`TestNodePreviewProcessor`
+line 462). Both cases exercise mesh mapping, which is unchanged in this slice.
+The broad `[reference],[spectral]` selection also reports the previously recorded
+empty-model column-count/pitch/guide expectations. Evidence:
+`.context/reference-spectrum-tests.log` (46 of 58 cases pass). The targeted
+reference and raw signal-mapping checks pass; this is not a full-suite pass.
+
 ## P3: Legacy Stengah Spy cards overlap
 
 On 2026-10-09, opening `cycle-v2/content/presets/old/stengah.cyclegraph`

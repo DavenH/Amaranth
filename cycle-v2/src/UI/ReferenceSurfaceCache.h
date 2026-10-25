@@ -14,6 +14,8 @@ public:
     int spectrumGeneration() const { return spectrumBuildCount; }
 
 private:
+    void buildSpectrum();
+
     const PitchedSample* sample {};
     uint64_t revision {};
     GraphPreviewResult::SignalProbePreview time;

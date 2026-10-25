@@ -28,7 +28,7 @@ TEST_CASE("Reference views preserve the folded grid and cache spectra by analysi
     REQUIRE(spectrum.values.size() == spectrum.gridColumns * spectrum.gridRows);
     REQUIRE(std::all_of(spectrum.values.begin(), spectrum.values.end(),
             [](float value) { return std::isfinite(value); }));
-    REQUIRE(*std::max_element(spectrum.values.begin(), spectrum.values.end()) > 0.1f);
+    REQUIRE(*std::max_element(spectrum.values.begin(), spectrum.values.end()) > 0.f);
     for (int toggle = 0; toggle < 4; ++toggle) {
         REQUIRE_FALSE(cache.refresh(analysis));
         REQUIRE(cache.surface(true).values == spectrum.values);

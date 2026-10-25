@@ -210,11 +210,11 @@ clean document state. Evidence: `.context/reference-space-report.json` and
 
 Status: Implemented (2026-10-24).
 
-Retain the existing 160x256 analysis: the apparent resolution difference may be
-zoom framing. The expanded surface cache derives a spectrogram from that product
-using DefaultOutputPreview::spectrum (the Spy FFT/normalization path). No new
-folding, FFT, pitch tracker or resampling algorithm is allowed. Rebuild only for
-sample/pitch revision changes, never pan, zoom, mode changes or live movement.
+Retain the existing 160x256 cyclogram: the apparent resolution difference may be
+zoom framing. The initial expanded spectrum used the Spy transform; the cycle
+spectrum parity slice below supersedes that path with Cycle 1's source analysis.
+Rebuild only for sample/pitch revision changes, never pan, zoom, mode changes or
+live movement.
 
 Expose Cyclogram/Spectrogram as paired icon controls and show the existing
 surface zoom wrapper. Share normalized recording time [0,1] between surface and
@@ -270,7 +270,7 @@ Evidence: `.context/reference-views/`, `.context/reference-navigation-tests.log`
 
 ## Tray focus and cycle spectrum parity
 
-Status: In Progress (2026-10-25).
+Status: Implemented (2026-10-25).
 
 Clicking a reference surface or header must establish tray keyboard focus even
 when it is already selected. Space from that context toggles the selected
@@ -301,3 +301,41 @@ dispatch in the retained regression. Evidence: `.context/reference-tray-audition
 and `.context/reference-tray-audition-before/`. ComparisonDock grows 761→774
 lines for focus, audition routing and a semantic card automation target; it
 continues to delegate playback and source state to their existing owners.
+
+Spectrum slice complete: WavePeriodSpectrum extracts Cycle 1's transform/copy
+operations and sizing into the shared audio layer. Cycle 1 still applies its
+existing log/phase presentation; ReferenceSurfaceCache folds tracked cycles at
+that power-of-two size and caches raw harmonic magnitudes, without DC. It no
+longer transforms the display thumbnail or uses Spy peak normalization. The
+shared signal display profile applies the same 500-tension amplitude log and
+LogRegionMapping, with explicit DC-layout and sample-rate metadata.
+
+Visual review exposed a second bypass: TrimeshPanel3D deliberately uses a stepped
+mesh path for magnitude, so its scalar display array was ignored. ComparisonPanel
+is a narrow read-only adapter that enables the existing scalar material renderer
+and consumes display coordinates uniformly. Both its scalar array and column
+fallback now use the same mapped data; it does not copy rendering or analysis.
+The reference's standard MIDI note is translated once at the legacy panel/profile
+boundary. Non-default-rate harmonic grids are cached at note/rate changes under
+the panel render lock; the ordinary default-rate path retains the shared region
+bank. Grid publication takes the existing render lock before its source lock.
+
+Both standalone apps build. The 17 focused reference/signal-mapping cases pass,
+including analytic FFT magnitude and phase, a strong DC component, irregular
+cycles and a 160th harmonic beyond the old thumbnail's resolution at 44.1, 48 and
+96 kHz. The focused expanded-view sequence passes both sizes/modes, navigation,
+cache counters and an actual spectrogram pixel-contrast assertion, which catches
+the raw-amplitude render bypass. Evidence: `.context/reference-harmonic-views/`,
+`.context/reference-spectrum-focused-tests.log` and the build logs. The broader
+58-case filter has twelve existing fixture/mesh-preview failures recorded in
+ui-bugs.md and audio-bugs.md; it is not a full-suite pass.
+
+Size/ownership review: ReferenceSurfaceCache grows 43→70 lines for source-grid
+composition. ComparisonSurfaceView grows 360→386 lines after dropping its unused
+raw-grid copy; its local adapter only configures shared presentation. The shared
+TrimeshPanel3D grows 228→238 lines for source-rate grid coordinates, and its render
+profile keeps the existing default contract. VisualDsp shrinks 1728→1716 lines by
+removing local FFT extraction; despite its existing large size, this adds no
+responsibility or product branch. WavePeriodSpectrum is a 37-line shared core.
+No analysis runs during navigation or live pitch movement. Architecture audit,
+code-map and whitespace checks pass. All criteria and deletion targets are met.

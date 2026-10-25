@@ -37,7 +37,7 @@ public:
     void setZoomChangedCallback(std::function<void(bool)> callback);
     void setPrimaryViewAxis(int axis) { primaryViewAxis = axis; }
     void setPitchSpansColumns(bool shouldSpan);
-    void setPreviewMidiNote(int midiNote);
+    void setPreviewMidiNote(int midiNote, double sampleRate = 44100.0);
     void setLineGuideTables(std::vector<std::vector<float>> tables);
 
 private:
@@ -51,6 +51,8 @@ private:
 
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     std::vector<std::vector<float>> lineGuideTables;
+    std::vector<float> previewHarmonics;
+    double previewSampleRate { 44100.0 };
     std::function<void(bool)> zoomChangedCallback;
     int primaryViewAxis { Vertex::Time };
     int previewMidiNote { 48 };
