@@ -205,11 +205,6 @@ public:
         return owner.getLocalArea(inputHost.get(), inputHost->getLocalBounds());
     }
 
-    juce::Rectangle<int> zoomBounds(bool horizontal) {
-        auto* bar = panel.getZoomPanel()->getComponent(horizontal);
-        return owner.getLocalArea(bar, bar->getLocalBounds());
-    }
-
     bool renderOpenGL(float scaleFactor) {
         const int width = inputHost->getWidth();
         const int height = inputHost->getHeight();
@@ -364,7 +359,6 @@ ZoomRect ComparisonSurfaceView::camera() {
 
 void ComparisonSurfaceView::setZoomBarsVisible(bool visible) { impl->setZoomBarsVisible(visible); }
 juce::Rectangle<int> ComparisonSurfaceView::plotBounds() const { return impl->plotBounds(); }
-juce::Rectangle<int> ComparisonSurfaceView::zoomBounds(bool horizontal) const { return impl->zoomBounds(horizontal); }
 
 bool ComparisonSurfaceView::renderOpenGL(float scaleFactor) {
     GLint viewport[4] {};

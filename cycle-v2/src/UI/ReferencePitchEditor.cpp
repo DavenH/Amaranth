@@ -2,7 +2,6 @@
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/Panel.h>
 #include <UI/Panels/ZoomPanel.h>
-#include <Util/LogRegionMapping.h>
 
 #include "Nodes/Curve/Panel/ConcreteCurvePanels.h"
 #include "Nodes/Envelope/EnvelopeMeshState.h"
@@ -16,31 +15,6 @@ using namespace gl;
 
 namespace CycleV2 {
 
-namespace {
-
-juce::String noteLabel(double value) {
-    const int note = juce::roundToInt(value) - LogRegionMapping::legacyMidiNoteBias;
-    const auto name = note >= 0
-            ? juce::MidiMessage::getMidiNoteName(note, true, true, 4) : juce::String("MIDI");
-    return name + "  " + juce::String(note);
-}
-
-std::optional<double> parseNote(const juce::String& text) {
-    const juce::String number = text.fromLastOccurrenceOf(" ", false, false).trim();
-    const auto digits = number.startsWithChar('-') ? number.substring(1) : number;
-    if (digits.isEmpty() || !digits.containsOnly("0123456789")) {
-        return std::nullopt;
-    }
-    const int standardNote = number.getIntValue();
-    if (standardNote < -LogRegionMapping::legacyMidiNoteBias
-            || standardNote >= 128 - LogRegionMapping::legacyMidiNoteBias) {
-        return std::nullopt;
-    }
-    return (double) (standardNote + LogRegionMapping::legacyMidiNoteBias);
-}
-
-}
-
 ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
         library     (libraryToUse)
     ,   chrome      (*this, "Wave Reference", "referencePitch", [this] {
@@ -53,8 +27,7 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
     ,   spectrumView("Spectrogram", "Harmonic spectrum over time", "Spectrogram", UiIconData::referenceSpectrogram)
     ,   zoomAttack  ("Zoom to attack", "Focus on the reference attack", "Zoom to attack", UiIconData::zoomAttack)
     ,   zoomFit     ("Fit pitch range", "Fit the pitch envelope vertically", "Fit pitch range", UiIconData::envelopeZoomFit)
-    ,   zoomFull    ("Full reference view", "Show the full reference and pitch range", "Full view", UiIconData::zoomFull)
-    ,   fundamental (*this, "Fundamental") {
+    ,   zoomFull    ("Full reference view", "Show the full reference and pitch range", "Full view", UiIconData::zoomFull) {
     setOpaque(true);
     addAndMakeVisible(*cyclogram);
     setWantsKeyboardFocus(true);
@@ -76,31 +49,10 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
     addAndMakeVisible(zoom);
 
     configureViewControls();
-
-    fundamental.slider.setRange(0, 127, 1);
-    fundamental.label.setVisible(false);
-    fundamental.slider.setKeyboardSteps(1, 1);
-    fundamental.configureValuePresentation(
-            noteLabel,
-            parseNote,
-            60 + LogRegionMapping::legacyMidiNoteBias,
-            1,
-            1,
-            "The reference's detected fundamental and comparison MIDI note");
-    fundamental.slider.onDragStart = [this] { draggingFundamental = true; };
-    fundamental.slider.onDragEnd = [this] {
-        draggingFundamental = false;
-        commitFundamental();
-    };
-    fundamental.slider.onValueChange = [this] {
-        if (!draggingFundamental) {
-            commitFundamental();
-        }
-    };
 }
 
 void ReferencePitchEditor::configureViewControls() {
-    cyclogram->setZoomBarsVisible(true);
+    cyclogram->setZoomBarsVisible(false);
     cyclogram->onCameraChanged = [this](const ZoomRect&) { syncTimeZoom(true); };
     for (auto* button : { &timeView, &spectrumView, &zoomAttack, &zoomFit, &zoomFull }) {
         addAndMakeVisible(button);
@@ -167,9 +119,6 @@ void ReferencePitchEditor::syncFromLibrary() {
     panel->updateZoomBounds(true);
     panel->fitEnvelopeVerticalRange();
     syncTimeZoom(false);
-    fundamental.slider.setValue(analysis->sample->fundNote,
-            juce::NotificationType::dontSendNotification);
-    fundamental.refreshValueText();
     if (onRenderRequested) {
         onRenderRequested();
     }
@@ -308,9 +257,8 @@ juce::var ReferencePitchEditor::exportAutomationState() const {
     result->setProperty("surfaceGeneration", surfaceCache.generation());
     result->setProperty("spectrumGeneration", surfaceCache.spectrumGeneration());
     result->setProperty("pointCount", (int) mesh.getCubes().size());
-    result->setProperty("note", (int) fundamental.slider.getValue()
-            - LogRegionMapping::legacyMidiNoteBias);
     if (const auto* analysis = library.analysisFor(openedId)) {
+        result->setProperty("note", analysis->standardMidiNote());
         result->setProperty("cyclogramRevision", (int64) analysis->cyclogramRevision);
     }
     return { result.release() };
@@ -338,8 +286,6 @@ ReferencePitchEditor::pointerTargetsForAutomation() const {
         const auto suffix = horizontal ? "X" : "Y";
         targets.emplace_back(juce::String("referencePitch.zoom") + suffix,
                 getLocalArea(bar, bar->getLocalBounds()));
-        targets.emplace_back(juce::String("referencePitch.surfaceZoom") + suffix,
-                getLocalArea(cyclogram.get(), cyclogram->zoomBounds(horizontal)));
     }
     return targets;
 }
@@ -369,21 +315,19 @@ void ReferencePitchEditor::resized() {
     auto bounds = getLocalBounds().withTrimmedTop(CanvasChromeMetrics::fullEditorHeaderHeight)
             .reduced(12, 8);
     const int pitchHeight = juce::jlimit(90, 170, bounds.getHeight() / 3);
-    cyclogram->setBounds(bounds.removeFromTop(juce::jmax(0, bounds.getHeight() - pitchHeight - 6)));
+    auto surfaceBounds = bounds.removeFromTop(juce::jmax(0, bounds.getHeight() - pitchHeight - 6));
     bounds.removeFromTop(6);
     if (Component* component = host->zoomComponentIfCreated()) {
         component->setBounds(bounds);
     }
+    surfaceBounds.setRight(curveBounds().getRight());
+    cyclogram->setBounds(surfaceBounds);
     const int size = CanvasChromeMetrics::panelOverlayButtonSize;
     const int step = size + CanvasChromeMetrics::panelOverlayButtonGap;
     auto surface = cyclogramBounds().reduced(6);
     timeView.setBounds(surface.getX(), surface.getY(), size, size);
     spectrumView.setBounds(surface.getX() + step, surface.getY(), size, size);
     auto pitch = curveBounds().reduced(6);
-    fundamental.setBounds({ pitch.getX() + step + 8, pitch.getY(), 240, size }, 0, 6, 70);
-    fundamental.slider.toFront(false);
-    fundamental.value.toFront(false);
-    fundamental.unit.toFront(false);
     zoomAttack.setBounds(pitch.getRight() - 2 * step - size, pitch.getY(), size, size);
     zoomFit.setBounds(pitch.getRight() - step - size, pitch.getY(), size, size);
     zoomFull.setBounds(pitch.getRight() - size, pitch.getY(), size, size);
@@ -487,12 +431,6 @@ bool ReferencePitchEditor::cancelEdit() {
     editingMesh = false;
     syncFromLibrary();
     return true;
-}
-
-void ReferencePitchEditor::commitFundamental() {
-    if (library.setFundamental((int) fundamental.slider.getValue()) && onEdited) {
-        onEdited();
-    }
 }
 
 }

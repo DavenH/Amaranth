@@ -23,7 +23,6 @@ public:
     ZoomRect camera();
     void setZoomBarsVisible(bool visible);
     juce::Rectangle<int> plotBounds() const;
-    juce::Rectangle<int> zoomBounds(bool horizontal) const;
     bool renderOpenGL(float scaleFactor);
     void releaseOpenGLResources();
     juce::var automationDiagnostics() const;

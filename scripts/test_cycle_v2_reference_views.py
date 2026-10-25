@@ -44,7 +44,7 @@ def check(record, output):
             assert value["surfaceView"]["uniformColumnSpacing"] is False
             upper, lower = value["cyclogramBounds"], value["curveBounds"]
             assert upper["x"] == lower["x"] and upper["width"] == lower["width"]
-            assert lower["y"] - upper["y"] - upper["height"] == 14
+            assert lower["y"] - upper["y"] - upper["height"] == 6
             evidence["states"][label] = value
             return value
 

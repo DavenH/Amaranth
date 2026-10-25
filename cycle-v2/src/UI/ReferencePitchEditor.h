@@ -8,7 +8,6 @@
 
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Reference/ReferenceLibrary.h"
-#include "UI/Editors/PropertyControls.h"
 #include "UI/ExpandedEditorChrome.h"
 #include "UI/PanelOverlayIconButton.h"
 #include "UI/ReferenceSurfaceCache.h"
@@ -65,7 +64,6 @@ private:
     void publishIntermediateRevision() override;
     void commitEdit() override;
     bool cancelEdit() override;
-    void commitFundamental();
 
     ReferenceLibrary& library;
     ExpandedEditorChrome chrome;
@@ -84,10 +82,8 @@ private:
     EnvelopeMesh mesh { "ReferencePitchEnvelope" };
     std::unique_ptr<EnvelopeCurvePanelContract> panel;
     std::unique_ptr<CurvePanelHost> host;
-    PropertySliderRow fundamental;
     juce::String openedId;
     bool editingMesh {};
-    bool draggingFundamental {};
 };
 
 }

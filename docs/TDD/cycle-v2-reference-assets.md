@@ -62,13 +62,17 @@ checks pass. Both fixed-grid defaults and the tray's time-only path are removed.
 
 Compact pitch presentation: remove the 28px heading row and paint the existing
 EnvelopePurposeIconRenderer pitch glyph inside the plot's top-left corner.
-Fundamental adjustment/readout are inlaid beside it; framing icons retain their
-top-right placement. The reclaimed height goes to the surface. No new icon,
-control, analysis or interaction owner is added; ReferencePitchEditor is 498
-lines. The standalone build, live normal/narrow layout and linked-navigation/
-mode/audition checks pass (`.context/reference-compact-pitch-ui/`). The fixture
-checks the resulting 14px plot-to-plot gap, including the surface scrollbar.
-Architecture, map and whitespace checks pass.
+Framing icons retain their top-right placement. Remove the fundamental slider/
+readout and the surface's duplicate zoom bars. Pitch zoom bars retain linked
+horizontal navigation; the surface drawing width derives from the pitch plot,
+keeping the axes aligned without an empty surface scrollbar gutter. Delete the
+unused fundamental-control callbacks/parsers and surface scrollbar targets.
+The reclaimed height goes to the surface. No new icon, control, analysis or
+interaction owner is added; ReferencePitchEditor shrinks 498→436 lines and
+ComparisonSurfaceView 404→398. The standalone build, live normal/narrow layout
+and linked-navigation/mode/audition checks pass
+(`.context/reference-minimal-controls-ui/`). The fixture checks the resulting
+6px plot-to-plot gap. Architecture, map and whitespace checks pass.
 
 ## Contract
 
