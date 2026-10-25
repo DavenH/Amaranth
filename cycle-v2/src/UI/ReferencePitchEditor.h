@@ -11,6 +11,7 @@
 #include "UI/ExpandedEditorChrome.h"
 #include "UI/PanelOverlayIconButton.h"
 #include "UI/ReferenceSurfaceCache.h"
+#include "UI/ReferenceWaveformView.h"
 
 namespace CycleV2 {
 
@@ -38,7 +39,6 @@ public:
     juce::Rectangle<int> curveBounds() const;
 
     void paint(juce::Graphics& graphics) override;
-    void paintOverChildren(juce::Graphics& graphics) override;
     void resized() override;
     bool keyPressed(const juce::KeyPress& key) override;
 
@@ -53,6 +53,8 @@ private:
     void setSurfaceMode(bool spectral);
     void syncTimeZoom(bool fromSurface);
     void resetView();
+    void setWaveformMode(bool waveform);
+    void fitLowerView();
     void scrollBarMoved(juce::ScrollBar* scrollbar, double newRangeStart) override;
     void initialiseCurvePanel(juce::Component* component) override;
     void updateCurvePanelZoom(bool resetView) override;
@@ -71,6 +73,8 @@ private:
     ReferenceSurfaceCache surfaceCache;
     PanelOverlayIconButton timeView;
     PanelOverlayIconButton spectrumView;
+    PanelOverlayIconButton pitchView;
+    PanelOverlayIconButton waveformView;
     PanelOverlayIconButton zoomAttack;
     PanelOverlayIconButton zoomFit;
     PanelOverlayIconButton zoomFull;
@@ -78,6 +82,10 @@ private:
     bool spectral {};
     bool displayedSpectral {};
     bool linkingTimeZoom {};
+    bool waveformMode {};
+    juce::Point<float> pitchVertical { 0.f, 1.f };
+    juce::Point<float> waveformVertical { 0.f, 1.f };
+    ReferenceWaveformView waveform;
     CurvePanelEnvironment environment;
     EnvelopeMesh mesh { "ReferencePitchEnvelope" };
     std::unique_ptr<EnvelopeCurvePanelContract> panel;

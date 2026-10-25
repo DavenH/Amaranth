@@ -2,6 +2,71 @@
 
 Status: Implemented (2026-10-23).
 
+## Expanded waveform / pitch switch (2026-10-25)
+
+Status: Implemented.
+
+Two inlaid icons switch the existing lower plot between pitch envelope and
+recording waveform, without adding a heading or scrollbar. Keep the pitch
+ZoomPanel as the time-navigation owner in either mode; surface, waveform and
+horizontal thumb use the same normalized recording interval. Retain separate
+vertical pitch/amplitude framing across mode changes. The lower-view choice is
+editor session state and does not change library metadata or the document.
+
+Reuse ReferenceWaveformPreview's globally normalized stereo sum and density
+rasterizer. Cache normalized samples and unlimited PeakCounter crossing offsets
+once per sample; count visible crossings by binary search. Render a simple line
+at <=1 crossing per physical horizontal pixel, density above that threshold.
+ReferenceWaveformView owns a bounded latest-request worker and immutable source
+snapshot; image preparation is off-thread, stale publications are rejected,
+and repeated unchanged frames do not enqueue work. No audio decode, FFT, pitch
+analysis or graph work occurs during navigation. Pitch input is hidden and its
+GL work skipped while waveform is shown; existing ZoomPanel gestures remain
+authoritative, including wheel, thumb drag and framing actions.
+
+Verify density/line threshold and transitions in both directions, stereo/silence,
+shared time pan/zoom, preserved independent vertical ranges, no pitch edits from
+waveform input, unchanged analysis generations/document state, mode switches,
+retargeting, audition and native captures at normal/narrow sizes. Delete the
+paint-only pitch marker in favor of the actual mode controls.
+
+Completion: lower icons use the existing pitch and waveform SVGs. The same
+ZoomPanel retains its bars and gestures; ReferencePitchEditor translates lower
+mode/vertical range and forwards waveform wheel input to the existing panel
+input owner. ReferenceWaveformView holds one immutable normalized mono source,
+cached zero-crossing offsets and one published frame. Its single worker removes
+obsolete queued requests and checks a viewport revision before publication.
+While a frame is pending, its predecessor is drawn at its correct time/amplitude
+coordinates. Reopening an unchanged waveform reuses the frame. This viewport
+renderer does not reuse the file-image cache's key/lifetime policy or duplicate
+its catalog lifecycle.
+
+ReferenceWaveformPreview adds viewport-aware density clipping and line rendering;
+the line preserves fractional sample coordinates and neighboring samples at deep
+zoom. PeakCounter retains its legacy 1001-crossing cap by default and accepts an
+explicit unlimited request for this display. Vector operations prepare line
+coordinates and density log scaling; no per-sample transcendental math is added.
+The hidden pitch surface does not render or receive waveform drag edits.
+
+Both app builds, 27 focused reference/thumbnail tests, the new live waveform
+fixture and the previous linked-reference-view fixture pass. Exact-threshold
+tests cover 1024 crossings/1024 pixels, 1025 crossings, physical-resolution
+changes, legacy/unlimited counting, amplitude clipping and fractional sample
+framing. Live checks cover density→line→density, wheel zoom, two wheel pans,
+two thumb updates, amplitude fit, pitch-range restoration, cached mode toggles,
+source retargeting, dense/deep-line screenshots, both window sizes, Space
+audition and unchanged analysis/document revisions. Source preparation stays
+at one build per sample; returning to an unchanged mode adds no image job.
+Evidence: `.context/reference-waveform-ui/`, `reference-waveform-regression/`
+and `.context/reference-waveform-*.log`. No assertions were observed.
+
+Size review: ReferencePitchEditor grows 436→507 lines for composition/routing,
+ReferenceWaveformView is 184 lines (49-line header) for latest-frame ownership,
+and ReferenceWaveformPreview grows 101→155 for shared presentation algorithms.
+No graph/model, serialization, audio callback or independent zoom policy is
+introduced. Architecture, code-map and whitespace checks pass. All criteria
+and deletion targets above are complete.
+
 ## Asset preview scrolling and density experiment (2026-10-25)
 
 Status: Implemented.

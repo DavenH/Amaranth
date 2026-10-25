@@ -3,8 +3,51 @@
 
 #include "UI/ReferenceWaveformPreview.h"
 #include "UI/LibraryIconRenderer.h"
+#include <Algo/PeakCounter.h>
 
 using namespace CycleV2;
+
+TEST_CASE("Reference waveform resolution switches at one visible zero crossing per pixel",
+        "[cycle-v2][reference][waveform][resolution]") {
+    std::vector<float> audio(6000);
+    for (size_t index = 0; index < audio.size(); ++index) {
+        audio[index] = index % 2 == 0 ? -0.5f : 0.5f;
+    }
+    const Buffer<float> samples(audio.data(), (int) audio.size());
+    REQUIRE(PeakCounter::findZeroCrossings(samples).size() == 1001);
+    const auto crossings = PeakCounter::findZeroCrossings(samples, 0);
+    REQUIRE(crossings.size() == 5999);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 6000, 1024).useLine);
+    const auto exact = referenceWaveformResolution(crossings, 2000, 3024, 1024);
+    REQUIRE(exact.crossings == 1024);
+    REQUIRE(exact.useLine);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 2000, 3025, 1024).useLine);
+    REQUIRE(referenceWaveformResolution(crossings, 2000, 3025, 2048).useLine);
+    REQUIRE(referenceWaveformResolution({}, 0, 6000, 1024).useLine);
+}
+
+TEST_CASE("Waveform viewport framing retains recording amplitude and clips outside the vertical range",
+        "[cycle-v2][reference][waveform][resolution]") {
+    float constant[] { 0.25f, 0.25f, 0.25f };
+    const Buffer<float> samples(constant, 3);
+    const auto full = referenceWaveformLine(samples, 64, 64);
+    REQUIRE(full.getPixelAt(30, 23).getAlpha() > 0);
+    REQUIRE(full.getPixelAt(30, 0).getAlpha() == 0);
+    const auto zoomed = referenceWaveformLine(samples, 64, 64, 0.25f, 0.25f);
+    REQUIRE(zoomed.getPixelAt(30, 31).getAlpha() > 0);
+    const auto outside = referenceWaveformDensity(samples, 8, 16, 0.6f, 0.2f);
+    REQUIRE(std::all_of(outside.begin(), outside.end(), [](float value) { return value == 0.f; }));
+}
+
+TEST_CASE("Waveform lines retain fractional sample positions at deep zoom",
+        "[cycle-v2][reference][waveform][resolution]") {
+    float samples[] { -1.f, 1.f, -1.f };
+    const auto image = referenceWaveformLine(Buffer<float>(samples, 3), 101, 101,
+            0.f, 1.f, { 0.5f, 1.5f });
+    REQUIRE(image.getPixelAt(0, 50).getAlpha() > 0);
+    REQUIRE(image.getPixelAt(50, 0).getAlpha() > 0);
+    REQUIRE(image.getPixelAt(100, 50).getAlpha() > 0);
+}
 
 TEST_CASE("Waveform density counts trace passages instead of filling the amplitude range",
         "[cycle-v2][reference][waveform][density]") {

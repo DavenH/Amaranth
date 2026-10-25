@@ -8,7 +8,7 @@
 #include "UI/ReferencePitchEditor.h"
 #include "UI/ComparisonSurfaceView.h"
 #include "UI/CanvasChromeMetrics.h"
-#include "UI/EnvelopePurposeIconRenderer.h"
+#include "EnvelopePurposeIconData.h"
 #include "UiIconData.h"
 
 using namespace gl;
@@ -25,6 +25,8 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
     ,   cyclogram   (std::make_unique<ComparisonSurfaceView>())
     ,   timeView    ("Cyclogram", "Period-folded waveform", "Cyclogram", UiIconData::referenceCyclogram)
     ,   spectrumView("Spectrogram", "Harmonic spectrum over time", "Spectrogram", UiIconData::referenceSpectrogram)
+    ,   pitchView   ("Pitch envelope", "Edit the reference pitch envelope", "Pitch envelope", EnvelopePurposeIconData::pitch)
+    ,   waveformView("Waveform", "View recording density and samples", "Waveform", UiIconData::referenceCyclogram)
     ,   zoomAttack  ("Zoom to attack", "Focus on the reference attack", "Zoom to attack", UiIconData::zoomAttack)
     ,   zoomFit     ("Fit pitch range", "Fit the pitch envelope vertically", "Fit pitch range", UiIconData::envelopeZoomFit)
     ,   zoomFull    ("Full reference view", "Show the full reference and pitch range", "Full view", UiIconData::zoomFull) {
@@ -47,6 +49,12 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
         bar->addListener(this);
     }
     addAndMakeVisible(zoom);
+    addChildComponent(waveform);
+    waveform.onWheel = [this](const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
+        if (auto* component = host->componentIfCreated()) {
+            component->mouseWheelMove(event.getEventRelativeTo(component), wheel);
+        }
+    };
 
     configureViewControls();
 }
@@ -54,11 +62,16 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
 void ReferencePitchEditor::configureViewControls() {
     cyclogram->setZoomBarsVisible(false);
     cyclogram->onCameraChanged = [this](const ZoomRect&) { syncTimeZoom(true); };
-    for (auto* button : { &timeView, &spectrumView, &zoomAttack, &zoomFit, &zoomFull }) {
+    for (auto* button : { &timeView, &spectrumView, &pitchView, &waveformView, &zoomAttack, &zoomFit, &zoomFull }) {
         addAndMakeVisible(button);
     }
     timeView.setComponentID("referencePitch.time");
     spectrumView.setComponentID("referencePitch.spectrum");
+    pitchView.setComponentID("referencePitch.pitch");
+    waveformView.setComponentID("referencePitch.waveform");
+    pitchView.setToggleState(true, juce::dontSendNotification);
+    pitchView.onClick = [this] { setWaveformMode(false); };
+    waveformView.onClick = [this] { setWaveformMode(true); };
     zoomAttack.setComponentID("referencePitch.zoomAttack");
     zoomFit.setComponentID("referencePitch.zoomFit");
     zoomFull.setComponentID("referencePitch.zoomFull");
@@ -69,10 +82,7 @@ void ReferencePitchEditor::configureViewControls() {
         panel->hostedPanel().getZoomPanel()->zoomToAttack();
         syncTimeZoom(false);
     };
-    zoomFit.onClick = [this] {
-        panel->fitEnvelopeVerticalRange();
-        syncTimeZoom(false);
-    };
+    zoomFit.onClick = [this] { fitLowerView(); };
     zoomFull.onClick = [this] { resetView(); };
 }
 
@@ -94,6 +104,7 @@ bool ReferencePitchEditor::open(const juce::String& referenceId) {
     }
     if (openedId != referenceId) {
         surfaceCache.reset();
+        waveform.setSample(nullptr);
         displayedGeneration = -1;
         cyclogram->setCamera(ZoomRect());
     }
@@ -118,6 +129,14 @@ void ReferencePitchEditor::syncFromLibrary() {
     panel->refreshRasterizer();
     panel->updateZoomBounds(true);
     panel->fitEnvelopeVerticalRange();
+    const auto& fitted = panel->hostedPanel().getZoomPanel()->rect;
+    pitchVertical = { fitted.y, fitted.h };
+    if (waveformMode) {
+        auto* zoom = panel->hostedPanel().getZoomPanel();
+        zoom->rect.y = waveformVertical.x;
+        zoom->rect.h = waveformVertical.y;
+        zoom->panelZoomChanged(false);
+    }
     syncTimeZoom(false);
     if (onRenderRequested) {
         onRenderRequested();
@@ -130,6 +149,7 @@ void ReferencePitchEditor::refreshCyclogram() {
     if (analysis == nullptr) {
         return;
     }
+    waveform.setSample(analysis->sample.get());
     const bool desiredMode = library.spectralViewFor(openedId);
     if (spectral != desiredMode) {
         spectral = desiredMode;
@@ -179,9 +199,58 @@ void ReferencePitchEditor::syncTimeZoom(bool fromSurface) {
         camera.w = zoom->rect.w;
         cyclogram->setCamera(camera);
     }
+    auto waveformCamera = zoom->rect;
+    if (!waveformMode) {
+        waveformCamera.y = waveformVertical.x;
+        waveformCamera.h = waveformVertical.y;
+    }
+    waveform.setViewport(waveformCamera);
+    if (waveformMode) {
+        waveformVertical = { zoom->rect.y, zoom->rect.h };
+    }
     if (onRenderRequested) {
         onRenderRequested();
     }
+}
+
+void ReferencePitchEditor::setWaveformMode(bool showWaveform) {
+    if (waveformMode == showWaveform) {
+        return;
+    }
+    auto* zoom = panel->hostedPanel().getZoomPanel();
+    if (waveformMode) {
+        waveformVertical = { zoom->rect.y, zoom->rect.h };
+    } else {
+        pitchVertical = { zoom->rect.y, zoom->rect.h };
+    }
+    waveformMode = showWaveform;
+    const auto vertical = waveformMode ? waveformVertical : pitchVertical;
+    zoom->rect.y = vertical.x;
+    zoom->rect.h = vertical.y;
+    zoom->panelZoomChanged(false);
+    zoom->getComponent(false)->setTitle(waveformMode ? "Amplitude range" : "Pitch range");
+    zoomFit.setTitle(waveformMode ? "Fit amplitude range" : "Fit pitch range");
+    zoomFit.setTooltip(waveformMode ? "Fit amplitude range" : "Fit pitch range");
+    pitchView.setToggleState(!waveformMode, juce::dontSendNotification);
+    waveformView.setToggleState(waveformMode, juce::dontSendNotification);
+    if (auto* component = host->componentIfCreated()) {
+        component->setVisible(!waveformMode);
+    }
+    waveform.setVisible(waveformMode);
+    syncTimeZoom(false);
+    resized();
+}
+
+void ReferencePitchEditor::fitLowerView() {
+    if (waveformMode) {
+        auto* zoom = panel->hostedPanel().getZoomPanel();
+        zoom->rect.y = 0.f;
+        zoom->rect.h = 1.f;
+        zoom->panelZoomChanged(false);
+    } else {
+        panel->fitEnvelopeVerticalRange();
+    }
+    syncTimeZoom(false);
 }
 
 void ReferencePitchEditor::resetView() {
@@ -201,6 +270,9 @@ void ReferencePitchEditor::renderOpenGL(float scaleFactor) {
                 safeThis->repaint();
             }
         });
+    }
+    if (waveformMode) {
+        return;
     }
     const auto bounds = host->componentIfCreated()->getLocalBounds().toFloat();
     if (bounds.getWidth() < 2.f || bounds.getHeight() < 2.f) {
@@ -254,6 +326,8 @@ juce::var ReferencePitchEditor::exportAutomationState() const {
     result->setProperty("zoomControls", host->zoomControlsState());
     result->setProperty("surfaceView", cyclogram->automationDiagnostics());
     result->setProperty("surfaceMode", spectral ? "spectrum" : "time");
+    result->setProperty("lowerMode", waveformMode ? "waveform" : "pitch");
+    result->setProperty("waveform", waveform.diagnostics());
     result->setProperty("surfaceGeneration", surfaceCache.generation());
     result->setProperty("spectrumGeneration", surfaceCache.spectrumGeneration());
     result->setProperty("pointCount", (int) mesh.getCubes().size());
@@ -278,7 +352,7 @@ ReferencePitchEditor::pointerTargetsForAutomation() const {
             { "referencePitch.cyclogram", cyclogramBounds() },
             { "referencePitch.close", closeBounds() }
     };
-    for (const auto* button : { &timeView, &spectrumView, &zoomAttack, &zoomFit, &zoomFull }) {
+    for (const auto* button : { &timeView, &spectrumView, &pitchView, &waveformView, &zoomAttack, &zoomFit, &zoomFull }) {
         targets.emplace_back(button->getComponentID(), button->getBounds());
     }
     for (bool horizontal : { true, false }) {
@@ -303,13 +377,6 @@ void ReferencePitchEditor::paint(juce::Graphics& graphics) {
     chrome.paint(graphics);
 }
 
-void ReferencePitchEditor::paintOverChildren(juce::Graphics& graphics) {
-    const auto pitch = curveBounds().reduced(6);
-    EnvelopePurposeIconRenderer::paintMonochrome(graphics, EnvelopePurpose::Pitch,
-            pitch.withSize(CanvasChromeMetrics::panelOverlayButtonSize,
-                    CanvasChromeMetrics::panelOverlayButtonSize).toFloat());
-}
-
 void ReferencePitchEditor::resized() {
     chrome.resized();
     auto bounds = getLocalBounds().withTrimmedTop(CanvasChromeMetrics::fullEditorHeaderHeight)
@@ -322,16 +389,20 @@ void ReferencePitchEditor::resized() {
     }
     surfaceBounds.setRight(curveBounds().getRight());
     cyclogram->setBounds(surfaceBounds);
+    waveform.setBounds(curveBounds());
+    waveform.toFront(false);
     const int size = CanvasChromeMetrics::panelOverlayButtonSize;
     const int step = size + CanvasChromeMetrics::panelOverlayButtonGap;
     auto surface = cyclogramBounds().reduced(6);
     timeView.setBounds(surface.getX(), surface.getY(), size, size);
     spectrumView.setBounds(surface.getX() + step, surface.getY(), size, size);
     auto pitch = curveBounds().reduced(6);
+    pitchView.setBounds(pitch.getX(), pitch.getY(), size, size);
+    waveformView.setBounds(pitch.getX() + step, pitch.getY(), size, size);
     zoomAttack.setBounds(pitch.getRight() - 2 * step - size, pitch.getY(), size, size);
     zoomFit.setBounds(pitch.getRight() - step - size, pitch.getY(), size, size);
     zoomFull.setBounds(pitch.getRight() - size, pitch.getY(), size, size);
-    for (auto* button : { &timeView, &spectrumView, &zoomAttack, &zoomFit, &zoomFull }) {
+    for (auto* button : { &timeView, &spectrumView, &pitchView, &waveformView, &zoomAttack, &zoomFit, &zoomFull }) {
         button->toFront(false);
     }
     if (onRenderRequested) {

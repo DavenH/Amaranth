@@ -274,6 +274,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternBrowser.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceAssetBrowser.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceWaveformPreview.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceWaveformView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceTrayBar.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarMediaRow.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarTagCloud.cpp"
