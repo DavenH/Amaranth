@@ -100,6 +100,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodePreviewRenderer.h` — Compact node preview rendering and reusable preview resources.
 - `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy/probe overview and detail presentation.
 - `cycle-v2/src/UI/InlinePresetBrowser.h` — Shared tabs; ReferenceAssetBrowser owns audio assets, ReferenceTrayBar owns tray disclosure.
+- `cycle-v2/src/UI/LibraryThumbnailCache.h`, `cycle-v2/src/UI/ReferenceWaveformPreview.h` — Async images and asset density maps.
 - `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and suite export.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
 - `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.

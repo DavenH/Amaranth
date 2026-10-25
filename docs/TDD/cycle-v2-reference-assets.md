@@ -2,6 +2,69 @@
 
 Status: Implemented (2026-10-23).
 
+## Asset preview scrolling and density experiment (2026-10-25)
+
+Status: Implemented.
+
+Measure the same Debug build, 1000x760 window, baroque-flute graph and 32 smooth
+asset-list scrolls in both directions before/after. ReferenceAssetBrowser owns
+paint timing/counters through the existing PerformanceDistribution; snapshots
+export these separately from canvas paint telemetry. Preserve search, audition,
+selection and row-only dragging, with no document changes.
+
+Extract PresetThumbnailCache's existing worker/message-thread publication and
+file-revision cache into LibraryThumbnailCache. Presets retain their decoder;
+assets supply a five-second PitchedSample/normalized stereo-sum image loader.
+ReferenceAssetBrowser requests visible rows first and preloads adjacent pages,
+retains bounded image storage and paints cached bitmaps. Visible-range iteration
+must not scan the catalog per paint. No audio reader, decode, thumbnail reduction
+or heatmap rasterization is permitted in paint. Cache persists through scrolling,
+search and resizing; stale file revisions cannot publish over current images.
+
+Experiment: time is horizontal, amplitude vertical, pixel intensity counts the
+sample trace passages through each cell. Difference accumulation avoids walking
+every crossed vertical pixel for every sample. Use vector log compression and
+a neutral luminance palette, preserving silence and stereo cancellation. Render
+off-thread at a fixed retina-sized row image; long sources show their first five
+seconds. Delete the four-second exclusion, eager whole-library decode queue,
+AudioThumbnail paint work and the copied async cache lifecycle in presets.
+
+Verify density geometry/repetition/cancellation, five-second trim, async loading,
+revision invalidation, bounded caching, prefetch, warm-scroll reuse and matching
+before/after timings. Review native normal/narrow screenshots and row dragging.
+
+Completion: LibraryThumbnailCache now owns the single worker/publication/revision
+state machine for preset and asset previews. PresetThumbnailCache is a decoder
+adapter; ReferenceAssetBrowser requests visible rows and one page on either side
+through its move/resize/visibility hooks. Its 128-image LRU retains previews across
+searches and layout changes. Density images are fixed 512x96 software bitmaps.
+Audio decoding and density preparation run on two workers. Paint performs only
+visible-row framing, labels and cached image drawing; no AudioThumbnail remains.
+
+The same 32-scroll Debug workload measures 26.007→8.593ms mean asset-list paint,
+about 3.03x faster. Mean row visits fall from 34 to 8.325 per paint. This measures
+the asset list, not whole-window frame latency; rounded frames, text and scaled
+bitmap composition remain in paint. All 34 catalog images build once, including
+long sources; subsequent warm scrolls enqueue no additional image jobs. Reports
+are in `.context/asset-previews-before/`, `asset-previews-after/` and
+`.context/asset-previews-comparison.json`.
+
+The exact app build and 24 focused reference/thumbnail cases pass. Tests cover
+crossing counts, increased density on repeated passages, subpixel-length traces,
+silence, stereo cancellation, quiet-source normalization, exact first-five-second
+image equality, async warm reuse, file-revision races and bounded eviction.
+Native search, drops on collapsed/open trays, one-row drag capture and audible
+playback pass in `.context/asset-previews-native/`, without document changes.
+The user reviewed and accepted the density appearance. Architecture audit, map
+and whitespace checks pass. All deletion targets above are complete.
+
+Ownership review: ReferenceAssetBrowser shrinks 386→371 lines; the shared cache
+is 116 lines and the preset adapter shrinks 119→43. ReferenceWaveformPreview is
+101 lines for mono preparation, density accumulation and image loading/rendering.
+NodeWorkspace adds only one diagnostic property; it retains workspace routing
+and delegates measurement to the asset owner. No worker, invalidation or image
+publication mechanics are copied into the browser or renderer.
+
 ## Cycle-resolution follow-up (2026-10-25)
 
 Status: Implemented.
@@ -82,20 +145,19 @@ explicit reference additions reveal it immediately; browsing and auditioning an
 asset do not. An empty tray offers a direct route to Assets and import.
 
 Assets joins the existing sidebar tabs. It reuses LibrarySearchField,
-SidebarLibraryToolbar and SidebarMediaRow. Audio files of at most four seconds
-show one JUCE waveform thumbnail from the sum of the two channels, normalized
-to the signed display range. The background job reuses PitchedSample decoding
+SidebarLibraryToolbar and SidebarMediaRow. Audio rows show a cached waveform
+density image of the first five seconds, using a normalized stereo sum.
+LibraryThumbnailCache prepares these on background workers through PitchedSample
 and Buffer operations; audition audio remains unchanged. Rows support audition, keyboard selection,
-explicit Add, double click and drag to the reference tray. Longer files remain
-listed and usable without a waveform. Card titles retain names and direct play /
+explicit Add, double click and drag to the reference tray. Card titles retain names and direct play /
 close controls; duration sublabels are removed.
 
 ## Owners and complexity
 
 ReferenceLibrary retains catalog, import, analysis, pitch edits and active cards.
 ReferenceAssetBrowser owns filtering, list selection and thumbnail presentation;
-A bounded JUCE ThreadPool decodes the short samples; AudioThumbnail owns
-waveform reduction and drawing. PitchedSample owns audio
+A shared LibraryThumbnailCache owns async image preparation/publication;
+ReferenceWaveformPreview owns density rasterization. PitchedSample owns audio
 decoding and StandaloneAudioEngine owns prepared audition playback. No DSP,
 pitch tracking, graph commands or mesh gestures are duplicated. NodeWorkspace
 owns tray disclosure and routes sidebar actions. Browser rows never select a

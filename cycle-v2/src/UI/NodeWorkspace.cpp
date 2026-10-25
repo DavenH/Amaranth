@@ -357,6 +357,7 @@ var NodeWorkspace::exportAutomationState() const {
         object->setProperty("performance", performanceStateForAutomation());
         object->setProperty("liveOutputMeter", outputMeterStateForAutomation());
         object->setProperty("comparison", comparisonDock.exportAutomationState());
+        object->setProperty("assetPreviews", referenceAssets.previewDiagnostics());
     }
     return state;
 }

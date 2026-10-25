@@ -286,6 +286,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetLibraryIndex.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetPreviewGenerator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetThumbnailCache.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/LibraryThumbnailCache.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewResources.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/OutputMeterPresentation.cpp"

@@ -5,6 +5,8 @@
 #include "UI/SidebarMediaRow.h"
 #include "UI/LibraryIconRenderer.h"
 #include "UI/ReferenceWaveformPreview.h"
+#include "UI/LibraryThumbnailCache.h"
+#include "Runtime/PerformanceDistribution.h"
 
 namespace CycleV2 {
 
@@ -20,80 +22,44 @@ juce::Rectangle<float> playBounds(juce::Rectangle<float> row) {
 
 }
 
-class ReferenceAssetBrowser::List final : public juce::Component,
-                                          private juce::ChangeListener {
-    class WaveformJob final : public juce::ThreadPoolJob {
-    public:
-        WaveformJob(List& list, const ReferenceRecord& record) :
-                ThreadPoolJob("Reference waveform")
-            ,   owner(&list)
-            ,   file(record.audioFile)
-            ,   id(record.id) {}
-
-        JobStatus runJob() override {
-            PitchedSample sample;
-            if (shouldExit() || sample.load(file.getFullPathName()) < 0) {
-                return jobHasFinished;
-            }
-            auto mono = std::make_shared<juce::AudioBuffer<float>>(
-                    referenceWaveformPreview(sample.audio));
-            if (!shouldExit()) {
-                juce::MessageManager::callAsync([safeOwner = owner, id = id, mono] {
-                    if (safeOwner != nullptr) {
-                        safeOwner->publishWaveform(id, *mono);
-                    }
-                });
-            }
-            return jobHasFinished;
-        }
-
-    private:
-        juce::Component::SafePointer<List> owner;
-        juce::File file;
-        juce::String id;
-    };
-
+class ReferenceAssetBrowser::List final : public juce::Component {
 public:
     explicit List(ReferenceAssetBrowser& browser) : owner(browser) {
-        formats.registerBasicFormats();
         setWantsKeyboardFocus(true);
         setComponentID("workspace.sidebar.assetList");
-    }
-
-    ~List() override {
-        worker.removeAllJobs(true, 2000);
-        for (auto& entry : entries) {
-            if (entry.thumbnail != nullptr) {
-                entry.thumbnail->removeChangeListener(this);
+        images.setReadyCallback([safeThis = juce::Component::SafePointer<List>(this)] {
+            if (safeThis != nullptr) {
+                safeThis->repaint();
             }
-        }
+        });
     }
 
     void refresh() {
+        entries.clear();
         for (const auto& record : owner.library.records()) {
-            const auto found = std::find_if(entries.begin(), entries.end(),
-                    [&](const Entry& entry) { return entry.record.id == record.id; });
-            if (found != entries.end()) {
-                continue;
-            }
-            Entry entry;
-            entry.record = record;
-            std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(record.audioFile));
-            if (reader != nullptr) {
-                entry.seconds = (double) reader->lengthInSamples / reader->sampleRate;
-                if (entry.seconds <= 4.0) {
-                    entry.thumbnail = std::make_unique<juce::AudioThumbnail>(128, formats, cache);
-                    entry.thumbnail->addChangeListener(this);
-                    entry.thumbnail->reset(1, reader->sampleRate, reader->lengthInSamples);
-                }
-            }
-            const bool prepareWaveform = entry.thumbnail != nullptr;
-            entries.push_back(std::move(entry));
-            if (prepareWaveform) {
-                worker.addJob(new WaveformJob(*this, record), true);
-            }
+            entries.push_back({ record, record.audioFile.getLastModificationTime().toMilliseconds() });
         }
         filter();
+    }
+
+    void moved() override { preload(); }
+    void resized() override { preload(); }
+
+    void preload() {
+        if (!owner.isShowing() || visible.empty()) {
+            return;
+        }
+        const int first = owner.viewport.getViewPositionY() / rowHeight;
+        const int page = juce::jmax(1, (owner.viewport.getViewHeight() + rowHeight - 1) / rowHeight);
+        const auto request = [&](int start, int end) {
+            for (int index = juce::jmax(0, start); index < juce::jmin((int) visible.size(), end); ++index) {
+                const auto& entry = entries[visible[(size_t) index]];
+                images.imageFor(entry.record.audioFile, entry.modificationTime);
+            }
+        };
+        request(first, first + page + 1);
+        request(first + page + 1, first + 2 * page + 1);
+        request(first - page, first);
     }
 
     void filter() {
@@ -113,17 +79,24 @@ public:
         }
         owner.toolbar.editButton().setEnabled(selectedId.isNotEmpty());
         setSize(getWidth(), juce::jmax(rowHeight, (int) visible.size() * rowHeight));
+        preload();
         repaint();
     }
 
     void paint(juce::Graphics& graphics) override {
+        const double started = juce::Time::getMillisecondCounterHiRes();
+        const auto loadsBeforePaint = images.loadCount();
         if (visible.empty()) {
             graphics.setColour(CanvasChromePalette::mutedText);
             graphics.setFont(13.f);
             graphics.drawText("No matching audio assets", getLocalBounds().reduced(8),
                     juce::Justification::centredTop);
         }
-        for (int index = 0; index < (int) visible.size(); ++index) {
+        const auto clip = graphics.getClipBounds();
+        const int first = juce::jmax(0, clip.getY() / rowHeight);
+        const int last = juce::jmin((int) visible.size(), (clip.getBottom() + rowHeight - 1) / rowHeight);
+        for (int index = first; index < last; ++index) {
+            ++rowVisits;
             auto& entry = entries[visible[(size_t) index]];
             const auto slot = row(index);
             if (!graphics.getClipBounds().toFloat().intersects(slot)) {
@@ -146,17 +119,33 @@ public:
                         play.getCentreX() - 3.f, play.getCentreY() + 5.f);
                 graphics.fillPath(triangle);
             }
-            graphics.setColour(CanvasChromePalette::navigationAccent);
-            if (entry.thumbnail != nullptr) {
-                entry.thumbnail->drawChannel(graphics, preview.reduced(3.f).toNearestInt(),
-                        0.0, entry.seconds, 0, 1.f);
-            } else {
-                graphics.setColour(CanvasChromePalette::mutedText);
-                graphics.setFont(11.f);
-                graphics.drawText(juce::String(entry.seconds, 1) + " s", preview,
-                        juce::Justification::centredLeft);
+            const auto image = images.cachedImageFor(entry.record.audioFile, entry.modificationTime);
+            if (image.isValid()) {
+                ++imageDraws;
+                graphics.drawImage(image, preview.reduced(3.f), juce::RectanglePlacement::stretchToFit);
             }
         }
+        paintDecodes += images.loadCount() - loadsBeforePaint;
+        recordPerformanceSample(paintDuration, (uint64_t)
+                ((juce::Time::getMillisecondCounterHiRes() - started) * 1000.0));
+    }
+
+    juce::var diagnostics() const {
+        auto result = std::make_unique<juce::DynamicObject>();
+        result->setProperty("paintDuration", performanceDistributionToVar(paintDuration));
+        result->setProperty("rowVisits", (juce::int64) rowVisits);
+        result->setProperty("thumbnailDraws", 0);
+        result->setProperty("imageDraws", (juce::int64) imageDraws);
+        result->setProperty("paintDecodes", (juce::int64) paintDecodes);
+        result->setProperty("imageBuilds", (juce::int64) images.loadCount());
+        result->setProperty("cachedImages", (int) images.cachedImageCount());
+        result->setProperty("visibleRows", juce::jmin((int) visible.size(),
+                (owner.viewport.getViewHeight() + rowHeight - 1) / rowHeight + 1));
+        result->setProperty("rowCount", (int) visible.size());
+        result->setProperty("viewY", owner.viewport.getViewPositionY());
+        result->setProperty("viewHeight", owner.viewport.getViewHeight());
+        result->setProperty("pending", (int) images.pendingCount());
+        return { result.release() };
     }
 
     void mouseDown(const juce::MouseEvent& event) override {
@@ -249,31 +238,21 @@ public:
 private:
     struct Entry {
         ReferenceRecord record;
-        double seconds {};
-        std::unique_ptr<juce::AudioThumbnail> thumbnail;
+        juce::int64 modificationTime {};
     };
 
     juce::Rectangle<float> row(int index) const {
         return { 0.f, (float) (index * rowHeight), (float) getWidth(), (float) rowHeight };
     }
 
-    void publishWaveform(const juce::String& id, const juce::AudioBuffer<float>& mono) {
-        const auto found = std::find_if(entries.begin(), entries.end(),
-                [&](const Entry& entry) { return entry.record.id == id; });
-        if (found != entries.end() && found->thumbnail != nullptr) {
-            found->thumbnail->addBlock(0, mono, 0, mono.getNumSamples());
-            repaint();
-        }
-    }
-
-    void changeListenerCallback(juce::ChangeBroadcaster*) override { repaint(); }
-
     ReferenceAssetBrowser& owner;
-    juce::AudioFormatManager formats;
-    juce::AudioThumbnailCache cache { 64 };
-    juce::ThreadPool worker { 1 };
+    LibraryThumbnailCache images { loadReferenceWaveformHeatmap, 128 };
     std::vector<Entry> entries;
     std::vector<size_t> visible;
+    PerformanceDistribution paintDuration;
+    uint64_t rowVisits {};
+    uint64_t imageDraws {};
+    uint64_t paintDecodes {};
 };
 
 ReferenceAssetBrowser::ReferenceAssetBrowser(ReferenceLibrary& libraryToUse,
@@ -318,6 +297,8 @@ ReferenceAssetBrowser::~ReferenceAssetBrowser() {
 }
 
 void ReferenceAssetBrowser::refresh() { list->refresh(); }
+
+juce::var ReferenceAssetBrowser::previewDiagnostics() const { return list->diagnostics(); }
 
 void ReferenceAssetBrowser::timerCallback() {
     if (!isShowing()) {
@@ -368,6 +349,7 @@ juce::String ReferenceAssetBrowser::referenceIdFromDrag(const juce::var& descrip
 std::vector<std::pair<juce::String, juce::Rectangle<float>>>
 ReferenceAssetBrowser::pointerTargetsForAutomation() const {
     auto targets = list->targets();
+    targets.emplace_back("workspace.sidebar.assetList", viewport.getBounds().toFloat());
     for (const auto& [id, bounds] : toolbar.pointerTargetsForAutomation()) {
         if (id.isNotEmpty()) {
             targets.push_back({ id, bounds.translated((float) toolbar.getX(), (float) toolbar.getY()) });
@@ -376,11 +358,14 @@ ReferenceAssetBrowser::pointerTargetsForAutomation() const {
     return targets;
 }
 
+void ReferenceAssetBrowser::visibilityChanged() { list->preload(); }
+
 void ReferenceAssetBrowser::resized() {
     auto bounds = getLocalBounds();
     toolbar.setBounds(bounds.removeFromTop(SidebarLibraryToolbar::height));
     viewport.setBounds(bounds.reduced(6, 0));
     list->setSize(juce::jmax(1, viewport.getMaximumVisibleWidth()), list->getHeight());
+    list->preload();
 }
 
 }
