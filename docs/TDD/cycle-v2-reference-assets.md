@@ -2,6 +2,34 @@
 
 Status: Implemented (2026-10-23).
 
+## Waveform publication on expansion (2026-10-26)
+
+Status: Implemented.
+
+Opening a different reference with waveform mode retained loads its source while
+the editor is hidden. The waveform's own visibility flag stays true, so its
+Component visibility callback misses the ancestor becoming visible. No image
+is requested until navigation or a lower-mode toggle changes the view.
+
+Use JUCE's ComponentMovementWatcher in ReferenceWaveformView to observe effective
+visibility through its ancestors. Keep image invalidation, cancellation, cached
+frame reuse and asynchronous publication in this renderer; delete the incomplete
+self-only visibility callback. Verify unchanged reopen, hidden retarget and a
+new import expanded in waveform mode without zooming or toggling. Retain the
+sequence in the existing waveform UI regression and capture before/after state
+and screenshots. No analysis, zoom, document or playback policy changes.
+
+The retained sequence failed before the fix with an empty image and no render
+job after hidden retargeting. It now passes unchanged reopen, hidden retarget,
+fresh import/expansion and the existing navigation/mode/audition checks. Cached
+reopen retains the same image-build count. Before/after state, logs and native
+captures are in `.context/waveform-first-open-before/` and
+`.context/waveform-first-open-after/`. The app builds and all 27 focused
+reference/thumbnail tests pass; no runtime assertions were observed. Architecture,
+code-map and whitespace checks pass. Ownership remains in the 185-line renderer
+(52-line header), with no new policy owner or source boundary. All criteria and
+the self-only callback deletion are complete.
+
 ## Expanded waveform / pitch switch (2026-10-25)
 
 Status: Implemented.

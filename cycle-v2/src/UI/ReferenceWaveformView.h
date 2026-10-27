@@ -11,7 +11,8 @@ class PitchedSample;
 namespace CycleV2 {
 
 class ReferenceWaveformView final : public juce::Component,
-                                    private juce::AsyncUpdater {
+                                    private juce::AsyncUpdater,
+                                    private juce::ComponentMovementWatcher {
 public:
     ReferenceWaveformView();
     ~ReferenceWaveformView() override;
@@ -20,13 +21,15 @@ public:
     juce::var diagnostics() const;
     void paint(juce::Graphics& graphics) override;
     void resized() override;
-    void visibilityChanged() override;
     void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override;
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onWheel;
 
 private:
     struct Source;
     class RenderJob;
+    void componentVisibilityChanged() override;
+    void componentMovedOrResized(bool, bool) override {}
+    void componentPeerChanged() override {}
     void requestImage();
     void handleAsyncUpdate() override;
     void publish(uint64_t revision, juce::Image image, ZoomRect viewport, bool line, size_t crossings);

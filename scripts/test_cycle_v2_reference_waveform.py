@@ -44,6 +44,7 @@ def check(record, output):
                     break
                 time.sleep(0.025)
             else:
+                evidence["states"][label] = editor
                 raise AssertionError("Waveform did not publish the current viewport")
             curve, surface = editor["curveView"]["zoom"], editor["surfaceView"]["camera"]
             for axis in ("x", "w"):
@@ -137,6 +138,12 @@ def check(record, output):
             call({"command": "resizeWindow", "width": 1000, "height": 760})
             state("narrow", ready=True)
             capture("narrow")
+            click("close")
+            call({"command": "openReferencePitchEditor", "referenceId": imported["referenceId"]})
+            _, reopened = state("reopened-unchanged", ready=True)
+            assert reopened["waveform"]["sourceBuilds"] == 1
+            assert reopened["waveform"]["imageBuilds"] == evidence["states"]["narrow"]["waveform"]["imageBuilds"]
+            click("close")
             call({"command": "openReferencePitchEditor", "referenceId": "factory:sax-growl"})
             _, retargeted = state("retargeted", ready=True)
             assert retargeted["lowerMode"] == "waveform" and retargeted["waveform"]["sourceBuilds"] == 2
@@ -144,9 +151,14 @@ def check(record, output):
             click("spectrum")
             state("sax-density", ready=True)
             capture("sax-density")
+            click("close")
+            imported = call({"command": "importReference", "path": str(sample)})
+            audio = Path(imported["audioPath"])
+            owned.extend([audio, audio.with_name(imported["referenceId"] + ".ref.json")])
             call({"command": "openReferencePitchEditor", "referenceId": imported["referenceId"]})
             _, original = state("retargeted-back", ready=True)
             assert original["waveform"]["sourceBuilds"] == 3
+            capture("loaded-expanded")
             call({"command": "key", "key": "space"})
             assert state("audition", ready=True)[0]["comparison"]["auditioning"]
             call({"command": "key", "key": "space"})

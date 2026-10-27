@@ -63,7 +63,8 @@ private:
     int height {};
 };
 
-ReferenceWaveformView::ReferenceWaveformView() {
+ReferenceWaveformView::ReferenceWaveformView() :
+        ComponentMovementWatcher(this) {
     setOpaque(true);
     setWantsKeyboardFocus(true);
     setTitle("Reference waveform");
@@ -149,7 +150,7 @@ void ReferenceWaveformView::paint(juce::Graphics& graphics) {
 }
 
 void ReferenceWaveformView::resized() { requestImage(); }
-void ReferenceWaveformView::visibilityChanged() {
+void ReferenceWaveformView::componentVisibilityChanged() {
     if (isShowing()) {
         if (!image.isValid() || publishedRevision != revision) {
             triggerAsyncUpdate();
