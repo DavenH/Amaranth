@@ -40,7 +40,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `lib/src/Curve/Rasterization/Rasterizer/` — Authoritative rasterizer interfaces and implementations.
 - `lib/src/Curve/Rasterization/EnvelopePlaybackEngine.h` — Shared envelope playback semantics; reuse across apps.
 - `lib/src/Inter/` — Mature mesh/curve interaction and collision behavior; reuse or extract, never copy.
-- `lib/src/UI/Panels/` — Shared 2D/3D panel and renderer infrastructure; reuse for mesh-based editors.
+- `lib/src/UI/Panels/` — Shared panels/renderers; GLSurfaceCache owns baked 3D surfaces and framebuffer read bounds.
 - `lib/src/UI/Widgets/` — Shared controls and display widgets; check here before adding app-local controls.
 - `lib/src/App/Doc/` — Shared document and serialization support; reuse for persistent app state.
 - `lib/tests/` — Shared library contracts for buffers, DSP, mesh, rasterization, interaction, and UI support.
@@ -86,7 +86,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
 - `cycle-v2/src/Graph/MeshDimensionality.h` — Shared axis eligibility and projection; GraphMeshGuideRemap preserves rail targets.
 - `cycle-v2/src/UI/Editors/` — Shared morph reconciliation, diagram/input geometry, property controls and keyboard interaction.
-- `cycle-v2/src/Nodes/Curve/` — Curve codecs, stable identities, editor adapters and shared panel/zoom/GL hosts.
+- `cycle-v2/src/Nodes/Curve/` — Curve codecs, identities and panel/zoom/GL hosts; snapshots for curves, direct GL for prepared surfaces.
 - `cycle-v2/src/Nodes/Envelope/` — State/playback, shared section palette, surfaces and EnvelopeEditCore for panel and headless edits.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
 - `cycle-v2/src/Nodes/ImpulseResponse/` — Canonical IR import/analysis; effect processors prepare playback-rate kernels.

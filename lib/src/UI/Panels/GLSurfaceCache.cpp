@@ -4,7 +4,30 @@
 
 #include "ScopedGL.h"
 
+using namespace juce;
 using namespace gl;
+
+std::optional<Rectangle<int>> GLSurfaceCache::framebufferReadBounds(
+        Rectangle<float> bounds,
+        float scaleFactor,
+        Rectangle<int> viewport) {
+    if (bounds.isEmpty() || scaleFactor <= 0.f || viewport.isEmpty()) {
+        return std::nullopt;
+    }
+
+    const int width = jmax(1, roundToInt(bounds.getWidth() * scaleFactor));
+    const int height = jmax(1, roundToInt(bounds.getHeight() * scaleFactor));
+    const Rectangle<int> readBounds {
+            viewport.getX() + roundToInt(bounds.getX() * scaleFactor),
+            viewport.getBottom() - roundToInt(bounds.getBottom() * scaleFactor),
+            width,
+            height
+    };
+    if (!viewport.contains(readBounds)) {
+        return std::nullopt;
+    }
+    return readBounds;
+}
 
 void GLSurfaceCache::allocate(bool transparent) {
     this->transparent = transparent;
@@ -29,16 +52,17 @@ void GLSurfaceCache::allocate(bool transparent) {
 void GLSurfaceCache::captureFromFramebuffer(const juce::Rectangle<int>& componentBounds) {
     glBindTexture(GL_TEXTURE_2D, texture.id);
 
-    int width = jmin(activePixelBounds.getWidth(), roundToInt(componentBounds.getWidth() * renderScale));
-    int height = jmin(activePixelBounds.getHeight(), roundToInt(componentBounds.getHeight() * renderScale));
-
-    if (width <= 0 || height <= 0) {
+    GLint viewport[4] {};
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    const auto readBounds = framebufferReadBounds(componentBounds.toFloat(), (float) renderScale,
+            { viewport[0], viewport[1], viewport[2], viewport[3] });
+    if (!readBounds.has_value()) {
         return;
     }
-
-    int sourceX = roundToInt(componentBounds.getX() * renderScale);
-    int sourceY = roundToInt(componentBounds.getBottom() * renderScale) - height;
-    sourceY = jmax(0, sourceY);
+    const int width = jmin(activePixelBounds.getWidth(), readBounds->getWidth());
+    const int height = jmin(activePixelBounds.getHeight(), readBounds->getHeight());
+    const int sourceX = readBounds->getX();
+    const int sourceY = readBounds->getY();
 
     glCopyTexSubImage2D(
         GL_TEXTURE_2D,

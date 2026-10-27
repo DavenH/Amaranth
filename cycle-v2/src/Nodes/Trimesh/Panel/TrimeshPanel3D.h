@@ -31,8 +31,7 @@ public:
     void doZoomExtra(bool commandDown) override;
     void updateBackground(bool onlyVerticalBackground = false) override;
     void postVertsDraw() override;
-    bool usesCachedSurface() const override { return !sharedCanvasMode; }
-    void setSharedCanvasMode(bool shouldUseSharedCanvas) { sharedCanvasMode = shouldUseSharedCanvas; }
+    void drawSurface() override;
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
     void configureViewport(Range<float> frequencyLimits);
@@ -60,6 +59,10 @@ private:
             Buffer<float> y,
             const std::vector<Buffer<float>>& pitchRamps);
 
+    std::atomic<uint64_t> backgroundPreparationCount {};
+    std::atomic<uint64_t> guideTablePreparationCount {};
+    std::atomic<uint64_t> surfaceDrawCount {};
+    std::atomic<uint64_t> surfaceDrawMicroseconds {};
     PanelPlaybackOverlay playbackOverlay;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     std::vector<std::vector<float>> lineGuideTables;
@@ -68,7 +71,6 @@ private:
     int previewMidiNote { 48 };
     int appliedMaterialStyleSignature { -2 };
     bool pitchSpansColumns {};
-    bool sharedCanvasMode {};
     bool primaryAxisVertical {};
 };
 

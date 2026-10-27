@@ -399,6 +399,7 @@ void TrimeshPanelBridge::setDisplayDomain(PortDomain domain) {
 }
 
 void TrimeshPanelBridge::setRenderProfile(TrimeshRenderProfile profile) {
+    const bool domainChanged = renderProfile.getDomain() != profile.getDomain();
     const bool wasMagnitude = renderProfile.getDomain()
             == PortDomain::SpectralMagnitudeSignal;
     const bool isMagnitude = profile.getDomain()
@@ -410,7 +411,9 @@ void TrimeshPanelBridge::setRenderProfile(TrimeshRenderProfile profile) {
             : Range<float>(0.f, 1.f);
     interactor2D.vertexLimits[Vertex::Phase] = frequencyLimits;
     interactor3D.vertexLimits[Vertex::Phase] = frequencyLimits;
-    updateGuideCurveSeeds();
+    if (domainChanged) {
+        updateGuideCurveSeeds();
+    }
     panel3D.setRenderProfile(profile);
     panel2D.setRenderProfile(profile);
     const float defaultStart = isMagnitude

@@ -1165,3 +1165,22 @@ Evidence: `.context/trimesh-keyboard-diamonds-red.png` versus
 `.context/trimesh-keyboard-diamonds-native.png`, plus
 `.context/trimesh-keyboard-diamonds-spectrum-native.png`. State assertions pass;
 use native capture for Trimesh visual verification. No app assertion or crash.
+
+
+## Envelope direct GL surface covered by editor background (fixed)
+
+2026-10-27: removing Envelope 3D snapshot readbacks initially left the editor's
+opaque background over the direct GL surface. The user reported invisibility;
+an isolated native capture confirmed valid sampled data/texture counters with
+no visible surface. The editor now excludes both GL panel regions from its
+background. An actual editor paint test protects the transparent 3D region;
+normal/compact native captures after zoom/context reload verify visibility.
+Evidence: `.context/playback-render-envelope-native.png`,
+`.context/playback-render-envelope-compact-reload-native.png` and
+`cycle-v2-playback-overlay-render-cost.md`.
+
+The same audit's broader `Spectral Trimesh panels share pitch-dependent
+LogRegions coordinates` test expects three columns for a dimension-zero node
+and gets one (338 values vs 1,014). This reproduces in the pre-existing baseline
+binary. Evidence: `.context/playback-render-existing-test-baseline.log`. The
+focused cache, Guide, viewport and playback checks pass.

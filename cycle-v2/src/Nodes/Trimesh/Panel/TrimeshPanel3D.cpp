@@ -57,6 +57,10 @@ void TrimeshPanel3D::updateBackground(bool onlyVerticalBackground) {
 }
 
 void TrimeshPanel3D::drawBackground(bool fillBackground) {
+    if (usesCachedSurface() && !shouldBakeTextures) {
+        return;
+    }
+    ++backgroundPreparationCount;
     Panel::drawBackground(fillBackground);
 
     if (renderProfile.getSliceStyle().isSpectral() && gfx != nullptr) {
@@ -161,6 +165,10 @@ void TrimeshPanel3D::appendPrimaryAxisAutomation(DynamicObject& state,
     rectangle->setProperty("width", bounds.getWidth());
     rectangle->setProperty("height", bounds.getHeight());
     playbackOverlay.appendAutomation(state, primaryViewAxis, primaryAxisVertical, true);
+    state.setProperty("backgroundPreparationCount", (int64) backgroundPreparationCount.load());
+    state.setProperty("guideTablePreparationCount", (int64) guideTablePreparationCount.load());
+    state.setProperty("surfaceDrawCount", (int64) surfaceDrawCount.load());
+    state.setProperty("surfaceDrawMicroseconds", (int64) surfaceDrawMicroseconds.load());
     state.setProperty("primaryAxisBarBounds", rectangle);
     state.setProperty("primaryAxisColour", primaryAxisColour().toString());
     state.setProperty("primaryAxis", primaryAxisVertical ? "y" : "x");
@@ -187,6 +195,13 @@ void TrimeshPanel3D::setSlicePosition(float position) {
     if (playbackOverlay.setSlice(position)) {
         requestRepaint(PanelDirtyState::Flag::Overlay);
     }
+}
+
+void TrimeshPanel3D::drawSurface() {
+    const double started = Time::getMillisecondCounterHiRes();
+    Panel3D::drawSurface();
+    ++surfaceDrawCount;
+    surfaceDrawMicroseconds += (uint64_t) ((Time::getMillisecondCounterHiRes() - started) * 1000.0);
 }
 
 void TrimeshPanel3D::postVertsDraw() {
@@ -222,6 +237,7 @@ Buffer<Float32> TrimeshPanel3D::getLineGuideTable(int channel) {
 void TrimeshPanel3D::setLineGuideTables(std::vector<std::vector<float>> tables) {
     const ScopedLock lock(getRenderLock());
     lineGuideTables = std::move(tables);
+    ++guideTablePreparationCount;
     requestRepaint();
 }
 

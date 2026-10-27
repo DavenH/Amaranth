@@ -1,10 +1,15 @@
 #pragma once
 
 #include "JuceHeader.h"
+
+#include <optional>
 #include "Texture.h"
 
 class GLSurfaceCache {
 public:
+    static std::optional<juce::Rectangle<int>> framebufferReadBounds(
+            juce::Rectangle<float> bounds, float scaleFactor, juce::Rectangle<int> viewport);
+
     void allocate(bool transparent);
     void captureFromFramebuffer(const juce::Rectangle<int>& componentBounds);
     void clear();

@@ -3,6 +3,7 @@
 #include <Inter/Interactor.h>
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/GLPanelRenderer.h>
+#include <UI/Panels/GLSurfaceCache.h>
 #include <UI/Panels/Panel.h>
 #include <UI/Panels/PanelHostContext.h>
 #include <UI/Panels/PanelInputHostComponent.h>
@@ -17,28 +18,6 @@
 using namespace gl;
 
 namespace CycleV2 {
-
-std::optional<Rectangle<int>> curvePanelFramebufferReadBounds(
-        Rectangle<float> bounds,
-        float scaleFactor,
-        Rectangle<int> viewport) {
-    if (bounds.isEmpty() || scaleFactor <= 0.f || viewport.isEmpty()) {
-        return std::nullopt;
-    }
-
-    const int width = jmax(1, roundToInt(bounds.getWidth() * scaleFactor));
-    const int height = jmax(1, roundToInt(bounds.getHeight() * scaleFactor));
-    const Rectangle<int> readBounds {
-            viewport.getX() + roundToInt(bounds.getX() * scaleFactor),
-            viewport.getBottom() - roundToInt(bounds.getBottom() * scaleFactor),
-            width,
-            height
-    };
-    if (!viewport.contains(readBounds)) {
-        return std::nullopt;
-    }
-    return readBounds;
-}
 
 Image curvePanelSnapshotFromPixels(
         const PixelARGB* pixels, int width, int height, bool& hasVisibleContent) {
@@ -233,9 +212,11 @@ private:
 
 CurvePanelHost::CurvePanelHost(
         Panel& panelToHost,
-        CurvePanelHostDelegate& delegateToUse) :
+        CurvePanelHostDelegate& delegateToUse,
+        ExpandedRendering rendering) :
         panel(panelToHost)
     ,   delegate(delegateToUse)
+    ,   expandedRendering(rendering)
     ,   invalidation(*this) {
 }
 
@@ -312,10 +293,11 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
     auto renderKey = previewRenderKey(bounds, scaleFactor, modelRevision, contentRevision, presentationRevision);
     renderKey.invalidationGeneration = expandedInvalidationGeneration.load();
     renderKey.view = { zoom.x, zoom.y, zoom.w, zoom.h };
-    if (hasPendingRenderChanges() || !expandedSnapshot.hasVisibleSnapshot()) {
+    if (expandedRendering == ExpandedRendering::Snapshot
+            && (hasPendingRenderChanges() || !expandedSnapshot.hasVisibleSnapshot())) {
         expandedRenderCache.invalidate();
     }
-    if (expandedRenderCache.canReuse(renderKey)) {
+    if (expandedRendering == ExpandedRendering::Snapshot && expandedRenderCache.canReuse(renderKey)) {
         return;
     }
     PanelHostContext context;
@@ -332,6 +314,10 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
     ScopedGLScissor scissor(bounds, scaleFactor);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     panel.render();
+    if (expandedRendering == ExpandedRendering::DirectOpenGL) {
+        ++expandedDirectRenderCount;
+        return;
+    }
 
     Image nextImage;
     bool hasVisibleContent {};
@@ -459,6 +445,7 @@ bool CurvePanelHost::hasPendingRenderChanges() const {
 
 void CurvePanelHost::appendRenderDiagnostics(DynamicObject& state) const {
     const auto cache = expandedRenderCache.diagnostics();
+    state.setProperty("expandedDirectRenderCount", (int64) expandedDirectRenderCount.load());
     state.setProperty("expandedRenderCacheHits", (int64) cache.hits);
     state.setProperty("expandedRenderCacheMisses", (int64) cache.misses);
     state.setProperty("snapshotReadbackCount", (int64) snapshotReadbackCount.load());
@@ -515,7 +502,7 @@ bool CurvePanelHost::captureRenderedPanelImage(
         bool& hasVisibleContent) const {
     GLint viewport[4] {};
     glGetIntegerv(GL_VIEWPORT, viewport);
-    const auto readBounds = curvePanelFramebufferReadBounds(
+    const auto readBounds = GLSurfaceCache::framebufferReadBounds(
             bounds,
             scaleFactor,
             { viewport[0], viewport[1], viewport[2], viewport[3] });

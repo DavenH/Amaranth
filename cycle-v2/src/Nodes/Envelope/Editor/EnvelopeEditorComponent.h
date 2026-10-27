@@ -23,6 +23,7 @@ private:
     struct Impl;
     Rectangle<float> morphSurfaceBounds() const;
     Rectangle<float> editorPanelBounds() const override;
+    void excludePanelRenderRegions(Graphics& graphics) const override;
     Rectangle<float> editorControlBounds() const override;
     MorphPosition displayedMorphPosition() const;
     void bindMorphControl(int axis);

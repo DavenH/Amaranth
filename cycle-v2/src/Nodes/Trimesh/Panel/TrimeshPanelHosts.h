@@ -13,6 +13,7 @@
 
 class CommonGL;
 class GLPanelRenderer;
+class GLSurfaceCache;
 
 namespace CycleV2 {
 
@@ -87,9 +88,12 @@ private:
     CurvePanelHost curveHost;
     std::unique_ptr<PanelHostComponent> panel3DHost;
     std::unique_ptr<GLPanelRenderer> panel3DRenderer;
+    std::unique_ptr<GLSurfaceCache> panel3DSurfaceCache;
     CommonGL* panel3DGfx {};
     TrimeshPanelHostDelegate* delegate {};
     RenderInvalidationAccumulator invalidation;
+    Point<int> surfaceCacheSize;
+    float surfaceCacheScale {};
     Range<float> frequencyLimits { 0.f, 1.f };
     float frequencyStart {};
     float frequencyWidth { 1.f };

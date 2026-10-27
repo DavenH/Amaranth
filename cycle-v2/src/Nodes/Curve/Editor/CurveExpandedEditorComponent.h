@@ -65,6 +65,7 @@ public:
 
 protected:
     virtual Rectangle<float> editorPanelBounds() const = 0;
+    virtual void excludePanelRenderRegions(Graphics& graphics) const;
     virtual Rectangle<float> editorControlBounds() const = 0;
     virtual void paintEditor(Graphics& graphics) = 0;
     virtual void layoutEditor() = 0;

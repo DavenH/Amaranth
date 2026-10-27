@@ -7,6 +7,7 @@
 
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/GLPanelRenderer.h>
+#include <UI/Panels/GLSurfaceCache.h>
 #include <UI/Panels/PanelInputHostComponent.h>
 #include <UI/Panels/ScopedGLScissor.h>
 #include <UI/Panels/ZoomPanel.h>
@@ -251,7 +252,6 @@ void TrimeshPanelHosts::initialisePanel3DHost() {
     }
 
     panel3DHost = std::make_unique<PanelHostComponent>(panel3D);
-    panel3D.setSharedCanvasMode(true);
     panel3D.setInteractorMouseListenerEnabled(false);
     panel3D.initWithExternalComponent(panel3DHost.get());
     {
@@ -308,7 +308,12 @@ void TrimeshPanelHosts::initialiseSharedGlResources() {
     }
 
     panel3DGfx = new CommonGL(&panel3D);
-    panel3DRenderer = std::make_unique<GLPanelRenderer>(panel3DGfx);
+    panel3DSurfaceCache = std::make_unique<GLSurfaceCache>();
+    panel3DSurfaceCache->setSize(jmax(1, panel3D.getWidth()), jmax(1, panel3D.getHeight()));
+    panel3DSurfaceCache->create();
+    // The bake includes the panel background, so its composite is opaque.
+    panel3DSurfaceCache->allocate(false);
+    panel3DRenderer = std::make_unique<GLPanelRenderer>(panel3DGfx, panel3DSurfaceCache.get());
     panel3D.setGraphicsHelper(panel3DGfx);
     panel3D.setPanelRenderer(panel3DRenderer.get());
     panel3DGfx->initializeTextures();
@@ -323,11 +328,17 @@ void TrimeshPanelHosts::releaseSharedGlResources() {
     if (panel3DRenderer != nullptr) {
         panel3DRenderer->clearResources();
     }
+    if (panel3DSurfaceCache != nullptr) {
+        panel3DSurfaceCache->clear();
+        panel3DSurfaceCache = nullptr;
+    }
     panel3D.setPanelRenderer(nullptr);
     panel3DRenderer = nullptr;
     panel3D.setGraphicsHelper(nullptr);
     panel3DGfx = nullptr;
     sharedGlResourcesInitialised = false;
+    surfaceCacheSize = {};
+    surfaceCacheScale = 0.f;
     panel3DVisible = false;
 }
 
@@ -335,6 +346,14 @@ void TrimeshPanelHosts::renderPanel3D(Rectangle<float> bounds, float scaleFactor
     panel3DVisible = !bounds.isEmpty();
     invalidation.notifyAvailabilityChanged();
     initialiseSharedGlResources();
+    const Point<int> size(jmax(1, panel3D.getWidth()), jmax(1, panel3D.getHeight()));
+    if (surfaceCacheSize != size || surfaceCacheScale != scaleFactor) {
+        panel3DSurfaceCache->setSize(size.x, size.y);
+        panel3DSurfaceCache->setRenderScale(scaleFactor);
+        surfaceCacheSize = size;
+        surfaceCacheScale = scaleFactor;
+        panel3D.bakeTexturesNextRepaint();
+    }
     renderPanel(panel3D, bounds.withWidth((float) panel3DHost->getWidth())
             .withHeight((float) panel3DHost->getHeight()), scaleFactor);
 }

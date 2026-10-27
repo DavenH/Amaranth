@@ -61,7 +61,7 @@ public:
     void drawInterceptsAndHighlightClosest() override;
     void drawLinSurface(const vector<Column>& grid);
     void drawLogSurface(const vector<Column>& grid);
-    void drawSurface();
+    virtual void drawSurface();
     void freeResources();
     void highlightCurrentIntercept() override;
     bool paintSharedCanvasDebugOverlay(juce::Graphics& g, const juce::Rectangle<int>& bounds) const override;

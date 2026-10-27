@@ -25,14 +25,13 @@ struct EnvelopeMorphSurfacePreview::Impl final :
         ,   repaint (std::move(repaint))
         ,   interactor (&environment.getRepo(), "EnvelopeSurfaceZoom")
         ,   panel (&environment.getRepo(), *this)
-        ,   host (panel, *this) {
+        ,   host (panel, *this, CurvePanelHost::ExpandedRendering::DirectOpenGL) {
         interactor.init();
         interactor.stopTimer();
         interactor.vertexLimits[Vertex::Phase] = { 0.f, 10.f };
         interactor.setRasterizer(&rasterizer);
         panel.setInteractor(&interactor);
         panel.setInteractorMouseListenerEnabled(false);
-        panel.setSharedCanvasMode(true);
         panel.setPrimaryAxisVertical(true);
         panel.setUseVertices(false);
         panel.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::EnvelopeSignal));

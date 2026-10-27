@@ -5,6 +5,11 @@
 
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Nodes/Envelope/Editor/EnvelopeEditorComponent.h"
+#include "Nodes/Curve/Editor/CurveEditorWidget.h"
+#include "Nodes/Trimesh/Panel/TrimeshPanelBridge.h"
+#include "Nodes/Guide/GuideCurveSnapshotProvider.h"
+#include "Graph/GraphNodeFactory.h"
 #include "Nodes/Envelope/EnvelopePitchPreview.h"
 #include "Runtime/PreviewTraversal.h"
 #include "Runtime/GraphPresentationModel.h"
@@ -23,6 +28,16 @@ using namespace CycleV2;
 using namespace juce;
 
 namespace {
+
+struct PlaybackPanelCurveTables {
+    PlaybackPanelCurveTables() { Curve::calcTable(); }
+    ~PlaybackPanelCurveTables() {
+        if (owned) {
+            Curve::deleteTable();
+        }
+    }
+    bool owned { Curve::table == nullptr };
+};
 
 std::shared_ptr<const EnvelopeConfiguration> loopEnvelope(
         float end = 1.5f, float blueEnd = -1.f, bool enabled = true) {
@@ -633,4 +648,64 @@ TEST_CASE("Trimesh keyboard diamonds stay on the primary axis until voices end",
     overlay.appendAutomation(state, Vertex::Red, false, true);
     REQUIRE(state.getProperty("playbackDots").getArray()->isEmpty());
     REQUIRE(state.getProperty("playbackCursors").getArray()->size() == 1);
+}
+
+TEST_CASE("Envelope editor background leaves its 3D surface visible",
+        "[cycle-v2][ui][morph-surface][playback-render-cost]") {
+    ScopedJuceInitialiser_GUI juce;
+    PlaybackPanelCurveTables curveTables;
+    auto node = GraphNodeFactory().createNode(NodeKind::Envelope, "env", {});
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == "dimensionCount") {
+            parameter.value = "3";
+        }
+    }
+    CurveEditorWidget widget(NodeKind::Envelope);
+    EnvelopeEditorComponent editor(widget);
+    editor.setBounds(0, 0, 1100, 800);
+    editor.setNode(node);
+    const auto surface = editor.automationState()["morphSurfaceBounds"];
+    const int left = (int) surface["x"];
+    const int top = (int) surface["y"];
+    const int width = (int) surface["width"];
+    const int height = (int) surface["height"];
+    REQUIRE(width > 100);
+    REQUIRE(height > 100);
+    Image image(Image::ARGB, editor.getWidth(), editor.getHeight(), true);
+    Graphics graphics(image);
+    editor.paint(graphics);
+    for (const float fraction : { 0.25f, 0.5f, 0.75f }) {
+        REQUIRE(image.getPixelAt(left + roundToInt(width * fraction),
+                top + roundToInt(height * fraction)).isTransparent());
+    }
+    REQUIRE(image.getPixelAt(1000, 100).getAlpha() == 255);
+}
+
+TEST_CASE("Unchanged Trimesh profiles reuse prepared Guide tables",
+        "[cycle-v2][ui][playback-render-cost]") {
+    ScopedJuceInitialiser_GUI juce;
+    PlaybackPanelCurveTables curveTables;
+    TrimeshPanelBridge bridge;
+    auto mesh = std::shared_ptr<Mesh>(new Mesh(), [](Mesh* owned) {
+        owned->destroy();
+        delete owned;
+    });
+    mesh->deepCopy(&bridge.getModel().currentMesh());
+    REQUIRE(bridge.applyPreparedGuides({ mesh, std::make_shared<GuideCurveSnapshotProvider>(), 0 }));
+    const auto preparations = [&] {
+        DynamicObject state;
+        bridge.getPanel3D().appendPrimaryAxisAutomation(state);
+        return (int64) state.getProperty("guideTablePreparationCount");
+    };
+    const auto before = preparations();
+    for (int redraw = 0; redraw < 20; ++redraw) {
+        bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal));
+    }
+    REQUIRE(preparations() == before);
+    bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::SpectralMagnitudeSignal));
+    REQUIRE(preparations() == before + 1);
+    for (int redraw = 0; redraw < 20; ++redraw) {
+        bridge.setRenderProfile(TrimeshRenderProfile::fromDomain(PortDomain::SpectralMagnitudeSignal));
+    }
+    REQUIRE(preparations() == before + 1);
 }

@@ -14,6 +14,7 @@ public:
             Range<float> timeRange, const std::vector<Rasterization::EnvelopeSurfaceMarkers>& markers, bool bipolar = false);
     void setSurfaceImage(Image image, Range<float> timeRange);
     void drawCurvesAndSurfaces() override;
+    bool usesCachedSurface() const override { return false; }
     uint64_t textureUploadCount() const { return uploads; }
 
 private:
