@@ -248,7 +248,7 @@ public:
 
                 case CommandToggleComparisonShelf:
                     result.setInfo("Show Comparison Shelf",
-                            "Show wave references and pinned Spies beside Trimesh",
+                            "Expand or collapse wave references and pinned Spies",
                             "View", 0);
                     result.setActive(workspace != nullptr
                             && workspace->canShowComparisonShelf());

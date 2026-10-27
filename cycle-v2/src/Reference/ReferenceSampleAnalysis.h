@@ -13,9 +13,12 @@ struct ReferenceSampleAnalysis {
     std::unique_ptr<PitchedSample> sample;
     std::vector<Vertex2> pitchPath;
     std::vector<float> cyclogram;
+    std::vector<float> cyclePositions;
     uint64_t cyclogramRevision {};
     int columns {};
     int rows {};
+    int maximumColumns { 1024 };
+    int maximumRows { 1024 };
     float pitchInsecurity {};
     bool lowConfidence {};
     juce::String error;
@@ -28,8 +31,8 @@ class ReferenceSampleAnalyzer {
 public:
     static ReferenceSampleAnalysis analyze(
             const juce::File& file,
-            int columns = 160,
-            int rows = 256);
+            int maximumColumns = 1024,
+            int maximumRows = 1024);
     static void refreshCyclogram(ReferenceSampleAnalysis& analysis);
 };
 

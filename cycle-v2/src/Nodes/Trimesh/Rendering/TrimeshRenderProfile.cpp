@@ -44,9 +44,10 @@ std::vector<float> logarithmicSourceRows(
         size_t outputRows,
         size_t sourceRowCount,
         int midiNote,
-        bool excludeDc) {
+        bool excludeDc,
+        double sampleRate = 44100.0) {
     std::vector<float> sourceRows(outputRows);
-    LogRegionMapping(midiNote).fillSourceUnits(Buffer<float>(
+    LogRegionMapping(midiNote, sampleRate).fillSourceUnits(Buffer<float>(
             sourceRows.data(),
             (int) sourceRows.size()));
     const float firstSourceRow = excludeDc ? 1.f : 0.f;
@@ -77,19 +78,22 @@ std::vector<float> logarithmicRowsToDisplay(
         size_t columns,
         size_t rows,
         int midiNote,
-        bool excludeDc) {
+        bool excludeDc,
+        double sampleRate = 44100.0,
+        size_t outputRows = 0) {
     if (columns == 0 || rows < 2 || source.size() < columns * rows) {
         return source;
     }
 
-    std::vector<float> surface(source.size());
+    const size_t displayRows = outputRows > 0 ? outputRows : rows;
+    std::vector<float> surface(columns * displayRows);
     const std::vector<float> sourceRows = logarithmicSourceRows(
-            rows, rows, midiNote, excludeDc);
+            displayRows, rows, midiNote, excludeDc, sampleRate);
     for (size_t column = 0; column < columns; ++column) {
         const size_t columnOffset = column * rows;
         resampleLogarithmicColumn(
                 source.data() + columnOffset,
-                surface.data() + columnOffset,
+                surface.data() + column * displayRows,
                 rows,
                 sourceRows);
     }
@@ -205,7 +209,10 @@ std::vector<float> mapSpectralGridToDisplay(
         size_t rows,
         PortDomain domain,
         float magnitudeTension,
-        int midiNote) {
+        int midiNote,
+        bool includesDc,
+        double sampleRate,
+        size_t outputRows) {
     return logarithmicRowsToDisplay(
             mapSpectralValuesToDisplay(
                     source,
@@ -216,7 +223,9 @@ std::vector<float> mapSpectralGridToDisplay(
             columns,
             rows,
             midiNote,
-            true);
+            includesDc,
+            sampleRate,
+            outputRows);
 }
 
 }
@@ -269,7 +278,10 @@ std::vector<float> TrimeshRenderProfile::mapSpectrum2DGridToDisplay(
         const std::vector<float>& source,
         size_t columns,
         size_t rows,
-        int midiNote) const {
+        int midiNote,
+        bool includesDc,
+        double sampleRate,
+        size_t outputRows) const {
     if (source.empty()) {
         return source;
     }
@@ -283,7 +295,10 @@ std::vector<float> TrimeshRenderProfile::mapSpectrum2DGridToDisplay(
             rows,
             domain,
             500.f,
-            midiNote);
+            midiNote,
+            includesDc,
+            sampleRate,
+            outputRows);
 }
 
 std::vector<float> TrimeshRenderProfile::mapTrimeshValuesToDisplay(

@@ -202,6 +202,12 @@ public:
         Panel2D::repaint();
     }
 
+    void setEnvelopeReleaseEnabled(bool shouldEnableRelease) override {
+        envelopeReleaseEnabled = shouldEnableRelease;
+        updateZoomBounds(false);
+        Panel2D::repaint();
+    }
+
     void setEnvelopeDimensions(int count, bool yellowLinked) override {
         dimensionCount = count;
         envelopeYellowLinked = yellowLinked;
@@ -429,6 +435,7 @@ public:
         root->setProperty("selectionBox", selectionBounds);
         root->setProperty("hasCurrentCube", state.currentCube != nullptr);
         root->setProperty("bipolar", isCurveBipolar());
+        root->setProperty("releaseEnabled", envelopeReleaseEnabled);
         root->setProperty("fillBaseline", envelopeFillBaseline());
         root->setProperty("neutralLineVisible", isCurveBipolar());
         root->setProperty("horizontalMinorGridLineCount", horzMinorLines.size());
@@ -807,7 +814,7 @@ protected:
         const float yPadding = ySpan * 0.12f;
 
         zoomPanel->rect.xMinimum = 0.f;
-        zoomPanel->rect.xMaximum = jmax(1.5f, maxX + xPadding);
+        zoomPanel->rect.xMaximum = envelopeReleaseEnabled ? jmax(1.5f, maxX + xPadding) : 1.f;
         zoomPanel->rect.yMinimum = 0.f;
         zoomPanel->rect.yMaximum = 1.f;
         vertexLimits[Vertex::Phase].setEnd(zoomPanel->rect.xMaximum);
@@ -817,6 +824,10 @@ protected:
             zoomPanel->rect.w = jmin(
                     zoomPanel->rect.xMaximum - zoomPanel->rect.x,
                     maxX + xPadding - zoomPanel->rect.x);
+            if (!envelopeReleaseEnabled) {
+                zoomPanel->rect.x = 0.f;
+                zoomPanel->rect.w = 1.f;
+            }
             zoomPanel->rect.y = jmax(0.f, 1.f - maxY - yPadding);
             zoomPanel->rect.h = jmin(1.f - zoomPanel->rect.y, ySpan + 2.f * yPadding);
         }
@@ -915,6 +926,9 @@ protected:
     }
 
     float envelopeReleaseStart() const {
+        if (!envelopeReleaseEnabled) {
+            return 1.f;
+        }
         int loopIndex = -1;
         int sustainIndex = -1;
         envRasterizer.getIndices(loopIndex, sustainIndex);
@@ -1053,6 +1067,9 @@ protected:
     }
 
     float envelopeLoopStart() const {
+        if (!envelopeReleaseEnabled) {
+            return -1.f;
+        }
         int loopIndex = -1;
         int sustainIndex = -1;
         envRasterizer.getIndices(loopIndex, sustainIndex);
@@ -1131,6 +1148,7 @@ protected:
 
     bool enabled { true };
     bool envelopeLogarithmic {};
+    bool envelopeReleaseEnabled { true };
     bool morphPositionApplied {};
     int dimensionCount { 2 };
     bool envelopeYellowLinked { true };

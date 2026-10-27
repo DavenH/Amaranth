@@ -94,6 +94,10 @@ public:
             InlinePresetBrowser::ActionCallback browseCallback,
             InlinePresetBrowser::ActionCallback createCallback,
             LibraryFavorites* favorites = nullptr);
+    void configureReferenceSidebar(ReferenceAssetBrowser& browser);
+    void showReferenceAssets();
+    void showReferenceEditor(Component& editor);
+    void closeReferenceEditor();
     void refreshPresetSidebarFavorites();
     void refreshPresetSidebarIndex();
     void refreshPresetSidebarRecord(const juce::File& file);
@@ -307,6 +311,7 @@ private:
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
     std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
     std::unique_ptr<InlinePresetBrowser> presetSidebar;
+    Component::SafePointer<Component> referenceEditor;
     UnisonPreviewContext globalUnisonPreviewContext;
     std::function<void()> graphDocumentStateChangedCallback;
     uint32 compiledStateRefreshDueMs {};

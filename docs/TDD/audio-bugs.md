@@ -1144,6 +1144,14 @@ failed `Spectral frame refresh count is independent of Unison order` for the
 `0.02` tolerance. Focused realtime executor and prepared-context tests pass;
 retain this as an open oscillator-region partition/parity issue.
 
+On 2026-10-25, `[reference],[spectral]` again reports the same secondary value
+`0.225972116` versus `0.7148094`, absent spectral-reference/Sitar presets and the
+pitch-independent spectral-control fixture load failure. The run has twelve
+failing cases including the existing mesh-preview fixtures; the fourteen focused
+reference cases and direct signal display mapping checks pass. Evidence:
+`.context/reference-spectrum-tests.log`. No audio/runtime preset files are changed
+by the reference analysis work.
+
 ## P2: Shared-library spectral capture tests cannot write temporary artifacts
 
 Context:

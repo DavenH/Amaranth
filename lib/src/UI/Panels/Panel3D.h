@@ -32,6 +32,7 @@ public:
         virtual CriticalSection& getGridLock() = 0;
         virtual uint64_t getScalarSurfaceRevision() const { return 0; }
         virtual bool hasStableScalarSurfaceRevision() const { return false; }
+        virtual bool hasUniformColumnSpacing() const { return true; }
     };
 
     /* ----------------------------------------------------------------------------- */

@@ -521,14 +521,23 @@ bool GLScalarSurfaceRenderer::draw(const ScalarSurfaceRenderData& data) {
 
     const auto bounds = data.bounds;
     gl::glBegin(gl::GL_QUADS);
-    gl::glTexCoord2f(1.f, 0.f);
-    gl::glVertex2f(bounds.getX(), bounds.getY());
-    gl::glTexCoord2f(1.f, 1.f);
-    gl::glVertex2f(bounds.getRight(), bounds.getY());
-    gl::glTexCoord2f(0.f, 1.f);
-    gl::glVertex2f(bounds.getRight(), bounds.getBottom());
-    gl::glTexCoord2f(0.f, 0.f);
-    gl::glVertex2f(bounds.getX(), bounds.getBottom());
+    const int spans = data.columnPositions != nullptr ? data.columns - 1 : 1;
+    for (int index = 0; index < spans; ++index) {
+        const float left = data.columnPositions != nullptr
+                ? data.columnPositions[index] : bounds.getX();
+        const float right = data.columnPositions != nullptr
+                ? data.columnPositions[index + 1] : bounds.getRight();
+        const float start = (float) index / (float) spans;
+        const float end = (float) (index + 1) / (float) spans;
+        gl::glTexCoord2f(1.f, start);
+        gl::glVertex2f(left, bounds.getY());
+        gl::glTexCoord2f(1.f, end);
+        gl::glVertex2f(right, bounds.getY());
+        gl::glTexCoord2f(0.f, end);
+        gl::glVertex2f(right, bounds.getBottom());
+        gl::glTexCoord2f(0.f, start);
+        gl::glVertex2f(left, bounds.getBottom());
+    }
     gl::glEnd();
 
     gl::glTexEnvi(gl::GL_TEXTURE_ENV, gl::GL_TEXTURE_ENV_MODE, previousTextureMode);

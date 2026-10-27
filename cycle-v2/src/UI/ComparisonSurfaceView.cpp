@@ -1,4 +1,5 @@
 #include "UI/ComparisonSurfaceView.h"
+#include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 
 #include "Nodes/Trimesh/Panel/TrimeshInteractor3D.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
@@ -13,6 +14,7 @@
 #include <UI/Panels/PanelHostContext.h>
 #include <UI/Panels/PanelInputHostComponent.h>
 #include <UI/Panels/ZoomPanel.h>
+#include <Util/LogRegionMapping.h>
 
 #include <atomic>
 
@@ -25,47 +27,78 @@ namespace {
 class ComparisonGridSource final : public Panel3D::DataRetriever {
 public:
     void setGrid(const std::vector<float>& values, size_t columns, size_t rows,
-            PortDomain domain, int note, float sourceGain) {
+            PortDomain domain, int note, float sourceGain, bool includesDc, double sampleRate,
+            const std::vector<float>& positions, size_t maximumRows) {
         const juce::ScopedLock lock(gridLock);
-        storage = values;
         panelColumns.clear();
-        if (columns < 2 || rows < 2 || storage.size() < columns * rows) {
-            storage.clear();
+        if (columns < 2 || rows < 2 || values.size() < columns * rows) {
             displayStorage.clear();
             ++revision;
             return;
         }
-        displayStorage = TrimeshRenderProfile::fromDomain(domain)
-                .mapGridToDisplay(storage, columns, rows, note, sourceGain);
+        const auto profile = TrimeshRenderProfile::fromDomain(domain);
+        const int legacyNote = note + LogRegionMapping::legacyMidiNoteBias;
+        if (domain == PortDomain::SpectralMagnitudeSignal || domain == PortDomain::SpectralPhaseSignal) {
+            const size_t displayRows = maximumRows > 0 ? std::min(rows, maximumRows) : rows;
+            displayStorage = profile.mapSpectrum2DGridToDisplay(values, columns, rows,
+                    legacyNote, includesDc, sampleRate, displayRows);
+            rows = displayRows;
+        } else {
+            displayStorage = profile.mapGridToDisplay(values, columns, rows, legacyNote, sourceGain);
+        }
         panelColumns.reserve(columns);
+        uniformColumns = positions.size() != columns;
         for (size_t index = 0; index < columns; ++index) {
-            panelColumns.emplace_back(storage.data() + index * rows,
-                    (int) rows, (float) index / (float) (columns - 1), (char) note);
+            panelColumns.emplace_back(displayStorage.data() + index * rows,
+                    (int) rows, uniformColumns ? (float) index / (float) (columns - 1)
+                            : positions[index], (char) legacyNote);
         }
         ++revision;
     }
 
     Buffer<float> getColumnArray() override {
-        return storage.empty()
-                ? Buffer<float>() : Buffer<float>(storage.data(), (int) storage.size());
+        return displayStorage.empty()
+                ? Buffer<float>() : Buffer<float>(displayStorage.data(), (int) displayStorage.size());
     }
 
-    Buffer<float> getScalarSurfaceArray() override {
-        return displayStorage.empty()
-                ? Buffer<float>()
-                : Buffer<float>(displayStorage.data(), (int) displayStorage.size());
-    }
+    Buffer<float> getScalarSurfaceArray() override { return getColumnArray(); }
     const std::vector<Column>& getColumns() override { return panelColumns; }
+    const std::vector<Column>& columns() const { return panelColumns; }
     juce::CriticalSection& getGridLock() override { return gridLock; }
     uint64_t getScalarSurfaceRevision() const override { return revision; }
     bool hasStableScalarSurfaceRevision() const override { return true; }
+    bool hasUniformColumnSpacing() const override { return uniformColumns; }
 
 private:
-    std::vector<float> storage;
     std::vector<float> displayStorage;
     std::vector<Column> panelColumns;
     juce::CriticalSection gridLock;
     uint64_t revision {};
+    bool uniformColumns { true };
+};
+
+// Read-only signals arrive with both amplitude and frequency mapped for display.
+// The mesh editor's stepped harmonic path expects a different, unmapped grid.
+class ComparisonPanel final : public TrimeshPanel3D {
+public:
+    ComparisonPanel(SingletonRepo* repo, Panel3D::DataRetriever& source) :
+            SingletonAccessor(repo, "ComparisonSurfacePanel")
+        ,   TrimeshPanel3D(repo, source) {}
+
+    void setSignalDomain(PortDomain domain) {
+        const auto profile = TrimeshRenderProfile::fromDomain(domain);
+        setRenderProfile(profile);
+        material = profile.getSurfaceStyle().surfaceMaterial();
+        haveLogarithmicY = false;
+    }
+
+    bool getScalarSurfaceMaterial(ScalarSurfaceMaterial& result) const override {
+        result = material;
+        return true;
+    }
+
+private:
+    ScalarSurfaceMaterial material { ScalarSurfaceMaterial::timeDomain() };
 };
 
 class ComparisonInputHost final : public PanelInputHostComponent {
@@ -82,9 +115,23 @@ private:
     void mouseMove(const juce::MouseEvent&) override {}
     void mouseExit(const juce::MouseEvent&) override {}
 
+    void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override {
+        if (view.onWheel) {
+            view.onWheel(event, wheel);
+        } else {
+            PanelInputHostComponent::mouseWheelMove(event, wheel);
+        }
+    }
+
     void mouseUp(const juce::MouseEvent& event) override {
         if (!event.mods.isPopupMenu() && view.onClicked) {
             view.onClicked();
+        }
+    }
+
+    void mouseDoubleClick(const juce::MouseEvent& event) override {
+        if (!event.mods.isPopupMenu() && view.onDoubleClicked) {
+            view.onDoubleClicked();
         }
     }
 
@@ -93,7 +140,7 @@ private:
 
 }
 
-class ComparisonSurfaceView::Impl final : private ZoomPanel::ZoomListener {
+class ComparisonSurfaceView::Impl final : private juce::ScrollBar::Listener {
 public:
     explicit Impl(ComparisonSurfaceView& ownerToUse) :
             owner(ownerToUse)
@@ -107,22 +154,29 @@ public:
         inputHost = std::make_unique<ComparisonInputHost>(panel, owner);
         panel.initWithExternalComponent(inputHost.get());
         panel.configureViewport({ 0.f, 1.f });
-        panel.getZoomPanel()->addListener(this);
+        for (bool horizontal : { true, false }) {
+            static_cast<juce::ScrollBar*>(panel.getZoomPanel()->getComponent(horizontal))->addListener(this);
+        }
         panel.getZoomPanel()->setScrollbarsVisible(false);
         owner.addAndMakeVisible(panel.getZoomPanel());
     }
 
     ~Impl() override {
-        panel.getZoomPanel()->removeListener(this);
+        for (bool horizontal : { true, false }) {
+            static_cast<juce::ScrollBar*>(panel.getZoomPanel()->getComponent(horizontal))->removeListener(this);
+        }
         panel.setInteractor(nullptr);
         interactor.setRasterizer(nullptr);
     }
 
     void setGrid(const std::vector<float>& values, size_t columns, size_t rows,
-            PortDomain domain, int note, float displayGain) {
-        source.setGrid(values, columns, rows, domain, note, displayGain);
-        panel.setRenderProfile(TrimeshRenderProfile::fromDomain(domain));
-        panel.setPreviewMidiNote(note);
+            PortDomain domain, int note, float displayGain, bool includesDc, double sampleRate,
+            const std::vector<float>& positions, size_t maximumRows) {
+        const juce::ScopedLock lock(panel.getRenderLock());
+        source.setGrid(values, columns, rows, domain, note, displayGain, includesDc,
+                sampleRate, positions, maximumRows);
+        panel.setSignalDomain(domain);
+        panel.setPreviewMidiNote(note + LogRegionMapping::legacyMidiNoteBias, sampleRate);
         panel.bakeTexturesNextRepaint();
         snapshotPending = true;
         owner.repaint();
@@ -135,11 +189,21 @@ public:
         relayingCamera = true;
         panel.getZoomPanel()->rect = camera;
         panel.getZoomPanel()->panelZoomChanged(false);
+        panel.bakeTexturesNextRepaint();
         snapshotPending = true;
         relayingCamera = false;
     }
 
     ZoomRect camera() { return panel.getZoomPanel()->rect; }
+
+    void setZoomBarsVisible(bool visible) {
+        stylePanelZoomScrollbars(*panel.getZoomPanel());
+        panel.getZoomPanel()->setScrollbarsVisible(visible);
+    }
+
+    juce::Rectangle<int> plotBounds() const {
+        return owner.getLocalArea(inputHost.get(), inputHost->getLocalBounds());
+    }
 
     bool renderOpenGL(float scaleFactor) {
         const int width = inputHost->getWidth();
@@ -199,13 +263,27 @@ public:
                 .withWidth(inputHost->getWidth()).withHeight(inputHost->getHeight()));
     }
 
-    juce::var automationDiagnostics() const {
+    juce::var automationDiagnostics() {
         auto result = std::make_unique<juce::DynamicObject>();
         result->setProperty("attached", resourceReady.load());
         result->setProperty("renderCount", renderCount.load());
         result->setProperty("contextCreateCount", contextCreateCount.load());
         result->setProperty("width", inputHost->getWidth());
         result->setProperty("height", inputHost->getHeight());
+        result->setProperty("gridColumns", (int) source.columns().size());
+        result->setProperty("gridRows", source.columns().empty() ? 0 : source.columns().front().size());
+        result->setProperty("uniformColumnSpacing", source.hasUniformColumnSpacing());
+        if (!source.columns().empty()) {
+            result->setProperty("firstColumnTime", source.columns().front().x);
+            result->setProperty("lastColumnTime", source.columns().back().x);
+        }
+        auto* view = new juce::DynamicObject();
+        const auto& rect = panel.getZoomPanel()->rect;
+        view->setProperty("x", rect.x);
+        view->setProperty("y", rect.y);
+        view->setProperty("w", rect.w);
+        view->setProperty("h", rect.h);
+        result->setProperty("camera", juce::var(view));
         result->setProperty("errorCount", 0);
         return { result.release() };
     }
@@ -216,11 +294,22 @@ public:
     }
 
 private:
-    void zoomUpdated(int) override {
-        snapshotPending = true;
-        if (!relayingCamera && owner.onCameraChanged) {
-            owner.onCameraChanged(camera());
+    void scrollBarMoved(juce::ScrollBar*, double) override {
+        if (relayingCamera) {
+            return;
         }
+        juce::Component::SafePointer<ComparisonSurfaceView> safeOwner(&owner);
+        juce::MessageManager::callAsync([safeOwner] {
+            if (safeOwner != nullptr) {
+                auto& self = *safeOwner->impl;
+                self.snapshotPending = true;
+                self.panel.bakeTexturesNextRepaint();
+                if (safeOwner->onCameraChanged) {
+                    safeOwner->onCameraChanged(self.camera());
+                }
+                safeOwner->repaint();
+            }
+        });
     }
 
     ComparisonSurfaceView& owner;
@@ -228,7 +317,7 @@ private:
     ComparisonGridSource source;
     Rasterization::TrilinearMeshRasterizer rasterizer;
     TrimeshInteractor3D interactor;
-    TrimeshPanel3D panel;
+    ComparisonPanel panel;
     std::unique_ptr<PanelInputHostComponent> inputHost;
     CommonGL* graphics {};
     std::unique_ptr<GLPanelRenderer> renderer;
@@ -251,8 +340,13 @@ void ComparisonSurfaceView::setGrid(
         size_t rows,
         PortDomain domain,
         int note,
-        float displayGain) {
-    impl->setGrid(values, columns, rows, domain, note, displayGain);
+        float displayGain,
+        bool includesDc,
+        double sampleRate,
+        const std::vector<float>& positions,
+        size_t maximumRows) {
+    impl->setGrid(values, columns, rows, domain, note, displayGain, includesDc,
+            sampleRate, positions, maximumRows);
 }
 
 void ComparisonSurfaceView::setCamera(const ZoomRect& camera) {
@@ -262,6 +356,9 @@ void ComparisonSurfaceView::setCamera(const ZoomRect& camera) {
 ZoomRect ComparisonSurfaceView::camera() {
     return impl->camera();
 }
+
+void ComparisonSurfaceView::setZoomBarsVisible(bool visible) { impl->setZoomBarsVisible(visible); }
+juce::Rectangle<int> ComparisonSurfaceView::plotBounds() const { return impl->plotBounds(); }
 
 bool ComparisonSurfaceView::renderOpenGL(float scaleFactor) {
     GLint viewport[4] {};

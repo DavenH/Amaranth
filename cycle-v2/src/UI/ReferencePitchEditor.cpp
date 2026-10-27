@@ -2,46 +2,36 @@
 #include <UI/Panels/CommonGL.h>
 #include <UI/Panels/Panel.h>
 #include <UI/Panels/ZoomPanel.h>
-#include <Util/LogRegionMapping.h>
 
 #include "Nodes/Curve/Panel/ConcreteCurvePanels.h"
 #include "Nodes/Envelope/EnvelopeMeshState.h"
-#include "UI/CanvasChromePalette.h"
 #include "UI/ReferencePitchEditor.h"
+#include "UI/ComparisonSurfaceView.h"
+#include "UI/CanvasChromeMetrics.h"
+#include "EnvelopePurposeIconData.h"
+#include "UiIconData.h"
 
 using namespace gl;
 
 namespace CycleV2 {
 
-namespace {
-
-juce::String noteLabel(double value) {
-    const int note = juce::roundToInt(value) - LogRegionMapping::legacyMidiNoteBias;
-    const auto name = note >= 0
-            ? juce::MidiMessage::getMidiNoteName(note, true, true, 4) : juce::String("MIDI");
-    return name + "  " + juce::String(note);
-}
-
-std::optional<double> parseNote(const juce::String& text) {
-    const juce::String number = text.fromLastOccurrenceOf(" ", false, false).trim();
-    const auto digits = number.startsWithChar('-') ? number.substring(1) : number;
-    if (digits.isEmpty() || !digits.containsOnly("0123456789")) {
-        return std::nullopt;
-    }
-    const int standardNote = number.getIntValue();
-    if (standardNote < -LogRegionMapping::legacyMidiNoteBias
-            || standardNote >= 128 - LogRegionMapping::legacyMidiNoteBias) {
-        return std::nullopt;
-    }
-    return (double) (standardNote + LogRegionMapping::legacyMidiNoteBias);
-}
-
-}
-
 ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
         library     (libraryToUse)
-    ,   fundamental (*this, "Fundamental") {
+    ,   chrome      (*this, "Wave Reference", "referencePitch", [this] {
+            if (onClose) {
+                onClose();
+            }
+        })
+    ,   cyclogram   (std::make_unique<ComparisonSurfaceView>())
+    ,   timeView    ("Cyclogram", "Period-folded waveform", "Cyclogram", UiIconData::referenceCyclogram)
+    ,   spectrumView("Spectrogram", "Harmonic spectrum over time", "Spectrogram", UiIconData::referenceSpectrogram)
+    ,   pitchView   ("Pitch envelope", "Edit the reference pitch envelope", "Pitch envelope", EnvelopePurposeIconData::pitch)
+    ,   waveformView("Waveform", "View recording density and samples", "Waveform", UiIconData::referenceCyclogram)
+    ,   zoomAttack  ("Zoom to attack", "Focus on the reference attack", "Zoom to attack", UiIconData::zoomAttack)
+    ,   zoomFit     ("Fit pitch range", "Fit the pitch envelope vertically", "Fit pitch range", UiIconData::envelopeZoomFit)
+    ,   zoomFull    ("Full reference view", "Show the full reference and pitch range", "Full view", UiIconData::zoomFull) {
     setOpaque(true);
+    addAndMakeVisible(*cyclogram);
     setWantsKeyboardFocus(true);
     EnvelopeMeshState::replacePointPath(mesh,
             { Vertex2(0.f, 0.5f), Vertex2(1.f, 0.5f) });
@@ -49,32 +39,59 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
             &environment.services().getRepo(), environment.services(), mesh);
     panel->setEnvelopeAxisLinks(true, true);
     panel->setEnvelopeBipolar(false);
+    panel->setEnvelopeReleaseEnabled(false);
     host = std::make_unique<CurvePanelHost>(panel->hostedPanel(),
             static_cast<CurvePanelHostDelegate&>(*this));
-    addAndMakeVisible(host->component());
-
-    fundamental.slider.setRange(0, 127, 1);
-    fundamental.slider.setKeyboardSteps(1, 1);
-    fundamental.configureValuePresentation(
-            noteLabel,
-            parseNote,
-            60 + LogRegionMapping::legacyMidiNoteBias,
-            1,
-            1,
-            "The reference's detected fundamental and comparison MIDI note");
-    fundamental.slider.onDragStart = [this] { draggingFundamental = true; };
-    fundamental.slider.onDragEnd = [this] {
-        draggingFundamental = false;
-        commitFundamental();
-    };
-    fundamental.slider.onValueChange = [this] {
-        if (!draggingFundamental) {
-            commitFundamental();
+    auto* zoom = static_cast<ZoomPanel*>(host->zoomComponent());
+    for (bool horizontal : { true, false }) {
+        auto* bar = static_cast<juce::ScrollBar*>(zoom->getComponent(horizontal));
+        bar->setTitle(horizontal ? "Reference time" : "Pitch range");
+        bar->addListener(this);
+    }
+    addAndMakeVisible(zoom);
+    addChildComponent(waveform);
+    waveform.onWheel = [this](const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
+        if (auto* component = host->componentIfCreated()) {
+            component->mouseWheelMove(event.getEventRelativeTo(component), wheel);
         }
     };
+
+    configureViewControls();
+}
+
+void ReferencePitchEditor::configureViewControls() {
+    cyclogram->setZoomBarsVisible(false);
+    cyclogram->onCameraChanged = [this](const ZoomRect&) { syncTimeZoom(true); };
+    for (auto* button : { &timeView, &spectrumView, &pitchView, &waveformView, &zoomAttack, &zoomFit, &zoomFull }) {
+        addAndMakeVisible(button);
+    }
+    timeView.setComponentID("referencePitch.time");
+    spectrumView.setComponentID("referencePitch.spectrum");
+    pitchView.setComponentID("referencePitch.pitch");
+    waveformView.setComponentID("referencePitch.waveform");
+    pitchView.setToggleState(true, juce::dontSendNotification);
+    pitchView.onClick = [this] { setWaveformMode(false); };
+    waveformView.onClick = [this] { setWaveformMode(true); };
+    zoomAttack.setComponentID("referencePitch.zoomAttack");
+    zoomFit.setComponentID("referencePitch.zoomFit");
+    zoomFull.setComponentID("referencePitch.zoomFull");
+    timeView.setToggleState(true, juce::dontSendNotification);
+    timeView.onClick = [this] { setSurfaceMode(false); };
+    spectrumView.onClick = [this] { setSurfaceMode(true); };
+    zoomAttack.onClick = [this] {
+        panel->hostedPanel().getZoomPanel()->zoomToAttack();
+        syncTimeZoom(false);
+    };
+    zoomFit.onClick = [this] { fitLowerView(); };
+    zoomFull.onClick = [this] { resetView(); };
 }
 
 ReferencePitchEditor::~ReferencePitchEditor() {
+    for (bool horizontal : { true, false }) {
+        static_cast<juce::ScrollBar*>(panel->hostedPanel().getZoomPanel()->getComponent(horizontal))
+                ->removeListener(this);
+    }
+    cyclogram->releaseOpenGLResources();
     host->releaseSharedGlResources();
     host.reset();
     panel.reset();
@@ -85,7 +102,16 @@ bool ReferencePitchEditor::open(const juce::String& referenceId) {
     if (library.analysisFor(referenceId) == nullptr) {
         return false;
     }
+    if (openedId != referenceId) {
+        surfaceCache.reset();
+        waveform.setSample(nullptr);
+        displayedGeneration = -1;
+        cyclogram->setCamera(ZoomRect());
+    }
     openedId = referenceId;
+    if (const auto* record = library.selectedRecord()) {
+        chrome.setTitle(record->name);
+    }
     syncFromLibrary();
     return true;
 }
@@ -95,22 +121,157 @@ void ReferencePitchEditor::syncFromLibrary() {
     if (analysis == nullptr) {
         return;
     }
+    refreshCyclogram();
     panel->clearInteractionState();
     EnvelopeMeshState::replacePointPath(mesh, analysis->pitchPath);
+    // Reference point paths occupy the static time slice.
+    panel->setControlValues(true, 0.5f, 0.5f, 0.f, 0);
     panel->refreshRasterizer();
     panel->updateZoomBounds(true);
-    panel->resetEnvelopeVerticalRange();
-    fundamental.slider.setValue(analysis->sample->fundNote,
-            juce::NotificationType::dontSendNotification);
-    fundamental.refreshValueText();
+    panel->fitEnvelopeVerticalRange();
+    const auto& fitted = panel->hostedPanel().getZoomPanel()->rect;
+    pitchVertical = { fitted.y, fitted.h };
+    if (waveformMode) {
+        auto* zoom = panel->hostedPanel().getZoomPanel();
+        zoom->rect.y = waveformVertical.x;
+        zoom->rect.h = waveformVertical.y;
+        zoom->panelZoomChanged(false);
+    }
+    syncTimeZoom(false);
     if (onRenderRequested) {
         onRenderRequested();
     }
     repaint();
 }
 
+void ReferencePitchEditor::refreshCyclogram() {
+    const auto* analysis = library.analysisFor(openedId);
+    if (analysis == nullptr) {
+        return;
+    }
+    waveform.setSample(analysis->sample.get());
+    const bool desiredMode = library.spectralViewFor(openedId);
+    if (spectral != desiredMode) {
+        spectral = desiredMode;
+        timeView.setToggleState(!spectral, juce::dontSendNotification);
+        spectrumView.setToggleState(spectral, juce::dontSendNotification);
+        auto camera = cyclogram->camera();
+        camera.y = 0.f;
+        camera.h = 1.f;
+        cyclogram->setCamera(camera);
+    }
+    surfaceCache.refresh(*analysis);
+    if (displayedGeneration == surfaceCache.generation() && displayedSpectral == spectral) {
+        return;
+    }
+    const auto& surface = surfaceCache.surface(spectral);
+    cyclogram->setGrid(surface.values, surface.gridColumns, surface.gridRows,
+            surface.domain, analysis->standardMidiNote(), spectral ? 1.f : 2.f,
+            false, analysis->sample->samplerate, surfaceCache.columnPositions(), (size_t) analysis->maximumRows);
+    displayedGeneration = surfaceCache.generation();
+    displayedSpectral = spectral;
+}
+
+void ReferencePitchEditor::setSurfaceMode(bool shouldUseSpectrum) {
+    if (!library.setSpectralView(openedId, shouldUseSpectrum)) {
+        return;
+    }
+    refreshCyclogram();
+    syncTimeZoom(true);
+    if (onViewModeChanged) {
+        onViewModeChanged();
+    }
+}
+
+void ReferencePitchEditor::syncTimeZoom(bool fromSurface) {
+    if (linkingTimeZoom) {
+        return;
+    }
+    const juce::ScopedValueSetter<bool> linking(linkingTimeZoom, true);
+    auto* zoom = panel->hostedPanel().getZoomPanel();
+    auto camera = cyclogram->camera();
+    if (fromSurface) {
+        zoom->rect.x = camera.x;
+        zoom->rect.w = camera.w;
+        zoom->panelZoomChanged(false);
+    } else {
+        camera.x = zoom->rect.x;
+        camera.w = zoom->rect.w;
+        cyclogram->setCamera(camera);
+    }
+    auto waveformCamera = zoom->rect;
+    if (!waveformMode) {
+        waveformCamera.y = waveformVertical.x;
+        waveformCamera.h = waveformVertical.y;
+    }
+    waveform.setViewport(waveformCamera);
+    if (waveformMode) {
+        waveformVertical = { zoom->rect.y, zoom->rect.h };
+    }
+    if (onRenderRequested) {
+        onRenderRequested();
+    }
+}
+
+void ReferencePitchEditor::setWaveformMode(bool showWaveform) {
+    if (waveformMode == showWaveform) {
+        return;
+    }
+    auto* zoom = panel->hostedPanel().getZoomPanel();
+    if (waveformMode) {
+        waveformVertical = { zoom->rect.y, zoom->rect.h };
+    } else {
+        pitchVertical = { zoom->rect.y, zoom->rect.h };
+    }
+    waveformMode = showWaveform;
+    const auto vertical = waveformMode ? waveformVertical : pitchVertical;
+    zoom->rect.y = vertical.x;
+    zoom->rect.h = vertical.y;
+    zoom->panelZoomChanged(false);
+    zoom->getComponent(false)->setTitle(waveformMode ? "Amplitude range" : "Pitch range");
+    zoomFit.setTitle(waveformMode ? "Fit amplitude range" : "Fit pitch range");
+    zoomFit.setTooltip(waveformMode ? "Fit amplitude range" : "Fit pitch range");
+    pitchView.setToggleState(!waveformMode, juce::dontSendNotification);
+    waveformView.setToggleState(waveformMode, juce::dontSendNotification);
+    if (auto* component = host->componentIfCreated()) {
+        component->setVisible(!waveformMode);
+    }
+    waveform.setVisible(waveformMode);
+    syncTimeZoom(false);
+    resized();
+}
+
+void ReferencePitchEditor::fitLowerView() {
+    if (waveformMode) {
+        auto* zoom = panel->hostedPanel().getZoomPanel();
+        zoom->rect.y = 0.f;
+        zoom->rect.h = 1.f;
+        zoom->panelZoomChanged(false);
+    } else {
+        panel->fitEnvelopeVerticalRange();
+    }
+    syncTimeZoom(false);
+}
+
+void ReferencePitchEditor::resetView() {
+    panel->hostedPanel().getZoomPanel()->zoomToFull();
+    cyclogram->setCamera(ZoomRect());
+    syncTimeZoom(false);
+}
+
 void ReferencePitchEditor::renderOpenGL(float scaleFactor) {
     if (!isVisible() || host->componentIfCreated() == nullptr) {
+        return;
+    }
+    if (cyclogram->renderOpenGL(scaleFactor)) {
+        juce::Component::SafePointer<ReferencePitchEditor> safeThis(this);
+        juce::MessageManager::callAsync([safeThis] {
+            if (safeThis != nullptr) {
+                safeThis->repaint();
+            }
+        });
+    }
+    if (waveformMode) {
         return;
     }
     const auto bounds = host->componentIfCreated()->getLocalBounds().toFloat();
@@ -143,6 +304,7 @@ void ReferencePitchEditor::renderOpenGL(float scaleFactor) {
 }
 
 void ReferencePitchEditor::releaseOpenGLResources() {
+    cyclogram->releaseOpenGLResources();
     host->releaseSharedGlResources();
 }
 
@@ -150,10 +312,27 @@ juce::var ReferencePitchEditor::exportAutomationState() const {
     auto result = std::make_unique<juce::DynamicObject>();
     result->setProperty("referenceId", openedId);
     result->setProperty("visible", isVisible());
+    const auto rect = [](juce::Rectangle<int> bounds) {
+        auto* value = new juce::DynamicObject();
+        value->setProperty("x", bounds.getX());
+        value->setProperty("y", bounds.getY());
+        value->setProperty("width", bounds.getWidth());
+        value->setProperty("height", bounds.getHeight());
+        return juce::var(value);
+    };
+    result->setProperty("cyclogramBounds", rect(cyclogramBounds()));
+    result->setProperty("curveBounds", rect(curveBounds()));
+    result->setProperty("curveView", panel->automationState());
+    result->setProperty("zoomControls", host->zoomControlsState());
+    result->setProperty("surfaceView", cyclogram->automationDiagnostics());
+    result->setProperty("surfaceMode", spectral ? "spectrum" : "time");
+    result->setProperty("lowerMode", waveformMode ? "waveform" : "pitch");
+    result->setProperty("waveform", waveform.diagnostics());
+    result->setProperty("surfaceGeneration", surfaceCache.generation());
+    result->setProperty("spectrumGeneration", surfaceCache.spectrumGeneration());
     result->setProperty("pointCount", (int) mesh.getCubes().size());
-    result->setProperty("note", (int) fundamental.slider.getValue()
-            - LogRegionMapping::legacyMidiNoteBias);
     if (const auto* analysis = library.analysisFor(openedId)) {
+        result->setProperty("note", analysis->standardMidiNote());
         result->setProperty("cyclogramRevision", (int64) analysis->cyclogramRevision);
     }
     return { result.release() };
@@ -161,54 +340,98 @@ juce::var ReferencePitchEditor::exportAutomationState() const {
 
 juce::Rectangle<int> ReferencePitchEditor::curveBounds() const {
     if (const Component* component = host->componentIfCreated()) {
-        return component->getBounds();
+        return getLocalArea(component, component->getLocalBounds());
     }
     return {};
 }
 
+std::vector<std::pair<juce::String, juce::Rectangle<int>>>
+ReferencePitchEditor::pointerTargetsForAutomation() const {
+    std::vector<std::pair<juce::String, juce::Rectangle<int>>> targets {
+            { "referencePitch.curve", curveBounds() },
+            { "referencePitch.cyclogram", cyclogramBounds() },
+            { "referencePitch.close", closeBounds() }
+    };
+    for (const auto* button : { &timeView, &spectrumView, &pitchView, &waveformView, &zoomAttack, &zoomFit, &zoomFull }) {
+        targets.emplace_back(button->getComponentID(), button->getBounds());
+    }
+    for (bool horizontal : { true, false }) {
+        const auto* bar = panel->hostedPanel().getZoomPanel()->getComponent(horizontal);
+        const auto suffix = horizontal ? "X" : "Y";
+        targets.emplace_back(juce::String("referencePitch.zoom") + suffix,
+                getLocalArea(bar, bar->getLocalBounds()));
+    }
+    return targets;
+}
+
+juce::Rectangle<int> ReferencePitchEditor::cyclogramBounds() const {
+    return getLocalArea(cyclogram.get(), cyclogram->plotBounds());
+}
+
+juce::Rectangle<int> ReferencePitchEditor::closeBounds() const {
+    const auto* button = findChildWithID("referencePitch.close");
+    return button != nullptr ? button->getBounds() : juce::Rectangle<int>();
+}
+
 void ReferencePitchEditor::paint(juce::Graphics& graphics) {
-    graphics.fillAll(CanvasChromePalette::canvasBackground);
-    graphics.setColour(CanvasChromePalette::text);
-    graphics.setFont(13.f);
-    const auto* record = library.selectedRecord();
-    const juce::String title = record != nullptr
-            ? "PITCH ENVELOPE  /  " + record->name : "PITCH ENVELOPE";
-    graphics.drawText(title, 12, 5, juce::jmin(320, getWidth() / 3), 26,
-            juce::Justification::centredLeft, true);
-    graphics.setColour(CanvasChromePalette::mutedText);
-    graphics.setFont(17.f);
-    graphics.drawText(juce::String::charToString(0x00d7), getWidth() - 36, 5, 28, 26,
-            juce::Justification::centred);
+    chrome.paint(graphics);
 }
 
 void ReferencePitchEditor::resized() {
-    const int rightInset = 44;
-    const int noteWidth = juce::jmin(370, juce::jmax(270, getWidth() / 3));
-    fundamental.setBounds({ getWidth() - rightInset - noteWidth, 4, noteWidth, 28 },
-            92, 8, 70);
-    if (Component* component = host->componentIfCreated()) {
-        component->setBounds(8, 38, juce::jmax(0, getWidth() - 16),
-                juce::jmax(0, getHeight() - 46));
+    chrome.resized();
+    auto bounds = getLocalBounds().withTrimmedTop(CanvasChromeMetrics::fullEditorHeaderHeight)
+            .reduced(12, 8);
+    const int pitchHeight = juce::jlimit(90, 170, bounds.getHeight() / 3);
+    auto surfaceBounds = bounds.removeFromTop(juce::jmax(0, bounds.getHeight() - pitchHeight - 6));
+    bounds.removeFromTop(6);
+    if (Component* component = host->zoomComponentIfCreated()) {
+        component->setBounds(bounds);
+    }
+    surfaceBounds.setRight(curveBounds().getRight());
+    cyclogram->setBounds(surfaceBounds);
+    waveform.setBounds(curveBounds());
+    waveform.toFront(false);
+    const int size = CanvasChromeMetrics::panelOverlayButtonSize;
+    const int step = size + CanvasChromeMetrics::panelOverlayButtonGap;
+    auto surface = cyclogramBounds().reduced(6);
+    timeView.setBounds(surface.getX(), surface.getY(), size, size);
+    spectrumView.setBounds(surface.getX() + step, surface.getY(), size, size);
+    auto pitch = curveBounds().reduced(6);
+    pitchView.setBounds(pitch.getX(), pitch.getY(), size, size);
+    waveformView.setBounds(pitch.getX() + step, pitch.getY(), size, size);
+    zoomAttack.setBounds(pitch.getRight() - 2 * step - size, pitch.getY(), size, size);
+    zoomFit.setBounds(pitch.getRight() - step - size, pitch.getY(), size, size);
+    zoomFull.setBounds(pitch.getRight() - size, pitch.getY(), size, size);
+    for (auto* button : { &timeView, &spectrumView, &pitchView, &waveformView, &zoomAttack, &zoomFit, &zoomFull }) {
+        button->toFront(false);
     }
     if (onRenderRequested) {
         onRenderRequested();
     }
 }
 
-void ReferencePitchEditor::mouseUp(const juce::MouseEvent& event) {
-    if (event.position.x >= (float) getWidth() - 38.f && event.position.y < 34.f
-            && onClose) {
-        onClose();
-    }
+void ReferencePitchEditor::scrollBarMoved(juce::ScrollBar*, double) {
+    // Let ZoomPanel apply the scrollbar range before the GL thread reads it.
+    juce::Component::SafePointer<ReferencePitchEditor> safeThis(this);
+    juce::MessageManager::callAsync([safeThis] {
+        if (safeThis != nullptr) {
+            safeThis->syncTimeZoom(false);
+        }
+    });
 }
 
 bool ReferencePitchEditor::keyPressed(const juce::KeyPress& key) {
+    if (key == juce::KeyPress::spaceKey && onAuditionToggle) {
+        onAuditionToggle();
+        return true;
+    }
     if (key == juce::KeyPress::escapeKey && onClose) {
         onClose();
         return true;
     }
     const bool command = key.getModifiers().isCommandDown();
-    if (command && key.getKeyCode() == 'z') {
+    const int keyCode = key.getKeyCode();
+    if (command && (keyCode == 'z' || keyCode == 'Z')) {
         const bool changed = key.getModifiers().isShiftDown()
                 ? library.redoPitchEdit() : library.undoPitchEdit();
         if (changed) {
@@ -231,8 +454,8 @@ void ReferencePitchEditor::updateCurvePanelZoom(bool resetView) {
 }
 
 void ReferencePitchEditor::prepareCurvePanel() {
-    panel->setControlValues(true, 0.5f, 0.5f, 0.5f, 0);
-    panel->refreshRasterizer();
+    // Loading and interaction prepare the curve on the message thread. Rendering
+    // must not reset scrollbars while a pending range change awaits delivery.
 }
 
 void ReferencePitchEditor::synchronizeCurvePanelSelection() {
@@ -279,12 +502,6 @@ bool ReferencePitchEditor::cancelEdit() {
     editingMesh = false;
     syncFromLibrary();
     return true;
-}
-
-void ReferencePitchEditor::commitFundamental() {
-    if (library.setFundamental((int) fundamental.slider.getValue()) && onEdited) {
-        onEdited();
-    }
 }
 
 }

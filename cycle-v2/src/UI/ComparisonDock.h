@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <memory>
+#include <map>
 #include <vector>
 
 #include "Reference/ReferenceLibrary.h"
@@ -14,8 +15,10 @@ namespace CycleV2 {
 class StandaloneAudioEngine;
 class ComparisonSurfaceView;
 class ReferencePitchEditor;
+class ReferenceSurfaceCache;
 
-class ComparisonDock : public juce::Component {
+class ComparisonDock : public juce::Component,
+                       public juce::DragAndDropTarget {
 public:
     ComparisonDock(
             NodeCanvas& canvas,
@@ -23,11 +26,17 @@ public:
             StandaloneAudioEngine& audioEngine);
     ~ComparisonDock() override;
 
+    std::function<void(const juce::String&)> onReferenceDropped;
+    bool isInterestedInDragSource(const SourceDetails& source) override;
+    void itemDropped(const SourceDetails& source) override;
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>>
+            pointerTargetsForAutomation() const;
     void refreshCaptures();
     void syncAuditionState();
     void importReference();
     bool openPitchEditorForAutomation(const juce::String& id);
-    juce::Rectangle<int> pitchCurveBoundsForAutomation() const;
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>>
+            referenceEditorTargetsForAutomation() const;
     void renderOpenGL(float scaleFactor);
     void releaseOpenGLResources();
     juce::var exportAutomationState() const;
@@ -39,6 +48,7 @@ public:
     }
     void paint(juce::Graphics& graphics) override;
     void resized() override;
+    bool keyPressed(const juce::KeyPress& key) override;
     void mouseDown(const juce::MouseEvent& event) override;
     void mouseDrag(const juce::MouseEvent& event) override;
     void mouseUp(const juce::MouseEvent& event) override;
@@ -47,13 +57,15 @@ private:
     struct Card {
         juce::String id;
         juce::String title;
-        juce::String duration;
         std::vector<float> surface;
         const std::vector<float>* sampleSurface {};
         const PitchedSample* sampleIdentity {};
+        const std::vector<float>* positions {};
+        double sampleRate { 44100.0 };
         uint64_t surfaceRevision {};
         size_t columns {};
         size_t rows {};
+        size_t maximumRows {};
         PortDomain domain { PortDomain::TimeSignal };
         int midiNote {};
         float displayGain { 1.f };
@@ -67,6 +79,7 @@ private:
     };
 
     class CardStrip;
+    class ModeButton;
 
     void showAddMenu();
     void showCardMenu(const Card& card, juce::Point<int> position);
@@ -74,6 +87,7 @@ private:
     void closePitchEditor();
     void toggleAudition();
     void selectReference(const juce::String& id);
+    void closeReference(const juce::String& id);
     void updateCards();
     void paintCard(juce::Graphics& graphics, const Card& card, juce::Rectangle<float> bounds);
     static juce::PopupMenu::Options menuOptionsFor(juce::Component& target);
@@ -88,6 +102,8 @@ private:
     std::vector<std::unique_ptr<ComparisonSurfaceView>> surfaceViews;
     std::vector<std::unique_ptr<ComparisonSurfaceView>> retiredViews;
     std::unique_ptr<CardStrip> strip;
+    std::vector<std::unique_ptr<ModeButton>> modeButtons;
+    std::map<juce::String, std::unique_ptr<ReferenceSurfaceCache>> referenceSurfaces;
     std::unique_ptr<ReferencePitchEditor> pitchEditor;
     juce::Viewport viewport;
     std::function<void(int)> heightChangeCallback;
@@ -96,6 +112,7 @@ private:
     bool resizing {};
     uint64_t captureCount {};
     bool lastAuditioning {};
+    juce::String lastAuditionPath;
     juce::CriticalSection surfaceLock;
 };
 

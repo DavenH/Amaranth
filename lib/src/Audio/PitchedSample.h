@@ -80,7 +80,7 @@ public:
     var writeJSON() const override;
     bool readJSON(const var& object) override;
 
-    int load(const String& filename);
+    int load(const String& filename, double maximumSeconds = 0.0);
     [[nodiscard]] Mesh* getMesh(MeshLibrary& meshLibrary) const;
 
 

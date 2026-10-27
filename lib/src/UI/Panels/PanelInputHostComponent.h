@@ -23,6 +23,10 @@ protected:
     virtual bool cancelPointerGesture() { return false; }
     virtual bool deleteKeyPressed() { return false; }
 
+    void mouseWheelMove(
+            const juce::MouseEvent& event,
+            const juce::MouseWheelDetails& wheel) override;
+
 private:
     enum class WheelAxis { None, Horizontal, Vertical };
 
@@ -33,9 +37,6 @@ private:
     void mouseDrag(const juce::MouseEvent& event) override;
     void mouseUp(const juce::MouseEvent& event) override;
     void mouseExit(const juce::MouseEvent& event) override;
-    void mouseWheelMove(
-            const juce::MouseEvent& event,
-            const juce::MouseWheelDetails& wheel) override;
     bool keyPressed(const juce::KeyPress& key) override;
     void resized() override;
 

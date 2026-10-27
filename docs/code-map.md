@@ -32,7 +32,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `lib/src/Array/VecOps.h` — Platform-vectorized primitives; reuse for bulk math and normalization.
 - `lib/src/Algo/` — Shared algorithms, FFT helpers, resampling, and pitch analysis; reuse outside product UI.
 - `lib/src/Algo/Pitch/` — Pitch detection and tracking; reused by Oscillo and available to synth features.
-- `lib/src/Audio/` — Shared audio plumbing and DSP infrastructure; reuse before product-local utilities.
+- `lib/src/Audio/` — Audio/DSP; WavePeriodFolding and WavePeriodSpectrum own shared cycle analysis for Cycle 1/2.
 - `lib/src/Audio/CycleDsp/` — Cycle DSP kernels and state; reuse for Cycle 1/2 audio parity.
 - `lib/src/Audio/Filters/` — Filters, convolution, oversampling, and delay primitives; reuse in node processors.
 - `lib/src/Curve/Mesh/` — Mesh topology, morph dimensions, and orthogonal projection; shared representation.
@@ -69,7 +69,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/CMakeLists.txt` — CycleV2 app, graph migrator, and test target source lists.
 - `cycle-v2/src/Main.cpp` — App composition root; App/ owns audio engine, graph files and library lifecycle.
 - `cycle-v2/src/App/Automation/` — Socket transport, input, inspection, command routing and semantic authoring adapters.
-- `cycle-v2/src/Reference/` — Reference library, pitch/cyclogram analysis, and numerical automation exports.
+- `cycle-v2/src/Reference/` — Five-second reference loads, cycle-resolution analysis, session view modes, numerical exports.
 - `cycle-v2/src/Graph/NodeGraph.h` — Durable graph data model; read through dispatcher-owned edit views in UI code.
 - `cycle-v2/src/Graph/GraphDocument.h` — Committed graph ownership, publication, and document observers.
 - `cycle-v2/src/Graph/GraphCommandDispatcher.h` — Semantic values, topology, Guides, gestures and staged undoable publication.
@@ -85,7 +85,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
 - `cycle-v2/src/Graph/MeshDimensionality.h` — Shared axis eligibility and projection; GraphMeshGuideRemap preserves rail targets.
-- `cycle-v2/src/UI/Editors/` — Shared morph reconciliation, diagram/input geometry, property controls and keyboard interaction.
+- `cycle-v2/src/UI/Editors/`, `cycle-v2/src/UI/PanelOverlayIconButton.h` — Shared morph reconciliation, geometry, property and inlaid icon controls.
 - `cycle-v2/src/Nodes/Curve/` — Curve codecs, stable identities, editor adapters and shared panel/zoom/GL hosts.
 - `cycle-v2/src/Nodes/Envelope/` — State/playback, surfaces and shared EnvelopeEditCore for panel and headless values/markers.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
@@ -99,7 +99,8 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodeCanvasExplanations.cpp` — Preset/node/group explanations, shared editor and attached card orchestration.
 - `cycle-v2/src/UI/NodePreviewRenderer.h` — Compact node preview rendering and reusable preview resources.
 - `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy/probe overview and detail presentation.
-- `cycle-v2/src/UI/InlinePresetBrowser.h` — Preset sidebar workflow and selection behavior.
+- `cycle-v2/src/UI/InlinePresetBrowser.h` — Shared tabs; ReferenceAssetBrowser owns audio assets, ReferenceTrayBar owns tray disclosure.
+- `cycle-v2/src/UI/LibraryThumbnailCache.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Async asset images; linked density/line views.
 - `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and suite export.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
 - `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.
@@ -155,6 +156,8 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | UI regression | `docs/cycle-agent-runbook.md`, `scripts/test_cycle_v2_native_edit_smoke.py` | Check pointer feedback, revision/publication and preparation costs; inspect filtered logs first. |
 | Explained examples / sax studies | `scripts/create_cycle_v2_saxophone_articulation.py`, `scripts/create_cycle_v2_saxophone_anchors.py`, `scripts/create_cycle_v2_reed_saxophone.py` | Author expressive, measured-anchor and compact pulse/spectrum/body studies through canonical edits and capture. |
 | Audition comparisons / reference listening | `scripts/report_cycle_auditions.py`, `scripts/create_saxophone_reference_audit.py`, `scripts/cycle_saxophone_reed_audit.py`, `scripts/cycle_study_artifacts.py` | Reuse saved metadata, declared levels, provenance and immutable study boundaries. |
+| Sidebar icons | `cycle-v2/src/UI/LibraryIconRenderer.h`, `cycle-v2/resources/ui-icons/` | Reuse embedded SVGs and shared control geometry for tabs and library actions. |
+| Wave-reference workflow | `cycle-v2/src/UI/ReferenceAssetBrowser.h`, `cycle-v2/src/UI/ReferenceTrayBar.h`, `cycle-v2/src/UI/ReferencePitchEditor.h`, `cycle-v2/src/UI/ReferenceSurfaceCache.h`, `cycle-v2/src/Reference/` | Assets/tray; linked cycle-resolution views; per-reference mode pills; cached Cycle 1 harmonic analysis. |
 | Labelled reference / pitch evidence | `scripts/cycle_reference_study.py`, `scripts/cycle_reference_pitch_evidence.py`, `scripts/cycle_saxophone_anchor_analysis.py` | Reuse cached analysis; retain confidence and effective pitch-path provenance. |
 | Preset/graph persistence | `GraphSerializer.h`, product `content/` | Preserve migrations and canonical on-disk formats. |
 

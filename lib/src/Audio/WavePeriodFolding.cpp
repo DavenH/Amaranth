@@ -12,7 +12,8 @@ void WavePeriodFolding::render(
         bool wrapCycles,
         bool interpolateCycles,
         double stereoPan,
-        bool logMapping) {
+        bool logMapping,
+        bool useColumnPositions) {
     if (columns.size() < 2 || sample.periods.size() < 3
             || sample.size() < 2 || longestSampleFrames < 2) {
         for (auto& column : columns) {
@@ -38,8 +39,14 @@ void WavePeriodFolding::render(
     VecOps::flip(fadeOutDown, fadeInUp);
     VecOps::subCRev(fadeInUp, 1.f, fadeInDown);
 
-    ScopedAlloc<float> workMemory(rowCount * 4 + 2 * quarter + sampleLength);
-    Buffer<float> paddedCycle = workMemory.place(rowCount);
+    int paddedLength = rowCount;
+    if (useColumnPositions) {
+        for (const auto& frame : sample.periods) {
+            paddedLength = juce::jmax(paddedLength, juce::roundToInt(frame.period * 1.25f));
+        }
+    }
+    ScopedAlloc<float> workMemory(rowCount * 3 + paddedLength + 2 * quarter + sampleLength);
+    Buffer<float> paddedCycle = workMemory.place(paddedLength);
     Buffer<float> resampledNext = workMemory.place(rowCount + quarter);
     Buffer<float> resampledPrevious = workMemory.place(rowCount + quarter);
     Buffer<float> combinedAudio = workMemory.place(sampleLength);
@@ -57,6 +64,20 @@ void WavePeriodFolding::render(
         Buffer<float> tail = (cycle + rowCount).withSize(quarter);
         head.mul(fadeInUp);
         head.addProduct(tail, fadeInDown);
+    };
+
+    const auto resampleCycle = [&](int offset, int length, Buffer<float> destination) {
+        Buffer<float> source = combinedAudio.sectionAtMost(offset, length);
+        if (source.empty()) {
+            destination.zero();
+            return;
+        }
+        if (source.size() < length) {
+            paddedCycle.zero();
+            source.copyTo(paddedCycle);
+            source = useColumnPositions ? paddedCycle.withSize(length) : paddedCycle;
+        }
+        Resampling::linResample(source, destination);
     };
 
     const float xIncrement = 1.f / (float) (columns.size() - 1);
@@ -82,7 +103,8 @@ void WavePeriodFolding::render(
     }
 
     for (int index = 0; index < (int) columns.size(); ++index) {
-        const float position = (float) index * xIncrement;
+        const float position = useColumnPositions ? columns[(size_t) index].x
+                : (float) index * xIncrement;
         while (nextCycle < (int) sample.periods.size() - 1
                 && (sample.periods[(size_t) nextCycle].sampleOffset - offsetSamples)
                         * inverseLength < position) {
@@ -105,15 +127,17 @@ void WavePeriodFolding::render(
             nextOffset = juce::jmax(0, nextFrame.sampleOffset - offsetSamples);
             previousX = juce::jmin(1.f, previousOffset * inverseLength);
 
-            if (oldCycle == 0) {
-                if (nextOffset + nextLength < sampleLength) {
-                    Buffer<float> previousAudio(combinedAudio + previousOffset, previousLength);
-                    Buffer<float> nextAudio(combinedAudio + nextOffset, nextLength);
-                    Resampling::linResample(previousAudio, resampledPrevious);
-                    Resampling::linResample(nextAudio, resampledNext);
-                    resampledPrevious.copyTo(firstCycle);
+            if (oldCycle == 0 || (useColumnPositions && oldCycle != nextCycle - 1)) {
+                if (nextOffset + nextLength < sampleLength || useColumnPositions) {
+                    resampleCycle(previousOffset, previousLength, resampledPrevious);
+                    if (oldCycle == 0) {
+                        resampledPrevious.copyTo(firstCycle);
+                    }
                     if (wrapCycles) {
                         wrapCycle(resampledPrevious);
+                        if (oldCycle != 0) {
+                            wrapCycle(resampledPrevious);
+                        }
                     }
                 } else {
                     resampledPrevious.zero(rowCount);
@@ -123,15 +147,8 @@ void WavePeriodFolding::render(
                 resampledNext.copyTo(resampledPrevious.withSize(rowCount));
             }
 
-            Buffer<float> section = combinedAudio.sectionAtMost(nextOffset, nextLength);
-            if (!section.empty()) {
-                Buffer<float> source = section;
-                if (section.size() < nextLength) {
-                    paddedCycle.zero();
-                    section.copyTo(paddedCycle);
-                    source = paddedCycle;
-                }
-                Resampling::linResample(source, resampledNext);
+            if (nextOffset < sampleLength) {
+                resampleCycle(nextOffset, nextLength, resampledNext);
                 if (wrapCycles) {
                     wrapCycle(resampledNext);
                     wrapCycle(resampledNext);
@@ -156,7 +173,7 @@ void WavePeriodFolding::render(
                     nextFrame.period, portion);
         }
 
-        if (nextOffset + nextLength >= sampleLength) {
+        if (!useColumnPositions && nextOffset + nextLength >= sampleLength) {
             column.zero();
         } else if (index == 0) {
             firstCycle.copyTo(column);

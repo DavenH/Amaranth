@@ -1,0 +1,23 @@
+{
+  "commands": [
+    { "command": "openGraph", "path": "../../cycle-v2/content/presets/baroque-flute.cyclegraph" },
+    { "command": "resizeWindow", "width": 1000, "height": 760 },
+    { "command": "selectReference", "referenceId": "factory:dist3" },
+    { "command": "selectReference", "referenceId": "factory:sine500" },
+    { "command": "selectReference", "referenceId": "factory:sax-growl" },
+    { "command": "pinComparisonSpy", "probeId": "default-output", "waitForIdle": true, "idleDelayMs": 300 },
+    { "command": "assertState", "path": "comparison.cardCount", "equals": 4 },
+    { "command": "assertState", "path": "comparison.scrollX", "equals": 0 },
+    { "command": "pointer", "event": "wheel", "targetId": "comparison.surface.factory:dist3", "deltaX": -0.6, "deltaY": 0, "smooth": true },
+    { "command": "assertState", "path": "comparison.scrollX", "op": "greaterThan", "value": 0 },
+    { "command": "assertState", "path": "comparison.selectedReferenceId", "equals": "factory:sax-growl" },
+    { "command": "pointer", "event": "wheel", "targetId": "comparison.surface.factory:dist3", "deltaX": 0.6, "deltaY": 0, "smooth": true },
+    { "command": "assertState", "path": "comparison.scrollX", "equals": 0 },
+    { "command": "pointer", "event": "wheel", "targetId": "comparisonDock", "targetX": 0.5, "targetY": 0.06, "deltaX": -0.6, "deltaY": 0, "smooth": true },
+    { "command": "assertState", "path": "comparison.scrollX", "op": "greaterThan", "value": 0 },
+    { "command": "assertState", "path": "comparison.cards.0.id", "equals": "factory:dist3" },
+    { "command": "assertState", "path": "comparison.cards.1.id", "equals": "factory:sine500" },
+    { "command": "assertState", "path": "comparison.cards.2.id", "equals": "factory:sax-growl" }
+  ],
+  "quit": true
+}

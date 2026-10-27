@@ -76,7 +76,10 @@ public:
             const std::vector<float>& source,
             size_t columns,
             size_t rows,
-            int midiNote = 48) const;
+            int midiNote = 48,
+            bool includesDc = true,
+            double sampleRate = 44100.0,
+            size_t outputRows = 0) const;
     float displayFrequencyUnit(float sourceUnit, int midiNote = 48) const;
     void mapValuesToDisplay(Buffer<float> values) const;
 

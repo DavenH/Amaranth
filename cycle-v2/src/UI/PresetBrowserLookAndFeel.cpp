@@ -2,6 +2,7 @@
 
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
+#include "UI/LibraryIconRenderer.h"
 
 namespace CycleV2 {
 
@@ -17,6 +18,10 @@ void PresetBrowserLookAndFeel::drawButtonBackground(
         const juce::Colour& backgroundColour,
         bool isHighlighted,
         bool isDown) {
+    if (button.getProperties().contains("libraryIcon")
+            && !isHighlighted && !isDown && !button.hasKeyboardFocus(false)) {
+        return;
+    }
     juce::Colour surface = backgroundColour;
     if (isDown) {
         surface = surface.darker(0.18f);
@@ -42,6 +47,9 @@ void PresetBrowserLookAndFeel::drawButtonText(
         juce::TextButton& button,
         bool,
         bool) {
+    if (LibraryIconRenderer::paintButton(graphics, button)) {
+        return;
+    }
     juce::Colour text = button.findColour(button.getToggleState()
             ? juce::TextButton::textColourOnId
             : juce::TextButton::textColourOffId);
@@ -52,7 +60,7 @@ void PresetBrowserLookAndFeel::drawButtonText(
     graphics.setFont(getTextButtonFont(button, button.getHeight()));
     graphics.drawFittedText(
             button.getButtonText(),
-            button.getLocalBounds().reduced(10, 0),
+            button.getLocalBounds().reduced((bool) button.getProperties().getWithDefault("sidebarTab", false) ? 2 : 10, 0),
             juce::Justification::centred,
             1);
 }

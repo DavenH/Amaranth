@@ -14,15 +14,19 @@
 #include "UI/PresetThumbnailCache.h"
 #include "UI/PatternBrowser.h"
 #include "UI/SidebarLibraryToolbar.h"
+#include "UI/LibraryIconRenderer.h"
 #include "UI/SidebarTagCloud.h"
 
 namespace CycleV2 {
+
+class ReferenceAssetBrowser;
 
 enum class WorkspaceSidebarTab {
     Curves,
     Presets,
     Patterns,
-    Nodes
+    Nodes,
+    Assets
 };
 
 std::optional<WorkspaceSidebarTab> workspaceSidebarTabForShortcut(
@@ -62,6 +66,8 @@ public:
             LibraryFavorites* favorites = nullptr);
     ~InlinePresetBrowser() override;
 
+    void configureAssets(ReferenceAssetBrowser& browser);
+    void showAssets();
     void setActiveTab(WorkspaceSidebarTab tab);
     void configurePatterns(PatternSelectCallback select,
             PatternEditCallback edit, PatternCreateCallback create,
@@ -110,7 +116,7 @@ private:
     void deletePreset(const juce::File& file);
     void focusPresetSearch();
     void updateVisibility();
-    void styleTabButton(juce::TextButton& button);
+    void styleTabButton(juce::TextButton& button, LibraryIcon icon, const juce::String& name);
 
     OpenCallback onOpen;
     ActionCallback onBrowse;
@@ -128,6 +134,8 @@ private:
     juce::TextButton presets { "PRESETS" };
     juce::TextButton patterns { "PATTERNS" };
     juce::TextButton nodes { "NODES" };
+    juce::TextButton assets { "ASSETS" };
+    ReferenceAssetBrowser* assetBrowser {};
     std::unique_ptr<PatternBrowser> patternBrowser;
     SidebarLibraryToolbar toolbar { "Search presets..." };
     juce::Label tagHeading;
