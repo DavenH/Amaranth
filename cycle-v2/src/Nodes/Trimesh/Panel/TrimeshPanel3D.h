@@ -39,6 +39,7 @@ public:
     void setZoomChangedCallback(std::function<void(bool)> callback);
     void setPrimaryViewAxis(int axis);
     void setPlaybackCursors(const PlaybackCursorFrame& frame);
+    void setKeyScaleAxis(int axis);
     void setSlicePosition(float position);
     bool isPrimaryAxisVertical() const override { return primaryAxisVertical; }
     void setPrimaryAxisVertical(bool vertical) { primaryAxisVertical = vertical; }

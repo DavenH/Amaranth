@@ -1153,3 +1153,15 @@ Evidence: `.context/cycle-automation/cycle-v2/bc957235467c/run.json` and
 `.context/cursor-flicker-before-ui.json`. No app assertion or crash was observed;
 the recorder failure remains outside the cursor fix. Temporal verification uses
 per-callback regression tests and repeated actual-app state samples.
+
+
+## Trimesh component snapshots omit the OpenGL surface
+
+2026-10-27: an isolated keyboard-cursor fixture's in-app canvas screenshots
+showed a black expanded Trimesh surface and no overlays, despite valid surface
+samples and cursor state. Native PID-scoped ScreenCaptureKit captures of the
+same Red view show the full waveform/harmonic surface, strip and both diamonds.
+Evidence: `.context/trimesh-keyboard-diamonds-red.png` versus
+`.context/trimesh-keyboard-diamonds-native.png`, plus
+`.context/trimesh-keyboard-diamonds-spectrum-native.png`. State assertions pass;
+use native capture for Trimesh visual verification. No app assertion or crash.

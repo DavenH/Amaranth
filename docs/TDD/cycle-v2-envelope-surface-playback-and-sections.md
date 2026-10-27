@@ -79,3 +79,40 @@ Playback marker refinement: hollow diamonds replace circular dots, using the
 existing renderer's line strips with stack-backed geometry. Debug/release builds,
 the 50-command playback verifier and production-size screenshot review pass at
 1728x962 and 1100x800. Marker centres, clipping and caching remain unchanged.
+
+
+## Trimesh keyboard voice markers
+
+Status: Complete
+
+Show the same hollow diamonds just above Trimesh's primary-axis strip (8px
+inset) when that axis is active and linked to the voice's KeyScale mapping.
+Use PreviewPitchResolver's existing axis context and the bridge's resolved axis
+links; do not hardcode Red or introduce a keyboard resolver. Marker x uses the
+actual captured morph; y is a fixed screen anchor, independent of sampled
+phase/frequency, elapsed voice time and vertical zoom. Keep existing cut lines.
+Hide markers when viewing another axis or unlinking its input. Retirement comes
+from the existing bounded audio frame, including release tails. Reuse overlay
+geometry and renderer, with no new clock, surface work or graph publications.
+Verify multiple keys remain stationary, individual voice retirement, all axis
+mappings, unlink/non-key axis suppression, zoom and Envelope preservation.
+
+
+Verification: 1,894 assertions across 17 focused cases pass, including all
+three possible keyboard axes, immunity to unrelated morph/time changes,
+non-key suppression, unlinking and individual retirement. The new 57-command
+fixture/verifier passes with Red then Blue mappings, two held keys, one-voice
+retirement, final clearing and a harmonic panel whose keyboard spans columns.
+Playback preserves surface builds, document/undo, preview and audio-plan counts.
+The existing 50-command Envelope fixture/verifier also passes. Native isolated
+PID captures confirm waveform and harmonic markers above the strip; in-app
+Trimesh snapshot omission is recorded in ui-bugs.md. Debug, release and test
+targets build; architecture/code-map and whitespace checks pass. Evidence:
+`.context/trimesh-keyboard-diamonds/`, `trimesh-key-diamonds-tests.log` and
+`trimesh-keyboard-diamonds-{native,spectrum-native}.png` under `.context/`.
+
+Responsibility review: overlay 140 lines, TrimeshPanel3D 297, bridge 469;
+headers remain below 80 lines. The bridge forwards the established keyboard
+axis gated by existing dimensionality/link facts. The overlay owns marker
+geometry and screen anchoring, reusing its diamond renderer. No DSP, new
+resource lifecycle, aggregate graph work or second mapping resolver is added.

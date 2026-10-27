@@ -586,3 +586,48 @@ TEST_CASE("Envelope surfaces leave missing tails empty and pitch remains bipolar
     REQUIRE(pitch.getPixelAt(2, 2) == pitch.getPixelAt(2, 1));
     REQUIRE(pitch.getPixelAt(4, 2) == pitch.getPixelAt(4, 1));
 }
+
+TEST_CASE("Trimesh keyboard diamonds stay on the primary axis until voices end",
+        "[cycle-v2][ui][playback-cursor]") {
+    PanelPlaybackOverlay overlay;
+    PlaybackCursorFrame frame;
+    frame.count = 2;
+    frame.voices[0].setMorph({ 0.1f, 0.25f, 0.8f });
+    frame.voices[1].setMorph({ 0.6f, 0.75f, 0.3f });
+    overlay.setFrame(frame);
+    DynamicObject state;
+    for (const int axis : MorphDimensions::axes) {
+        overlay.setKeyScaleAxis(axis);
+        overlay.appendAutomation(state, axis, false, true);
+        const auto markers = state.getProperty("playbackDots");
+        const auto lines = state.getProperty("playbackCursors");
+        REQUIRE(markers.getArray()->size() == 2);
+        REQUIRE(state.getProperty("playbackMarkerAnchor").toString() == "primaryAxis");
+        for (int voice = 0; voice < 2; ++voice) {
+            REQUIRE(markers[voice]["x"] == lines[voice]["position"]);
+            REQUIRE((float) markers[voice]["y"] == 0.f);
+        }
+        frame.voices[0].morph[axis == Vertex::Time ? 1 : 0] += 0.05f;
+        frame.voices[0].envelopeTime += 0.1f;
+        frame.voices[0].hasEnvelopeTime = true;
+        overlay.setFrame(frame);
+        overlay.appendAutomation(state, axis, false, true);
+        REQUIRE(state.getProperty("playbackDots")[0]["x"] == markers[0]["x"]);
+        overlay.appendAutomation(state, axis == Vertex::Red ? Vertex::Blue : Vertex::Red, false, true);
+        REQUIRE(state.getProperty("playbackDots").getArray()->isEmpty());
+        overlay.setKeyScaleAxis(-1);
+        overlay.appendAutomation(state, axis, false, true);
+        REQUIRE(state.getProperty("playbackDots").getArray()->isEmpty());
+    }
+    overlay.setKeyScaleAxis(Vertex::Red);
+    frame.count = 1;
+    frame.voices[0] = frame.voices[1];
+    overlay.setFrame(frame);
+    overlay.appendAutomation(state, Vertex::Red, false, true);
+    REQUIRE(state.getProperty("playbackDots").getArray()->size() == 1);
+    REQUIRE((float) state.getProperty("playbackDots")[0]["x"] == Catch::Approx(0.75f));
+    overlay.setFrame({});
+    overlay.appendAutomation(state, Vertex::Red, false, true);
+    REQUIRE(state.getProperty("playbackDots").getArray()->isEmpty());
+    REQUIRE(state.getProperty("playbackCursors").getArray()->size() == 1);
+}

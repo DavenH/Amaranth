@@ -175,6 +175,13 @@ void TrimeshPanel3D::setPlaybackCursors(const PlaybackCursorFrame& frame) {
     }
 }
 
+void TrimeshPanel3D::setKeyScaleAxis(int axis) {
+    const ScopedLock lock(getRenderLock());
+    if (playbackOverlay.setKeyScaleAxis(axis)) {
+        requestRepaint(PanelDirtyState::Flag::Overlay);
+    }
+}
+
 void TrimeshPanel3D::setSlicePosition(float position) {
     const ScopedLock lock(getRenderLock());
     if (playbackOverlay.setSlice(position)) {

@@ -25,6 +25,14 @@ bool PanelPlaybackOverlay::setSlice(float position) {
     return true;
 }
 
+bool PanelPlaybackOverlay::setKeyScaleAxis(int axis) {
+    if (keyScaleAxis == axis) {
+        return false;
+    }
+    keyScaleAxis = axis;
+    return true;
+}
+
 std::array<PanelPlaybackOverlay::Line, 2 * PlaybackCursorFrame::capacity>
 PanelPlaybackOverlay::lines(int axis, bool envelope, bool surface, size_t& count) const {
     std::array<Line, 2 * PlaybackCursorFrame::capacity> result;
@@ -46,14 +54,15 @@ PanelPlaybackOverlay::lines(int axis, bool envelope, bool surface, size_t& count
 }
 
 std::array<Point<float>, PlaybackCursorFrame::capacity>
-PanelPlaybackOverlay::dots(int axis, size_t& count) const {
+PanelPlaybackOverlay::dots(int axis, bool envelope, size_t& count) const {
     std::array<Point<float>, PlaybackCursorFrame::capacity> result;
     count = 0;
     const size_t morphIndex = axis == Vertex::Red ? 1 : axis == Vertex::Blue ? 2 : 0;
     for (size_t index = 0; index < frame.count; ++index) {
         const auto& voice = frame.voices[index];
-        if (voice.hasEnvelopeTime && voice.hasMorph) {
-            result[count++] = { voice.envelopeTime, voice.morph[morphIndex] };
+        if (voice.hasMorph && (envelope ? voice.hasEnvelopeTime : axis == keyScaleAxis)) {
+            result[count++] = envelope ? Point<float>(voice.envelopeTime, voice.morph[morphIndex])
+                    : Point<float>(voice.morph[morphIndex], 0.f);
         }
     }
     return result;
@@ -79,11 +88,12 @@ void PanelPlaybackOverlay::draw(Panel& panel, int axis, bool envelope, bool surf
                     line.horizontal ? coordinate : (float) panel.getHeight(), false);
         }
     }
-    if (envelope && surface) {
-        const auto markers = dots(axis, count);
+    if (surface) {
+        const auto markers = dots(axis, envelope, count);
         renderer->enableSmoothing();
         for (size_t index = 0; index < count; ++index) {
-            const Vertex2 point(panel.sx(markers[index].x), panel.sy(markers[index].y));
+            const Vertex2 point(panel.sx(markers[index].x),
+                    envelope ? panel.sy(markers[index].y) : (float) panel.getHeight() - 8.f);
             if (point.x >= 0.f && point.x <= panel.getWidth()
                     && point.y >= 0.f && point.y <= panel.getHeight()) {
                 float x[] { point.x - 4.f, point.x, point.x + 4.f, point.x, point.x - 4.f };
@@ -114,8 +124,8 @@ void PanelPlaybackOverlay::appendAutomation(DynamicObject& state,
     state.setProperty("playbackCursors", values);
     state.setProperty("playbackVoiceCount", (int) frame.count);
     Array<var> positions;
-    if (envelope && surface) {
-        const auto markers = dots(axis, count);
+    if (surface) {
+        const auto markers = dots(axis, envelope, count);
         for (size_t index = 0; index < count; ++index) {
             auto* marker = new DynamicObject();
             marker->setProperty("x", markers[index].x);
@@ -124,6 +134,7 @@ void PanelPlaybackOverlay::appendAutomation(DynamicObject& state,
         }
     }
     state.setProperty("playbackDots", positions);
+    state.setProperty("playbackMarkerAnchor", envelope ? "surface" : "primaryAxis");
 }
 
 }

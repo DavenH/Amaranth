@@ -116,6 +116,10 @@ void TrimeshPanelBridge::syncFromNode(
             || redLinked != (lastRedLink == 1)
             || blueLinked != (lastBlueLink == 1);
     environment.setAxisLinks(yellowLinked, redLinked, blueLinked);
+    const bool keyScaleLinked = previewKeyScaleAxis == Vertex::Time ? yellowLinked
+            : previewKeyScaleAxis == Vertex::Red ? redLinked : blueLinked;
+    panel3D.setKeyScaleAxis(dimensions.active(previewKeyScaleAxis) && keyScaleLinked
+            ? previewKeyScaleAxis : -1);
     const bool spectral = renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal
             || renderProfile.getDomain() == PortDomain::SpectralPhaseSignal;
     const MorphPosition effectiveMorph = resolveMorphPosition(node);
