@@ -3,10 +3,12 @@
 Status: Complete
 
 The Envelope 3D display keeps Phase/time on x and the selected morph axis on y.
-Replace the full-height Phase sweep with one dot per voice at (envelope time,
-resolved primary morph). Each dot travels on that voice's horizontal cut line.
+Replace the full-height Phase sweep with one diamond per voice at (envelope time,
+resolved primary morph). Each diamond travels on that voice's horizontal cut line.
 Keep the idle editor slice, the Envelope 2D Phase line, and ordinary Trimesh
-cursors. Use a subdued 1px cut line and a 5px light dot with an 8px dark halo at Retina density.
+cursors. Use a subdued 1px cut line and a hollow 8x8px diamond, with a light
+outline over a dark stroke for contrast. Playback must look distinct from
+editable circular intercepts.
 No new interaction target or audio clock is required.
 
 Use the existing flat bipolar material for pitch, so small deviations around
@@ -71,3 +73,9 @@ occurs once at that legacy texture boundary after JUCE resampling.
 The old Envelope 3D full-height time sweep is deleted. The new geometry reuses
 PanelPlaybackOverlay and panel transforms; audio clocks, scratch resolution,
 ADSR looping and release remain with the established runtime owners.
+
+
+Playback marker refinement: hollow diamonds replace circular dots, using the
+existing renderer's line strips with stack-backed geometry. Debug/release builds,
+the 50-command playback verifier and production-size screenshot review pass at
+1728x962 and 1100x800. Marker centres, clipping and caching remain unchanged.

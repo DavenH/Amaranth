@@ -86,10 +86,15 @@ void PanelPlaybackOverlay::draw(Panel& panel, int axis, bool envelope, bool surf
             const Vertex2 point(panel.sx(markers[index].x), panel.sy(markers[index].y));
             if (point.x >= 0.f && point.x <= panel.getWidth()
                     && point.y >= 0.f && point.y <= panel.getHeight()) {
+                float x[] { point.x - 4.f, point.x, point.x + 4.f, point.x, point.x - 4.f };
+                float y[] { point.y, point.y - 4.f, point.y, point.y + 4.f, point.y };
+                BufferXY diamond { { x, 5 }, { y, 5 } };
+                renderer->setCurrentLineWidth(4.f);
                 renderer->setCurrentColour(0.04f, 0.06f, 0.09f, 0.95f);
-                renderer->drawPoint(16.f, point, false);
+                renderer->drawLineStrip(diamond, false);
+                renderer->setCurrentLineWidth(2.f);
                 renderer->setCurrentColour(0.95f, 0.97f, 1.f, 1.f);
-                renderer->drawPoint(10.f, point, false);
+                renderer->drawLineStrip(diamond, false);
             }
         }
     }
