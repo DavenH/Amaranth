@@ -22,6 +22,8 @@ private:
     std::array<Line, 2 * PlaybackCursorFrame::capacity> lines(
             int morphAxis, bool envelope, bool surface, size_t& count) const;
 
+    std::array<Point<float>, PlaybackCursorFrame::capacity> dots(int morphAxis, size_t& count) const;
+
     PlaybackCursorFrame frame;
     float slice {};
 };

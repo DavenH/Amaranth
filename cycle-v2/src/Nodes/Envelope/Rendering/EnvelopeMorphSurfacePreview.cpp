@@ -10,7 +10,7 @@
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Nodes/Guide/GuideCurveSnapshotProvider.h"
 #include "Nodes/Trimesh/Panel/TrimeshInteractor3D.h"
-#include "Nodes/Trimesh/Panel/TrimeshPanel3D.h"
+#include "Nodes/Envelope/Rendering/EnvelopeSurfacePanel.h"
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
 #include "Nodes/Trimesh/Rendering/TrimeshGuideRailRenderService.h"
 
@@ -50,6 +50,7 @@ struct EnvelopeMorphSurfacePreview::Impl final :
     }
 
     Component* component() { return this; }
+    void setBipolar(bool value) { bipolar = value; }
     void setPlaybackCursors(const PlaybackCursorFrame& frame) { panel.setPlaybackCursors(frame); }
 
     void resized() override {
@@ -74,7 +75,8 @@ struct EnvelopeMorphSurfacePreview::Impl final :
             return;
         }
         bool changed = cachedRevision != revision || cachedAxis != axis
-                || cachedDimensions != dimensions || cachedTimeRange != timeRange || values.empty();
+                || cachedDimensions != dimensions || cachedTimeRange != timeRange
+                || cachedBipolar != bipolar || values.empty();
         for (const int coordinate : MorphDimensions::axes) {
             changed |= coordinate != axis && cachedMorph[coordinate] != morph[coordinate];
         }
@@ -93,6 +95,7 @@ struct EnvelopeMorphSurfacePreview::Impl final :
         cachedAxis = axis;
         cachedDimensions = dimensions;
         cachedTimeRange = timeRange;
+        cachedBipolar = bipolar;
         ++rebuildCount;
         panel.bakeTexturesNextRepaint();
     }
@@ -114,12 +117,14 @@ struct EnvelopeMorphSurfacePreview::Impl final :
         rasterizer.updateOffsetSeeds(guides != nullptr ? guides->size() : 0,
                 GuideCurveProvider::tableSize, Rasterization::GuideCurveSeed::visualization(seed));
         rasterizer.setNoiseSeed((int) (seed % GuideCurveProvider::tableSize));
-        rasterizer.renderSurface(&mesh, morphColumns, rows, axis, morph, timeRange);
+        rasterizer.renderSurface(&mesh, morphColumns, rows, axis, morph, timeRange, &sectionMarkers);
         // E3 emits authored amplitude minus 0.5; scalar materials consume [0,1].
         if (mesh.getNumCubes() > 0) {
             Buffer<float>(crossSections.data(), (int) crossSections.size()).add(0.5f).clip(0.f, 1.f);
         }
         transposeCrossSections(rows, columnCount, timeRange);
+        panel.setSurfaceImage(EnvelopeSurfacePanel::createColourMap(
+                values, rows, columnCount, timeRange, sectionMarkers, bipolar), timeRange);
     }
 
     void prepareVertexRails(Mesh& mesh, GuideCurveSnapshotProvider* guides,
@@ -152,6 +157,18 @@ struct EnvelopeMorphSurfacePreview::Impl final :
         state->setProperty("columnCount", (int) columns.size());
         state->setProperty("rowCount", columns.empty() ? 0 : columns.front().size());
         state->setProperty("timeAxis", "x");
+        state->setProperty("palette", bipolar ? "bipolar" : "blues");
+        state->setProperty("textureUploadCount", (int64) panel.textureUploadCount());
+        Array<var> sections;
+        for (const auto& marker : sectionMarkers) {
+            auto* section = new DynamicObject();
+            section->setProperty("loopStart", marker.loopStart);
+            section->setProperty("releaseStart", marker.releaseStart);
+            section->setProperty("signalStart", marker.signalStart);
+            section->setProperty("signalEnd", marker.signalEnd);
+            sections.add(section);
+        }
+        state->setProperty("sections", sections);
         state->setProperty("timeMinimum", cachedTimeRange.getStart());
         state->setProperty("timeMaximum", cachedTimeRange.getEnd());
         state->setProperty("sampleTimeStep", columns.size() > 1 ? columns[1].x - columns[0].x : 0.f);
@@ -262,15 +279,18 @@ private:
     TrimeshInteractor3D interactor;
     std::vector<float> values;
     std::vector<float> crossSections;
+    std::vector<Rasterization::EnvelopeSurfaceMarkers> sectionMarkers;
     std::vector<Column> columns;
     mutable CriticalSection gridLock;
+    bool bipolar {};
+    bool cachedBipolar {};
     uint64_t rebuildCount {};
     uint64_t cachedRevision {};
     MorphPosition cachedMorph;
     int cachedAxis { -1 };
     int cachedDimensions { -1 };
     Range<float> cachedTimeRange { 0.f, 1.f };
-    TrimeshPanel3D panel;
+    EnvelopeSurfacePanel panel;
     CurvePanelHost host;
 };
 
@@ -290,6 +310,8 @@ void EnvelopeMorphSurfacePreview::prepare(Mesh& mesh, GuideCurveSnapshotProvider
 void EnvelopeMorphSurfacePreview::render(Rectangle<float> bounds, float scaleFactor) {
     impl->render(bounds, scaleFactor);
 }
+
+void EnvelopeMorphSurfacePreview::setBipolar(bool bipolar) { impl->setBipolar(bipolar); }
 
 void EnvelopeMorphSurfacePreview::setPlaybackCursors(const PlaybackCursorFrame& frame) {
     impl->setPlaybackCursors(frame);

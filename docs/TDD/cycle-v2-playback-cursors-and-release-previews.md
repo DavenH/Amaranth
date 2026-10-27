@@ -2,6 +2,11 @@
 
 Status: Complete
 
+Envelope 3D presentation is refined by
+[Envelope surface playback and section colours](cycle-v2-envelope-surface-playback-and-sections.md):
+time now appears as a dot on each voice's morph cut line. The runtime and Spy
+contracts below remain authoritative.
+
 ## Contract and ownership
 
 Cycle 1 `Envelope2D::postCurveDraw`, `PlaybackPanel`, and shared

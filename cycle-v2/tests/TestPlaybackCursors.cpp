@@ -14,6 +14,7 @@
 #include "Runtime/GraphPreviewExecutor.h"
 #include "Runtime/TrimeshMorphResolver.h"
 #include "UI/PanelPlaybackOverlay.h"
+#include "Nodes/Envelope/Rendering/EnvelopeSurfacePanel.h"
 #include "UI/SignalProbeDetailView.h"
 #include "Runtime/DefaultOutputPreview.h"
 
@@ -115,7 +116,7 @@ TEST_CASE("Mesh playback cursor records the resolved scratch coordinate",
     REQUIRE(cursor.morph[0] == Catch::Approx(0.22f));
 }
 
-TEST_CASE("Envelope overlays keep Phase horizontal and morph vertical",
+TEST_CASE("Envelope surface dots follow time along their primary morph cut lines",
         "[cycle-v2][ui][playback-cursor]") {
     PanelPlaybackOverlay overlay;
     PlaybackCursorFrame frame;
@@ -130,16 +131,37 @@ TEST_CASE("Envelope overlays keep Phase horizontal and morph vertical",
     overlay.appendAutomation(state, Vertex::Blue, true, true);
     auto* cursors = state.getProperty("playbackCursors").getArray();
     REQUIRE(cursors != nullptr);
-    REQUIRE(cursors->size() == 4);
-    REQUIRE((*cursors)[0]["axis"].toString() == "x");
-    REQUIRE((float) (*cursors)[0]["position"] == Catch::Approx(1.2f));
-    REQUIRE((*cursors)[1]["axis"].toString() == "y");
-    REQUIRE((float) (*cursors)[1]["position"] == Catch::Approx(0.8f));
+    REQUIRE(cursors->size() == 2);
+    REQUIRE((*cursors)[0]["axis"].toString() == "y");
+    REQUIRE((float) (*cursors)[0]["position"] == Catch::Approx(0.8f));
+    const auto markers = state.getProperty("playbackDots");
+    REQUIRE(markers.getArray()->size() == 2);
+    REQUIRE((float) markers[0]["x"] == Catch::Approx(1.2f));
+    REQUIRE((float) markers[0]["y"] == Catch::Approx(0.8f));
+    frame.voices[1].setMorph({ 0.6f, 0.7f, 0.3f });
+    frame.voices[1].envelopeTime = 0.4f;
+    overlay.setFrame(frame);
+    for (const auto axis : { Vertex::Time, Vertex::Red, Vertex::Blue }) {
+        overlay.appendAutomation(state, axis, true, true);
+        const auto lines = state.getProperty("playbackCursors");
+        const auto dots = state.getProperty("playbackDots");
+        REQUIRE(dots.getArray()->size() == 2);
+        REQUIRE((float) dots[1]["x"] == Catch::Approx(0.4f));
+        REQUIRE(dots[1]["y"] == lines[1]["position"]);
+        REQUIRE(lines[1]["axis"].toString() == "y");
+    }
+    overlay.appendAutomation(state, Vertex::Red, true, false);
+    REQUIRE(state.getProperty("playbackDots").getArray()->isEmpty());
+    REQUIRE(state.getProperty("playbackCursors")[0]["axis"].toString() == "x");
+    overlay.appendAutomation(state, Vertex::Red, false, true);
+    REQUIRE(state.getProperty("playbackDots").getArray()->isEmpty());
+    REQUIRE(state.getProperty("playbackCursors")[0]["axis"].toString() == "x");
     overlay.setFrame({});
     overlay.setSlice(0.43f);
     overlay.appendAutomation(state, Vertex::Blue, true, true);
     REQUIRE(state.getProperty("playbackCursors").getArray()->size() == 1);
     REQUIRE((float) state.getProperty("playbackCursors")[0]["position"] == Catch::Approx(0.43f));
+    REQUIRE(state.getProperty("playbackDots").getArray()->isEmpty());
 }
 
 TEST_CASE("Spy grids hold their x=1 waveshape throughout release columns",
@@ -509,4 +531,58 @@ TEST_CASE("Spy release auditions survive collapse and refresh without changing n
     REQUIRE(presentation.refresh(graph, 2, load));
     REQUIRE(presentation.probeNoteOffTime("default-output") == 1.);
     REQUIRE(presentation.previewResult().defaultOutput->noteOffTime == 1.);
+}
+
+TEST_CASE("Envelope surface Blues colours follow morph-dependent loop and release sections",
+        "[cycle-v2][envelope][morph-surface][section-colours]") {
+    const std::vector<float> values(9 * 3, 0.35f);
+    const std::vector<Rasterization::EnvelopeSurfaceMarkers> markers {
+        { 0.25f, 1.f, 0.f, 1.5f }, { 0.5f, 1.25f, 0.f, 1.75f }, { -1.f, 1.5f, 0.25f, 2.f }
+    };
+    const auto image = EnvelopeSurfacePanel::createColourMap(values, 9, 3, { 0.f, 2.f }, markers);
+    REQUIRE(image.isValid());
+    const auto blue = image.getPixelAt(0, 2);
+    const auto yellow = image.getPixelAt(1, 2);
+    const auto red = image.getPixelAt(4, 2);
+    REQUIRE(blue.getBlue() > blue.getRed());
+    REQUIRE(yellow.getHue() == Catch::Approx(0.14f).margin(0.01f));
+    REQUIRE(red.getHue() == Catch::Approx(0.f).margin(0.01f));
+    REQUIRE(yellow.getBrightness() == blue.getBrightness());
+    REQUIRE(red.getBrightness() == blue.getBrightness());
+    REQUIRE(image.getPixelAt(1, 1) == blue);
+    REQUIRE(image.getPixelAt(2, 1) == yellow);
+    REQUIRE(image.getPixelAt(4, 1) == yellow);
+    REQUIRE(image.getPixelAt(5, 1) == red);
+    REQUIRE(image.getPixelAt(5, 0) == blue);
+    REQUIRE(image.getPixelAt(6, 0) == red);
+    REQUIRE(TrimeshRenderProfile::fromDomain(PortDomain::EnvelopeSignal)
+            .getSurfaceStyle().surfaceMaterial().palette == ScalarSurfacePalette::LegacyBlue);
+}
+
+TEST_CASE("Envelope surfaces leave missing tails empty and pitch remains bipolar",
+        "[cycle-v2][envelope][morph-surface][section-colours]") {
+    const std::vector<Rasterization::EnvelopeSurfaceMarkers> markers {
+        { -1.f, std::numeric_limits<float>::max(), 0.f, 1.f },
+        { 0.25f, 1.f, 0.f, 1.5f },
+        {}
+    };
+    std::vector<float> values(9 * 3, 0.5f);
+    values[0] = 0.47f;
+    values[3] = 0.53f;
+    const auto blue = EnvelopeSurfacePanel::createColourMap(values, 9, 3, { 0.f, 2.f }, markers);
+    const auto pitch = EnvelopeSurfacePanel::createColourMap(values, 9, 3, { 0.f, 2.f }, markers, true);
+    REQUIRE(blue.getPixelAt(4, 2).getAlpha() == 255);
+    REQUIRE(blue.getPixelAt(5, 2).isTransparent());
+    REQUIRE(blue.getPixelAt(6, 1).getAlpha() == 255);
+    REQUIRE(blue.getPixelAt(7, 1).isTransparent());
+    REQUIRE(blue.getPixelAt(0, 0).isTransparent());
+    REQUIRE(pitch.getPixelAt(5, 2).isTransparent());
+    REQUIRE(pitch.getPixelAt(7, 1).isTransparent());
+    REQUIRE(pitch.getPixelAt(0, 0).isTransparent());
+    const auto negative = pitch.getPixelAt(0, 2);
+    const auto positive = pitch.getPixelAt(1, 2);
+    REQUIRE(negative.getBlue() > negative.getRed());
+    REQUIRE(positive.getRed() > positive.getBlue());
+    REQUIRE(pitch.getPixelAt(2, 2) == pitch.getPixelAt(2, 1));
+    REQUIRE(pitch.getPixelAt(4, 2) == pitch.getPixelAt(4, 1));
 }

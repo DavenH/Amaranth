@@ -630,6 +630,7 @@ public:
         const EnvelopePurpose purpose = envelopePurposeFor(node);
         auto& typedPanel = envelopePanel();
         typedPanel.setEnvelopeBipolar(purpose == EnvelopePurpose::Pitch);
+        morphSurface.setBipolar(purpose == EnvelopePurpose::Pitch);
         if (!adapter.needsNodeSync(node)) {
             const int previousDimensions = adapter.dimensionCount();
             adapter.syncAuthoredMorph(node);
@@ -684,6 +685,7 @@ public:
 
     void setBipolar(bool bipolar) override {
         envelopePanel().setEnvelopeBipolar(bipolar);
+        morphSurface.setBipolar(bipolar);
     }
 
     void setLogarithmic(bool logarithmic) override {

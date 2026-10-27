@@ -317,6 +317,9 @@ Colour TrimeshSurfaceStyle::colourForValue(float value) const {
 }
 
 ScalarSurfaceMaterial TrimeshSurfaceStyle::surfaceMaterial() const {
+    if (domain == PortDomain::EnvelopeSignal) {
+        return ScalarSurfaceMaterial::blueDepth();
+    }
     if (domain == PortDomain::SpectralPhaseSignal) {
         return ScalarSurfaceMaterial::bipolarPhase();
     }
