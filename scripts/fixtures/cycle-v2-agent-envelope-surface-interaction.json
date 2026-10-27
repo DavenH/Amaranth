@@ -49,6 +49,11 @@
       "value": 0.8
     },
     {
+      "command": "assertState",
+      "path": "expandedNodeControls.effect2D.panelState.morphSurface.zoomControls.horizontal.size",
+      "equals": 1.5
+    },
+    {
       "command": "pointer",
       "event": "wheel",
       "targetId": "expanded:env.envelopeSurface",
@@ -61,7 +66,7 @@
       "command": "assertState",
       "path": "expandedNodeControls.effect2D.panelState.morphSurface.zoomControls.horizontal.size",
       "op": "lessThan",
-      "value": 1
+      "value": 1.5
     },
     {
       "command": "key",

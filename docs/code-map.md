@@ -85,7 +85,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
 - `cycle-v2/src/Graph/MeshDimensionality.h` — Shared axis eligibility and projection; GraphMeshGuideRemap preserves rail targets.
-- `cycle-v2/src/UI/Editors/`, `cycle-v2/src/UI/PanelOverlayIconButton.h` — Shared editor geometry, property/morph and inlaid icon controls.
+- `cycle-v2/src/UI/Editors/`, `cycle-v2/src/UI/PanelOverlayIconButton.h` — Shared morph reconciliation, geometry, property and inlaid icon controls.
 - `cycle-v2/src/Nodes/Curve/` — Curve codecs, stable identities, editor adapters and shared panel/zoom/GL hosts.
 - `cycle-v2/src/Nodes/Envelope/` — State/playback, surfaces and shared EnvelopeEditCore for panel and headless values/markers.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
@@ -153,7 +153,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 | Performance suites | `scripts/render_cycle_v2_performance_suite.py` | Reuse captureAudio and coordinator; keep scheduling outside DSP. |
 | Cycle 2 node feature | matching `cycle-v2/src/Nodes/<Domain>/` | Keep model, DSP, editor, panel, and rendering responsibilities local. |
 | Canvas interaction/rendering | `cycle-v2/src/UI/NodeCanvas*.{h,cpp}` | Keep `NodeCanvas` orchestration-only; reuse scene and policy collaborators. |
-| UI regression | `docs/cycle-agent-runbook.md` | Use the smallest fixture and inspect filtered logs first. |
+| UI regression | `docs/cycle-agent-runbook.md`, `scripts/test_cycle_v2_native_edit_smoke.py` | Check pointer feedback, revision/publication and preparation costs; inspect filtered logs first. |
 | Explained examples / sax studies | `scripts/create_cycle_v2_saxophone_articulation.py`, `scripts/create_cycle_v2_saxophone_anchors.py`, `scripts/create_cycle_v2_reed_saxophone.py` | Author expressive, measured-anchor and compact pulse/spectrum/body studies through canonical edits and capture. |
 | Audition comparisons / reference listening | `scripts/report_cycle_auditions.py`, `scripts/create_saxophone_reference_audit.py`, `scripts/cycle_saxophone_reed_audit.py`, `scripts/cycle_study_artifacts.py` | Reuse saved metadata, declared levels, provenance and immutable study boundaries. |
 | Sidebar icons | `cycle-v2/src/UI/LibraryIconRenderer.h`, `cycle-v2/resources/ui-icons/` | Reuse embedded SVGs and shared control geometry for tabs and library actions. |

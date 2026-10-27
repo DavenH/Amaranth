@@ -37,13 +37,9 @@ bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
         return false;
     }
     const bool differentNode = syncedNodeId != node.id;
+    syncAuthoredMorph(node);
     syncedNodeId = node.id;
     syncedModel = node.model;
-    const NodeParameterMap parameters(node);
-    dimensions = parameters.intValue("dimensionCount", 0);
-    authoredMorph = { parameters.floatValue("yellow", 0.f),
-            parameters.floatValue("red", 0.5f), parameters.floatValue("blue", 0.5f) };
-    refreshEffectiveMorph();
     if (differentNode) {
         morphRedLinked = true;
         morphBlueLinked = true;
@@ -51,6 +47,26 @@ bool EnvelopePanelAdapter::syncFromNode(const Node& node) {
     model.selectCube((EnvelopeCubeId) (int64) node.editorState.getProperty("selectedCubeId", 0));
     model.setPublicationRevision(node.model->revision());
     return true;
+}
+
+void EnvelopePanelAdapter::syncAuthoredMorph(const Node& node) {
+    if (!syncedNodeId.isEmpty() && syncedNodeId != node.id) {
+        resetDocumentPresentation();
+    }
+    const NodeParameterMap parameters(node);
+    dimensions = parameters.intValue("dimensionCount", 0);
+    if (!morphEditGestureActive) {
+        authoredMorph = { parameters.floatValue("yellow", 0.f),
+                parameters.floatValue("red", 0.5f), parameters.floatValue("blue", 0.5f) };
+    }
+    refreshEffectiveMorph(morphEditGestureActive);
+}
+
+void EnvelopePanelAdapter::resetDocumentPresentation() {
+    editorMorph.reset();
+    morphGestureStart.reset();
+    morphEditGestureActive = false;
+    refreshEffectiveMorph(true);
 }
 
 void EnvelopePanelAdapter::initialiseDefaultMesh() {
@@ -116,19 +132,45 @@ bool EnvelopePanelAdapter::registerMeshEdit() {
 
 void EnvelopePanelAdapter::setMorph(const MorphPosition& position) {
     authoredMorph = position;
-    refreshEffectiveMorph();
+    refreshEffectiveMorph(true);
+}
+
+bool EnvelopePanelAdapter::setEditorMorphPosition(int axis, float value) {
+    const MorphPosition previous = effectiveMorphPosition();
+    editorMorph.setValue(axis, value);
+    refreshEffectiveMorph(true);
+    return previous.time != morphYellow || previous.red != morphRed || previous.blue != morphBlue;
+}
+
+void EnvelopePanelAdapter::setMorphEditGestureActive(bool active) {
+    if (active && !morphEditGestureActive) {
+        morphGestureStart = editorMorph.checkpoint();
+    } else if (!active) {
+        morphGestureStart.reset();
+    }
+    morphEditGestureActive = active;
+}
+
+bool EnvelopePanelAdapter::restoreEditorMorphGesture() {
+    if (!morphGestureStart.has_value()) {
+        return false;
+    }
+    const MorphPosition previous = effectiveMorphPosition();
+    editorMorph.restoreValues(*morphGestureStart);
+    refreshEffectiveMorph(true);
+    return previous.time != morphYellow || previous.red != morphRed || previous.blue != morphBlue;
 }
 
 bool EnvelopePanelAdapter::setPreviewMorphPosition(std::optional<MorphPosition> position) {
     const MorphPosition previous = effectiveMorphPosition();
-    previewMorph = std::move(position);
-    refreshEffectiveMorph();
+    editorMorph.setPreview(std::move(position));
+    refreshEffectiveMorph(true);
     return previous.time != morphYellow || previous.red != morphRed || previous.blue != morphBlue;
 }
 
-void EnvelopePanelAdapter::refreshEffectiveMorph() {
-    const MorphPosition position = previewMorph.has_value()
-            ? MorphDimensions(dimensions).constrain(*previewMorph, authoredMorph) : authoredMorph;
+void EnvelopePanelAdapter::refreshEffectiveMorph(bool preserveValues) {
+    const MorphPosition position = MorphDimensions(dimensions).constrain(
+            editorMorph.resolve(authoredMorph, preserveValues), authoredMorph);
     morphYellow = position.time;
     morphRed = position.red;
     morphBlue = position.blue;

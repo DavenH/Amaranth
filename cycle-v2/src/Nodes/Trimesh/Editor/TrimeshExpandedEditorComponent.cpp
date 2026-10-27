@@ -2,6 +2,7 @@
 
 #include <utility>
 
+#include "Graph/MeshDimensionality.h"
 #include "Graph/NodeParameterMap.h"
 #include "UI/Editors/MeshDimensionOptions.h"
 #include "Nodes/Trimesh/Model/TrimeshMorphValue.h"
@@ -122,6 +123,8 @@ TrimeshExpandedEditorComponent::TrimeshExpandedEditorComponent(TrimeshWidget& ta
 }
 
 TrimeshExpandedEditorComponent::~TrimeshExpandedEditorComponent() {
+    cancelMorphControlEdit();
+    widget.setMorphControlPreview(std::nullopt);
     widget.setMorphEditGestureActive(false);
     widget.clearExpandedPanelHostDelegate(this);
 }
@@ -320,60 +323,115 @@ void TrimeshExpandedEditorComponent::toggleTrimeshLinkAxis(const String& axis) {
 
 float TrimeshExpandedEditorComponent::trimeshMorphControlValue(
         const String& id) const {
-    return NodeParameterMap(node).floatValue(id, 0.5f);
+    return widget.editorMorphPosition()[MeshDimensionality::axisForPort(id)].getCurrentValue();
 }
 
 void TrimeshExpandedEditorComponent::beginTrimeshMorphControlEdit(
         const String& id,
         float value) {
-    widget.setMorphEditGestureActive(true);
-    if (delegate != nullptr && delegate->beginTrimeshMorphEdit(id, value)) {
-        setLocalMorphValue(id, value);
+    if (delegate == nullptr) {
         return;
     }
-    widget.setMorphEditGestureActive(false);
+    activeMorphInitialValue = trimeshMorphControlValue(id);
+    widget.setMorphEditGestureActive(true);
+    setLocalMorphValue(id, value);
 }
 
 void TrimeshExpandedEditorComponent::updateTrimeshMorphControlEdit(float value) {
-    if (delegate != nullptr && delegate->updateTrimeshMorphEdit(value)) {
+    if (activeMorphParameterId.isNotEmpty()) {
         setLocalMorphValue({}, value);
     }
 }
 
 void TrimeshExpandedEditorComponent::beginTrimeshMorphPairControlEdit(
         const std::array<String, 2>& ids, Point<float> values) {
-    widget.setMorphEditGestureActive(true);
-    if (delegate != nullptr && delegate->beginTrimeshMorphPairEdit(ids, values)) {
-        activeMorphPairIds = ids;
-        setLocalMorphPairValues(values);
+    if (delegate == nullptr) {
         return;
     }
-    widget.setMorphEditGestureActive(false);
+    widget.setMorphEditGestureActive(true);
+    activeMorphPairIds = ids;
+    activeMorphPairInitialValues = values;
+    setLocalMorphPairValues(values);
 }
 
 void TrimeshExpandedEditorComponent::updateTrimeshMorphPairControlEdit(Point<float> values) {
-    if (delegate != nullptr && delegate->updateTrimeshMorphPairEdit(values)) {
+    if (activeMorphPairIds[0].isNotEmpty()) {
         setLocalMorphPairValues(values);
     }
 }
 
 void TrimeshExpandedEditorComponent::setLocalMorphPairValues(Point<float> values) {
-    for (auto& parameter : node.parameters) {
-        if (parameter.id == activeMorphPairIds[0] || parameter.id == activeMorphPairIds[1]) {
-            parameter.value = formatTrimeshMorphValue(parameter.id == activeMorphPairIds[0] ? values.x : values.y);
-        }
+    activeMorphPairValues = values;
+    MorphPosition morph = widget.editorMorphPosition();
+    for (int index = 0; index < 2; ++index) {
+        const auto& id = activeMorphPairIds[(size_t) index];
+        const int axis = MeshDimensionality::axisForPort(id);
+        morph[axis].setValueDirect(index == 0 ? values.x : values.y);
     }
-    widget.syncExpandedFromNode(node);
+    widget.setMorphControlPreview(morph);
     repaint();
 }
 
 void TrimeshExpandedEditorComponent::endTrimeshMorphControlEdit() {
     if (delegate != nullptr) {
-        delegate->endTrimeshMorphEdit();
+        if (activeMorphPairIds[0].isNotEmpty()
+                && activeMorphPairValues != activeMorphPairInitialValues) {
+            finishMorphPairEdit();
+        } else if (activeMorphParameterId.isNotEmpty()) {
+            finishMorphEdit();
+        }
     }
+    widget.setMorphControlPreview(std::nullopt);
     widget.setMorphEditGestureActive(false);
     activeMorphParameterId = {};
     activeMorphPairIds = {};
+    repaint();
+}
+
+void TrimeshExpandedEditorComponent::finishMorphEdit() {
+    const float value = trimeshMorphControlValue(activeMorphParameterId);
+    const bool applied = delegate->beginTrimeshMorphEdit(activeMorphParameterId, value);
+    delegate->endTrimeshMorphEdit();
+    if (!applied) {
+        cancelMorphControlEdit();
+        return;
+    }
+    if (NodeParameterMap(node).stringValue("primaryAxis", "yellow") != activeMorphParameterId) {
+        setCommittedMorphValue(activeMorphParameterId, value);
+        widget.syncExpandedFromNode(node);
+    }
+}
+
+void TrimeshExpandedEditorComponent::cancelMorphControlEdit() {
+    if (activeMorphParameterId.isNotEmpty()
+            && NodeParameterMap(node).stringValue("primaryAxis", "yellow") != activeMorphParameterId) {
+        widget.setEditorMorphPosition(
+                MeshDimensionality::axisForPort(activeMorphParameterId), activeMorphInitialValue);
+        widget.syncExpandedFromNode(node);
+    }
+}
+
+void TrimeshExpandedEditorComponent::finishMorphPairEdit() {
+    const bool applied = delegate->beginTrimeshMorphPairEdit(
+            activeMorphPairIds, activeMorphPairValues);
+    delegate->endTrimeshMorphEdit();
+    if (!applied) {
+        return;
+    }
+    setCommittedMorphValue(activeMorphPairIds[0], activeMorphPairValues.x);
+    setCommittedMorphValue(activeMorphPairIds[1], activeMorphPairValues.y);
+    widget.syncExpandedFromNode(node);
+}
+
+void TrimeshExpandedEditorComponent::setCommittedMorphValue(const String& id, float value) {
+    for (auto& parameter : node.parameters) {
+        if (parameter.id == id) {
+            parameter.value = formatTrimeshMorphValue(value);
+            widget.setEditorMorphPosition(
+                    MeshDimensionality::axisForPort(id), parameter.value.getFloatValue());
+            return;
+        }
+    }
 }
 
 void TrimeshExpandedEditorComponent::beginTrimeshOutputScaleControlEdit(
@@ -414,15 +472,11 @@ void TrimeshExpandedEditorComponent::setLocalMorphValue(const String& id, float 
         return;
     }
 
-    for (auto& parameter : node.parameters) {
-        if (parameter.id == parameterId) {
-            parameter.value = formatTrimeshMorphValue(value);
-            activeMorphParameterId = parameterId;
-            widget.syncExpandedFromNode(node);
-            repaint();
-            return;
-        }
-    }
+    activeMorphParameterId = parameterId;
+    widget.setEditorMorphPosition(MeshDimensionality::axisForPort(parameterId),
+            formatTrimeshMorphValue(value).getFloatValue());
+    widget.syncExpandedFromNode(node);
+    repaint();
 }
 
 void TrimeshExpandedEditorComponent::beginTrimeshVertexControlEdit(

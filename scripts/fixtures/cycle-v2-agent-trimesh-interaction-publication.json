@@ -1,0 +1,266 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/acid-stab-3.cyclegraph"
+    },
+    {
+      "command": "setPreviewController",
+      "controller": 1,
+      "value": 0
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 250
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "targetX": 0.2,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "targetX": 0.55,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "targetX": 0.82,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 100
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.red",
+      "targetX": 0.82,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 100
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.blue",
+      "targetX": 0.2,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.blue",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.blue",
+      "targetX": 0.55,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.blue",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.blue",
+      "targetX": 0.82,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 100
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.blue",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.blue",
+      "targetX": 0.82,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 100
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "targetX": 0.2,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "targetX": 0.55,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "targetX": 0.82,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 100
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "downTargetId": "expanded:magnitudeLayer1.trimeshMorphRail.yellow",
+      "targetX": 0.82,
+      "targetY": 0.5,
+      "downTargetX": 0.2,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 100
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "pointer",
+      "event": "down",
+      "targetId": "expanded:magnitudeLayer1.morphFace.yellow",
+      "targetX": 0.5,
+      "targetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:magnitudeLayer1.morphFace.yellow",
+      "downTargetId": "expanded:magnitudeLayer1.morphFace.yellow",
+      "targetX": 0.56,
+      "targetY": 0.55,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "pointer",
+      "event": "drag",
+      "targetId": "expanded:magnitudeLayer1.morphFace.yellow",
+      "downTargetId": "expanded:magnitudeLayer1.morphFace.yellow",
+      "targetX": 0.61,
+      "targetY": 0.6,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 100
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "pointer",
+      "event": "up",
+      "targetId": "expanded:magnitudeLayer1.morphFace.yellow",
+      "downTargetId": "expanded:magnitudeLayer1.morphFace.yellow",
+      "targetX": 0.61,
+      "targetY": 0.6,
+      "downTargetX": 0.5,
+      "downTargetY": 0.5
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 100
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "undo"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 100
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "setPreviewController",
+      "controller": 1,
+      "value": 32
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 100
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/acid-stab-3.cyclegraph"
+    },
+    {
+      "command": "openNodeEditor",
+      "nodeId": "magnitudeLayer1"
+    },
+    {
+      "command": "waitForIdle",
+      "idleDelayMs": 150
+    },
+    {
+      "command": "snapshotState"
+    }
+  ],
+  "quit": false
+}

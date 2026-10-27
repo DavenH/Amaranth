@@ -325,16 +325,22 @@ void CurveExpandedEditorComponent::commitTransaction() {
 }
 
 bool CurveExpandedEditorComponent::cancelTransaction() {
-    if (!transactionActive || node.kind != NodeKind::Waveshaper
-            || delegate == nullptr || !delegate->cancelCurveTransaction()) {
+    if (node.kind != NodeKind::Waveshaper || !cancelControlTransaction()) {
+        return false;
+    }
+    widget.restoreFromNode(node);
+    syncInteractionControls();
+    requestRepaint();
+    return true;
+}
+
+bool CurveExpandedEditorComponent::cancelControlTransaction() {
+    if (!transactionActive || delegate == nullptr || !delegate->cancelCurveTransaction()) {
         return false;
     }
     transactionActive = false;
     widget.setEditGestureActive(false);
     transientStateChanged = false;
-    widget.restoreFromNode(node);
-    syncInteractionControls();
-    requestRepaint();
     return true;
 }
 

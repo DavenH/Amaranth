@@ -18,6 +18,7 @@
 #include "UI/MeshEditorPresentation.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <functional>
 #include <limits>
@@ -193,6 +194,9 @@ public:
     }
 
     void setEnvelopeLogarithmic(bool shouldUseLogarithmicScale) override {
+        if (envelopeLogarithmic == shouldUseLogarithmicScale) {
+            return;
+        }
         envelopeLogarithmic = shouldUseLogarithmicScale;
         updateEnvelopeBackgroundGrid();
         Panel2D::repaint();
@@ -260,13 +264,17 @@ public:
             float secondValue,
             float thirdValue,
             int menuId) override {
+        const bool morphChanged = controlA != firstValue || controlB != secondValue || controlC != thirdValue;
         enabled = isEnabled;
         controlA = firstValue;
         controlB = secondValue;
         controlC = thirdValue;
         selectedMenuId = menuId;
 
-        applyEnvelopeMorphPosition(false);
+        if (morphChanged || !morphPositionApplied) {
+            applyEnvelopeMorphPosition(false);
+            morphPositionApplied = true;
+        }
     }
 
     bool doCreateVertex() override {
@@ -329,7 +337,7 @@ public:
                         || actionIs(PanelState::ReshapingCurve)
                         || actionIs(PanelState::DraggingCorner))
                 && synchronizeEnvelopeLoopSeamForCurrentEdit()) {
-            envRasterizer.updateWaveform(&mesh, 0.f);
+            rasterizeEnvelope();
             state.flags[PanelState::DidMeshChange] = true;
             Panel2D::repaint();
         }
@@ -348,11 +356,12 @@ public:
     }
 
     void refreshRasterizer() override {
+        ++rasterizerRefreshCount;
         envRasterizer.setMorphPosition(envelopeMorphPosition());
-        envRasterizer.updateWaveform(&mesh, 0.f);
+        rasterizeEnvelope();
         validateEnvelopeMarkers();
         if (synchronizeEnvelopeLoopSeamForCurrentEdit()) {
-            envRasterizer.updateWaveform(&mesh, 0.f);
+            rasterizeEnvelope();
             validateEnvelopeMarkers();
         }
 
@@ -383,6 +392,8 @@ public:
 
     var automationState() const override {
         auto* root = new DynamicObject();
+        root->setProperty("rasterizerRefreshCount", (int64) rasterizerRefreshCount.load());
+        root->setProperty("sliceEvaluationCount", (int64) sliceEvaluationCount.load());
 
         if (zoomPanel != nullptr) {
             auto* zoom = new DynamicObject();
@@ -416,6 +427,12 @@ public:
                 }));
         root->setProperty("physicalMovingVertexCount", (int) state.selectedFrame.size());
         root->setProperty("boxSelecting", actionIs(PanelState::BoxSelecting));
+        auto* selectionBounds = new DynamicObject();
+        selectionBounds->setProperty("x", selection.getX());
+        selectionBounds->setProperty("y", selection.getY());
+        selectionBounds->setProperty("width", selection.getWidth());
+        selectionBounds->setProperty("height", selection.getHeight());
+        root->setProperty("selectionBox", selectionBounds);
         root->setProperty("hasCurrentCube", state.currentCube != nullptr);
         root->setProperty("bipolar", isCurveBipolar());
         root->setProperty("releaseEnabled", envelopeReleaseEnabled);
@@ -664,11 +681,16 @@ protected:
         const MorphPosition position = envelopeMorphPosition();
         environment.setMorphPosition(position, Vertex::Red);
         envRasterizer.setMorphPosition(position);
-        envRasterizer.updateWaveform(&mesh, 0.f);
+        rasterizeEnvelope();
 
         if (repaintPanel) {
             Panel2D::repaint();
         }
+    }
+
+    void rasterizeEnvelope() {
+        ++sliceEvaluationCount;
+        envRasterizer.updateWaveform(&mesh, 0.f);
     }
 
     bool addEnvelopeCubeAt(float x, float y, float curve) {
@@ -1127,12 +1149,15 @@ protected:
     bool enabled { true };
     bool envelopeLogarithmic {};
     bool envelopeReleaseEnabled { true };
+    bool morphPositionApplied {};
     int dimensionCount { 2 };
     bool envelopeYellowLinked { true };
     bool envelopeRedLinked { true };
     bool envelopeBlueLinked { true };
     bool pendingVerticalFit {};
     VertCube* pendingSelection {};
+    std::atomic<uint64_t> rasterizerRefreshCount {};
+    std::atomic<uint64_t> sliceEvaluationCount {};
 
     int selectedMenuId {};
 

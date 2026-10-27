@@ -165,6 +165,8 @@ struct EnvelopeEditorComponent::Impl {
     String linkNodeId;
     String keyboardMorphAxis;
     bool draggingMorph {};
+    std::optional<MorphPosition> morphDragAuthored;
+    MorphPosition morphDragEffective;
     int cubeFace { -1 };
     Point<float> cubeDragOrigin;
     std::array<float, 3> cubeDragInitial {};
@@ -192,7 +194,9 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(CurveEditorWidget& target) :
     addAndMakeVisible(impl->dimensionSelector);
     stylePropertyLabel(impl->dimensionLabel, "Curve morphing");
     addAndMakeVisible(impl->dimensionLabel);
-    bindContinuousControls({ &impl->yellowMorph, &impl->redMorph, &impl->blueMorph });
+    for (int axis = 0; axis < 3; ++axis) {
+        bindMorphControl(axis);
+    }
     impl->yellowMorph.slider.setKeyboardShortcutHandler([this](const KeyPress& key) {
         return keyPressed(key);
     });
@@ -244,7 +248,53 @@ EnvelopeEditorComponent::EnvelopeEditorComponent(CurveEditorWidget& target) :
     });
 }
 
-EnvelopeEditorComponent::~EnvelopeEditorComponent() = default;
+EnvelopeEditorComponent::~EnvelopeEditorComponent() {
+    cancelMorphGesture();
+}
+
+void EnvelopeEditorComponent::bindMorphControl(int axis) {
+    auto& slider = impl->morph(axis).slider;
+    slider.onValueChange = [this, axis] {
+        setLocalMorphValue(axis, (float) impl->morph(axis).slider.getValue());
+        publishCurrentState();
+    };
+    slider.onDragStart = [this] {
+        beginMorphGesture();
+        beginTransaction();
+    };
+    slider.onDragEnd = [this] {
+        impl->morphDragAuthored.reset();
+        commitTransaction();
+    };
+}
+
+void EnvelopeEditorComponent::beginMorphGesture() {
+    impl->morphDragAuthored = MorphPosition { (float) impl->yellowMorph.slider.getValue(),
+            (float) impl->redMorph.slider.getValue(), (float) impl->blueMorph.slider.getValue() };
+    impl->morphDragEffective = displayedMorphPosition();
+}
+
+void EnvelopeEditorComponent::cancelMorphGesture() {
+    if (!impl->morphDragAuthored.has_value()) {
+        return;
+    }
+    widget.restoreEditorMorphGesture();
+    const auto authored = *impl->morphDragAuthored;
+    widget.setControlValues(true, authored.red, authored.blue, authored.time, 0);
+    cancelControlTransaction();
+    widget.setEditGestureActive(false);
+    impl->morphDragAuthored.reset();
+}
+
+bool EnvelopeEditorComponent::setLocalMorphValue(int axis, float value) {
+    const int dimension = MorphDimensions::axes[(size_t) axis];
+    const float previous = displayedMorphPosition()[dimension].getTargetValue();
+    auto& slider = impl->morph(axis).slider;
+    const bool changed = previous != value || (float) slider.getValue() != value;
+    slider.setValue(value, dontSendNotification);
+    widget.setEditorMorphPosition(dimension, value);
+    return changed;
+}
 
 String EnvelopeEditorComponent::getTooltip() {
     const Point<float> position = getLocalPoint(
@@ -411,14 +461,18 @@ Rectangle<float> EnvelopeEditorComponent::editorPanelBounds() const {
     return MeshEditorLayout(body, MeshDimensionality::dimensions(node).axisCount()).curve();
 }
 
+MorphPosition EnvelopeEditorComponent::displayedMorphPosition() const {
+    const MorphPosition local { (float) impl->yellowMorph.slider.getValue(),
+            (float) impl->redMorph.slider.getValue(), (float) impl->blueMorph.slider.getValue() };
+    return widget.effectiveMorphPosition().value_or(local);
+}
+
 void EnvelopeEditorComponent::paintEditor(Graphics& graphics) {
     const auto controls = editorControlBounds();
     const auto dimensions = MeshDimensionality::dimensions(node);
     const int selectedAxis = MorphDimensions::axes[(size_t) impl->viewAxis];
     const int surfaceAxis = dimensions.active(selectedAxis) ? selectedAxis : dimensions.primaryAxis();
-    const MorphPosition effective = widget.effectiveMorphPosition().value_or(
-            MorphPosition { (float) impl->yellowMorph.slider.getValue(),
-                    (float) impl->redMorph.slider.getValue(), (float) impl->blueMorph.slider.getValue() });
+    const MorphPosition effective = displayedMorphPosition();
     widget.prepareEnvelopeMorphSurface(surfaceAxis, effective);
     impl->presentation.draw(
             graphics,
@@ -542,10 +596,12 @@ void EnvelopeEditorComponent::syncEditorFromNode() {
     }
     impl->presentation.setDimensionCount(parameters.intValue("dimensionCount", 0));
     impl->dimensionSelector.setSelectedValue(parameters.stringValue("dimensionCount", "0"));
-    impl->yellowMorph.slider.setValue(parameters.floatValue("yellow", 0.f), dontSendNotification);
+    if (!impl->morphDragAuthored.has_value()) {
+        impl->yellowMorph.slider.setValue(parameters.floatValue("yellow", 0.f), dontSendNotification);
+        impl->redMorph.slider.setValue(parameters.floatValue("red", 0.5f), dontSendNotification);
+        impl->blueMorph.slider.setValue(parameters.floatValue("blue", 0.5f), dontSendNotification);
+    }
     impl->mode.setPurpose(purpose);
-    impl->redMorph.slider.setValue(parameters.floatValue("red", 0.5f), dontSendNotification);
-    impl->blueMorph.slider.setValue(parameters.floatValue("blue", 0.5f), dontSendNotification);
     if (impl->linkNodeId != node.id) {
         impl->linkNodeId = node.id;
         impl->keyboardMorphAxis.clear();
@@ -656,6 +712,28 @@ void EnvelopeEditorComponent::appendEditorAutomation(DynamicObject& state) const
     state.setProperty("redMorph", impl->redMorph.slider.getValue());
     state.setProperty("enabled", impl->enabled.getToggleState());
     state.setProperty("blueMorph", impl->blueMorph.slider.getValue());
+    const MorphPosition displayed = displayedMorphPosition();
+    state.setProperty("displayYellowMorph", (float) displayed.time);
+    state.setProperty("displayRedMorph", (float) displayed.red);
+    state.setProperty("displayBlueMorph", (float) displayed.blue);
+    const MorphSpaceLayout space(impl->presentation.planeBounds(controls), MeshDimensionality::dimensions(node));
+    const auto cursor = space.project(displayed.red, displayed.blue, displayed.time);
+    auto* cursorState = new DynamicObject();
+    cursorState->setProperty("x", cursor.x);
+    cursorState->setProperty("y", cursor.y);
+    state.setProperty("morphCursor", cursorState);
+    Array<var> primaryAxes;
+    for (int axis = 0; axis < 3; ++axis) {
+        const auto bounds = impl->presentation.axisBounds(controls, axis);
+        if (!bounds.isEmpty()) {
+            auto* button = new DynamicObject();
+            button->setProperty("id", axis == 0 ? "yellow" : axis == 1 ? "red" : "blue");
+            button->setProperty("bounds", editorBoundsToVar(bounds));
+            button->setProperty("selected", impl->viewAxis == axis);
+            primaryAxes.add(button);
+        }
+    }
+    state.setProperty("primaryAxisButtons", primaryAxes);
     if (const auto effective = widget.effectiveMorphPosition()) {
         state.setProperty("effectiveYellowMorph", (float) effective->time);
         state.setProperty("effectiveRedMorph", (float) effective->red);
@@ -928,10 +1006,12 @@ bool EnvelopeEditorComponent::editorMouseDown(Point<float> position) {
         const MorphSpaceLayout space(impl->presentation.planeBounds(controls), MorphDimensions(3));
         impl->cubeFace = space.cubeFaceAt(position);
         if (impl->cubeFace >= 0) {
+            beginMorphGesture();
             impl->draggingMorph = true;
             impl->cubeDragOrigin = position;
             for (int axis = 0; axis < 3; ++axis) {
-                impl->cubeDragInitial[(size_t) axis] = (float) impl->morph(axis).slider.getValue();
+                impl->cubeDragInitial[(size_t) axis] =
+                        impl->morphDragEffective[MorphDimensions::axes[(size_t) axis]].getTargetValue();
             }
             return true;
         }
@@ -939,6 +1019,7 @@ bool EnvelopeEditorComponent::editorMouseDown(Point<float> position) {
     }
     const auto plane = impl->presentation.morphInputBounds(controls);
     if (plane.contains(position)) {
+        beginMorphGesture();
         impl->draggingMorph = true;
         return editorMouseDrag(position);
     }
@@ -1029,32 +1110,25 @@ bool EnvelopeEditorComponent::dragMorph(Point<float> position) {
         const auto next = space.dragCubeFace(impl->cubeFace,
                 position - impl->cubeDragOrigin, impl->cubeDragInitial);
         bool changed = false;
-        for (int axis = 0; axis < 3; ++axis) {
-            auto& slider = impl->morph(axis).slider;
-            changed = changed || (float) slider.getValue() != next[(size_t) axis];
-            slider.setValue(next[(size_t) axis], dontSendNotification);
+        for (const int axis : MorphSpaceLayout::cubeFaceAxes(impl->cubeFace)) {
+            changed = setLocalMorphValue(axis, next[(size_t) axis]) || changed;
         }
         if (changed) {
             publishCurrentState();
         }
         return true;
     }
-    const auto plane = impl->presentation.morphInputBounds(editorControlBounds());
+    const MorphSpaceLayout space(impl->presentation.planeBounds(editorControlBounds()),
+            MeshDimensionality::dimensions(node));
+    const auto coordinates = space.reducedCoordinates(position);
     const bool oneDimension = impl->presentation.getDimensionCount() == 1;
-    auto& horizontal = impl->morph(oneDimension ? 0 : 1).slider;
-    const float u = jlimit(0.f, 1.f, (position.x - plane.getX()) / plane.getWidth());
-    const float v = jlimit(0.f, 1.f, (plane.getBottom() - position.y) / plane.getHeight());
-    const bool horizontalChanged = static_cast<float>(horizontal.getValue()) != u;
-    const bool verticalChanged = !oneDimension && static_cast<float>(impl->blueMorph.slider.getValue()) != v;
-    if (!horizontalChanged && !verticalChanged) {
-        return true;
-    }
-
-    horizontal.setValue(u, dontSendNotification);
+    bool changed = setLocalMorphValue(oneDimension ? 0 : 1, coordinates.x);
     if (!oneDimension) {
-        impl->blueMorph.slider.setValue(v, dontSendNotification);
+        changed = setLocalMorphValue(2, coordinates.y) || changed;
     }
-    publishCurrentState();
+    if (changed) {
+        publishCurrentState();
+    }
     return true;
 }
 
@@ -1097,6 +1171,7 @@ bool EnvelopeEditorComponent::dragVertexParameter(Point<float> position) {
 }
 
 void EnvelopeEditorComponent::editorMouseUp() {
+    impl->morphDragAuthored.reset();
     impl->draggingMorph = false;
     impl->cubeFace = -1;
     impl->draggingParameter = false;

@@ -217,6 +217,7 @@ set(RUNTIME_SOURCES
 )
 
 set(CANVAS_ARCHITECTURE_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/EditorMorphPosition.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/Rendering/EnvelopeMorphSurfacePreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MorphControlLayout.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MorphSpaceLayout.cpp"

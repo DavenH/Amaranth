@@ -12,6 +12,8 @@ class MorphSpaceLayout {
 public:
     MorphSpaceLayout(juce::Rectangle<float> diagram, MorphDimensions dimensions);
     juce::Point<float> project(float red, float blue, float yellow) const;
+    juce::Rectangle<float> inputBounds() const;
+    juce::Point<float> reducedCoordinates(juce::Point<float> position) const;
     juce::Point<float> cubeFacePoint(int heldAxis, float first, float second) const;
     int cubeFaceAt(juce::Point<float> position) const;
     static std::array<int, 2> cubeFaceAxes(int heldAxis);

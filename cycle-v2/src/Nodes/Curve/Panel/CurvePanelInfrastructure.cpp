@@ -10,6 +10,8 @@
 #include <UI/Panels/ZoomPanel.h>
 #include <UI/AmaranthLookAndFeel.h>
 
+#include <cstring>
+
 #include "UI/NativeCursorRefresh.h"
 
 using namespace gl;
@@ -38,6 +40,28 @@ std::optional<Rectangle<int>> curvePanelFramebufferReadBounds(
     return readBounds;
 }
 
+Image curvePanelSnapshotFromPixels(
+        const PixelARGB* pixels, int width, int height, bool& hasVisibleContent) {
+    hasVisibleContent = false;
+    if (pixels == nullptr || width <= 0 || height <= 0) {
+        return {};
+    }
+    Image image(Image::ARGB, width, height, false);
+    Image::BitmapData bitmap(image, Image::BitmapData::writeOnly);
+    for (int y = 0; y < height; ++y) {
+        const auto* source = pixels + (height - 1 - y) * width;
+        auto* destination = reinterpret_cast<PixelARGB*>(bitmap.getLinePointer(y));
+        std::memcpy(destination, source, (size_t) width * sizeof(PixelARGB));
+        for (int x = 0; x < width; ++x) {
+            destination[x].setAlpha(255);
+        }
+        for (int x = 0; x < width && !hasVisibleContent; ++x) {
+            hasVisibleContent = source[x].getRed() + source[x].getGreen() + source[x].getBlue() > 160;
+        }
+    }
+    return image;
+}
+
 bool CurvePanelPreviewRenderCache::Key::operator==(const Key& other) const {
     return width == other.width
             && height == other.height
@@ -45,7 +69,8 @@ bool CurvePanelPreviewRenderCache::Key::operator==(const Key& other) const {
             && modelRevision == other.modelRevision
             && contentRevision == other.contentRevision
             && presentationRevision == other.presentationRevision
-            && invalidationGeneration == other.invalidationGeneration;
+            && invalidationGeneration == other.invalidationGeneration
+            && view == other.view;
 }
 
 bool CurvePanelPreviewRenderCache::canReuse(const Key& key) {
@@ -274,7 +299,8 @@ Rectangle<float> CurvePanelHost::contentBounds(Rectangle<float> frame) const {
     return frame;
 }
 
-void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float scaleFactor) {
+void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float scaleFactor,
+        uint64_t modelRevision, uint64_t contentRevision, uint64_t presentationRevision) {
     if (bounds.isEmpty()) {
         renderSurfaceVisible = false;
         return;
@@ -282,6 +308,16 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
     renderSurfaceVisible = true;
     invalidation.notifyAvailabilityChanged();
     initialiseSharedGlResources();
+    const auto& zoom = panel.getZoomPanel()->rect;
+    auto renderKey = previewRenderKey(bounds, scaleFactor, modelRevision, contentRevision, presentationRevision);
+    renderKey.invalidationGeneration = expandedInvalidationGeneration.load();
+    renderKey.view = { zoom.x, zoom.y, zoom.w, zoom.h };
+    if (hasPendingRenderChanges() || !expandedSnapshot.hasVisibleSnapshot()) {
+        expandedRenderCache.invalidate();
+    }
+    if (expandedRenderCache.canReuse(renderKey)) {
+        return;
+    }
     PanelHostContext context;
     context.bounds = bounds;
     context.clip = bounds;
@@ -289,7 +325,7 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
     context.visible = true;
     context.callbacks = callbacks();
     panel.setHostContext(context);
-    panel.panelResized();
+    updateRenderLayout(bounds, scaleFactor);
     delegate.prepareCurvePanel();
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -300,8 +336,9 @@ void CurvePanelHost::render(Rectangle<float> bounds, Rectangle<float>, float sca
     Image nextImage;
     bool hasVisibleContent {};
     if (captureRenderedPanelImage(
-            bounds, scaleFactor, nextImage, hasVisibleContent)) {
-        expandedSnapshot.publish(std::move(nextImage), hasVisibleContent);
+            bounds, scaleFactor, nextImage, hasVisibleContent)
+            && expandedSnapshot.publish(std::move(nextImage), hasVisibleContent)) {
+        expandedRenderCache.didRender(renderKey);
     }
 
     invalidation.request(
@@ -342,6 +379,8 @@ bool CurvePanelHost::renderPreviewUncached(
         Rectangle<float> bounds,
         float scaleFactor,
         bool preserveInteractiveZoom) {
+    // Compact layout changes selection handles; restore expanded layout on its next render.
+    expandedRenderCache.invalidate();
     renderSurfaceVisible = true;
     invalidation.notifyAvailabilityChanged();
     initialiseSharedGlResources();
@@ -353,7 +392,7 @@ bool CurvePanelHost::renderPreviewUncached(
     context.visible = true;
     context.callbacks = callbacks();
     panel.setHostContext(context);
-    panel.panelResized();
+    updateRenderLayout(bounds, scaleFactor);
     if (preserveInteractiveZoom) {
         panel.getZoomPanel()->rect = interactiveZoom;
     } else {
@@ -390,9 +429,11 @@ bool CurvePanelHost::usesCursor(const MouseCursor& cursor) const {
 
 void CurvePanelHost::resetDocumentPresentation() {
     previewRenderCache.invalidate();
+    expandedRenderCache.invalidate();
     previewSnapshot.clear();
     expandedSnapshot.clear();
     ++previewInvalidationGeneration;
+    ++expandedInvalidationGeneration;
 }
 
 void CurvePanelHost::releaseSharedGlResources() {
@@ -403,6 +444,42 @@ void CurvePanelHost::releaseSharedGlResources() {
     sharedGlResourcesInitialised = false;
     renderSurfaceVisible = false;
     previewRenderCache.invalidate();
+    expandedRenderCache.invalidate();
+    lastRenderBounds = {};
+}
+
+bool CurvePanelHost::hasPendingRenderChanges() const {
+    return panel.isDirty(PanelDirtyState::Flag::Layout)
+            || panel.isDirty(PanelDirtyState::Flag::StaticVisual)
+            || panel.isDirty(PanelDirtyState::Flag::Overlay)
+            || panel.isDirty(PanelDirtyState::Flag::Resource)
+            || panel.isDirty(PanelDirtyState::Flag::Full)
+            || (panel.usesCachedSurface() && panel.isDirty(PanelDirtyState::Flag::SurfaceCache));
+}
+
+void CurvePanelHost::appendRenderDiagnostics(DynamicObject& state) const {
+    const auto cache = expandedRenderCache.diagnostics();
+    state.setProperty("expandedRenderCacheHits", (int64) cache.hits);
+    state.setProperty("expandedRenderCacheMisses", (int64) cache.misses);
+    state.setProperty("snapshotReadbackCount", (int64) snapshotReadbackCount.load());
+    state.setProperty("snapshotReadbackMicroseconds", (int64) snapshotReadbackMicroseconds.load());
+    state.setProperty("snapshotConversionMicroseconds", (int64) snapshotConversionMicroseconds.load());
+}
+
+void CurvePanelHost::updateRenderLayout(Rectangle<float> bounds, float scaleFactor) {
+    const auto& zoom = panel.getZoomPanel()->rect;
+    const Rectangle<float> view(zoom.x, zoom.y, zoom.w, zoom.h);
+    if (bounds.getWidth() == lastRenderBounds.getWidth()
+            && bounds.getHeight() == lastRenderBounds.getHeight()
+            && scaleFactor == lastRenderScaleFactor
+            && view == lastRenderZoom) {
+        return;
+    }
+    lastRenderBounds = bounds;
+    lastRenderZoom = view;
+    lastRenderScaleFactor = scaleFactor;
+    ++renderLayoutCount;
+    panel.panelResized();
 }
 
 void CurvePanelHost::initialiseComponent() {
@@ -449,32 +526,23 @@ bool CurvePanelHost::captureRenderedPanelImage(
     }
     const int width = readBounds->getWidth();
     const int height = readBounds->getHeight();
-    HeapBlock<uint8> pixels(width * height * 4);
-    glFlush();
+    HeapBlock<PixelARGB> pixels(width * height);
     glReadBuffer(GL_BACK);
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    const double readbackStarted = Time::getMillisecondCounterHiRes();
     glReadPixels(
             readBounds->getX(),
             readBounds->getY(),
             width,
             height,
-            GL_RGBA,
+            JUCE_RGBA_FORMAT,
             GL_UNSIGNED_BYTE,
             pixels.get());
-
-    Image nextImage(Image::RGB, width, height, true);
-    Image::BitmapData bitmap(nextImage, Image::BitmapData::writeOnly);
-    bool nextHasVisibleContent = false;
-    for (int y = 0; y < height; ++y) {
-        const uint8* srcRow = pixels.get() + (height - 1 - y) * width * 4;
-        for (int x = 0; x < width; ++x) {
-            const uint8* src = srcRow + x * 4;
-            bitmap.setPixelColour(x, y, Colour::fromRGB(src[0], src[1], src[2]));
-            nextHasVisibleContent = nextHasVisibleContent || (src[0] + src[1] + src[2]) > 160;
-        }
-    }
-    destination = nextImage;
-    hasVisibleContent = nextHasVisibleContent;
+    const double conversionStarted = Time::getMillisecondCounterHiRes();
+    ++snapshotReadbackCount;
+    snapshotReadbackMicroseconds += (uint64_t) ((conversionStarted - readbackStarted) * 1000.0);
+    destination = curvePanelSnapshotFromPixels(pixels.get(), width, height, hasVisibleContent);
+    snapshotConversionMicroseconds += (uint64_t) ((Time::getMillisecondCounterHiRes() - conversionStarted) * 1000.0);
     return true;
 }
 
@@ -511,7 +579,10 @@ PanelHostCallbacks CurvePanelHost::callbacks() const {
 }
 
 void CurvePanelHost::requestPanelInvalidation(PanelDirtyState::Flag flag) {
-    ++previewInvalidationGeneration;
+    ++expandedInvalidationGeneration;
+    if (flag != PanelDirtyState::Flag::Overlay) {
+        ++previewInvalidationGeneration;
+    }
     MessageManager* messageManager = MessageManager::getInstanceWithoutCreating();
     if (flag == PanelDirtyState::Flag::Overlay
             && messageManager != nullptr

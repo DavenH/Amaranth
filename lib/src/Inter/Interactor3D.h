@@ -70,7 +70,7 @@ public:
     }
 
     bool is3DInteractor() override { return true; }
-    const vector<SimpleIcpt>& getInterceptPairs() { return interceptPairs; }
+    const vector<SimpleIcpt>& getInterceptPairs() const { return interceptPairs; }
 
 protected:
     void removeDuplicateVerts(vector<Vertex*>& affectedVerts, vector<VertCube*>& affectedCubes, bool deleteDupes);
