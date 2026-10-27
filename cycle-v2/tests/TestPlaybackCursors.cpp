@@ -15,6 +15,7 @@
 #include "Runtime/TrimeshMorphResolver.h"
 #include "UI/PanelPlaybackOverlay.h"
 #include "Nodes/Envelope/Rendering/EnvelopeSurfacePanel.h"
+#include "Nodes/Envelope/Rendering/EnvelopeSectionColours.h"
 #include "UI/SignalProbeDetailView.h"
 #include "Runtime/DefaultOutputPreview.h"
 
@@ -545,8 +546,10 @@ TEST_CASE("Envelope surface Blues colours follow morph-dependent loop and releas
     const auto yellow = image.getPixelAt(1, 2);
     const auto red = image.getPixelAt(4, 2);
     REQUIRE(blue.getBlue() > blue.getRed());
-    REQUIRE(yellow.getHue() == Catch::Approx(0.14f).margin(0.01f));
-    REQUIRE(red.getHue() == Catch::Approx(0.f).margin(0.01f));
+    const auto sections = envelopeSectionColours();
+    REQUIRE(blue.getHue() == Catch::Approx(sections[0].toColour().getHue()).margin(0.01f));
+    REQUIRE(yellow.getHue() == Catch::Approx(sections[1].toColour().getHue()).margin(0.01f));
+    REQUIRE(red.getHue() == Catch::Approx(sections[2].toColour().getHue()).margin(0.01f));
     REQUIRE(yellow.getBrightness() == blue.getBrightness());
     REQUIRE(red.getBrightness() == blue.getBrightness());
     REQUIRE(image.getPixelAt(1, 1) == blue);

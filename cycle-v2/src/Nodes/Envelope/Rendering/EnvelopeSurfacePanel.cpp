@@ -1,4 +1,5 @@
 #include "Nodes/Envelope/Rendering/EnvelopeSurfacePanel.h"
+#include "Nodes/Envelope/Rendering/EnvelopeSectionColours.h"
 
 #include <UI/Panels/Texture.h>
 
@@ -11,11 +12,14 @@ const auto& sectionPalettes() {
         std::array<std::array<Colour, 512>, 4> result;
         const auto material = ScalarSurfaceMaterial::blueDepth();
         const auto bipolar = ScalarSurfaceMaterial::signedAmplitudeFlat();
+        const auto sections = envelopeSectionColours();
+        const std::array<float, 3> hues { sections[0].toColour().getHue(),
+                sections[1].toColour().getHue(), sections[2].toColour().getHue() };
         for (int index = 0; index < 512; ++index) {
             const auto blue = ScalarSurfaceMaterialEvaluator::baseColourFor((float) index / 511.f, material);
-            result[0][(size_t) index] = blue;
-            result[1][(size_t) index] = blue.withHue(0.14f);
-            result[2][(size_t) index] = blue.withHue(0.f);
+            for (size_t section = 0; section < hues.size(); ++section) {
+                result[section][(size_t) index] = blue.withHue(hues[section]);
+            }
             result[3][(size_t) index] = ScalarSurfaceMaterialEvaluator::baseColourFor(
                     (float) index / 511.f, bipolar);
         }

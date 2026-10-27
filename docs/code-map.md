@@ -87,7 +87,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Graph/MeshDimensionality.h` — Shared axis eligibility and projection; GraphMeshGuideRemap preserves rail targets.
 - `cycle-v2/src/UI/Editors/` — Shared morph reconciliation, diagram/input geometry, property controls and keyboard interaction.
 - `cycle-v2/src/Nodes/Curve/` — Curve codecs, stable identities, editor adapters and shared panel/zoom/GL hosts.
-- `cycle-v2/src/Nodes/Envelope/` — State/playback, section-coloured surfaces and shared EnvelopeEditCore for panel and headless edits.
+- `cycle-v2/src/Nodes/Envelope/` — State/playback, shared section palette, surfaces and EnvelopeEditCore for panel and headless edits.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
 - `cycle-v2/src/Nodes/ImpulseResponse/` — Canonical IR import/analysis; effect processors prepare playback-rate kernels.
 - `cycle-v2/src/UI/NodeWorkspace.h` — Workspace composition, ephemeral controllers, and audio playback cursor delivery.

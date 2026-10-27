@@ -14,7 +14,7 @@ No new interaction target or audio clock is required.
 Use the existing flat bipolar material for pitch, so small deviations around
 0.5 retain their sign. Use the flat Blues material for other Envelope surfaces, independent of the
 preset's waveform material. Preserve its amplitude/brightness ramp while hue
-shifting loop regions yellow and release regions red. Boundaries follow the
+using the shared 2D blue, amber loop and maroon release hues. Boundaries follow the
 actual loop/sustain markers at each sampled morph slice, including time beyond
 1 and morph-dependent boundaries. Leave samples outside each slice's first/last
 authored intercept transparent; padding is not a release. Only shade release
@@ -116,3 +116,16 @@ headers remain below 80 lines. The bridge forwards the established keyboard
 axis gated by existing dimensionality/link facts. The overlay owns marker
 geometry and screen anchoring, reusing its diamond renderer. No DSP, new
 resource lifecycle, aggregate graph work or second mapping resolver is added.
+
+
+Section hue refinement: `EnvelopeSectionColours` now owns the existing 2D
+section colours. Both panels consume it; 3D preserves the Blues brightness and
+saturation ramp while taking each section's hue from 2D. This removes the cyan,
+pure-yellow and pure-red mismatch without changing pitch's bipolar palette.
+The colour test checks all three shared hues and preserved brightness; 1,895
+assertions across 17 focused cases and the 50-command Envelope UI verifier pass.
+Debug/release/test targets build. Production-size captures and a second preset
+were inspected; architecture, code-map and whitespace checks pass. The 2D panel
+shrinks 1,169 to 1,166 lines; colour ownership moves to a 14-line header and the
+surface remains 104 lines. No rendering/invalidation lifecycle changes here.
+Evidence: `.context/envelope-hue-*` and `.context/envelope-shared-hues-*`.

@@ -15,6 +15,7 @@
 
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
 #include "Nodes/Envelope/EnvelopeEditCore.h"
+#include "Nodes/Envelope/Rendering/EnvelopeSectionColours.h"
 #include "UI/MeshEditorPresentation.h"
 #include "UI/PanelPlaybackOverlay.h"
 
@@ -971,11 +972,7 @@ protected:
         alpha.abs().subCRev(0.5f).mul(0.75f);
         applyScale(xy);
 
-        Color sectionColours[] = {
-                Color(0.5f, 0.71f, 1.0f, 0.75f),
-                Color(0.6f, 0.45f, 0.25f, 0.75f),
-                Color(0.5f, 0.2f, 0.25f, 0.75f)
-        };
+        auto sectionColours = envelopeSectionColours();
 
         const float loopStart = envelopeLoopStart();
         const float sustain = envelopeReleaseStart();
@@ -1008,7 +1005,7 @@ protected:
             ++changePointIndex;
         }
 
-        colourIndex = jlimit(0, (int) numElementsInArray(sectionColours) - 1, changePointIndex);
+        colourIndex = jlimit(0, (int) sectionColours.size() - 1, changePointIndex);
         curr.update(xy.x[i] - 5.f, xy.y[i], sectionColours[(size_t) colourIndex].withAlpha(alpha.front()));
         positions.push_back(curr);
 
