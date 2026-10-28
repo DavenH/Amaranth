@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -113,6 +114,15 @@ TEST_CASE("Open references remain session-owned while library records reload",
         REQUIRE(library.openReferenceIds() == std::vector<String> { firstId, secondId });
         REQUIRE(library.select(firstId, error));
         REQUIRE(library.selectedId() == firstId);
+        REQUIRE(library.setSpectralView(firstId, true));
+        REQUIRE(library.spectralViewFor(firstId));
+        REQUIRE_FALSE(library.spectralViewFor(secondId));
+        REQUIRE(library.select(secondId, error));
+        REQUIRE(library.select(firstId, error));
+        REQUIRE(library.spectralViewFor(firstId));
+        REQUIRE(library.setFundamental(library.selectedAnalysis()->sample->fundNote + 1));
+        REQUIRE(library.undoPitchEdit());
+        REQUIRE(library.spectralViewFor(firstId));
     }
     root.getChildFile("library.json").replaceWithText(
             "{\"selected\":\"" + firstId + "\",\"open\":[\""
@@ -127,6 +137,40 @@ TEST_CASE("Open references remain session-owned while library records reload",
         REQUIRE(library.openReferenceIds() == std::vector<String> { secondId });
     }
     root.deleteRecursively();
+}
+
+TEST_CASE("Reference loading trims to five seconds before peak normalization and analysis",
+        "[cycle-v2][reference][resolution]") {
+    const File source = File::getSpecialLocation(File::tempDirectory)
+            .getChildFile("cycle-v2-reference-duration-" + Uuid().toString() + ".wav");
+    for (int rate : { 44100, 96000 }) {
+        AudioBuffer<float> audio(2, rate * 6);
+        for (int index = 0; index < audio.getNumSamples(); ++index) {
+            const float value = (float) std::sin(juce::MathConstants<double>::twoPi * 220 * index / rate);
+            const float gain = index < 5 * rate ? 0.1f : 0.9f;
+            audio.setSample(0, index, value * gain * 0.5f);
+            audio.setSample(1, index, value * gain);
+        }
+        source.deleteFile();
+        {
+            WavAudioFormat format;
+            std::unique_ptr<FileOutputStream> stream(source.createOutputStream());
+            REQUIRE(stream != nullptr);
+            std::unique_ptr<AudioFormatWriter> writer(format.createWriterFor(stream.release(), rate, 2, 24, {}, 0));
+            REQUIRE(writer != nullptr);
+            REQUIRE(writer->writeFromAudioSampleBuffer(audio, 0, audio.getNumSamples()));
+        }
+        const auto originalSize = source.getSize();
+        const auto analysis = ReferenceSampleAnalyzer::analyze(source);
+        REQUIRE(analysis.succeeded());
+        REQUIRE(analysis.sample->size() == rate * 5);
+        REQUIRE(analysis.sample->audio.right.max() == Catch::Approx(1.f));
+        REQUIRE(analysis.sample->audio.left.max() == Catch::Approx(0.5f).margin(1e-5));
+        REQUIRE(analysis.columns == 1024);
+        REQUIRE(analysis.rows <= 1024);
+        REQUIRE(source.getSize() == originalSize);
+    }
+    source.deleteFile();
 }
 
 TEST_CASE("Reference import rejects missing and unsupported audio",

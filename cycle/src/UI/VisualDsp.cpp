@@ -8,6 +8,7 @@
 #include <Audio/Multisample.h>
 #include <Audio/PitchedSample.h>
 #include <Audio/WavePeriodFolding.h>
+#include <Audio/WavePeriodSpectrum.h>
 #include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Mesh/PathRepo.h>
 #include <Definitions.h>
@@ -892,28 +893,15 @@ void VisualDsp::calcWaveSpectrogram(int numColumns) {
     int sizeIndex = sizeToIndex[nextPow2];
     Transform& fft = ffts[sizeIndex];
 
-    ScopedAlloc<Float32> magBuffer(nextPow2);
-
+    WavePeriodSpectrum::render(fft, waveTimeCols, waveFFTCols, &wavePhaseCols);
     for (int i = 0; i < numColumns; ++i) {
-        Buffer col = waveTimeCols[i];
-
-        Column prefxMag(waveFFTCols[i]);
-        Column prefxPhs(wavePhaseCols[i]);
-
-        ffts[sizeIndex].forward(col);
-        Buffer magBuf(fft.getMagnitudes(), numHarmonics);
-        Buffer phaseBuf(fft.getPhases(), numHarmonics);
-
-        Arithmetic::applyLogMapping(fft.getMagnitudes(), getConstant(AmpTensionScale));
-
-        magBuf.threshGT(1.f);
-        phaseBuf.add(MathConstants<float>::halfPi);
-
-        magBuf.copyTo(prefxMag);
-        prefxMag.offset(numHarmonics - 1).zero();
-
-        phaseBuf.copyTo(prefxPhs);
-        prefxPhs.offset(numHarmonics - 1).zero();
+        auto magnitude = waveFFTCols[i];
+        auto phase = wavePhaseCols[i];
+        Arithmetic::applyLogMapping(magnitude, getConstant(AmpTensionScale));
+        magnitude.threshGT(1.f);
+        magnitude[numHarmonics - 1] = 0.f;
+        phase.add(MathConstants<float>::halfPi);
+        phase[numHarmonics - 1] = 0.f;
     }
 
     if(getSetting(CurrentMorphAxis) == Vertex::Time) {
@@ -1630,8 +1618,8 @@ void VisualDsp::resizeArrays(const ResizeParams& params) {
 
 void VisualDsp::getNumHarmonicsAndNextPower(int& numHarmonics, int& nextPow2, int key) {
     int midiKey  = key >= 0 ? key : getObj(MorphPanel).getCurrentMidiKey();
-    numHarmonics = getObj(LogRegions).getRegion(midiKey).size();
-    nextPow2     = NumberUtils::nextPower2(numHarmonics * 2);
+    numHarmonics = WavePeriodSpectrum::harmonicCount(midiKey);
+    nextPow2     = WavePeriodSpectrum::cycleSize(midiKey);
 
   #ifdef JUCE_DEBUG
     static int logCount = 0;

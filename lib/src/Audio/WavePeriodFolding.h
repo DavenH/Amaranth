@@ -16,5 +16,6 @@ public:
             bool wrapCycles,
             bool interpolateCycles,
             double stereoPan,
-            bool logMapping = false);
+            bool logMapping = false,
+            bool useColumnPositions = false);
 };

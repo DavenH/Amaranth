@@ -94,11 +94,16 @@ juce::var selectedAnalysis(const ReferenceLibrary& library, bool includeGrid) {
     grid->setProperty("columns", analysis->columns);
     grid->setProperty("rows", analysis->rows);
     grid->setProperty("layout", "column-major");
-    grid->setProperty("timeAxis", "linear normalized recording duration [0, 1]");
+    grid->setProperty("timeAxis", "cycle positions in normalized recording duration [0, 1]");
     grid->setProperty("phaseAxis", "normalized cycle [0, 1)");
     grid->setProperty("foldingGain", 0.5);
     grid->setProperty("revision", (juce::int64) analysis->cyclogramRevision);
     if (includeGrid) {
+        juce::Array<juce::var> positions;
+        for (const float position : analysis->cyclePositions) {
+            positions.add(position);
+        }
+        grid->setProperty("columnTimes", std::move(positions));
         juce::Array<juce::var> values;
         values.ensureStorageAllocated((int) analysis->cyclogram.size());
         for (const float value : analysis->cyclogram) {

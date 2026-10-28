@@ -6,6 +6,8 @@
 #include "App/StandaloneAudioEngine.h"
 #include "UI/NodeCanvas.h"
 #include "UI/ComparisonDock.h"
+#include "UI/ReferenceAssetBrowser.h"
+#include "UI/ReferenceTrayBar.h"
 #include "UI/PerformanceKeyboard.h"
 #include "Graph/PatternLibrary.h"
 #include "Reference/ReferenceLibrary.h"
@@ -16,7 +18,8 @@ using namespace juce;
 
 class NodeWorkspace :
         public Component
-    ,   private Timer {
+    ,   private Timer
+    ,   public juce::DragAndDropContainer {
 public:
     explicit NodeWorkspace(StandaloneAudioEngine& audioEngine);
     ~NodeWorkspace() override;
@@ -65,7 +68,8 @@ public:
     PerformanceKeyboardPanel& performanceKeyboardForAutomation() { return keyboard; }
     bool openNodeEditorForAutomation(const String& nodeId);
     bool pinComparisonSpyForAutomation(const String& probeId);
-    bool selectReferenceForAutomation(const String& referenceId);
+    bool openWaveReference(const String& referenceId);
+    bool selectReferenceForAutomation(const String& referenceId) { return openWaveReference(referenceId); }
     bool importReferenceForAutomation(const File& file, String& error);
     var inspectReferencesForAutomation() const;
     var exportReferenceAnalysisForAutomation(bool includeGrid) const;
@@ -73,7 +77,7 @@ public:
         return comparisonDock.openPitchEditorForAutomation(referenceId);
     }
     void importWaveReference() { comparisonDock.importReference(); }
-    bool canShowComparisonShelf() const { return canvas.hasTrimeshEditorOpen(); }
+    bool canShowComparisonShelf() const { return true; }
     bool isComparisonShelfVisible() const { return comparisonDockVisible; }
     void toggleComparisonShelf();
     bool addNodeForAutomation(const String& kind, Point<float> position, String& nodeId);
@@ -160,7 +164,7 @@ private:
             const StandaloneAudioEngine::Status& status,
             bool forcePublication);
     void layoutPerformanceKeyboard();
-    void updateComparisonVisibility();
+    void setComparisonShelfVisible(bool visible);
     void revealComparisonShelf();
     void updateOutputMeter(const StandaloneAudioEngine::Status& status);
     var outputMeterStateForAutomation() const;
@@ -169,9 +173,10 @@ private:
     NodeCanvas canvas;
     ReferenceLibrary referenceLibrary;
     ComparisonDock comparisonDock;
-    int comparisonDockHeight { 284 };
+    ReferenceAssetBrowser referenceAssets;
+    ReferenceTrayBar referenceTrayBar;
+    int comparisonDockHeight { 254 };
     bool comparisonDockVisible {};
-    bool comparisonShelfRequested {};
     MidiKeyboardState keyboardState;
     PerformanceKeyboardPanel keyboard;
     std::unique_ptr<PatternLibrary> patternLibrary;

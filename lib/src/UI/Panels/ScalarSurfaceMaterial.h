@@ -152,6 +152,7 @@ struct ScalarSurfaceHeightScales {
 
 struct ScalarSurfaceRenderData {
     const float* values {};
+    const float* columnPositions {};
     int valueCount {};
     juce::Rectangle<float> bounds;
     ScalarSurfaceMaterial material;

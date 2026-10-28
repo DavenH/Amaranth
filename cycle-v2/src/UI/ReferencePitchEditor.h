@@ -8,21 +8,31 @@
 
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 #include "Reference/ReferenceLibrary.h"
-#include "UI/Editors/PropertyControls.h"
+#include "UI/ExpandedEditorChrome.h"
+#include "UI/PanelOverlayIconButton.h"
+#include "UI/ReferenceSurfaceCache.h"
+#include "UI/ReferenceWaveformView.h"
 
 namespace CycleV2 {
 
 class EnvelopeCurvePanelContract;
+class ComparisonSurfaceView;
 
 class ReferencePitchEditor final :
         public juce::Component
-    ,   private CurvePanelHostDelegate {
+    ,   private CurvePanelHostDelegate
+    ,   private juce::ScrollBar::Listener {
 public:
     explicit ReferencePitchEditor(ReferenceLibrary& library);
     ~ReferencePitchEditor() override;
 
     bool open(const juce::String& referenceId);
     void syncFromLibrary();
+    void refreshCyclogram();
+    const juce::String& referenceId() const { return openedId; }
+    juce::Rectangle<int> cyclogramBounds() const;
+    juce::Rectangle<int> closeBounds() const;
+    std::vector<std::pair<juce::String, juce::Rectangle<int>>> pointerTargetsForAutomation() const;
     void renderOpenGL(float scaleFactor);
     void releaseOpenGLResources();
     juce::var exportAutomationState() const;
@@ -30,14 +40,22 @@ public:
 
     void paint(juce::Graphics& graphics) override;
     void resized() override;
-    void mouseUp(const juce::MouseEvent& event) override;
     bool keyPressed(const juce::KeyPress& key) override;
 
     std::function<void()> onEdited;
     std::function<void()> onClose;
+    std::function<void()> onAuditionToggle;
     std::function<void()> onRenderRequested;
+    std::function<void()> onViewModeChanged;
 
 private:
+    void configureViewControls();
+    void setSurfaceMode(bool spectral);
+    void syncTimeZoom(bool fromSurface);
+    void resetView();
+    void setWaveformMode(bool waveform);
+    void fitLowerView();
+    void scrollBarMoved(juce::ScrollBar* scrollbar, double newRangeStart) override;
     void initialiseCurvePanel(juce::Component* component) override;
     void updateCurvePanelZoom(bool resetView) override;
     void prepareCurvePanel() override;
@@ -48,17 +66,32 @@ private:
     void publishIntermediateRevision() override;
     void commitEdit() override;
     bool cancelEdit() override;
-    void commitFundamental();
 
     ReferenceLibrary& library;
+    ExpandedEditorChrome chrome;
+    std::unique_ptr<ComparisonSurfaceView> cyclogram;
+    ReferenceSurfaceCache surfaceCache;
+    PanelOverlayIconButton timeView;
+    PanelOverlayIconButton spectrumView;
+    PanelOverlayIconButton pitchView;
+    PanelOverlayIconButton waveformView;
+    PanelOverlayIconButton zoomAttack;
+    PanelOverlayIconButton zoomFit;
+    PanelOverlayIconButton zoomFull;
+    int displayedGeneration { -1 };
+    bool spectral {};
+    bool displayedSpectral {};
+    bool linkingTimeZoom {};
+    bool waveformMode {};
+    juce::Point<float> pitchVertical { 0.f, 1.f };
+    juce::Point<float> waveformVertical { 0.f, 1.f };
+    ReferenceWaveformView waveform;
     CurvePanelEnvironment environment;
     EnvelopeMesh mesh { "ReferencePitchEnvelope" };
     std::unique_ptr<EnvelopeCurvePanelContract> panel;
     std::unique_ptr<CurvePanelHost> host;
-    PropertySliderRow fundamental;
     juce::String openedId;
     bool editingMesh {};
-    bool draggingFundamental {};
 };
 
 }

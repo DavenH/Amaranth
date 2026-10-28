@@ -169,6 +169,7 @@ bool StandaloneAudioEngine::startReferenceAudition(const PitchedSample& sample) 
                 return owner->sourcePath == sample.lastLoadedFilePath
                         && owner->outputSampleRate == rate;
             });
+    referenceAuditionPath = sample.lastLoadedFilePath;
     if (found != referenceOwners.end()) {
         referenceStopRequested.store(false, std::memory_order_release);
         pendingReference.store(found->get(), std::memory_order_release);
@@ -196,6 +197,10 @@ bool StandaloneAudioEngine::startReferenceAudition(const PitchedSample& sample) 
     pendingReference.store(pointer, std::memory_order_release);
     referencePlaying.store(true, std::memory_order_release);
     return true;
+}
+
+bool StandaloneAudioEngine::isReferenceAuditioningFile(const juce::String& path) const {
+    return isReferenceAuditioning() && referenceAuditionPath == path;
 }
 
 void StandaloneAudioEngine::stopReferenceAudition() {

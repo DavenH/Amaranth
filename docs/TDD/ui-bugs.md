@@ -978,6 +978,14 @@ unipolar material and value mapping were untouched by the concurrent bipolar
 palette change. Current status: open; reconcile the heatmap's actual mapping
 and derivative sampling with this reference assertion.
 
+The 2026-10-25 reference-spectrum check again failed the same three magnitude
+edge pixels and the phase heatmap's midpoint pixel (`TestNodePreviewProcessor`
+line 462). Both cases exercise mesh mapping, which is unchanged in this slice.
+The broad `[reference],[spectral]` selection also reports the previously recorded
+empty-model column-count/pitch/guide expectations. Evidence:
+`.context/reference-spectrum-tests.log` (46 of 58 cases pass). The targeted
+reference and raw signal-mapping checks pass; this is not a full-suite pass.
+
 ## P3: Legacy Stengah Spy cards overlap
 
 On 2026-10-09, opening `cycle-v2/content/presets/old/stengah.cyclegraph`
@@ -1069,6 +1077,19 @@ the semantic reduced-gesture fixture and editor tests. Evidence:
 and successful run identity `a10ee2c48615`. Parallel CycleV2 launches also disrupted
 some earlier attempts. Current status: open as native fixture/input timing work;
 no full native-suite reliability claim is made.
+
+The 2026-10-24 reference zoom follow-up again missed native baseline selection
+and scrollbar gestures in the broad replay. The scoped semantic replay pans the
+same scrollbar from 0.4771 to 0.5297, keeps its span and analysis unchanged, and
+captures the correct fitted view. Artifacts: `.context/reference-zoom-scroll-native/`,
+`.context/reference-pitch-zoom-check/`. The focused retained scrollbar check uses
+semantic down/two-drag/up events; native input timing remains a separate limitation.
+
+The 2026-10-24 reference navigation native run passed stable selection, expansion,
+vertical pan, pitch drag/commit and exact pitch-path/frame restoration by Undo,
+then missed the close-button click after resizing to 1000x760. Semantic close
+passes. Evidence: `.context/reference-navigation-native/`; this remains part of
+the native event-delivery limitation rather than a full native-suite pass.
 
 The Component-row review also missed one native Static-pill click: the intended
 Static screenshots still showed 3D. Its corrected capture preparation uses an
@@ -1184,3 +1205,37 @@ LogRegions coordinates` test expects three columns for a dimension-zero node
 and gets one (338 values vs 1,014). This reproduces in the pre-existing baseline
 binary. Evidence: `.context/playback-render-existing-test-baseline.log`. The
 focused cache, Guide, viewport and playback checks pass.
+
+## P3: Expanded Trimesh top pane crowds out its surface at 1000x700
+
+On 2026-10-23, `cycle-v2-agent-reference-surface-click.json` opened `timeLayer1`
+from `baroque-flute` at 1000x700 with two reference cards. The upper Trimesh
+surface narrowed to roughly 55 px while its fixed controls occupied the rest
+of the row; the Type selector also crowded the dimensionality selector.
+Reference selection and both rendered cards passed. The tray and its new
+30 px disclosure share the previous 284 px height budget. Evidence:
+`.context/reference-small-editor.png`, `.context/reference-surface-report.json`.
+
+Current status: open; inspect the expanded editor's minimum size and control
+allocation independently of reference browsing and tray disclosure.
+
+## P3: Pointer automation cannot encode the Command modifier
+
+On 2026-10-24, the reference pitch zoom check sent an unmodified wheel event;
+it correctly changed horizontal zoom rather than the expected vertical range.
+Vertical wheel zoom requires Command. CycleV2AutomationInput::pointerModifiers
+reads a boolean `command` from the same payload whose `command` string selects
+the operation, so a request cannot supply both values. Evidence:
+`.context/reference-pitch-zoom-wheel-failure/commands.jsonl`. Native vertical
+thumb dragging passes. Current status: open automation encoding gap; no change
+to production zoom semantics or the pointer protocol in the reference UI work.
+
+## P2: Reference rendering could overwrite pending scrollbar movement
+
+During the 2026-10-24 linked-navigation checks, repeated horizontal scrollbar
+movement intermittently kept its old position. The GL preparation hook refreshed
+the pitch rasterizer and scrollbar ranges before JUCE delivered the range change.
+Reference preparation now runs on loading/history restoration and interaction;
+the render hook consumes the already-prepared curve. The focused reference-views
+check covers two surface pans, two pitch thumb-drag updates and wheel zoom from
+either plot. Evidence: `.context/reference-views/result.json`. Status: resolved.

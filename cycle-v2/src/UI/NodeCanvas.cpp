@@ -324,6 +324,46 @@ void NodeCanvas::configurePresetSidebar(
     resized();
 }
 
+void NodeCanvas::configureReferenceSidebar(ReferenceAssetBrowser& browser) {
+    if (presetSidebar != nullptr) {
+        presetSidebar->configureAssets(browser);
+    }
+}
+
+void NodeCanvas::showReferenceAssets() {
+    if (presetSidebar == nullptr) {
+        return;
+    }
+    closeReferenceEditor();
+    closeNodeEditor();
+    closeGuideEditor();
+    guideShelfState.minimized = false;
+    presetSidebar->showAssets();
+    resized();
+}
+
+void NodeCanvas::showReferenceEditor(Component& editor) {
+    closeNodeEditor();
+    closeGuideEditor();
+    probeDetailState.close();
+    referenceEditor = &editor;
+    addAndMakeVisible(editor);
+    editor.setBounds(NodeCanvasEditorCoordinator::boundsFor(nullptr, editorContentBounds()).toNearestInt());
+    editor.toFront(true);
+    notifyOverlayOcclusionChanged();
+    requestCanvasRepaint();
+}
+
+void NodeCanvas::closeReferenceEditor() {
+    if (referenceEditor == nullptr) {
+        return;
+    }
+    referenceEditor->setVisible(false);
+    referenceEditor = nullptr;
+    notifyOverlayOcclusionChanged();
+    requestCanvasRepaint();
+}
+
 void NodeCanvas::refreshPresetSidebarFavorites() {
     if (presetSidebar != nullptr) {
         presetSidebar->refreshFavorites();
@@ -435,6 +475,9 @@ void NodeCanvas::resized() {
     if (!documentViewportFitted && !canvasContentBounds().isEmpty()) {
         fitDocumentInViewport();
         documentViewportFitted = true;
+    }
+    if (referenceEditor != nullptr && referenceEditor->isVisible()) {
+        referenceEditor->setBounds(NodeCanvasEditorCoordinator::boundsFor(nullptr, editorContentBounds()).toNearestInt());
     }
     guideEditorCoordinator.layout(editorContentBounds());
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
@@ -645,6 +688,12 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     grabKeyboardFocus();
+    if (referenceEditor != nullptr && referenceEditor->isVisible()) {
+        if (!referenceEditor->getBounds().toFloat().contains(event.position)) {
+            closeReferenceEditor();
+        }
+        return;
+    }
     palette.updateHover(event.position);
     editStatusMessage = {};
     pointerInsideCanvas = true;
@@ -1384,6 +1433,13 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     const bool commandDown = key.getModifiers().isCommandDown() || key.getModifiers().isCtrlDown();
     const int keyCode = key.getKeyCode();
+    if (referenceEditor != nullptr && referenceEditor->isVisible()) {
+        if (key == KeyPress::escapeKey) {
+            closeReferenceEditor();
+            return true;
+        }
+        return referenceEditor->keyPressed(key);
+    }
     const juce_wchar keyChar = CharacterFunctions::toLowerCase(key.getTextCharacter());
 
     if (!commandDown && keyCode == KeyPress::spaceKey && previewPlaybackToggle) {
@@ -2414,6 +2470,7 @@ String NodeCanvas::exportGraphJson() const {
 }
 
 bool NodeCanvas::openNodeEditorForAutomation(const String& nodeId) {
+    closeReferenceEditor();
     return applyAuthoringResult(automation.openEditor(nodeId));
 }
 
@@ -2926,6 +2983,9 @@ Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
 }
 
 Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
+    if (referenceEditor != nullptr && referenceEditor->isVisible()) {
+        return referenceEditor->getBounds().toFloat();
+    }
     if (guideEditorCoordinator.isOpen()) {
         return guideEditorCoordinator.bounds();
     }
@@ -3215,6 +3275,7 @@ void NodeCanvas::closeNodeEditor() {
 }
 
 void NodeCanvas::openGuideEditor(const String& guideId) {
+    closeReferenceEditor();
     expandedNodeId = {};
     editorCoordinator.close();
     guideEditorCoordinator.open(guideId, editorContentBounds());

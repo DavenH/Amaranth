@@ -64,9 +64,11 @@ generate_svg_data(
     UiIconData
     UiIconData
     effectEnable zoomAttack zoomFull
+    referenceCyclogram referenceSpectrogram
     envelopeLoop envelopeSustain envelopeZoomFit envelopeZoomFull
     envelopeScaleLinear envelopeScaleLogarithmic
     spyEnvelopeNormal spyEnvelopeRelease
+    libraryCurves libraryPresets libraryPatterns libraryNodes libraryAssets libraryImport libraryAddReference libraryTray
 )
 
 file(GLOB_RECURSE APP_SOURCES
@@ -276,16 +278,22 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/MidiPatternMiniMap.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/PatternLibrary.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternBrowser.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceAssetBrowser.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceWaveformPreview.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceWaveformView.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceTrayBar.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarMediaRow.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarTagCloud.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarLibraryToolbar.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetMetadataEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/LibrarySearchField.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/LibraryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserComponents.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserLookAndFeel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetLibraryIndex.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetPreviewGenerator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetThumbnailCache.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/LibraryThumbnailCache.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewResources.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePreviewRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/OutputMeterPresentation.cpp"
@@ -529,6 +537,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/src/Reference/ReferenceLibrary.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/Reference/ReferenceAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserPage.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceSurfaceCache.cpp"
             ${TEST_SOURCES}
         )
         add_dependencies(${PROJECT_NAME}_tests CycleV2GraphMigrator)

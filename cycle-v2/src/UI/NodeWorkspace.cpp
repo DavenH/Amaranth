@@ -53,8 +53,18 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
         audioEngine(engine)
     ,   referenceLibrary(factoryReferenceDirectory(), userReferenceDirectory())
     ,   comparisonDock(canvas, referenceLibrary, engine)
+    ,   referenceAssets(referenceLibrary, engine)
     ,   keyboard(keyboardState, engine) {
     setOpaque(true);
+    addAndMakeVisible(referenceTrayBar);
+    referenceTrayBar.onToggle = [this] { toggleComparisonShelf(); };
+    referenceTrayBar.onBrowse = [this] { canvas.showReferenceAssets(); };
+    referenceTrayBar.onImport = [this] { importWaveReference(); };
+    referenceTrayBar.onDrop = [this](const String& id) { openWaveReference(id); };
+    referenceAssets.onAdd = referenceTrayBar.onDrop;
+    referenceAssets.onImport = referenceTrayBar.onImport;
+    referenceAssets.onShowTray = [this] { revealComparisonShelf(); };
+    comparisonDock.onReferenceDropped = referenceTrayBar.onDrop;
     addAndMakeVisible(canvas);
     addAndMakeVisible(comparisonDock);
     comparisonDock.setVisible(false);
@@ -63,6 +73,7 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
         resized();
     });
     comparisonDock.setReferenceImportedCallback([this] {
+        referenceAssets.refresh();
         revealComparisonShelf();
     });
     canvas.setComparisonRefreshCallback([this] {
@@ -76,7 +87,6 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     canvas.addAndMakeVisible(keyboard);
     canvas.setOverlayOcclusionChangedCallback([this] {
         layoutPerformanceKeyboard();
-        updateComparisonVisibility();
     });
     canvas.setPreviewPlaybackToggleCallback([this] {
         togglePreviewPlayback();
@@ -142,6 +152,7 @@ void NodeWorkspace::configurePresetSidebar(
                 renamePattern(id, name);
             },
             [this](const String& id) { deletePattern(id); });
+    canvas.configureReferenceSidebar(referenceAssets);
     refreshPatternSidebar();
 }
 
@@ -317,7 +328,6 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     publishAudioPlan(status, true);
     layoutPerformanceKeyboard();
-    updateComparisonVisibility();
     if (comparisonDockVisible) {
         comparisonDock.refreshCaptures();
     }
@@ -347,6 +357,7 @@ var NodeWorkspace::exportAutomationState() const {
         object->setProperty("performance", performanceStateForAutomation());
         object->setProperty("liveOutputMeter", outputMeterStateForAutomation());
         object->setProperty("comparison", comparisonDock.exportAutomationState());
+        object->setProperty("assetPreviews", referenceAssets.previewDiagnostics());
     }
     return state;
 }
@@ -363,16 +374,16 @@ bool NodeWorkspace::pinComparisonSpyForAutomation(const String& probeId) {
     if (!canvas.pinComparisonSpy(probeId)) {
         return false;
     }
-    comparisonShelfRequested = true;
-    updateComparisonVisibility();
+    setComparisonShelfVisible(true);
     return true;
 }
 
-bool NodeWorkspace::selectReferenceForAutomation(const String& referenceId) {
+bool NodeWorkspace::openWaveReference(const String& referenceId) {
     String error;
     if (!referenceLibrary.select(referenceId, error)) {
         return false;
     }
+    audioEngine.stopReferenceAudition();
     revealComparisonShelf();
     return true;
 }
@@ -381,6 +392,7 @@ bool NodeWorkspace::importReferenceForAutomation(const File& file, String& error
     if (!referenceLibrary.importFile(file, error)) {
         return false;
     }
+    referenceAssets.refresh();
     revealComparisonShelf();
     return true;
 }
@@ -394,17 +406,12 @@ var NodeWorkspace::exportReferenceAnalysisForAutomation(bool includeGrid) const 
 }
 
 void NodeWorkspace::toggleComparisonShelf() {
-    if (!canShowComparisonShelf()) {
-        return;
-    }
-    comparisonShelfRequested = !comparisonShelfRequested;
-    updateComparisonVisibility();
+    setComparisonShelfVisible(!comparisonDockVisible);
 }
 
 void NodeWorkspace::revealComparisonShelf() {
     const bool wasVisible = comparisonDockVisible;
-    comparisonShelfRequested = true;
-    updateComparisonVisibility();
+    setComparisonShelfVisible(true);
     if (wasVisible) {
         comparisonDock.refreshCaptures();
     }
@@ -547,6 +554,13 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
     if (resultObject == nullptr) {
         return result;
     }
+    const auto source = Desktop::getInstance().getMainMouseSource();
+    resultObject->setProperty("nativePointerX", source.getScreenPosition().x);
+    resultObject->setProperty("nativePointerY", source.getScreenPosition().y);
+    if (const auto* hovered = source.getComponentUnderMouse()) {
+        resultObject->setProperty("nativePointerComponentId", hovered->getComponentID());
+        resultObject->setProperty("nativePointerComponentName", hovered->getName());
+    }
     Array<var>* targets = resultObject->getProperty("targets").getArray();
     if (targets == nullptr) {
         return result;
@@ -556,19 +570,24 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
     workspaceTarget.getDynamicObject()->setProperty("screenBounds",
             rectangleToVar(getScreenBounds().toFloat()));
     targets->add(workspaceTarget);
+    for (const auto& [id, bounds] : referenceTrayBar.pointerTargetsForAutomation()) {
+        targets->add(pointerTarget(id, "referenceTray", bounds.translated(
+                (float) referenceTrayBar.getX(), (float) referenceTrayBar.getY())));
+    }
     if (comparisonDockVisible) {
+        for (const auto& [id, bounds] : comparisonDock.pointerTargetsForAutomation()) {
+            targets->add(pointerTarget(id, "comparison", bounds.translated(
+                    (float) comparisonDock.getX(), (float) comparisonDock.getY())));
+        }
         var dockTarget = pointerTarget("comparisonDock", "comparison",
                 comparisonDock.getBounds().toFloat());
         dockTarget.getDynamicObject()->setProperty("screenBounds",
                 rectangleToVar(comparisonDock.getScreenBounds().toFloat()));
         targets->add(dockTarget);
-        const auto curve = comparisonDock.pitchCurveBoundsForAutomation();
-        if (!curve.isEmpty()) {
-            targets->add(pointerTarget("referencePitch.curve", "referencePitchCurve",
-                    curve.toFloat().translated(
-                            (float) comparisonDock.getX(),
-                            (float) comparisonDock.getY())));
-        }
+    }
+    for (const auto& [id, bounds] : comparisonDock.referenceEditorTargetsForAutomation()) {
+        targets->add(pointerTarget(id, "referenceEditor", bounds.translated(
+                (float) canvas.getX(), (float) canvas.getY())));
     }
     for (const auto& [id, bounds] : canvas.presetSidebarPointerTargetsForAutomation()) {
         targets->add(pointerTarget(id, "presetSidebar", bounds));
@@ -869,17 +888,18 @@ void NodeWorkspace::resized() {
         comparisonDock.setBounds(bounds.removeFromBottom(
                 juce::jmin(comparisonDockHeight, juce::jmax(0, bounds.getHeight() - 380))));
     }
+    referenceTrayBar.setBounds(bounds.removeFromBottom(30));
     canvas.setBounds(bounds);
     layoutPerformanceKeyboard();
 }
 
-void NodeWorkspace::updateComparisonVisibility() {
-    const bool shouldShow = comparisonShelfRequested && canvas.hasTrimeshEditorOpen();
+void NodeWorkspace::setComparisonShelfVisible(bool shouldShow) {
     if (comparisonDockVisible == shouldShow) {
         return;
     }
     comparisonDockVisible = shouldShow;
     comparisonDock.setVisible(shouldShow);
+    referenceTrayBar.setExpanded(shouldShow);
     resized();
     if (shouldShow) {
         comparisonDock.refreshCaptures();
@@ -887,7 +907,6 @@ void NodeWorkspace::updateComparisonVisibility() {
 }
 
 void NodeWorkspace::timerCallback() {
-    updateComparisonVisibility();
     comparisonDock.syncAuditionState();
     drainRecordedMidi();
     const auto status = audioEngine.status();

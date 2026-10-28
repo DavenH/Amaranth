@@ -20,15 +20,15 @@ audio under user application data. Presets store only ordered Spy pin IDs.
 Imports and analysis run outside realtime processing. Reference audition is
 mixed from a predecoded, prepared buffer in the standalone audio callback.
 
-The comparison shelf is a session-level, elective View. Opening a Trimesh
-editor alone leaves it closed and does not capture pinned Spies. The View menu
-toggles it while a Trimesh editor is open. An explicit reference import or
-selection also requests it; a request made before opening Trimesh takes effect
-when the editor opens. Closing the editor hides the shelf without clearing the
-session choice. Preset loading changes neither the shelf choice nor the
-reference catalog. `NodeWorkspace` owns this visibility policy; the dock only
-reports a successful import and renders its sources. No graph command or
-comparison capture is needed to open an editor with the shelf closed.
+The comparison shelf is a session-level, elective View. The persistent Wave
+References disclosure and View menu toggle it independently of node editors.
+Imports and explicit reference additions reveal it immediately. Opening or
+closing Trimesh and loading presets do not change that choice. NodeWorkspace
+owns visibility; the dock renders sources and reports import success. The
+Assets sidebar supports search, short-file waveforms, audition and drag-to-tray.
+See `cycle-v2-reference-assets.md` for the revised interaction and verification
+contract. Earlier verification notes below describe the prior editor-gated
+shelf and are historical evidence.
 
 ## Authoritative implementations and translation boundaries
 

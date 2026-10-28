@@ -401,7 +401,7 @@ float PitchedSample::getAveragePeriod() const {
     return 1024.f;
 }
 
-int PitchedSample::load(const String& filename) {
+int PitchedSample::load(const String& filename, double maximumSeconds) {
     File audioFile(File::getCurrentWorkingDirectory().getChildFile(filename).getFullPathName());
 
     if(! audioFile.existsAsFile()) {
@@ -442,6 +442,9 @@ int PitchedSample::load(const String& filename) {
     }
 
     int size = (int) jmin(2 * 1024 * 1024LL, reader->lengthInSamples);
+    if (maximumSeconds > 0.0) {
+        size = jmin(size, (int) (maximumSeconds * reader->sampleRate));
+    }
     samplerate = int(reader->sampleRate);
 
     AudioBuffer<float> audioBuffer;
