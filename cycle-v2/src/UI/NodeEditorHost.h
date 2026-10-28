@@ -15,6 +15,7 @@
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 #include "Runtime/NodeUpdateGraph.h"
 #include "Runtime/PresentationRefreshPolicy.h"
+#include "Runtime/PlaybackCursor.h"
 #include "UI/NodeEditorPerformanceObserver.h"
 #include "UI/NodeEditorModelCommands.h"
 
@@ -176,6 +177,7 @@ public:
 
     virtual Component& component() = 0;
     virtual void bind(const Node& node) = 0;
+    virtual void setPlaybackCursors(const PlaybackCursorFrame&) {}
     virtual void renderOpenGL(float scaleFactor) = 0;
     virtual void appendAutomationState(DynamicObject& state) const = 0;
     virtual Rectangle<float> panelBoundsForAutomation() const = 0;
@@ -343,6 +345,7 @@ public:
     bool rebindTransient(const Node& node);
     void close();
     void detach();
+    void setPlaybackCursors(const PlaybackCursorFrame& frame);
     void renderOpenGL(float scaleFactor);
     bool hasEditor() const { return editor != nullptr; }
     bool isEditing(const String& nodeId) const;

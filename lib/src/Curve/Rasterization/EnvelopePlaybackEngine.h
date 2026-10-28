@@ -47,6 +47,7 @@ namespace Rasterization {
                 const PreparedEnvelopePlaybackView& replacement);
         void adopt(EnvelopeLoopSpan previous, const PreparedEnvelopePlaybackView& replacement);
         static EnvelopeLoopSpan loopSpan(const PreparedEnvelopePlaybackView& prepared);
+        static double releaseDuration(const PreparedEnvelopePlaybackView& prepared);
 
         bool renderToBuffer(
                 const PreparedEnvelopePlaybackView& prepared,

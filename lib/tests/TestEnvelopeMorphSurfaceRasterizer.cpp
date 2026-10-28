@@ -4,6 +4,7 @@
 #include <Array/ScopedAlloc.h>
 #include <Curve/Curve.h>
 #include <Curve/Mesh/VertCube.h>
+#include <Curve/Mesh/EnvelopeMesh.h>
 #include <Curve/Rasterization/Rasterizer/EnvelopeMorphSurfaceRasterizer.h>
 
 namespace {
@@ -47,7 +48,7 @@ namespace {
             mesh.destroy();
         }
 
-        Mesh mesh;
+        EnvelopeMesh mesh;
     };
 }
 
@@ -108,4 +109,43 @@ TEST_CASE("Envelope morph surface renders each explicit morph cross-section and 
             == Catch::Approx(baseMorph.red.getCurrentValue()));
     REQUIRE(rasterizer.getMorphPosition().blue.getCurrentValue()
             == Catch::Approx(baseMorph.blue.getCurrentValue()));
+}
+
+TEST_CASE("Envelope surface section boundaries follow the markers at each morph slice",
+        "[rasterization][envelope-surface]") {
+    CurveTableScope curveTable;
+    MorphSurfaceMesh source;
+    EnvelopeMesh mesh("SectionMarkers");
+    mesh.deepCopy(&source.mesh);
+    mesh.loopCubes.insert(mesh.getCubes()[0]);
+    mesh.sustainCubes.insert(mesh.getCubes()[1]);
+    for (int corner = 0; corner < (int) VertCube::numVerts; ++corner) {
+        auto* vertex = mesh.getCubes()[1]->getVertex(corner);
+        vertex->values[Vertex::Phase] = 0.5f + 0.2f * vertex->values[Vertex::Red];
+    }
+    constexpr int rows = 16;
+    ScopedAlloc<Float32> memory(rows * 3);
+    std::vector<Column> columns { Column(memory.place(rows)), Column(memory.place(rows)), Column(memory.place(rows)) };
+    std::vector<Rasterization::EnvelopeSurfaceMarkers> markers;
+    Rasterization::EnvelopeMorphSurfaceRasterizer rasterizer;
+    rasterizer.renderSurface(&mesh, columns, rows, Vertex::Red,
+            { 0.5f, 0.5f, 0.5f }, Range<float>(0.f, 1.f), &markers);
+    REQUIRE(markers.size() == 3);
+    for (size_t index = 0; index < markers.size(); ++index) {
+        REQUIRE(markers[index].signalStart == Catch::Approx(0.2f));
+        REQUIRE(markers[index].signalEnd == Catch::Approx(0.8f));
+        REQUIRE(markers[index].loopStart == Catch::Approx(0.2f));
+        REQUIRE(markers[index].releaseStart == Catch::Approx(0.5f + 0.1f * (float) index));
+    }
+    mesh.sustainCubes.clear();
+    rasterizer.renderSurface(&mesh, columns, rows, Vertex::Red,
+            {}, Range<float>(0.f, 1.5f), &markers);
+    REQUIRE(markers[0].releaseStart > 1.5f);
+    REQUIRE(markers[0].signalEnd == Catch::Approx(0.8f));
+    rasterizer.renderSurface(nullptr, columns, rows, Vertex::Red,
+            {}, std::nullopt, &markers);
+    REQUIRE(markers[0].signalEnd < markers[0].signalStart);
+    REQUIRE(markers[0].loopStart < 0.f);
+    REQUIRE(markers[0].releaseStart > 1.f);
+    mesh.destroy();
 }

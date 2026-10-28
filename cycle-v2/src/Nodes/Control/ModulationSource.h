@@ -31,6 +31,7 @@ struct PreviewControlContext {
     float channelPressure {};
     std::array<float, 128> controllers {};
     bool traverseVoiceTime {};
+    double previewReleaseDuration {};
 };
 
 struct ModulationSourceConfiguration final : public INodeDspConfiguration {

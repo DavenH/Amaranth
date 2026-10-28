@@ -14,6 +14,7 @@ struct MorphInputs {
     const SignalPayload* scratch {};
     float scratchOverride {};
     bool hasScratchOverride {};
+    PlaybackCursorCapture* playbackCursor {};
 
     static float value(const SignalPayload* input, size_t offset, float fallback) {
         if (input == nullptr || input->block.samples.empty()) {

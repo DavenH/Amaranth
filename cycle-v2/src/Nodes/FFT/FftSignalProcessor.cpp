@@ -242,6 +242,8 @@ TraversalGridMetadata FftSignalProcessor::frequencyMetadataFor(
             inputGrid.metadata.columnAxis,
             TraversalGridAxis::Frequency);
     metadata.columnResolution = inputGrid.metadata.columnResolution;
+    metadata.releaseDuration = inputGrid.metadata.releaseDuration;
+    metadata.noteOffTime = inputGrid.metadata.noteOffTime;
     metadata.frequencySampling = TraversalGridFrequencySampling::LinearBins;
     metadata.frequencyMidiNote = inputGrid.metadata.frequencyMidiNote;
     return metadata;
@@ -268,6 +270,8 @@ void FftSignalProcessor::publishInverseTraversalGrid(
             magnitudeGrid.metadata.columnAxis,
             TraversalGridAxis::Time);
     metadata.columnResolution = magnitudeGrid.metadata.columnResolution;
+    metadata.releaseDuration = magnitudeGrid.metadata.releaseDuration;
+    metadata.noteOffTime = magnitudeGrid.metadata.noteOffTime;
     TraversalGridColumnReader magnitudeColumns(magnitudeGrid);
     TraversalGridColumnWriter outputColumns(
             payloadTraversalGrid(output, channel),

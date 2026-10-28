@@ -154,6 +154,13 @@ void drawMeters(
             zoom);
 }
 
+bool usesHarmonicLanes(const NodePreviewResult& preview) {
+    return preview.role == PreviewModuleRole::SignalSpy
+            && preview.domain == PortDomain::SpectralMagnitudeSignal
+            && preview.frequencySampling == TraversalGridFrequencySampling::LinearBins
+            && preview.gridRows > 2;
+}
+
 std::vector<float> mappedSurface(
         const NodePreviewResult& preview,
         const std::vector<float>& values,
@@ -235,16 +242,16 @@ bool drawHeatmapImage(
         Graphics& graphics,
         Rectangle<float> area,
         const Image& image,
-        bool highQuality = false) {
+        bool highQuality = false,
+        bool harmonicLanes = false) {
     if (!image.isValid()) {
         return false;
     }
 
-    const Rectangle<float> content = area.reduced(
-            jmin(area.getWidth(), area.getHeight()) * 0.024f);
+    const Rectangle<float> content = NodePreviewRenderer::heatmapBounds(area);
     graphics.setImageResamplingQuality(
-            highQuality
-                    ? Graphics::highResamplingQuality
+            harmonicLanes ? Graphics::lowResamplingQuality
+                    : highQuality ? Graphics::highResamplingQuality
                     : Graphics::mediumResamplingQuality);
     graphics.setColour(EffectPlotPalette::insetBackground);
     graphics.fillRect(content);
@@ -261,8 +268,10 @@ bool drawHeatmap(
     return drawHeatmapImage(
             graphics,
             area,
-            NodePreviewRenderer::createRuntimeHeatmapImage(preview, profile),
-            highQuality);
+            NodePreviewRenderer::createRuntimeHeatmapImage(preview, profile, false, 0.f,
+                    roundToInt(NodePreviewRenderer::heatmapBounds(area).getHeight())),
+            highQuality,
+            usesHarmonicLanes(preview));
 }
 
 void drawCurveFallback(
@@ -463,27 +472,44 @@ bool NodePreviewRenderer::requiresCurveModel(NodeKind kind) {
 Image NodePreviewRenderer::createRuntimeHeatmapImage(
         const NodePreviewResult& preview,
         bool desaturated,
-        float surfaceAspectRatio) {
+        float surfaceAspectRatio,
+        int displayHeight) {
     return createRuntimeHeatmapImage(
             preview,
             TrimeshRenderProfile::fromDomain(preview.domain),
             desaturated,
-            surfaceAspectRatio);
+            surfaceAspectRatio,
+            displayHeight);
 }
 
 Image NodePreviewRenderer::createRuntimeHeatmapImage(
         const NodePreviewResult& preview,
         const TrimeshRenderProfile& profile,
         bool desaturated,
-        float surfaceAspectRatio) {
-    const auto createImage = [&preview, &profile, surfaceAspectRatio](
+        float surfaceAspectRatio,
+        int displayHeight) {
+    const auto createImage = [&preview, &profile, surfaceAspectRatio, displayHeight](
                                      const std::vector<float>& values) {
         TrimeshRenderData data;
-        data.surface = mappedSurface(preview, values, profile);
+        data.midiNote = preview.frequencyMidiNote;
+        if (usesHarmonicLanes(preview)) {
+            data.surface = values;
+            PreviewContrastNormalization::applySpectralMagnitude(
+                    data.surface, preview.gridColumns, preview.gridRows, 1.f);
+            data.surface = profile.mapSpectrumValuesToDisplay(
+                    data.surface, preview.gridColumns, preview.gridRows);
+            data.firstHarmonicRow = 1; // FFT bins include DC; Trimesh lanes start at harmonic one.
+        } else {
+            data.surface = mappedSurface(preview, values, profile);
+        }
         data.domain = preview.domain;
         data.columns = (int) preview.gridColumns;
         data.rows = (int) preview.gridRows;
         data.cyclic = preview.domain == PortDomain::TimeSignal;
+        if (usesHarmonicLanes(preview)) {
+            return TrimeshSurfaceRenderer::createTrimeshImage(
+                    data, profile, surfaceAspectRatio, displayHeight);
+        }
         return TrimeshSurfaceRenderer::createHeatmapImage(
                 data,
                 profile,
@@ -496,6 +522,10 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
         image.desaturate();
     }
     return image;
+}
+
+Rectangle<float> NodePreviewRenderer::heatmapBounds(Rectangle<float> area) {
+    return area.reduced(jmin(area.getWidth(), area.getHeight()) * 0.024f);
 }
 
 Rectangle<float> NodePreviewRenderer::boundsFor(
@@ -745,7 +775,8 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
             + "|scale:" + String((int) heatmapProfile.getScalePolicy())
             + "|surfaceStyle:"
             + String(heatmapProfile.getSurfaceStyle().materialStyleSignature())
-            + "|aspect:" + String(surfaceAspectRatio, 4);
+            + "|aspect:" + String(surfaceAspectRatio, 4)
+            + "|height:" + String(roundToInt(heatmapBounds(request.area).getHeight()));
     CachedNodePreviewSprite& cached = resources.cachedSprite(request.node.id);
     if (!cached.runtimeHeatmap.isValid()
             || cached.runtimeHeatmapSignature != signature) {
@@ -753,7 +784,8 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
                 result,
                 heatmapProfile,
                 desaturated,
-                surfaceAspectRatio);
+                surfaceAspectRatio,
+                roundToInt(heatmapBounds(request.area).getHeight()));
         cached.runtimeHeatmapSignature = signature;
     }
 
@@ -761,7 +793,8 @@ bool NodePreviewRenderer::paintRuntimeHeatmap(
             graphics,
             request.area,
             cached.runtimeHeatmap,
-            request.highQuality);
+            request.highQuality,
+            usesHarmonicLanes(result));
 }
 
 void NodePreviewRenderer::paintUncached(
@@ -809,7 +842,8 @@ bool NodePreviewRenderer::paintCachedHeatmap(
         }
     }
 
-    graphics.setImageResamplingQuality(Graphics::mediumResamplingQuality);
+    graphics.setImageResamplingQuality(usesHarmonicLanes(result)
+            ? Graphics::lowResamplingQuality : Graphics::mediumResamplingQuality);
     graphics.drawImage(cached.image, request.area);
     return true;
 }

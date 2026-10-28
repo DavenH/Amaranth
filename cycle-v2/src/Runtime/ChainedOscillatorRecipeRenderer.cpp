@@ -187,7 +187,8 @@ void ChainedOscillatorRecipeRenderer::advanceCycleEnvelopes(
     cycleEnvelopes.advanceLane(
             laneIndex,
             sampleCount,
-            normalizedTimeIncrement);
+            normalizedTimeIncrement,
+            context != nullptr && context->voice != nullptr ? context->voice->playbackCursor : nullptr);
 }
 
 void ChainedOscillatorRecipeRenderer::renderCycle(

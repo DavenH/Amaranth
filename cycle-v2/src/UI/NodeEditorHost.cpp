@@ -124,6 +124,12 @@ void NodeEditorHost::detach() {
     }
 }
 
+void NodeEditorHost::setPlaybackCursors(const PlaybackCursorFrame& frame) {
+    if (editor != nullptr) {
+        editor->setPlaybackCursors(frame);
+    }
+}
+
 void NodeEditorHost::renderOpenGL(float scaleFactor) {
     if (editor != nullptr && editor->component().isVisible()) {
         editor->renderOpenGL(scaleFactor);

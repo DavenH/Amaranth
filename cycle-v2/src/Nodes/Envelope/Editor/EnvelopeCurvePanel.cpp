@@ -15,7 +15,9 @@
 
 #include "Nodes/Trimesh/Panel/TrimeshPanelEnvironment.h"
 #include "Nodes/Envelope/EnvelopeEditCore.h"
+#include "Nodes/Envelope/Rendering/EnvelopeSectionColours.h"
 #include "UI/MeshEditorPresentation.h"
+#include "UI/PanelPlaybackOverlay.h"
 
 #include <algorithm>
 #include <atomic>
@@ -40,6 +42,13 @@ class EnvelopeCurvePanel final :
     ,   public EnvelopeCurvePanelContract {
 public:
     bool usesShiftLeftBoxSelection() const override { return true; }
+
+    void setPlaybackCursors(const PlaybackCursorFrame& frame) override {
+        const ScopedLock lock(getRenderLock());
+        if (playbackOverlay.setFrame(frame)) {
+            requestRepaint(PanelDirtyState::Flag::Overlay);
+        }
+    }
 
     Panel& hostedPanel() override {
         return *this;
@@ -382,6 +391,7 @@ public:
 
     void postCurveDraw() override {
         drawEnvelopeBounds();
+        playbackOverlay.draw(*this, Vertex::Time, true, false);
     }
 
     void drawCurvesAndSurfaces() override {
@@ -392,6 +402,7 @@ public:
 
     var automationState() const override {
         auto* root = new DynamicObject();
+        playbackOverlay.appendAutomation(*root, Vertex::Time, true, false);
         root->setProperty("rasterizerRefreshCount", (int64) rasterizerRefreshCount.load());
         root->setProperty("sliceEvaluationCount", (int64) sliceEvaluationCount.load());
 
@@ -975,11 +986,7 @@ protected:
         alpha.abs().subCRev(0.5f).mul(0.75f);
         applyScale(xy);
 
-        Color sectionColours[] = {
-                Color(0.5f, 0.71f, 1.0f, 0.75f),
-                Color(0.6f, 0.45f, 0.25f, 0.75f),
-                Color(0.5f, 0.2f, 0.25f, 0.75f)
-        };
+        auto sectionColours = envelopeSectionColours();
 
         const float loopStart = envelopeLoopStart();
         const float sustain = envelopeReleaseStart();
@@ -1012,7 +1019,7 @@ protected:
             ++changePointIndex;
         }
 
-        colourIndex = jlimit(0, (int) numElementsInArray(sectionColours) - 1, changePointIndex);
+        colourIndex = jlimit(0, (int) sectionColours.size() - 1, changePointIndex);
         curr.update(xy.x[i] - 5.f, xy.y[i], sectionColours[(size_t) colourIndex].withAlpha(alpha.front()));
         positions.push_back(curr);
 
@@ -1141,6 +1148,7 @@ protected:
         restoreEnvelopeSelection(selection);
     }
 
+    PanelPlaybackOverlay playbackOverlay;
     EnvRasterizer envRasterizer;
     TrimeshPanelEnvironment& environment;
     Mesh& mesh;

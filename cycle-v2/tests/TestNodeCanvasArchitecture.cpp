@@ -44,6 +44,7 @@
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodeViewModule.h"
 #include "UI/SignalProbeDetailView.h"
+#include "UiIconData.h"
 #include "UI/SignalProbeCanvas.h"
 #include "UI/TransformCompactEditor.h"
 #include "UI/VoiceContextCompactEditor.h"
@@ -491,7 +492,7 @@ TEST_CASE("Signal probe pitch periods and detail panel layout stay stable",
     REQUIRE(content.contains(detail));
     REQUIRE(detail.getWidth() > 700.f);
     REQUIRE(detail.getHeight() > 400.f);
-    REQUIRE(plot.getY() == detail.getY() + 14.f);
+    REQUIRE(plot.getY() == detail.getY() + 44.f);
     REQUIRE(plot.getBottom() == detail.getBottom() - 14.f);
     REQUIRE_FALSE(SignalProbeDetailView::dismissesOnClick(
             detail, detail.getCentre(), 1));
@@ -499,6 +500,41 @@ TEST_CASE("Signal probe pitch periods and detail panel layout stay stable",
             detail, detail.getCentre(), 2));
     REQUIRE_FALSE(SignalProbeDetailView::dismissesOnClick(
             detail, detail.getBottomRight() + Point<float>(1.f, 1.f), 2));
+}
+
+TEST_CASE("Spy envelope annotations shade the held and release regions distinctly",
+        "[cycle-v2][canvas][probe][detail][icons]") {
+    ScopedJuceInitialiser_GUI juce;
+    MessageManagerLock messageLock;
+    Image sheet(Image::ARGB, 440, 160, true);
+    Graphics graphics(sheet);
+    graphics.fillAll(Colour(0xff11171d));
+    int column = 0;
+    for (const auto* source : { UiIconData::spyEnvelopeNormal, UiIconData::spyEnvelopeRelease }) {
+        const auto xml = parseXML(source);
+        REQUIRE(xml != nullptr);
+        const auto icon = Drawable::createFromSVG(*xml);
+        REQUIRE(icon != nullptr);
+        Image native(Image::ARGB, 36, 24, true);
+        Graphics nativeGraphics(native);
+        icon->drawWithin(nativeGraphics, native.getBounds().toFloat(), RectanglePlacement::centred, 1.f);
+        const Colour shade(0xff344e65);
+        REQUIRE((native.getPixelAt(11, 16) == shade) == (column == 0));
+        REQUIRE((native.getPixelAt(26, 19) == shade) == (column == 1));
+        graphics.setColour(Colours::white);
+        graphics.drawText(column == 0 ? "Normal" : "Release", column * 220 + 12, 4, 160, 24,
+                Justification::centredLeft);
+        graphics.drawImageAt(native, column * 220 + 12, 38);
+        icon->drawWithin(graphics, Rectangle<float>((float) column * 220.f + 62.f, 38.f, 144.f, 96.f),
+                RectanglePlacement::centred, 1.f);
+        ++column;
+    }
+    const String reviewPath = SystemStats::getEnvironmentVariable("CYCLE_SPY_ICON_REVIEW_PATH", {});
+    if (reviewPath.isNotEmpty()) {
+        FileOutputStream stream { File(reviewPath) };
+        REQUIRE(stream.openedOk());
+        REQUIRE(PNGImageFormat().writeImageToStream(sheet, stream));
+    }
 }
 
 TEST_CASE("Signal probe detail resolves the attached Voice Context key value",

@@ -244,6 +244,7 @@ NodeCanvas::NodeCanvas() :
     probeCanvasState.outputSpyVisible = document.presentation().outputSpyVisible;
     probeCanvasState.defaultOutputView = document.presentation().outputSpyFrequencyView
             ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
+    presentation.setProbeNoteOffTimes(document.presentation().spyNoteOffTimes);
     dockInteraction = std::make_unique<WorkspaceDockInteractionController>(
             commands,
             graph,
@@ -424,7 +425,8 @@ void NodeCanvas::paint(Graphics& g) {
     const NodeCanvasPresentationFrame frame = presentationFrame();
     const Rectangle<int> status = statusRepaintBounds(
             frame.utilityBounds, frame.keyboardExtraControllerCount);
-    if (!status.isEmpty() && status.contains(g.getClipBounds())) {
+    if (!probeDetailState.isOpen() && frame.canvasOcclusion.isEmpty()
+            && !status.isEmpty() && status.contains(g.getClipBounds())) {
         canvasPresentation.paintStatus(g, frame);
         return;
     }
@@ -555,7 +557,9 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
         probeCanvasState.hoveredProbeId = {};
         hoveredEdgeIndex = -1;
         hoveredQuickCreatePortId = {};
-        setMouseCursor(MouseCursor::NormalCursor);
+        const bool releaseHandle = probeDetailState.releaseHitTest(
+                probeDetailBounds(), position);
+        setMouseCursor(releaseHandle ? MouseCursor::LeftRightResizeCursor : MouseCursor::NormalCursor);
         const bool canvasChanged = paletteChanged
                 || previousGuideId.isNotEmpty()
                 || previousProbeId.isNotEmpty()
@@ -734,7 +738,7 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
     guideShelfState.selectedGuideId = {};
     guideShelfState.hoveredGuideId = {};
     if (probeDetailState.isOpen()) {
-        const Rectangle<float> detail = SignalProbeDetailView::boundsFor(editorContentBounds());
+        const Rectangle<float> detail = probeDetailBounds();
         if (SignalProbeDetailView::dismissesOnClick(
                 detail,
                 event.position,
@@ -742,6 +746,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
             probeDetailState.close();
             notifyOverlayOcclusionChanged();
             requestCanvasRepaint();
+            return;
+        }
+        if (probeDetailState.beginReleaseDrag(detail, event.position)) {
+            setMouseCursor(MouseCursor::LeftRightResizeCursor);
+            repaint(detail.getSmallestIntegerContainer());
             return;
         }
         if (detail.contains(event.position)) {
@@ -1105,6 +1114,11 @@ void NodeCanvas::mouseDrag(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
+    if (probeDetailState.releaseDragging) {
+        probeDetailState.dragRelease(event.position);
+        repaint(probeDetailBounds().getSmallestIntegerContainer());
+        return;
+    }
     if (informationCardMouseDrag(event)) {
         return;
     }
@@ -1206,6 +1220,16 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
     auto measurement = performanceMetrics.measure(
             CanvasPerformanceMetrics::Trigger::PointerGesture);
     lastMousePosition = event.position;
+    if (probeDetailState.releaseDragging) {
+        if (probeDetailState.endReleaseDrag(event.position)) {
+            if (commands.setSpyNoteOffTime(probeDetailState.probeId, probeDetailState.noteOffTime)) {
+                notifyGraphDocumentStateChanged();
+            }
+            refreshProbeDetail();
+        }
+        requestCanvasRepaint();
+        return;
+    }
     if (informationCardMouseUp()) {
         return;
     }
@@ -1478,6 +1502,10 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 
     if (key == KeyPress::escapeKey) {
         if (probeDetailState.isOpen()) {
+            if (probeDetailState.cancelReleaseDrag()) {
+                repaint(probeDetailBounds().getSmallestIntegerContainer());
+                return true;
+            }
             probeDetailState.close();
             notifyOverlayOcclusionChanged();
             requestCanvasRepaint();
@@ -1693,7 +1721,7 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             guideShelfState,
             probeCanvasState,
             dockInteraction->focus(),
-            probeDetailState,
+            &probeDetailState,
             globalUnisonPreviewContext,
             liveOutputMeterLevels,
             interaction.spectralPan() != nullptr
@@ -1706,7 +1734,8 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             extraMidiControllerCount(),
             &informationCards,
             focusedInformationGroup,
-            informationCardPreview()
+            informationCardPreview(),
+            probeDetailBounds()
     };
 }
 
@@ -1737,6 +1766,10 @@ Point<float> NodeCanvas::viewportCentreWorld() const {
 
 Rectangle<float> NodeCanvas::canvasContentBounds() const {
     return workspaceDockLayout().content;
+}
+
+Rectangle<float> NodeCanvas::probeDetailBounds() const {
+    return SignalProbeDetailView::boundsFor(canvasContentBounds());
 }
 
 Rectangle<float> NodeCanvas::canvasUtilityBounds() const {
@@ -2103,11 +2136,17 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
             commands.editingGraph(),
             probeId,
             captureResolution,
-            midiNote);
+            midiNote,
+            probeDetailState.probeId == probeId
+                    ? probeDetailState.noteOffTime : presentation.probeNoteOffTime(probeId));
     if (!preview.has_value()) {
         probeDetailState.close();
         notifyOverlayOcclusionChanged();
         return;
+    }
+
+    if (preview->noteOffTime != presentation.probeNoteOffTime(probeId)) {
+        presentation.commitProbePreview(*preview);
     }
 
     if (probeId == DefaultOutputProbeResolver::probeId
@@ -2137,7 +2176,7 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
 }
 
 void NodeCanvas::refreshProbeDetail() {
-    if (!probeDetailState.isOpen()) {
+    if (!probeDetailState.isOpen() || probeDetailState.releaseDragging) {
         return;
     }
 
@@ -2260,8 +2299,19 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.probeDetailResolution = probeDetailState.resolution;
     result.probeDetailColumns = probeDetailState.renderResult.gridColumns;
     result.probeDetailRows = probeDetailState.renderResult.gridRows;
+    result.probeDetailReleaseDuration = probeDetailState.releaseDuration;
+    result.probeDetailNoteOffPosition = probeDetailState.noteOffPosition();
+    result.probeDetailNoteOffTime = probeDetailState.displayedNoteOffTime();
+    result.probeDetailRenderedNoteOffTime = probeDetailState.noteOffTime;
+    result.probeDetailRenderCount = probeDetailState.renderCount;
+    result.probeDetailContentRevision = probeDetailState.renderResult.contentRevision;
+    result.probeDetailReleaseDragging = probeDetailState.releaseDragging;
+    const auto detail = probeDetailBounds();
+    result.probeDetailReleaseBounds = SignalProbeDetailView::releaseHandleBounds(detail, probeDetailState);
+    result.probeDetailReleaseIconBounds = SignalProbeDetailView::releaseIconBounds(detail, probeDetailState);
+    result.probeDetailVoiceBounds = SignalProbeDetailView::voiceBounds(detail, probeDetailState);
     result.probeDetailBounds = probeDetailState.isOpen()
-            ? SignalProbeDetailView::boundsFor(editorContentBounds())
+            ? probeDetailBounds()
             : Rectangle<float> {};
     result.canvasContentBounds = canvasContentBounds();
     result.editorContentBounds = editorContentBounds();
@@ -2940,7 +2990,7 @@ Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
         return guideEditorCoordinator.bounds();
     }
     if (probeDetailState.isOpen()) {
-        return SignalProbeDetailView::boundsFor(editorContentBounds());
+        return probeDetailBounds();
     }
 
     const Node* expandedNode = queries.findNode(expandedNodeId);

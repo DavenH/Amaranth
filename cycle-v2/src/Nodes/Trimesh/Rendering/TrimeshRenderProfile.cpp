@@ -203,31 +203,6 @@ std::vector<float> mapSpectralValuesToDisplay(
     return surface;
 }
 
-std::vector<float> mapSpectralGridToDisplay(
-        const std::vector<float>& source,
-        size_t columns,
-        size_t rows,
-        PortDomain domain,
-        float magnitudeTension,
-        int midiNote,
-        bool includesDc,
-        double sampleRate,
-        size_t outputRows) {
-    return logarithmicRowsToDisplay(
-            mapSpectralValuesToDisplay(
-                    source,
-                    columns,
-                    rows,
-                    domain,
-                    magnitudeTension),
-            columns,
-            rows,
-            midiNote,
-            includesDc,
-            sampleRate,
-            outputRows);
-}
-
 }
 
 TrimeshRenderProfile TrimeshRenderProfile::fromDomain(PortDomain domain) {
@@ -274,6 +249,11 @@ std::vector<float> TrimeshRenderProfile::mapGridToDisplay(
     return surface;
 }
 
+std::vector<float> TrimeshRenderProfile::mapSpectrumValuesToDisplay(
+        const std::vector<float>& source, size_t columns, size_t rows) const {
+    return source.empty() ? source : mapSpectralValuesToDisplay(source, columns, rows, domain, 500.f);
+}
+
 std::vector<float> TrimeshRenderProfile::mapSpectrum2DGridToDisplay(
         const std::vector<float>& source,
         size_t columns,
@@ -289,12 +269,10 @@ std::vector<float> TrimeshRenderProfile::mapSpectrum2DGridToDisplay(
             && domain != PortDomain::SpectralPhaseSignal) {
         return mapGridToDisplay(source, columns, rows, midiNote);
     }
-    return mapSpectralGridToDisplay(
-            source,
+    return logarithmicRowsToDisplay(
+            mapSpectrumValuesToDisplay(source, columns, rows),
             columns,
             rows,
-            domain,
-            500.f,
             midiNote,
             includesDc,
             sampleRate,
@@ -351,6 +329,9 @@ Colour TrimeshSurfaceStyle::colourForValue(float value) const {
 }
 
 ScalarSurfaceMaterial TrimeshSurfaceStyle::surfaceMaterial() const {
+    if (domain == PortDomain::EnvelopeSignal) {
+        return ScalarSurfaceMaterial::blueDepth();
+    }
     if (domain == PortDomain::SpectralPhaseSignal) {
         return ScalarSurfaceMaterial::bipolarPhase();
     }

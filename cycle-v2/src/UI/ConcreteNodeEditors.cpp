@@ -39,7 +39,14 @@ public:
         boundNode = node;
         editor->setNode(node);
         if (auto* widget = resources.curveEditorWidget(node)) {
+            boundWidget = widget;
             resources.syncCurveGuideContext(*widget, node);
+        }
+    }
+
+    void setPlaybackCursors(const PlaybackCursorFrame& frame) override {
+        if (boundWidget != nullptr) {
+            boundWidget->setPlaybackCursors(frame);
         }
     }
 
@@ -121,6 +128,7 @@ private:
     NodeEditorPresentation& presentation;
     NodeEditorResources& resources;
     std::unique_ptr<CurveExpandedEditorComponent> editor;
+    CurveEditorWidget* boundWidget {};
     String nodeId;
     Node boundNode;
 };
@@ -175,6 +183,12 @@ public:
         editor->setRenderProfile(resources.trimeshRenderProfile(node));
         editor->setGuideAttachmentLabels(resources.trimeshGuideLabels(node));
         editor->setNode(node);
+    }
+
+    void setPlaybackCursors(const PlaybackCursorFrame& frame) override {
+        if (boundWidget != nullptr) {
+            boundWidget->setPlaybackCursors(frame);
+        }
     }
 
     void renderOpenGL(float scaleFactor) override { editor->renderOpenGL(scaleFactor); }

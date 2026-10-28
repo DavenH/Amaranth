@@ -1,6 +1,8 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <UI/Panels/GLSurfaceCache.h>
+
 #include <algorithm>
 
 #include "Nodes/Guide/GuideGraphEditor.h"
@@ -119,22 +121,22 @@ void addUnrelatedInteractionState(NodeGraph& graph) {
 TEST_CASE("Curve snapshot capture requires full framebuffer residency",
         "[cycle-v2][node-editor-host][performance]") {
     const Rectangle<int> viewport { 0, 0, 800, 600 };
-    const auto visible = curvePanelFramebufferReadBounds(
+    const auto visible = GLSurfaceCache::framebufferReadBounds(
             { 100.f, 80.f, 220.f, 140.f }, 1.f, viewport);
     REQUIRE(visible.has_value());
     REQUIRE(*visible == Rectangle<int>(100, 380, 220, 140));
 
-    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+    REQUIRE_FALSE(GLSurfaceCache::framebufferReadBounds(
             { -1.f, 80.f, 220.f, 140.f }, 1.f, viewport).has_value());
-    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+    REQUIRE_FALSE(GLSurfaceCache::framebufferReadBounds(
             { 700.f, 80.f, 220.f, 140.f }, 1.f, viewport).has_value());
-    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+    REQUIRE_FALSE(GLSurfaceCache::framebufferReadBounds(
             { 100.f, -1.f, 220.f, 140.f }, 1.f, viewport).has_value());
-    REQUIRE_FALSE(curvePanelFramebufferReadBounds(
+    REQUIRE_FALSE(GLSurfaceCache::framebufferReadBounds(
             { 100.f, 540.f, 220.f, 140.f }, 1.f, viewport).has_value());
 
     const Rectangle<int> retinaViewport { 10, 20, 1600, 1200 };
-    const auto retina = curvePanelFramebufferReadBounds(
+    const auto retina = GLSurfaceCache::framebufferReadBounds(
             { 100.f, 80.f, 220.f, 140.f }, 2.f, retinaViewport);
     REQUIRE(retina.has_value());
     REQUIRE(*retina == Rectangle<int>(210, 780, 440, 280));

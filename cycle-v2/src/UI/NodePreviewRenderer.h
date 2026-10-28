@@ -29,15 +29,18 @@ public:
     explicit NodePreviewRenderer(NodePreviewResources& resources);
 
     static bool requiresCurveModel(NodeKind kind);
+    static Rectangle<float> heatmapBounds(Rectangle<float> area);
     static Image createRuntimeHeatmapImage(
             const NodePreviewResult& preview,
             bool desaturated = false,
-            float surfaceAspectRatio = 0.f);
+            float surfaceAspectRatio = 0.f,
+            int displayHeight = 0);
     static Image createRuntimeHeatmapImage(
             const NodePreviewResult& preview,
             const TrimeshRenderProfile& profile,
             bool desaturated = false,
-            float surfaceAspectRatio = 0.f);
+            float surfaceAspectRatio = 0.f,
+            int displayHeight = 0);
 
     static Rectangle<float> boundsFor(
             const Node& node,

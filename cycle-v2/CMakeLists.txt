@@ -67,6 +67,7 @@ generate_svg_data(
     referenceCyclogram referenceSpectrogram
     envelopeLoop envelopeSustain envelopeZoomFit envelopeZoomFull
     envelopeScaleLinear envelopeScaleLogarithmic
+    spyEnvelopeNormal spyEnvelopeRelease
     libraryCurves libraryPresets libraryPatterns libraryNodes libraryAssets libraryImport libraryAddReference libraryTray
 )
 
@@ -165,12 +166,15 @@ set(RUNTIME_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/CurvePreviewProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/EffectNodeAudioProcessors.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphAudioExecutor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPreviewTiming.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ProbeExecutionScope.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphAudioProcessorCache.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphInvalidation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/MidiControlState.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/RealtimeMidiEventQueue.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/RealtimeGraphRenderer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/PlaybackCursor.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PanelPlaybackOverlay.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/VoiceNoteState.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/ReverbLocalPreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Runtime/GraphPreviewExecutor.cpp"
@@ -219,6 +223,7 @@ set(RUNTIME_SOURCES
 set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/EditorMorphPosition.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/Rendering/EnvelopeMorphSurfacePreview.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Nodes/Envelope/Rendering/EnvelopeSurfacePanel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MorphControlLayout.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MorphSpaceLayout.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/Editors/MeshEditorLayout.cpp"

@@ -8,6 +8,7 @@
 #include "Runtime/GraphPreviewExecutor.h"
 
 #include "Runtime/DefaultOutputPreview.h"
+#include "Nodes/Control/ModulationSource.h"
 #include "Runtime/FingerprintBuilder.h"
 #include "Graph/DefaultOutputProbeResolver.h"
 
@@ -257,7 +258,17 @@ GraphPreviewResult renderPreview(
         size_t pointCount,
         GraphPreviewResult result = {},
         const std::vector<uint8_t>* dirtyNodes = nullptr,
-        const PreviewControlContext* controlContext = nullptr) {
+        const PreviewControlContext* controlContext = nullptr,
+        double releaseDuration = -1.) {
+    PreviewControlContext controls = controlContext != nullptr ? *controlContext : PreviewControlContext {};
+    if (releaseDuration < 0.) {
+        releaseDuration = controls.previewReleaseDuration;
+    }
+    controls.previewReleaseDuration = releaseDuration;
+    if (result.previewReleaseDuration != releaseDuration) {
+        dirtyNodes = nullptr;
+    }
+    result.previewReleaseDuration = releaseDuration;
     if (result.previewResultIndexByStep.size() != plan.steps.size()) {
         result.nodes.clear();
         result.previewResultIndexByStep.assign(plan.steps.size(), -1);
@@ -329,7 +340,7 @@ GraphPreviewResult renderPreview(
 
         PreviewProcessContext context;
         context.pointCount = pointCount;
-        context.controlContext = controlContext;
+        context.controlContext = &controls;
         context.configuration = &step.configuration;
         if (stepIndex < audioIndex.size() && audioIndex[stepIndex] != nullptr) {
             context.capturedOutput = &audioIndex[stepIndex]->output;
@@ -429,6 +440,8 @@ GraphPreviewResult::SignalProbePreview captureCompiledProbe(
     preview.channelLayout = payload.channelLayout;
     preview.frequencySampling = grid->metadata.frequencySampling;
     preview.frequencyMidiNote = grid->metadata.frequencyMidiNote;
+    preview.releaseDuration = grid->metadata.releaseDuration;
+    preview.noteOffTime = grid->metadata.noteOffTime;
     return preview;
 }
 
@@ -528,7 +541,7 @@ GraphPreviewResult GraphPreviewExecutor::render(
     for (const auto& node : audioResult.nodes) {
         nodes.push_back(&node);
     }
-    return renderPreview(plan, nodes, pointCount);
+    return renderPreview(plan, nodes, pointCount, {}, nullptr, nullptr, audioResult.previewReleaseDuration);
 }
 
 GraphPreviewResult GraphPreviewExecutor::render(
@@ -543,7 +556,7 @@ GraphPreviewResult GraphPreviewExecutor::render(
         nodes.push_back(&node);
     }
     GraphPreviewResult result = renderPreview(
-            plan, nodes, pointCount, {}, nullptr, controlContext);
+            plan, nodes, pointCount, {}, nullptr, controlContext, audioResult.previewReleaseDuration);
     appendProbePreviews(result, plan, nodes, probes);
     return result;
 }
@@ -553,7 +566,8 @@ GraphPreviewResult GraphPreviewExecutor::render(
         const GraphAudioResultView& audioResult,
         const std::vector<SignalProbe>& probes,
         size_t pointCount) const {
-    GraphPreviewResult result = renderPreview(plan, audioResult.nodes, pointCount);
+    GraphPreviewResult result = renderPreview(plan, audioResult.nodes, pointCount, {}, nullptr, nullptr,
+            audioResult.previewReleaseDuration);
     appendProbePreviews(result, plan, audioResult.nodes, probes);
     return result;
 }
@@ -589,7 +603,8 @@ void GraphPreviewExecutor::renderIncremental(
             pointCount,
             std::move(result),
             &dirtyNodes,
-            controlContext);
+            controlContext,
+            audioResult.previewReleaseDuration);
     appendProbePreviews(result, plan, audioResult.nodes, probes);
 }
 
@@ -623,6 +638,7 @@ void GraphPreviewExecutor::renderNodePreviewsIncremental(
         size_t pointCount,
         GraphPreviewResult& result,
         const PreviewControlContext* controlContext) const {
+    const double publishedReleaseDuration = result.previewReleaseDuration;
     auto probes = std::move(result.probes);
     auto probeSpectra = std::move(result.probeSpectra);
     auto defaultOutput = std::move(result.defaultOutput);
@@ -633,7 +649,10 @@ void GraphPreviewExecutor::renderNodePreviewsIncremental(
             pointCount,
             std::move(result),
             &dirtyNodes,
-            controlContext);
+            controlContext,
+            audioResult.previewReleaseDuration);
+    // Keep the published Spy horizon until the deferred probe refresh.
+    result.previewReleaseDuration = publishedReleaseDuration;
     result.probes = std::move(probes);
     result.probeSpectra = std::move(probeSpectra);
     result.defaultOutput = std::move(defaultOutput);

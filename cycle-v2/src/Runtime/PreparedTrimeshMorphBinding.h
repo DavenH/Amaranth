@@ -28,6 +28,7 @@ private:
     std::array<int, 3> morphInputBuffers { -1, -1, -1 };
     std::array<bool, 3> voiceTimeMorph {};
     int scratchBuffer { -1 };
+    uint64_t nodeKey {};
 };
 
 }

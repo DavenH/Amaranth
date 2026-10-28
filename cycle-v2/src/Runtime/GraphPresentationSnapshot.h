@@ -2,6 +2,7 @@
 
 #include <array>
 #include <memory>
+#include <map>
 
 #include "Graph/GraphCompiler.h"
 #include "Runtime/GraphPreviewExecutor.h"
@@ -18,6 +19,7 @@ struct GraphPresentationSnapshot {
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;
     GraphPreviewResult previewResult;
+    std::map<String, double> probeNoteOffTimes;
     std::shared_ptr<const GraphPresentationFacts> facts;
 };
 

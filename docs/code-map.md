@@ -40,7 +40,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `lib/src/Curve/Rasterization/Rasterizer/` — Authoritative rasterizer interfaces and implementations.
 - `lib/src/Curve/Rasterization/EnvelopePlaybackEngine.h` — Shared envelope playback semantics; reuse across apps.
 - `lib/src/Inter/` — Mature mesh/curve interaction and collision behavior; reuse or extract, never copy.
-- `lib/src/UI/Panels/` — Shared 2D/3D panel and renderer infrastructure; reuse for mesh-based editors.
+- `lib/src/UI/Panels/` — Shared panels/renderers; GLSurfaceCache owns baked 3D surfaces and framebuffer read bounds.
 - `lib/src/UI/Widgets/` — Shared controls and display widgets; check here before adding app-local controls.
 - `lib/src/App/Doc/` — Shared document and serialization support; reuse for persistent app state.
 - `lib/tests/` — Shared library contracts for buffers, DSP, mesh, rasterization, interaction, and UI support.
@@ -79,26 +79,26 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Graph/GraphValidator.h` — Coordinates graph validation; reuse focused validators beneath it.
 - `cycle-v2/src/Graph/NodeDefinition.h` — Node types, ports, defaults, constraints, and synthesis capability metadata.
 - `cycle-v2/src/Runtime/GraphRuntime.h` — Owns compiled runtime state and graph execution lifecycle.
-- `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Executes realtime graph audio; preserve allocation-free behavior.
+- `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime audio and cursor capture; GraphPreviewTiming measures tails for shared PreviewTraversal coordinates.
 - `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Runs scoped preview/analysis products without full audio work.
 - `cycle-v2/src/Runtime/NodeModuleRegistry.h` — Registration boundary for node model, DSP, preview, and view modules.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
 - `cycle-v2/src/Graph/MeshDimensionality.h` — Shared axis eligibility and projection; GraphMeshGuideRemap preserves rail targets.
-- `cycle-v2/src/UI/Editors/`, `cycle-v2/src/UI/PanelOverlayIconButton.h` — Shared morph reconciliation, geometry, property and inlaid icon controls.
-- `cycle-v2/src/Nodes/Curve/` — Curve codecs, stable identities, editor adapters and shared panel/zoom/GL hosts.
-- `cycle-v2/src/Nodes/Envelope/` — State/playback, surfaces and shared EnvelopeEditCore for panel and headless values/markers.
+- `cycle-v2/src/UI/Editors/`, `cycle-v2/src/UI/PanelOverlayIconButton.h` — Shared morph, geometry, property, keyboard and inlaid icon controls.
+- `cycle-v2/src/Nodes/Curve/` — Curve codecs, identities and panel/zoom/GL hosts; snapshots for curves, direct GL for prepared surfaces.
+- `cycle-v2/src/Nodes/Envelope/` — State/playback, shared section palette, surfaces and EnvelopeEditCore for panel and headless edits.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
 - `cycle-v2/src/Nodes/ImpulseResponse/` — Canonical IR import/analysis; effect processors prepare playback-rate kernels.
-- `cycle-v2/src/UI/NodeWorkspace.h` — Workspace composition and canonical ephemeral controller delivery to audio and previews.
+- `cycle-v2/src/UI/NodeWorkspace.h` — Workspace composition, ephemeral controllers, and audio playback cursor delivery.
 - `cycle-v2/src/UI/NodeCanvas.h` — Canvas orchestrator; delegate interaction, scene, presentation, and commands.
 - `cycle-v2/src/UI/NodeCanvasInteraction.h` — Pointer/gesture routing; preserve semantic command and cost boundaries.
 - `cycle-v2/src/UI/NodeCanvasPresentation.h` — Builds visible canvas presentation from graph/runtime facts.
 - `cycle-v2/src/UI/NodeCanvasScene.h` — Retained node scene and geometry used by hit-testing and rendering.
-- `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement adjustments.
+- `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement; PanelPlaybackOverlay draws bounded audio cursor frames.
 - `cycle-v2/src/UI/NodeCanvasExplanations.cpp` — Preset/node/group explanations, shared editor and attached card orchestration.
-- `cycle-v2/src/UI/NodePreviewRenderer.h` — Compact node preview rendering and reusable preview resources.
-- `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy/probe overview and detail presentation.
+- `cycle-v2/src/UI/NodePreviewRenderer.h` — Node/Spy previews, shared heatmap bounds and Trimesh harmonic lanes.
+- `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy views share persisted note-off timing; SignalProbeDetailView owns capture-free dragging.
 - `cycle-v2/src/UI/InlinePresetBrowser.h` — Shared tabs; ReferenceAssetBrowser owns audio assets, ReferenceTrayBar owns tray disclosure.
 - `cycle-v2/src/UI/LibraryThumbnailCache.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Async asset images; linked density/line views.
 - `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and suite export.

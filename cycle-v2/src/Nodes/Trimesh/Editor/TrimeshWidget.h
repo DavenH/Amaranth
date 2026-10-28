@@ -66,6 +66,7 @@ struct TrimeshPanelRenderStats {
 class TrimeshWidget {
 public:
     void syncFromNode(const Node& node);
+    void setPlaybackCursors(const PlaybackCursorFrame& frame) { bridge.getPanel3D().setPlaybackCursors(frame); }
     void syncExpandedFromNode(const Node& node);
     void resetDocumentPresentation();
     void setMorphEditGestureActive(bool active);

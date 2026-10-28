@@ -492,14 +492,11 @@ TEST_CASE("Spectral spy heatmaps map the raw Trimesh grid exactly once",
     expectedData.columns = (int) mesh.gridColumns;
     expectedData.rows = (int) mesh.gridRows;
     expectedData.domain = mesh.domain;
-    expectedData.surface = profile.mapSpectrum2DGridToDisplay(
-            expectedData.surface,
-            mesh.gridColumns,
-            mesh.gridRows,
-            mesh.frequencyMidiNote);
-    const Image expectedImage = TrimeshSurfaceRenderer::createHeatmapImage(
-            expectedData,
-            profile);
+    expectedData.surface = profile.mapSpectrumValuesToDisplay(
+            expectedData.surface, mesh.gridColumns, mesh.gridRows);
+    expectedData.firstHarmonicRow = 1;
+    const Image expectedImage = TrimeshSurfaceRenderer::createTrimeshImage(
+            expectedData, profile, 0.f, 0);
 
     REQUIRE(meshImage.isValid());
     REQUIRE(spyImage.isValid());
@@ -537,22 +534,61 @@ TEST_CASE("FFT magnitude spy heatmaps map linear bins and amplitude once",
 
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(spy.domain);
     TrimeshRenderData expected;
-    expected.surface = profile.mapSpectrum2DGridToDisplay(
-            spy.primary,
-            spy.gridColumns,
-            spy.gridRows);
+    expected.surface = profile.mapSpectrumValuesToDisplay(
+            spy.primary, spy.gridColumns, spy.gridRows);
+    expected.firstHarmonicRow = 1;
     expected.columns = (int) spy.gridColumns;
     expected.rows = (int) spy.gridRows;
     expected.domain = spy.domain;
 
     const Image spyImage = NodePreviewRenderer::createRuntimeHeatmapImage(spy, profile);
-    const Image expectedImage = TrimeshSurfaceRenderer::createHeatmapImage(
-            expected,
-            profile);
+    const Image expectedImage = TrimeshSurfaceRenderer::createTrimeshImage(
+            expected, profile, 0.f, 0);
 
     REQUIRE(spyImage.isValid());
     REQUIRE(expectedImage.isValid());
     REQUIRE(imagesMatch(spyImage, expectedImage));
+}
+
+TEST_CASE("Spectrum Spy harmonics retain solid lanes at different notes and display heights",
+        "[cycle-v2][runtime][probe][spectral][ui][harmonic-lanes]") {
+    for (const int note : { 36, 60, 84 }) {
+        NodePreviewResult spy;
+        spy.role = PreviewModuleRole::SignalSpy;
+        spy.domain = PortDomain::SpectralMagnitudeSignal;
+        spy.gridColumns = 3;
+        spy.gridRows = (size_t) LogRegionMapping(note).regionSize() + 1;
+        spy.frequencyMidiNote = note;
+        for (size_t column = 0; column < spy.gridColumns; ++column) {
+            spy.primary.push_back(1000.f); // DC must never become a harmonic lane.
+            for (size_t row = 1; row < spy.gridRows; ++row) {
+                spy.primary.push_back(row % 2 == 0 ? 1.f : 0.f);
+            }
+        }
+        const auto source = spy.primary;
+        const auto profile = TrimeshRenderProfile::fromDomain(spy.domain);
+        const Image gradient = profile.getSurfaceStyle().gradientImage();
+        const Colour low = gradient.getPixelAt(0, 0);
+        const Colour high = gradient.getPixelAt(gradient.getWidth() - 1, 0);
+        for (const int height : { 64, 537 }) {
+            const Image image = NodePreviewRenderer::createRuntimeHeatmapImage(
+                    spy, profile, false, 0.f, height);
+            REQUIRE(image.isValid());
+            REQUIRE(image.getHeight() == height);
+            REQUIRE(image.getPixelAt(1, height - 1) == low);
+            int lowPixels = 0;
+            int highPixels = 0;
+            for (int y = 0; y < height; ++y) {
+                const Colour pixel = image.getPixelAt(1, y);
+                REQUIRE((pixel == low || pixel == high));
+                lowPixels += pixel == low ? 1 : 0;
+                highPixels += pixel == high ? 1 : 0;
+            }
+            REQUIRE(lowPixels > 0);
+            REQUIRE(highPixels > 0);
+        }
+        REQUIRE(spy.primary == source);
+    }
 }
 
 TEST_CASE("Spectral spies normalize visible magnitude contrast across gain",

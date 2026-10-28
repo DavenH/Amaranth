@@ -116,6 +116,10 @@ void TrimeshPanelBridge::syncFromNode(
             || redLinked != (lastRedLink == 1)
             || blueLinked != (lastBlueLink == 1);
     environment.setAxisLinks(yellowLinked, redLinked, blueLinked);
+    const bool keyScaleLinked = previewKeyScaleAxis == Vertex::Time ? yellowLinked
+            : previewKeyScaleAxis == Vertex::Red ? redLinked : blueLinked;
+    panel3D.setKeyScaleAxis(dimensions.active(previewKeyScaleAxis) && keyScaleLinked
+            ? previewKeyScaleAxis : -1);
     const bool spectral = renderProfile.getDomain() == PortDomain::SpectralMagnitudeSignal
             || renderProfile.getDomain() == PortDomain::SpectralPhaseSignal;
     const MorphPosition effectiveMorph = resolveMorphPosition(node);
@@ -342,6 +346,7 @@ int TrimeshPanelBridge::selectedVertexIndexForPanel() const {
 void TrimeshPanelBridge::syncPrimaryAxisContext() {
     interactor3D.setPrimaryViewAxis(model.getPrimaryViewAxis());
     panel3D.setPrimaryViewAxis(model.getPrimaryViewAxis());
+    panel3D.setSlicePosition(model.getMorphPosition()[model.getPrimaryViewAxis()]);
 }
 
 void TrimeshPanelBridge::updateRasterizer(bool refresh2DPanel, bool refresh3DGeometry) {
@@ -394,6 +399,7 @@ void TrimeshPanelBridge::setDisplayDomain(PortDomain domain) {
 }
 
 void TrimeshPanelBridge::setRenderProfile(TrimeshRenderProfile profile) {
+    const bool domainChanged = renderProfile.getDomain() != profile.getDomain();
     const bool wasMagnitude = renderProfile.getDomain()
             == PortDomain::SpectralMagnitudeSignal;
     const bool isMagnitude = profile.getDomain()
@@ -405,7 +411,9 @@ void TrimeshPanelBridge::setRenderProfile(TrimeshRenderProfile profile) {
             : Range<float>(0.f, 1.f);
     interactor2D.vertexLimits[Vertex::Phase] = frequencyLimits;
     interactor3D.vertexLimits[Vertex::Phase] = frequencyLimits;
-    updateGuideCurveSeeds();
+    if (domainChanged) {
+        updateGuideCurveSeeds();
+    }
     panel3D.setRenderProfile(profile);
     panel2D.setRenderProfile(profile);
     const float defaultStart = isMagnitude

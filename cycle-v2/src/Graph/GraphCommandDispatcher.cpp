@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 
 #include "Graph/GraphCommandDispatcher.h"
 #include "Graph/DefaultOutputProbeResolver.h"
@@ -174,6 +175,27 @@ bool GraphCommandDispatcher::setDefaultOutputSpyFrequencyView(bool frequencyView
         return false;
     }
     document.presetPresentation.outputSpyFrequencyView = frequencyView;
+    ++document.presentationRevision;
+    return true;
+}
+
+bool GraphCommandDispatcher::setSpyNoteOffTime(const juce::String& probeId, double noteOffTime) {
+    if (hasTransientEdit() || !std::isfinite(noteOffTime)
+            || (probeId != DefaultOutputProbeResolver::probeId
+                    && editingGraph().findSignalProbe(probeId) == nullptr)) {
+        return false;
+    }
+    const double time = juce::jlimit(0., 1., noteOffTime);
+    auto& times = document.presetPresentation.spyNoteOffTimes;
+    const auto found = times.find(probeId);
+    if ((found != times.end() ? found->second : 1.) == time) {
+        return false;
+    }
+    if (time < 1.) {
+        times[probeId] = time;
+    } else {
+        times.erase(probeId);
+    }
     ++document.presentationRevision;
     return true;
 }

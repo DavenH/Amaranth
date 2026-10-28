@@ -26,7 +26,11 @@ a broad automation change.
 
 Use the coordinator with an explicit product. `run` builds the exact standalone
 target incrementally, launches through NSWorkspace, validates the returned PID,
-and reuses that workspace's healthy session. `--no-build` opts out of freshness
+and reuses that workspace's healthy session. That session may also be in use by
+the user. Use `--clean` for automated fixtures while the user is working in the
+app: it creates an isolated run PID and socket and leaves the persistent session
+intact. Use only the socket returned by that run; do not reuse a socket from an
+earlier artifact. `--no-build` opts out of freshness
 building. Default reports and screenshots live under
 `.context/cycle-automation/<product>/<run-id>/`.
 
@@ -125,6 +129,12 @@ its axis. Explicit `setNodeParameter` remains available for saved fallback edits
 Run `python3 scripts/test_cycle_v2_trimesh_interaction_publication.py` for the
 actual-app pointer/readback, edit-ID, document, surface and commit/undo checks;
 hosted editor tests also assert zero copies and serialization during movement.
+
+Run `python3 scripts/test_cycle_v2_spy_release_audition.py` to verify expanded
+Spy note-off dragging. It uses an isolated `--clean` app and checks two pointer
+updates without capture, one capture on release, no-op/cancel/clamp/reset, and
+unchanged document, audio plan and unrelated preview products. Pass `--no-build`
+only after building the exact app target.
 
 Run `python3 scripts/test_cycle_v2_envelope_interaction_feedback.py` for actual-app
 Envelope hover and Shift-box-selection checks. The report compares edit/model

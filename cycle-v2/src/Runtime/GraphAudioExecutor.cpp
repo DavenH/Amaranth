@@ -43,13 +43,28 @@ template<class PreparedVoiceType>
 bool oscillatorPreparationMatches(
         const GraphExecutionPlan& plan,
         const PreparedVoiceType& voice,
-        const AudioExecutionSpec& spec) {
+        const AudioExecutionSpec& spec,
+        const std::vector<uint8_t>* activeSteps) {
     if (voice.plan != &plan
             || voice.maximumFrameCount != spec.maximumFrameCount
             || voice.traversalColumnCount != spec.traversalColumnCount
             || voice.sampleRate != spec.sampleRate
             || voice.oscillatorRegionByStep.size() != plan.steps.size()) {
         return false;
+    }
+    if (activeSteps != nullptr) {
+        size_t position = 0;
+        for (size_t step = 0; step < activeSteps->size(); ++step) {
+            if ((*activeSteps)[step] == 0) {
+                continue;
+            }
+            if (position == voice.stepIndices.size() || voice.stepIndices[position++] != step) {
+                return false;
+            }
+        }
+        if (position != voice.stepIndices.size()) {
+            return false;
+        }
     }
     const auto supportedRegionCount = std::count_if(
             plan.oscillatorRegions.begin(),
@@ -127,7 +142,8 @@ GraphAudioResult GraphAudioExecutor::processProbe(
         size_t frameCount,
         AudioProcessTiming timing,
         const AudioVoiceContext& voice,
-        size_t traversalColumnCount) const {
+        size_t traversalColumnCount,
+        double previewNoteOffTime) const {
     if (probe.sourceStepIndex < 0
             || (size_t) probe.sourceStepIndex >= plan.steps.size()) {
         return {};
@@ -141,7 +157,10 @@ GraphAudioResult GraphAudioExecutor::processProbe(
             CompleteDiagnosticExecution {
                     traversalColumnCount,
                     &activeSteps,
-                    probe.sourceStepIndex
+                    probe.sourceStepIndex,
+                    nullptr,
+                    false,
+                    previewNoteOffTime
             });
 }
 
@@ -151,7 +170,8 @@ GraphAudioResult GraphAudioExecutor::processProbes(
         size_t frameCount,
         AudioProcessTiming timing,
         const AudioVoiceContext& voice,
-        size_t traversalColumnCount) const {
+        size_t traversalColumnCount,
+        double previewNoteOffTime) const {
     std::vector<int> sources;
     sources.reserve(probes.size());
     for (const auto& probe : probes) {
@@ -174,7 +194,9 @@ GraphAudioResult GraphAudioExecutor::processProbes(
                     traversalColumnCount,
                     &activeSteps,
                     -1,
-                    &capturedSteps
+                    &capturedSteps,
+                    false,
+                    previewNoteOffTime
             });
 }
 
@@ -244,6 +266,9 @@ void GraphAudioExecutor::clearIncrementalCache() const {
 }
 
 void GraphAudioExecutor::resetExecutionState() const {
+    envelopeTimingExecutor.reset();
+    cachedPreviewReleaseDuration = 0.;
+    cachedPreviewNoteOffTime = 1.;
     clearIncrementalCache();
     processorCache.clear();
     preparedVoices.clear();
@@ -409,7 +434,18 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         return {};
     }
 
+    const bool timingOnly = completeDiagnostics != nullptr && completeDiagnostics->envelopeTimingOnly;
+    const double releaseDuration = captureDiagnostics && !timingOnly
+            ? measurePreviewRelease(plan, voice, timing) : 0.;
+    const double noteOffTime = completeDiagnostics != nullptr
+            ? jlimit(0., 1., completeDiagnostics->noteOffTime) : 1.;
+    const bool timelineChanged = releaseDuration != cachedPreviewReleaseDuration
+            || noteOffTime != cachedPreviewNoteOffTime;
     GraphAudioResult result;
+    result.previewReleaseDuration = releaseDuration;
+    if (incrementalResult != nullptr) {
+        incrementalResult->previewReleaseDuration = releaseDuration;
+    }
     bool cacheMatchesPlan = !captureDiagnostics
             || diagnosticNodeIds.size() == plan.steps.size();
     if (captureDiagnostics && cacheMatchesPlan) {
@@ -475,11 +511,11 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             return result;
         }
         const auto& step = plan.steps[stepIndex];
-        const bool captureNodeResult = completeDiagnostics == nullptr
+        const bool captureNodeResult = !timingOnly && (completeDiagnostics == nullptr
                 || (completeDiagnostics->capturedSteps != nullptr
                         ? (*completeDiagnostics->capturedSteps)[stepIndex] != 0
                         : completeDiagnostics->capturedStepIndex < 0
-                                || completeDiagnostics->capturedStepIndex == (int) stepIndex);
+                                || completeDiagnostics->capturedStepIndex == (int) stepIndex));
         if (pass == ProcessingPass::Complete && step.kind == NodeKind::GlobalInput) {
             loadCompleteVoiceBoundary(plan, frameCount);
         }
@@ -492,8 +528,10 @@ GraphAudioResult GraphAudioExecutor::processInternal(
             continue;
         }
         const bool hasCachedResult = captureDiagnostics
-                && diagnosticCache[stepIndex].has_value();
-        const bool explicitlyDirty = dirtyNodes == nullptr || (*dirtyNodes)[stepIndex] != 0;
+                && diagnosticCache[stepIndex].has_value()
+                && diagnosticCache[stepIndex]->previewReleaseDuration == releaseDuration
+                && diagnosticCache[stepIndex]->previewNoteOffTime == noteOffTime;
+        const bool explicitlyDirty = timelineChanged || dirtyNodes == nullptr || (*dirtyNodes)[stepIndex] != 0;
         if (captureDiagnostics && hasCachedResult && !explicitlyDirty) {
             const auto& cachedOutputs = diagnosticCache[stepIndex]->outputs;
             for (size_t outputIndex = 0; outputIndex < step.outputs.size(); ++outputIndex) {
@@ -519,7 +557,9 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         context.traversalColumnCount = preparedVoice->second.traversalColumnCount;
         context.timing = timing;
         context.voiceView = &voice;
-        context.captureTraversalGrid = captureDiagnostics;
+        context.captureTraversalGrid = captureDiagnostics && !timingOnly;
+        context.previewReleaseDuration = releaseDuration;
+        context.previewNoteOffTime = noteOffTime;
         context.outputs.clear();
         if (operationCounts != nullptr) {
             ++operationCounts->contextPatches;
@@ -567,7 +607,7 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                     operationCounts == nullptr
                             ? nullptr
                             : &operationCounts->oscillator);
-            if (captureDiagnostics) {
+            if (context.captureTraversalGrid) {
                 const int oscillatorNoteNumber = voice.oscillatorNoteNumber >= 0
                         ? voice.oscillatorNoteNumber
                         : voice.controls.noteNumber;
@@ -664,6 +704,8 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 std::move(nodeOutputs),
                 std::move(probeTraversalGrids)
         };
+        nodeResult.previewReleaseDuration = releaseDuration;
+        nodeResult.previewNoteOffTime = noteOffTime;
         if (incrementalResult != nullptr) {
             stagedDiagnosticResults[stepIndex] = std::move(nodeResult);
         } else {
@@ -692,6 +734,10 @@ GraphAudioResult GraphAudioExecutor::processInternal(
         }
     }
 
+    if (captureDiagnostics && !timingOnly) {
+        cachedPreviewReleaseDuration = releaseDuration;
+        cachedPreviewNoteOffTime = noteOffTime;
+    }
     return result;
 }
 
@@ -778,7 +824,7 @@ void GraphAudioExecutor::prepareExecutionInternal(
     PreparedVoice& preparedVoice = preparedVoices[voiceIndex];
     const bool globalPreparation = pass == ProcessingPass::Global;
     const bool rebuildOscillatorRegions = !globalPreparation
-            && !oscillatorPreparationMatches(plan, preparedVoice, spec);
+            && !oscillatorPreparationMatches(plan, preparedVoice, spec, activeSteps);
     preparedVoice.voiceIndex = voiceIndex;
     preparedVoice.plan = &plan;
     preparedVoice.maximumFrameCount = spec.maximumFrameCount;
@@ -902,6 +948,7 @@ void GraphAudioExecutor::prepareStepContext(
         const GraphExecutionStep& step,
         PreparedVoice::Step& preparedStep) const {
     AudioProcessContext& context = preparedStep.context;
+    context.nodeKey = (uint64_t) step.nodeId.hashCode64();
     context.liveEnvelopeMorph = step.liveEnvelopeMorph;
     context.traversalDurationSeconds = 0.0;
     if (step.oscillatorRegionIndex >= 0

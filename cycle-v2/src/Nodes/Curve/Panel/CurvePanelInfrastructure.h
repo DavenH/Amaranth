@@ -20,11 +20,6 @@ namespace CycleV2 {
 
 void stylePanelZoomScrollbars(ZoomPanel& panel);
 
-std::optional<juce::Rectangle<int>> curvePanelFramebufferReadBounds(
-        juce::Rectangle<float> bounds,
-        float scaleFactor,
-        juce::Rectangle<int> viewport);
-
 juce::Image curvePanelSnapshotFromPixels(
         const juce::PixelARGB* pixels, int width, int height, bool& hasVisibleContent);
 
@@ -108,7 +103,10 @@ public:
 
 class CurvePanelHost : private RenderInvalidationTarget {
 public:
-    CurvePanelHost(Panel& panel, CurvePanelHostDelegate& delegate);
+    enum class ExpandedRendering { Snapshot, DirectOpenGL };
+
+    CurvePanelHost(Panel& panel, CurvePanelHostDelegate& delegate,
+            ExpandedRendering rendering = ExpandedRendering::Snapshot);
     ~CurvePanelHost();
 
     Component* component();
@@ -173,6 +171,7 @@ private:
 
     Panel& panel;
     CurvePanelHostDelegate& delegate;
+    ExpandedRendering expandedRendering;
     std::unique_ptr<HostComponent> hostComponent;
     std::unique_ptr<GLPanelRenderer> panelRenderer;
     CommonGL* panelGfx {};
@@ -181,6 +180,7 @@ private:
     CurvePanelPreviewRenderCache previewRenderCache;
     CurvePanelPreviewRenderCache expandedRenderCache;
     RenderInvalidationAccumulator invalidation;
+    std::atomic<uint64_t> expandedDirectRenderCount {};
     std::atomic<uint64_t> previewInvalidationGeneration {};
     std::atomic<uint64_t> expandedInvalidationGeneration {};
     std::atomic<uint64_t> renderLayoutCount {};

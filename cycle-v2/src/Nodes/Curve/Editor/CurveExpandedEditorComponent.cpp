@@ -133,10 +133,14 @@ void CurveExpandedEditorComponent::renderOpenGL(float scaleFactor) {
             scaleFactor);
 }
 
+void CurveExpandedEditorComponent::excludePanelRenderRegions(Graphics& graphics) const {
+    graphics.excludeClipRegion(editorPanelBounds().toNearestInt());
+}
+
 void CurveExpandedEditorComponent::paint(Graphics& graphics) {
     Rectangle<float> outer = getLocalBounds().toFloat();
     graphics.saveState();
-    graphics.excludeClipRegion(editorPanelBounds().toNearestInt());
+    excludePanelRenderRegions(graphics);
     graphics.setColour(Colours::black.withAlpha(0.38f));
     graphics.fillRoundedRectangle(
             outer.translated(0.f, 10.f),

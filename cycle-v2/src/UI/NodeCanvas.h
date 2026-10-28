@@ -60,6 +60,10 @@ class NodeCanvas :
     ,   private RenderInvalidationTarget {
 public:
     NodeCanvas();
+    const String& playbackCursorNodeId() { return editorCoordinator.host().nodeId(); }
+    void setPlaybackCursors(const PlaybackCursorFrame& frame) {
+        editorCoordinator.host().setPlaybackCursors(frame);
+    }
     ~NodeCanvas() override;
 
     bool saveGraphToFile(const File& file);
@@ -397,6 +401,7 @@ private:
     bool cycleSinglePortLayout(const String& nodeId);
     bool cycleOutputSide(const String& nodeId);
     Rectangle<float> canvasContentBounds() const;
+    Rectangle<float> probeDetailBounds() const;
     Rectangle<float> canvasUtilityBounds() const;
     Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;

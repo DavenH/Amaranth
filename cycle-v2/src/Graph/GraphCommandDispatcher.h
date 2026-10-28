@@ -58,6 +58,7 @@ public:
     bool moveDefaultOutputSpy(juce::Point<float> position);
     bool setDefaultOutputSpyVisible(bool visible);
     bool setDefaultOutputSpyFrequencyView(bool frequencyView);
+    bool setSpyNoteOffTime(const juce::String& probeId, double noteOffTime);
     bool pinComparisonSpy(const juce::String& probeId);
     bool unpinComparisonSpy(const juce::String& probeId);
     GraphEditResult setSignalProbeFrequencyView(

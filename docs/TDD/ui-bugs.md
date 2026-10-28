@@ -1132,6 +1132,80 @@ actual native clicks and captures the native cursor for visual review rather
 than gating on that stale cached classification. Other cursor smokes retain
 their existing checks; the inspector's cached-source limitation remains open.
 
+## Playback cursor verification: existing UI fixture failures
+
+2026-10-24: the `[probe],[envelope],[realtime],[playback-cursor]` audit also
+reproduced the existing zero spectral Spy after scratch-cable deletion. The
+comparison morph-capture fixture, canvas Spy editor-centering fixture, and
+Envelope modulation-bundle connection fixture also failed. A comparison binary
+linked the original HEAD versions of EnvelopeSignalProcessor,
+EnvelopePitchPreview, ModulationSource, TrimeshNodeAudioProcessor, and
+OscillatorRegionTraversalRenderer against the same test harness: all these
+failures reproduced. Evidence: `.context/regression-tests.log` and
+`.context/baseline/results.xml`; reproducible case names are in
+`.context/baseline/cases.json`. The dedicated playback-cursor fixture and cost
+contracts are tracked in `cycle-v2-playback-cursors-and-release-previews.md`.
+
+The 2026-10-25 complete-tail follow-up made the playback fixture wait for the
+first audition's release tail to retire before changing Envelope dimensionality.
+Without that wait, deferred audio-plan publication can adopt after the next
+note-on and clear that new voice, making cursor-count assertions race the edit.
+The sequential 27-command fixture now passes; no cursor or audio-clock workaround
+was added. Evidence: `.context/full-tail-ui-report.json`.
+
+## Existing spectral preview fixture mismatches confirmed during Spy lane work
+
+2026-10-25: a 27-case spectral/detail/timing selection passes 24 cases. Existing
+`Magnitude mesh heatmaps consume the full unipolar colour scale` and
+`Phase mesh heatmaps convert bipolar values exactly once` fail four exact-color
+assertions. `Compact and expanded Trimesh views sample the same spectral source`
+fails `compact.columns < expanded.columns` with 1 < 1 on its empty mesh. All
+five assertions reproduce in the prior `.context/baseline/CycleV2_baseline_tests`
+binary. Evidence: `.context/spy-harmonics-tests.log`,
+`.context/spy-harmonics-baseline.log`, `.context/spy-harmonics-baseline-compact.log`.
+The new solid-lane, DC exclusion, contrast and actual-app annotation checks pass.
+
+## Cursor continuity verification: window video recorder failure
+
+2026-10-25: isolated coordinator runs with `--video` exited before producing a
+fixture report or video, reporting only `Video recorder failed:` with empty
+stderr. The same 129-command fixture runs through `--clean` without video.
+Evidence: `.context/cycle-automation/cycle-v2/bc957235467c/run.json` and
+`.context/cursor-flicker-before-ui.json`. No app assertion or crash was observed;
+the recorder failure remains outside the cursor fix. Temporal verification uses
+per-callback regression tests and repeated actual-app state samples.
+
+
+## Trimesh component snapshots omit the OpenGL surface
+
+2026-10-27: an isolated keyboard-cursor fixture's in-app canvas screenshots
+showed a black expanded Trimesh surface and no overlays, despite valid surface
+samples and cursor state. Native PID-scoped ScreenCaptureKit captures of the
+same Red view show the full waveform/harmonic surface, strip and both diamonds.
+Evidence: `.context/trimesh-keyboard-diamonds-red.png` versus
+`.context/trimesh-keyboard-diamonds-native.png`, plus
+`.context/trimesh-keyboard-diamonds-spectrum-native.png`. State assertions pass;
+use native capture for Trimesh visual verification. No app assertion or crash.
+
+
+## Envelope direct GL surface covered by editor background (fixed)
+
+2026-10-27: removing Envelope 3D snapshot readbacks initially left the editor's
+opaque background over the direct GL surface. The user reported invisibility;
+an isolated native capture confirmed valid sampled data/texture counters with
+no visible surface. The editor now excludes both GL panel regions from its
+background. An actual editor paint test protects the transparent 3D region;
+normal/compact native captures after zoom/context reload verify visibility.
+Evidence: `.context/playback-render-envelope-native.png`,
+`.context/playback-render-envelope-compact-reload-native.png` and
+`cycle-v2-playback-overlay-render-cost.md`.
+
+The same audit's broader `Spectral Trimesh panels share pitch-dependent
+LogRegions coordinates` test expects three columns for a dimension-zero node
+and gets one (338 values vs 1,014). This reproduces in the pre-existing baseline
+binary. Evidence: `.context/playback-render-existing-test-baseline.log`. The
+focused cache, Guide, viewport and playback checks pass.
+
 ## P3: Expanded Trimesh top pane crowds out its surface at 1000x700
 
 On 2026-10-23, `cycle-v2-agent-reference-surface-click.json` opened `timeLayer1`

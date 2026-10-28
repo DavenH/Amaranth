@@ -29,7 +29,8 @@ public:
             size_t rasterRowCount,
             int midiNote,
             const std::array<int, 128>& controllerValues,
-            GraphPresentationPerformanceMetrics& performance) const;
+            GraphPresentationPerformanceMetrics& performance,
+            double noteOffTime = 1.) const;
     std::vector<std::optional<GraphPreviewResult::SignalProbePreview>> captureProbePreviews(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,
@@ -39,12 +40,21 @@ public:
             const std::array<int, 128>& controllerValues,
             GraphPresentationPerformanceMetrics& performance) const;
 
+    static void publishProbePreview(
+            GraphPresentationSnapshot& snapshot,
+            GraphPreviewResult::SignalProbePreview preview);
+
     void resetExecutionState() { audioExecutor.resetExecutionState(); }
     size_t diagnosticProcessCount(const String& nodeId) const {
         return audioExecutor.diagnosticProcessCount(nodeId);
     }
 
 private:
+    void renderProbeAuditions(
+            const NodeGraph& graph,
+            GraphPresentationSnapshot& snapshot,
+            GraphPresentationPerformanceMetrics& performance);
+
     GraphAudioExecutor audioExecutor;
 };
 

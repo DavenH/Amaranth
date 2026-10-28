@@ -911,6 +911,8 @@ void NodeWorkspace::timerCallback() {
     drainRecordedMidi();
     const auto status = audioEngine.status();
     updateOutputMeter(status);
+    canvas.setPlaybackCursors(status.deviceReady
+            ? audioEngine.playbackCursors(canvas.playbackCursorNodeId()) : PlaybackCursorFrame {});
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     if (previousDeviceReady && !status.deviceReady) {
         keyboard.releaseAllNotes();

@@ -2,6 +2,7 @@
 
 #include "Graph/NodeGraph.h"
 #include "Runtime/PreparedVector.h"
+#include "Runtime/PlaybackCursor.h"
 #include "Runtime/SignalBuffer.h"
 #include "Runtime/SpectralMagnitudeTransfer.h"
 
@@ -62,6 +63,8 @@ struct TraversalGridAxisResolution {
 };
 
 struct TraversalGridMetadata {
+    double releaseDuration {};
+    double noteOffTime { 1. };
     TraversalGridArity arity { TraversalGridArity::Empty };
     TraversalGridLayout layout { TraversalGridLayout::ColumnsThenRows };
     TraversalGridAxis columnAxis { TraversalGridAxis::None };
@@ -176,6 +179,7 @@ struct AudioVoiceControls {
 };
 
 struct AudioVoiceContext {
+    PlaybackCursorCapture* playbackCursor {};
     int voiceIndex {};
     int oscillatorNoteNumber { -1 };
     Buffer<float> oscillatorPitchOffsets;
@@ -259,10 +263,13 @@ struct AudioProcessWorkArena {
 };
 
 struct AudioProcessContext {
+    uint64_t nodeKey {};
     size_t frameCount {};
     bool liveEnvelopeMorph {};
     size_t traversalColumnCount {};
     double traversalDurationSeconds {};
+    double previewReleaseDuration { -1. };
+    double previewNoteOffTime { 1. };
     AudioProcessTiming timing;
     const AudioVoiceContext* voiceView {};
     AudioVoiceContext voice;

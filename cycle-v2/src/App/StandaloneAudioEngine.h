@@ -40,6 +40,7 @@ public:
     void setVoiceDurationSeconds(float durationSeconds);
     void setGraphOutputGain(float gain);
     Status status() const;
+    PlaybackCursorFrame playbackCursors(const juce::String& nodeId);
     juce::var audioPerformance();
     void resetAudioPerformance();
     LiveCapture captureLiveAudio(int durationMs);

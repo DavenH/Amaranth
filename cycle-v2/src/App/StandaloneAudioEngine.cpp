@@ -23,6 +23,13 @@ std::unique_ptr<PropertiesFile> createDeviceProperties() {
 
 }
 
+PlaybackCursorFrame StandaloneAudioEngine::playbackCursors(const String& nodeId) {
+    const uint64_t key = nodeId.isEmpty() ? 0 : (uint64_t) nodeId.hashCode64();
+    renderer.playbackCursors().request(key);
+    const auto frame = renderer.playbackCursors().read();
+    return frame.nodeKey == key ? frame : PlaybackCursorFrame {};
+}
+
 StandaloneAudioEngine::StandaloneAudioEngine() :
         deviceProperties(createDeviceProperties()) {
     startTimerHz(30);

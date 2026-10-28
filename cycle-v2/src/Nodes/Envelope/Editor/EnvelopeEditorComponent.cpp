@@ -451,6 +451,13 @@ Rectangle<float> EnvelopeEditorComponent::editorControlBounds() const {
     return MeshEditorLayout(body, MeshDimensionality::dimensions(node).axisCount()).controls();
 }
 
+void EnvelopeEditorComponent::excludePanelRenderRegions(Graphics& graphics) const {
+    CurveExpandedEditorComponent::excludePanelRenderRegions(graphics);
+    if (MeshDimensionality::dimensions(node).axisCount() > 0) {
+        graphics.excludeClipRegion(morphSurfaceBounds().toNearestInt());
+    }
+}
+
 Rectangle<float> EnvelopeEditorComponent::morphSurfaceBounds() const {
     const auto body = contentBounds();
     return MeshEditorLayout(body, MeshDimensionality::dimensions(node).axisCount()).surface();

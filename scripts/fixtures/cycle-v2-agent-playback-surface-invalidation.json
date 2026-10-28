@@ -1,0 +1,33 @@
+{
+  "commands": [
+    {"command": "openGraph", "path": "../../cycle-v2/content/presets/brass-section.cyclegraph"},
+    {"command": "setNodeParameter", "nodeId": "timeLayer1", "parameterId": "dimensionCount", "value": "3"},
+    {"command": "setPrimaryAxis", "nodeId": "timeLayer1", "axis": "red"},
+    {"command": "waitForIdle", "idleDelayMs": 500},
+    {"command": "snapshotState"},
+    {"command": "pointer", "event": "wheel", "targetId": "expanded:timeLayer1.panel3D", "deltaY": 0.3, "smooth": false, "waitForIdle": true, "idleDelayMs": 300},
+    {"command": "snapshotState"},
+    {"command": "resizeWindow", "width": 1100, "height": 800},
+    {"command": "waitForIdle", "idleDelayMs": 300},
+    {"command": "snapshotState"},
+    {"command": "setNodeParameter", "nodeId": "timeLayer1", "parameterId": "yellow", "value": "0.2"},
+    {"command": "waitForIdle", "idleDelayMs": 500},
+    {"command": "snapshotState"},
+    {"command": "recreateCanvasOpenGLContext"},
+    {"command": "waitForIdle", "idleDelayMs": 500},
+    {"command": "snapshotState"},
+    {"command": "requestCanvasOpenGLFrame"},
+    {"command": "waitForIdle", "idleDelayMs": 100},
+    {"command": "snapshotState"},
+    {"command": "setNodeParameter", "nodeId": "timeLayer1", "parameterId": "signalType", "value": "spectralMagnitude"},
+    {"command": "waitForIdle", "idleDelayMs": 500},
+    {"command": "snapshotState"},
+    {"command": "requestCanvasOpenGLFrame"},
+    {"command": "waitForIdle", "idleDelayMs": 100},
+    {"command": "snapshotState"},
+    {"command": "setNodeParameter", "nodeId": "timeLayer1", "parameterId": "signalType", "value": "time"},
+    {"command": "waitForIdle", "idleDelayMs": 500},
+    {"command": "snapshotState"}
+  ],
+  "quit": false
+}

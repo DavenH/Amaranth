@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "Graph/NodeGraph.h"
+#include "Runtime/PlaybackCursor.h"
 #include "Nodes/Curve/Panel/CurvePanelAdapterTypes.h"
 #include "Nodes/Trimesh/Model/TrimeshNodeModel.h"
 
@@ -28,6 +29,7 @@ public:
 
     virtual Panel& hostedPanel() = 0;
     virtual void initWithHost(Component* hostComponent) = 0;
+    virtual void setPlaybackCursors(const PlaybackCursorFrame&) {}
     virtual void clearInteractionState() = 0;
     virtual void setControlValues(
             bool enabled, float first, float second, float third, int menuId) = 0;

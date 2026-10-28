@@ -16,6 +16,7 @@ struct TrimeshRenderData {
     int rows {};
     int columns {};
     int midiNote { 48 };
+    int firstHarmonicRow {};
     bool cyclic { true };
     bool pitchSpansColumns {};
 

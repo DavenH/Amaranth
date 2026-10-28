@@ -20,9 +20,12 @@ struct NodeAudioResult {
     SignalPayload output;
     std::vector<std::pair<String, SignalPayload>> outputs;
     std::vector<SignalTraversalGrid> probeTraversalGrids;
+    double previewReleaseDuration {};
+    double previewNoteOffTime { 1. };
 };
 
 struct GraphAudioResult {
+    double previewReleaseDuration {};
     SignalPayload output;
     std::vector<NodeAudioResult> nodes;
     bool cancelled {};
@@ -30,6 +33,7 @@ struct GraphAudioResult {
 };
 
 struct GraphAudioResultView {
+    double previewReleaseDuration {};
     const SignalPayload* output {};
     std::vector<const NodeAudioResult*> nodes;
     bool cancelled {};
@@ -96,14 +100,16 @@ public:
             size_t frameCount,
             AudioProcessTiming timing,
             const AudioVoiceContext& voice,
-            size_t traversalColumnCount) const;
+            size_t traversalColumnCount,
+            double previewNoteOffTime = 1.) const;
     GraphAudioResult processProbes(
             const GraphExecutionPlan& plan,
             const std::vector<CompiledSignalProbe>& probes,
             size_t frameCount,
             AudioProcessTiming timing,
             const AudioVoiceContext& voice,
-            size_t traversalColumnCount) const;
+            size_t traversalColumnCount,
+            double previewNoteOffTime = 1.) const;
     GraphAudioResultView processIncremental(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,
@@ -161,6 +167,8 @@ private:
         const std::vector<uint8_t>* activeSteps {};
         int capturedStepIndex { -1 };
         const std::vector<uint8_t>* capturedSteps {};
+        bool envelopeTimingOnly {};
+        double noteOffTime { 1. };
     };
 
     struct IncrementalDiagnosticExecution {
@@ -219,6 +227,8 @@ private:
         std::vector<OscillatorRegion*> oscillatorRegionByStep;
     };
 
+    double measurePreviewRelease(
+            const GraphExecutionPlan& plan, const AudioVoiceContext& voice, AudioProcessTiming timing) const;
     void removeUnreferencedProcessors() const;
     static PreparedVoice::OscillatorRegion* oscillatorRegionForStep(
             PreparedVoice& voice,
@@ -261,6 +271,9 @@ private:
 
     static constexpr int globalProcessorIndex = -1;
 
+    mutable std::unique_ptr<GraphAudioExecutor> envelopeTimingExecutor;
+    mutable double cachedPreviewReleaseDuration {};
+    mutable double cachedPreviewNoteOffTime { 1. };
     mutable AudioProcessWorkArena workArena;
     mutable AudioProcessWorkArena voiceMixArena;
     mutable std::vector<SignalPayload> bufferSlots;

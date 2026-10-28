@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
+#include "UI/PanelPlaybackOverlay.h"
 
 #include <Curve/Mesh/Vertex.h>
 #include <UI/Panels/Panel3D.h>
@@ -30,13 +31,15 @@ public:
     void doZoomExtra(bool commandDown) override;
     void updateBackground(bool onlyVerticalBackground = false) override;
     void postVertsDraw() override;
-    bool usesCachedSurface() const override { return !sharedCanvasMode; }
-    void setSharedCanvasMode(bool shouldUseSharedCanvas) { sharedCanvasMode = shouldUseSharedCanvas; }
+    void drawSurface() override;
     void setDisplayDomain(PortDomain domain);
     void setRenderProfile(TrimeshRenderProfile profile);
     void configureViewport(Range<float> frequencyLimits);
     void setZoomChangedCallback(std::function<void(bool)> callback);
     void setPrimaryViewAxis(int axis);
+    void setPlaybackCursors(const PlaybackCursorFrame& frame);
+    void setKeyScaleAxis(int axis);
+    void setSlicePosition(float position);
     bool isPrimaryAxisVertical() const override { return primaryAxisVertical; }
     void setPrimaryAxisVertical(bool vertical) { primaryAxisVertical = vertical; }
     juce::Colour primaryAxisColour() const;
@@ -56,6 +59,11 @@ private:
             Buffer<float> y,
             const std::vector<Buffer<float>>& pitchRamps);
 
+    std::atomic<uint64_t> backgroundPreparationCount {};
+    std::atomic<uint64_t> guideTablePreparationCount {};
+    std::atomic<uint64_t> surfaceDrawCount {};
+    std::atomic<uint64_t> surfaceDrawMicroseconds {};
+    PanelPlaybackOverlay playbackOverlay;
     TrimeshRenderProfile renderProfile { TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal) };
     std::vector<std::vector<float>> lineGuideTables;
     std::vector<float> previewHarmonics;
@@ -65,7 +73,6 @@ private:
     int previewMidiNote { 48 };
     int appliedMaterialStyleSignature { -2 };
     bool pitchSpansColumns {};
-    bool sharedCanvasMode {};
     bool primaryAxisVertical {};
 };
 

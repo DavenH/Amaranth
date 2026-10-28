@@ -12,6 +12,8 @@
 
 namespace CycleV2 {
 
+struct PlaybackCursorFrame;
+
 class CurvePanelControllerDelegate {
 public:
     virtual ~CurvePanelControllerDelegate() = default;
@@ -53,6 +55,7 @@ public:
     virtual uint64_t previewSnapshotRevision() const = 0;
     virtual void resetDocumentPresentation() = 0;
     virtual void setEditGestureActive(bool) {}
+    virtual void setPlaybackCursors(const PlaybackCursorFrame&) {}
     virtual bool setPreviewMorphPosition(std::optional<MorphPosition>) { return false; }
     virtual bool setEditorMorphPosition(int, float) { return false; }
     virtual bool restoreEditorMorphGesture() { return false; }

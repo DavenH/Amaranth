@@ -434,6 +434,7 @@ const TrimeshRenderData& TrimeshWidget::renderDataForAutomation() const {
 
 void TrimeshWidget::appendSurfaceAutomation(DynamicObject& state) const {
     bridge.getPanel3D().appendPrimaryAxisAutomation(state);
+    state.setProperty("sliceRebuildCount", (int64) bridge.getDataSource().getRenderCounters().sliceRebuilds);
 }
 
 TrimeshPanelRenderStats TrimeshWidget::panelRenderStatsForAutomation() const {

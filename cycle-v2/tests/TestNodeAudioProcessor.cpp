@@ -9,6 +9,7 @@
 #include "Nodes/Curve/Model/CurveNodeModels.h"
 #include "Nodes/Envelope/EnvelopeMeshState.h"
 #include "Nodes/Envelope/EnvelopeSignalProcessor.h"
+#include "Runtime/PreviewTraversal.h"
 #include "Nodes/Trimesh/Dsp/TrimeshBlockwiseDsp.h"
 
 #include <Audio/CycleDsp/EffectParameterMapping.h>
@@ -793,11 +794,16 @@ TEST_CASE("Envelope traversal samples phase across grid columns", "[cycle-v2][ru
         MeshLibrary::EnvProps expectedProps;
         expectedProps.active = true;
         std::vector<float> expected(columns);
+        const PreviewTraversal traversal(columns, Rasterization::EnvelopePlaybackEngine::releaseDuration(
+                configuration->rasterizer->preparedPlaybackView()));
         for (size_t column = 0; column < columns; ++column) {
+            if (traversal.beginsRelease(column)) {
+                expectedPlayback.noteOff(configuration->rasterizer->preparedPlaybackView());
+            }
             expectedPlayback.renderToBuffer(
                     configuration->rasterizer->preparedPlaybackView(),
                     1,
-                    1.0 / (double) (columns - 1),
+                    traversal.increment(column),
                     Rasterization::EnvelopePlaybackEngine::firstAudioVoiceIndex,
                     expectedProps,
                     1.f);

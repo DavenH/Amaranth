@@ -433,3 +433,35 @@ TEST_CASE("Graph document preserves preset presentation through graph history",
     const GraphLoadResult saved = GraphSerializer().loadJsonString(document.toJson());
     REQUIRE(saved.presentation.preview.has_value());
 }
+
+TEST_CASE("Spy release positions persist as presentation edits without graph publication",
+        "[cycle-v2][preset][release-audition]") {
+    auto graph = graphWithOutput();
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::WaveSource, "wave", {}));
+    graph.addEdge({ "wave", "out", "output", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    const auto probeId = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    const auto revision = document.revision();
+    REQUIRE_FALSE(commands.setSpyNoteOffTime("missing-probe", 0.3));
+    REQUIRE_FALSE(commands.setSpyNoteOffTime("default-output", std::numeric_limits<double>::quiet_NaN()));
+    REQUIRE_FALSE(document.isDirty());
+    REQUIRE(commands.setSpyNoteOffTime("default-output", 0.35));
+    REQUIRE_FALSE(commands.setSpyNoteOffTime("default-output", 0.35));
+    REQUIRE(document.isDirty());
+    REQUIRE(document.revision() == revision);
+    REQUIRE_FALSE(document.canUndo());
+    REQUIRE(commands.setSpyNoteOffTime(probeId, 0.6));
+    const auto loaded = GraphSerializer().loadJsonString(document.toJson());
+    REQUIRE(loaded.succeeded());
+    REQUIRE(loaded.presentation.spyNoteOffTimes.at("default-output") == 0.35);
+    REQUIRE(loaded.presentation.spyNoteOffTimes.at(probeId) == 0.6);
+    REQUIRE(commands.setSpyNoteOffTime("default-output", 0.));
+    REQUIRE(document.presentation().spyNoteOffTimes.at("default-output") == 0.);
+    REQUIRE(commands.setSpyNoteOffTime("default-output", 2.));
+    REQUIRE(commands.setSpyNoteOffTime(probeId, 1.));
+    REQUIRE(document.presentation().spyNoteOffTimes.empty());
+    const auto reset = GraphSerializer().loadJsonString(document.toJson());
+    REQUIRE(reset.presentation.spyNoteOffTimes.empty());
+}

@@ -30,6 +30,7 @@ bool nodePreviewResultsHaveEqualContent(
         const NodePreviewResult& second);
 
 struct GraphPreviewResult {
+    double previewReleaseDuration {};
     struct SignalProbePreview {
         String probeId;
         std::vector<float> values;
@@ -42,6 +43,8 @@ struct GraphPreviewResult {
                 TraversalGridFrequencySampling::LinearBins };
         int frequencyMidiNote { 48 };
         bool connected {};
+        double releaseDuration {};
+        double noteOffTime { 1. };
     };
 
     std::vector<NodePreviewResult> nodes;

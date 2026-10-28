@@ -545,7 +545,8 @@ GraphPresentationModel::captureProbePreview(
         const NodeGraph& graph,
         const String& probeId,
         size_t rasterRowCount,
-        int midiNote) {
+        int midiNote,
+        double noteOffTime) {
     if (!current.compileResult.succeeded() || rasterRowCount == 0) {
         return std::nullopt;
     }
@@ -556,7 +557,8 @@ GraphPresentationModel::captureProbePreview(
             rasterRowCount,
             midiNote,
             current.previewControllerValues,
-            performance);
+            performance,
+            noteOffTime);
 }
 
 std::vector<std::optional<GraphPreviewResult::SignalProbePreview>>
@@ -572,6 +574,22 @@ GraphPresentationModel::captureProbePreviews(
     return previewRenderer.captureProbePreviews(
             graph, current.compileResult.plan, probeIds, rasterRowCount,
             midiNote, current.previewControllerValues, performance);
+}
+
+double GraphPresentationModel::probeNoteOffTime(const String& probeId) const {
+    const auto found = current.probeNoteOffTimes.find(probeId);
+    return found != current.probeNoteOffTimes.end() ? found->second : 1.;
+}
+
+void GraphPresentationModel::commitProbePreview(GraphPreviewResult::SignalProbePreview preview) {
+    scheduler.cancelAndWait();
+    if (preview.noteOffTime < 1.) {
+        current.probeNoteOffTimes[preview.probeId] = preview.noteOffTime;
+    } else {
+        current.probeNoteOffTimes.erase(preview.probeId);
+    }
+    PresentationPreviewRenderer::publishProbePreview(current, std::move(preview));
+    ++presentationRevision;
 }
 
 bool GraphPresentationModel::prepareProbeCaptureForNode(

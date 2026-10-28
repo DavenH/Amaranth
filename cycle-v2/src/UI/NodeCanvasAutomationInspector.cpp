@@ -214,6 +214,8 @@ public:
         object->setProperty("domain", labelForDomain(preview.domain));
         object->setProperty("gridColumns", (int) preview.gridColumns);
         object->setProperty("gridRows", (int) preview.gridRows);
+        object->setProperty("noteOffTime", preview.noteOffTime);
+        object->setProperty("releaseDuration", preview.releaseDuration);
         object->setProperty("sampleCount", (int) preview.values.size());
         object->setProperty("absoluteSum", absoluteTotal);
         return object;
@@ -768,6 +770,13 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("probeDetailResolution", (int) state.probeDetailResolution);
     root->setProperty("probeDetailColumns", (int) state.probeDetailColumns);
     root->setProperty("probeDetailRows", (int) state.probeDetailRows);
+    root->setProperty("probeDetailReleaseDuration", state.probeDetailReleaseDuration);
+    root->setProperty("probeDetailNoteOffPosition", state.probeDetailNoteOffPosition);
+    root->setProperty("probeDetailNoteOffTime", state.probeDetailNoteOffTime);
+    root->setProperty("probeDetailRenderedNoteOffTime", state.probeDetailRenderedNoteOffTime);
+    root->setProperty("probeDetailRenderCount", (int64) state.probeDetailRenderCount);
+    root->setProperty("probeDetailContentRevision", String(state.probeDetailContentRevision));
+    root->setProperty("probeDetailReleaseDragging", state.probeDetailReleaseDragging);
     root->setProperty("compileSucceeded", compileResult.succeeded());
     root->setProperty("validationIssueCount", (int) compileResult.validationIssues.size());
     root->setProperty("compileIssueCount", (int) compileResult.compileIssues.size());
@@ -976,8 +985,13 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty(
             "previewRenderCount",
             static_cast<int>(context.presentation.previewRenderCount()));
+    root->setProperty("previewReleaseDuration", previewResult.previewReleaseDuration);
     root->setProperty("previewStats", previewStats);
     root->setProperty("probePreviewStats", probePreviewStats);
+    if (previewResult.defaultOutput.has_value()) {
+        root->setProperty("defaultOutputPreviewStats",
+                AutomationValueEncoder::probePreviewStatsToVar(*previewResult.defaultOutput));
+    }
 
     if (state.expandedNodeId.isNotEmpty()) {
         root->setProperty("expandedNodeControls", inspectNodeControls(state.expandedNodeId, state));
@@ -1121,6 +1135,15 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 "probeDetail:" + state.probeDetailId,
                 "probeDetail",
                 state.probeDetailBounds));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "probeDetail:" + state.probeDetailId + ".release",
+                "probeReleaseHandle", state.probeDetailReleaseBounds));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "probeDetail:" + state.probeDetailId + ".releaseIcon",
+                "probeReleaseIcon", state.probeDetailReleaseIconBounds));
+        targets.add(AutomationValueEncoder::pointerTargetToVar(
+                "probeDetail:" + state.probeDetailId + ".voice",
+                "probeVoiceTimeline", state.probeDetailVoiceBounds));
     }
 
     const GraphPresentationSnapshot& presentationSnapshot = context.presentation.snapshot();

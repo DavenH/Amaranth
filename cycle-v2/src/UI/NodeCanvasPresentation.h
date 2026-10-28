@@ -57,7 +57,7 @@ struct NodeCanvasPresentationFrame {
     GuideCurveShelfState guideShelfState;
     SignalProbeCanvasState probeCanvasState;
     WorkspaceDockFocus dockFocus;
-    SignalProbeDetailState probeDetailState;
+    const SignalProbeDetailState* probeDetailState {};
     UnisonPreviewContext unisonPreviewContext;
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
     String panGestureNodeId;
@@ -69,6 +69,7 @@ struct NodeCanvasPresentationFrame {
     const GroupInformationCardPresentation* informationCards {};
     juce::String focusedInformationGroup;
     std::optional<GroupInformationCardPreview> informationCardPreview;
+    Rectangle<float> probeDetailBounds;
 };
 
 struct NodePortPresentation {

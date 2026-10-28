@@ -10,6 +10,8 @@
 
 namespace CycleV2 {
 
+struct EnvelopeConfiguration;
+
 class OscillatorRegionTraversalRenderer {
 public:
     void prepare(const CompiledVoiceContext& context, size_t maximumRowCount);
@@ -19,6 +21,9 @@ private:
     float pitchUnitValue(int laneIndex, size_t column, size_t columnCount) const;
 
     float voiceDurationSeconds { 1.f };
+    double cachedReleaseDuration { -1. };
+    double cachedNoteOffTime { 1. };
+    std::shared_ptr<const EnvelopeConfiguration> pitchEnvelope;
     CycleDsp::UnisonVoiceLayout layout;
     std::vector<float> pitchEnvelopeUnitValues;
     std::vector<std::vector<float>> pitchEnvelopeUnitValuesByLane;
