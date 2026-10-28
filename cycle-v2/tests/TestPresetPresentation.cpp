@@ -465,3 +465,18 @@ TEST_CASE("Spy release positions persist as presentation edits without graph pub
     const auto reset = GraphSerializer().loadJsonString(document.toJson());
     REQUIRE(reset.presentation.spyNoteOffTimes.empty());
 }
+
+TEST_CASE("Waveform colours round trip as presentation metadata without audio or graph edits",
+        "[cycle-v2][preset][presentation][waveform]") {
+    GraphDocument document(graphWithOutput());
+    GraphCommandDispatcher commands(document);
+    const auto revision = document.revision();
+    REQUIRE(commands.setWaveformColourStyle("bullion"));
+    REQUIRE_FALSE(commands.setWaveformColourStyle("bullion"));
+    REQUIRE(document.isDirty());
+    REQUIRE(document.revision() == revision);
+    REQUIRE_FALSE(document.canUndo());
+    const auto loaded = GraphSerializer().loadJsonString(document.toJson());
+    REQUIRE(loaded.succeeded());
+    REQUIRE(loaded.presentation.waveformColourStyle == "bullion");
+}

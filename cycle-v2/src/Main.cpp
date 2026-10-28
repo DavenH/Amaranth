@@ -5,7 +5,6 @@
 #include <vector>
 
 #include <UI/AmaranthLookAndFeel.h>
-#include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "App/Automation/CycleV2Automation.h"
 #include "App/GraphDocumentReplacement.h"
@@ -59,9 +58,7 @@ public:
             CommandSpyRefreshOnRelease,
             CommandSpyRefreshLive,
             CommandToggleComparisonShelf,
-            TimeSurfaceFirst = 0x3100,
-            SpectralSurfaceFirst = 0x3200,
-            SpectralSurfaceDefault = 0x32ff
+            CommandSurfaceAppearance
         };
 
         MainWindow(
@@ -187,32 +184,13 @@ public:
             } else if (menuIndex == 1) {
                 menu.addCommandItem(&commandManager, CommandToggleComparisonShelf);
                 menu.addSeparator();
-                auto timeSurfaceMenu = TimeSurfaceStyles::menu(workspace->timeSurfaceStyle(), TimeSurfaceFirst);
-                menu.addSubMenu("Time Surface Colour", timeSurfaceMenu);
-                auto spectralSurfaceMenu = TimeSurfaceStyles::menu(
-                        workspace->bipolarSpectralSurfaceStyle(),
-                        SpectralSurfaceFirst,
-                        SpectralSurfaceDefault,
-                        "Blue / Amber");
-                menu.addSubMenu("Bipolar Spectral Surface", spectralSurfaceMenu);
+                menu.addCommandItem(&commandManager, CommandSurfaceAppearance);
             }
 
             return menu;
         }
 
         void menuItemSelected(int menuItemId, int) override {
-            if (menuItemId == SpectralSurfaceDefault) {
-                setBipolarSpectralSurfaceStyle(std::nullopt);
-                return;
-            }
-            if (const auto* entry = TimeSurfaceStyles::find(menuItemId - TimeSurfaceFirst)) {
-                setTimeSurfaceStyle(entry->style);
-                return;
-            }
-            if (const auto* entry = TimeSurfaceStyles::find(menuItemId - SpectralSurfaceFirst)) {
-                setBipolarSpectralSurfaceStyle(entry->style);
-                return;
-            }
             if (fileHistory.isRecentMenuItem(menuItemId)) {
                 requestOpenGraphFile(fileHistory.fileForMenuItem(menuItemId));
             }
@@ -230,7 +208,8 @@ public:
                     CommandSaveGraphAs,
                     CommandSpyRefreshOnRelease,
                     CommandSpyRefreshLive,
-                    CommandToggleComparisonShelf
+                    CommandToggleComparisonShelf,
+                    CommandSurfaceAppearance
             });
         }
 
@@ -244,6 +223,10 @@ public:
                 case CommandImportWaveReference:
                     result.setInfo("Import Wave Reference...",
                             "Add audio to the shared comparison library", "File", 0);
+                    break;
+
+                case CommandSurfaceAppearance:
+                    result.setInfo("Surface Appearance...", "Configure surface and waveform colours", "View", 0);
                     break;
 
                 case CommandToggleComparisonShelf:
@@ -302,6 +285,10 @@ public:
 
                 case CommandImportWaveReference:
                     workspace->importWaveReference();
+                    return true;
+
+                case CommandSurfaceAppearance:
+                    workspace->showSurfaceAppearance();
                     return true;
 
                 case CommandToggleComparisonShelf:
@@ -470,25 +457,6 @@ public:
                 return;
             }
             workspace->setProbeRefreshMode(mode);
-            commandManager.commandStatusChanged();
-            menuItemsChanged();
-        }
-
-        void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
-            if (workspace == nullptr) {
-                return;
-            }
-            workspace->setTimeSurfaceStyle(style);
-            commandManager.commandStatusChanged();
-            menuItemsChanged();
-        }
-
-        void setBipolarSpectralSurfaceStyle(
-                std::optional<ScalarSurfaceTimeStyle> style) {
-            if (workspace == nullptr) {
-                return;
-            }
-            workspace->setBipolarSpectralSurfaceStyle(style);
             commandManager.commandStatusChanged();
             menuItemsChanged();
         }

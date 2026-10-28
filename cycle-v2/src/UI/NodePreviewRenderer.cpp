@@ -698,7 +698,8 @@ bool NodePreviewRenderer::paintWaveform(Graphics& graphics, const NodePreviewRen
     const int width = jmax(1, roundToInt(content.getWidth() * scale));
     const int height = jmax(2, roundToInt(content.getHeight() * scale));
     auto& cached = resources.cachedSprite(request.node.id);
-    const String signature = "waveform:" + runtimeSignature(*request.runtimeResult)
+    const String signature = "waveform:" + String(WaveformColourStyles::id(WaveformColourStyles::current()))
+            + ":" + runtimeSignature(*request.runtimeResult)
             + ":" + String(width) + ":" + String(height);
     if (!cached.runtimeHeatmap.isValid() || cached.runtimeHeatmapSignature != signature) {
         cached.runtimeHeatmap = signalWaveformHeatmap(*request.runtimeResult->waveform, width, height);

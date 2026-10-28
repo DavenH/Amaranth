@@ -39,6 +39,8 @@ private:
         GraphPreviewResult::SignalProbePreview previewSnapshot;
         NodeRenderSemantic semanticSnapshot;
         Rectangle<int> logicalBounds;
+        juce::String waveformColourStyle;
+        int surfaceStyleSignature {};
         uint64_t paintGeneration {};
         float physicalScale {};
         Image image;

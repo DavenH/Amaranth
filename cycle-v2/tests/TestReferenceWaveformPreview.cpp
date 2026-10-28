@@ -3,8 +3,8 @@
 
 #include "UI/ReferenceWaveformPreview.h"
 #include "UI/LibraryIconRenderer.h"
-#include "UI/CanvasChromePalette.h"
 #include <Algo/PeakCounter.h>
+#include <UI/Panels/ScalarSurfaceMaterial.h>
 #include <cmath>
 
 using namespace CycleV2;
@@ -174,39 +174,30 @@ TEST_CASE("Every sidebar and library action has a parseable SVG icon",
     REQUIRE(juce::PNGImageFormat().writeImageToStream(sheet, *stream));
 }
 
-TEST_CASE("Waveform heat retains visible contrast at the finer full-source resolution",
+TEST_CASE("Waveform palettes retain their full range and recolour fixed source statistics",
         "[cycle-v2][waveform][density][palette]") {
     std::vector<float> samples(2049);
     for (size_t index = 0; index < samples.size(); ++index) {
         samples[index] = (index % 2 == 0 ? -1.f : 1.f) * (index < 1024 ? 1.f : 0.1f);
     }
-    const auto heat = signalWaveformHeatField(Buffer<float>(samples.data(), (int) samples.size()));
-    REQUIRE(heat.getWidth() == 768);
-    REQUIRE(heat.getHeight() == 384);
-    const auto luminance = [](juce::Colour colour) {
-        const auto linear = [](float value) {
-            return value <= 0.04045f ? value / 12.92f : std::pow((value + 0.055f) / 1.055f, 2.4f);
-        };
-        return 0.2126f * linear(colour.getFloatRed())
-                + 0.7152f * linear(colour.getFloatGreen())
-                + 0.0722f * linear(colour.getFloatBlue());
-    };
-    const float background = luminance(CanvasChromePalette::surface);
-    float minimumContrast = 100.f;
-    float maximumContrast {};
-    int translucent {};
-    for (int x = 0; x < heat.getWidth(); ++x) {
-        for (int y = 0; y < heat.getHeight(); ++y) {
-            const auto colour = heat.getPixelAt(x, y);
-            const float contrast = (luminance(colour) + 0.05f) / (background + 0.05f);
-            minimumContrast = juce::jmin(minimumContrast, contrast);
-            maximumContrast = juce::jmax(maximumContrast, contrast);
-            translucent += colour.getAlpha() != 255 ? 1 : 0;
+    const auto density = signalWaveformHeatDensity(Buffer<float>(samples.data(), (int) samples.size()));
+    const auto original = density;
+    for (const auto& entry : WaveformColourStyles::entries) {
+        const auto gradient = WaveformColourStyles::gradient(entry.style);
+        REQUIRE(gradient.isValid());
+        int transitions {};
+        for (int index = 1; index < gradient.getWidth(); ++index) {
+            transitions += gradient.getPixelAt(index, 0) != gradient.getPixelAt(index - 1, 0) ? 1 : 0;
         }
+        REQUIRE(transitions > 100);
+        const auto heat = signalWaveformHeatField(density, entry.style);
+        REQUIRE(heat.getWidth() == 768);
+        REQUIRE(heat.getHeight() == 384);
+        REQUIRE(density == original);
     }
-    REQUIRE(minimumContrast >= 3.5f);
-    REQUIRE(maximumContrast > 12.f);
-    REQUIRE(translucent == 0);
+    const auto magenta = WaveformColourStyles::gradient(WaveformColourStyles::Style::Magenta);
+    REQUIRE(magenta.getPixelAt(0, 0) == juce::Colours::black);
+    REQUIRE(magenta.getPixelAt(255, 0).getRed() > 240);
 }
 
 TEST_CASE("Waveform colour stays attached to the signal through resizing zoom and path rendering",
@@ -220,6 +211,20 @@ TEST_CASE("Waveform colour stays attached to the signal through resizing zoom an
     const auto heat = signalWaveformHeatField(mono);
     const auto compact = renderSignalWaveform(mono, 385, 193, ZoomRect(), heat, false);
     const auto expanded = renderSignalWaveform(mono, 769, 385, ZoomRect(), heat, false);
+    const auto blueHeat = signalWaveformHeatField(signalWaveformHeatDensity(mono), WaveformColourStyles::Style::Blues);
+    const auto recoloured = recolourSignalWaveform(expanded, blueHeat, ZoomRect());
+    int changedColours {};
+    int changedCoverage {};
+    for (int y = 0; y < expanded.getHeight(); ++y) {
+        for (int x = 0; x < expanded.getWidth(); ++x) {
+            const auto before = expanded.getPixelAt(x, y);
+            const auto after = recoloured.getPixelAt(x, y);
+            changedColours += before != after ? 1 : 0;
+            changedCoverage += before.getAlpha() != after.getAlpha() ? 1 : 0;
+        }
+    }
+    REQUIRE(changedColours > 1000);
+    REQUIRE(changedCoverage == 0);
     const auto coverage = referenceWaveformDensity(mono, 769, 385);
     int lostCoverage {};
     int filledBackground {};
@@ -267,4 +272,22 @@ TEST_CASE("Waveform colour stays attached to the signal through resizing zoom an
     REQUIRE(zoomedMatches > 1000);
     REQUIRE(pathMatches > 1000);
     REQUIRE(mismatches == 0);
+}
+
+TEST_CASE("Program gradient strips match actual flat surface colours",
+        "[cycle-v2][surface][gradient]") {
+    constexpr int width = 129;
+    std::vector<float> values(width * 2);
+    for (int x = 0; x < width; ++x) {
+        values[(size_t) x * 2] = values[(size_t) x * 2 + 1] = (float) x / (width - 1);
+    }
+    for (const auto style : { ScalarSurfaceTimeStyle::IcyHot13,
+            ScalarSurfaceTimeStyle::IcyHotRaw, ScalarSurfaceTimeStyle::Bullion }) {
+        const auto material = ScalarSurfaceMaterial::forTimeStyle(style);
+        const auto gradient = ScalarSurfaceMaterialEvaluator::createGradientImage(material, width);
+        const auto surface = ScalarSurfaceMaterialEvaluator::createImage(values.data(), (int) values.size(), width, 2, material);
+        for (int x = 0; x < width; ++x) {
+            REQUIRE(gradient.getPixelAt(x, 0) == surface.getPixelAt(x, 0));
+        }
+    }
 }

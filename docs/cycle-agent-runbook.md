@@ -130,6 +130,15 @@ Run `python3 scripts/test_cycle_v2_trimesh_interaction_publication.py` for the
 actual-app pointer/readback, edit-ID, document, surface and commit/undo checks;
 hosted editor tests also assert zero copies and serialization during movement.
 
+Run `python3 scripts/test_cycle_v2_surface_appearance.py` to verify the modal
+surface selectors, preset save/reload and palette-only recolouring. The fixture
+uses the same selector handler as the popup callbacks, plus routed Done/Escape
+input and actual component screenshots. It asserts unchanged signal content,
+graph/preview revisions, source preparation, crossing statistics and geometry.
+Use `--no-build` only after building the exact app target. Native popup keyboard
+checks require a foreground session: isolated coordinator launches deliberately
+use `activates = false`, and JUCE dismisses inactive-application menus.
+
 Run `python3 scripts/test_cycle_v2_spy_release_audition.py` to verify expanded
 Spy note-off dragging. It uses an isolated `--clean` app and checks two pointer
 updates without capture, one capture on release, no-op/cancel/clamp/reset, and

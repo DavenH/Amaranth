@@ -3035,6 +3035,17 @@ void NodeCanvas::setGraphDocumentStateChangedCallback(
     graphDocumentStateChangedCallback = std::move(callback);
 }
 
+WaveformColourStyles::Style NodeCanvas::waveformColourStyle() const {
+    return WaveformColourStyles::fromId(document.presentation().waveformColourStyle);
+}
+
+void NodeCanvas::setWaveformColourStyle(WaveformColourStyles::Style style) {
+    if (commands.setWaveformColourStyle(WaveformColourStyles::id(style))) {
+        synchronizeSurfaceStyles();
+        notifyGraphDocumentStateChanged();
+    }
+}
+
 ScalarSurfaceTimeStyle NodeCanvas::timeSurfaceStyle() const {
     return TimeSurfaceStyles::fromId(document.presentation().timeSurfaceStyle);
 }
@@ -3103,9 +3114,12 @@ void NodeCanvas::synchronizeSurfaceStyles() {
     const auto timeStyle = timeSurfaceStyle();
     const auto spectralStyle = bipolarSpectralSurfaceStyle();
     const int spectralStyleIndex = spectralStyle.has_value() ? (int) *spectralStyle : -1;
-    const bool changed = ScalarSurfaceMaterial::timeSurfaceStyle() != timeStyle
+    const auto waveformStyle = waveformColourStyle();
+    const bool changed = WaveformColourStyles::current() != waveformStyle
+            || ScalarSurfaceMaterial::timeSurfaceStyle() != timeStyle
             || ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex() != spectralStyleIndex;
     if (changed) {
+        WaveformColourStyles::setCurrent(waveformStyle);
         ScalarSurfaceMaterial::setTimeSurfaceStyle(timeStyle);
         ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(spectralStyleIndex);
         repaintNodeEditor(true);

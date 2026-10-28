@@ -1265,3 +1265,16 @@ Before-fix evidence: `.context/waveform-mode-reproduced-report.json` records
 request fingerprint includes the output view. The 85-command Spy waveform
 fixture verifies repeated changes and actual waveform presence/absence without
 a graph edit. Evidence: `.context/spy-waveform-contrast-ui-report.json`.
+
+
+## Surface appearance verification: inactive native popup menus
+
+2026-10-28: the first 26- and 56-command menu runs passed, but repeated isolated
+runs intermittently dismissed popups before keyboard selection. Coordinator
+launches deliberately set `activates = false`; JUCE closes background-app menus.
+The foreground helper could not raise/activate this session’s window (AX -25206
+and foreground-PID failure). Evidence: `.context/surface-appearance-native-ui.log`.
+No production focus or launcher workaround is retained. The canonical appearance
+fixture selects through the same dialog handler used by popup callbacks, and
+checks routed dismissal, saved state, screenshots and unchanged rendering work.
+Native menu focus verification remains session-dependent.

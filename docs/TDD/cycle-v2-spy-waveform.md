@@ -11,7 +11,9 @@ Time-signal spies offer Cyclogram, Spectrogram and Waveform. Waveform shows a
 continuous mono sum over the existing one-second voice axis plus measured tail,
 with the same note-off position. Physical pixels retain trace coverage. A fixed
 768 by 384 crossing grid over the full normalized source supplies heat colours
-from the brighter range of the existing Magenta gradient. Bilinear colour sampling smooths bucket
+from the selected waveform gradient (Burnt Alum by default). The modal
+Surface Appearance configurator owns palette selection; see
+`cycle-v2-surface-appearance.md`. Bilinear colour sampling smooths bucket
 boundaries without broadening or filling the fine waveform. The full-source
 normalization and colour field remain fixed through resizing, zooming, scrolling
 and the path transition. Silence remains empty. Compact and expanded
@@ -19,7 +21,7 @@ presentations share this encoding. Saved presets retain the selected
 view; legacy frequencyView booleans retain their old meaning.
 
 Authoritative sources: ReferenceWaveformPreview owns passage counting;
-Binary/Gradients supplies Magenta; GraphAudioExecutor and its processors own
+WaveformColourStyles supplies the selected shared gradient; GraphAudioExecutor and its processors own
 continuous signal generation and lifecycle. Presentation adapters must not
 flatten cycle-folded grids or synthesize approximate audio. Raw capture uses a
 private prepared executor, with controllers, pitch and note lifecycle supplied
@@ -131,7 +133,7 @@ that heat statistics are built only once through horizontal and amplitude zoom.
 Monochrome references and the indexed density-to-path transition retain their
 established behavior.
 
-## Contrast and mode-selection follow-up
+## Contrast and mode-selection follow-up (palette superseded)
 
 The 2026-10-27 screenshot shows that sparse coloured paths remain difficult to
 read against the grey plot. The heat grid doubles on each axis to 768 by 384.
@@ -161,3 +163,9 @@ revisions and compilation count. The palette regression checks 768 by 384
 source dimensions, visible contrast and retained high-density highlights.
 Production-size dense and sparse-path screenshots were reviewed together;
 contrast improves while geometry and zoom-stable colouring are preserved.
+
+
+The fixed bright Magenta ramp was subsequently rejected because its density
+bands were too similar. The active configurator TDD supersedes that palette and
+its minimum-contrast acceptance rule with full-range, user-selectable gradients.
+Fixed source-space statistics and geometry are retained across recolouring.

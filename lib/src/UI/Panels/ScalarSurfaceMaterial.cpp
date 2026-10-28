@@ -841,6 +841,10 @@ ScalarSurfaceMaterial ScalarSurfaceMaterial::bipolarMagnitude() {
         return forTimeStyle(timeSurfaceStyleFromIndex(styleIndex));
     }
 
+    return defaultBipolarMagnitude();
+}
+
+ScalarSurfaceMaterial ScalarSurfaceMaterial::defaultBipolarMagnitude() {
     ScalarSurfaceMaterial material;
     material.palette = ScalarSurfacePalette::BipolarMagnitude;
     material.negativeAnchor = juce::Colour(0xff4d9fd8);
@@ -1041,6 +1045,19 @@ juce::Image ScalarSurfaceMaterialEvaluator::createGradientImage(
         return {};
     }
     juce::Image image(juce::Image::ARGB, width, 1, true);
+    if (ScalarSurfaceProgram::isProgram(material)) {
+        std::vector<float> values((size_t) width * 2);
+        for (int x = 0; x < width; ++x) {
+            const float value = (float) x / (float) juce::jmax(1, width - 1);
+            values[(size_t) x * 2] = value;
+            values[(size_t) x * 2 + 1] = value;
+        }
+        const auto product = ScalarSurfaceProgram::render(values, width, 2, material);
+        for (int x = 0; x < width; ++x) {
+            image.setPixelAt(x, 0, ScalarSurfaceProgram::colourAt(product, x * 2));
+        }
+        return image;
+    }
     const ScalarSurfaceDerivatives flat {};
     for (int x = 0; x < width; ++x) {
         image.setPixelAt(

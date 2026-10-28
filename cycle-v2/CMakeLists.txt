@@ -281,6 +281,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternBrowser.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceAssetBrowser.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceWaveformPreview.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WaveformColourStyles.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceWaveformView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ComparisonSurfaceView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceTrayBar.cpp"

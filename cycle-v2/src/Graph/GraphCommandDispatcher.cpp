@@ -9,6 +9,10 @@
 
 namespace CycleV2 {
 
+bool GraphCommandDispatcher::setWaveformColourStyle(const juce::String& styleId) {
+    return setPresentationStyle(document.presetPresentation.waveformColourStyle, styleId);
+}
+
 bool GraphCommandDispatcher::setTimeSurfaceStyle(const juce::String& styleId) {
     return setPresentationStyle(document.presetPresentation.timeSurfaceStyle, styleId);
 }

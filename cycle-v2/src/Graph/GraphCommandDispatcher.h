@@ -35,6 +35,7 @@ public:
     explicit GraphCommandDispatcher(GraphDocument& documentToUse) : document(documentToUse) {}
 
     GraphEditResult addNode(NodeKind kind, juce::Point<float> position);
+    bool setWaveformColourStyle(const juce::String& styleId);
     bool setTimeSurfaceStyle(const juce::String& styleId);
     bool setBipolarSpectralSurfaceStyle(const juce::String& styleId);
     bool setPresetSequence(PresetMidiSequence sequence);

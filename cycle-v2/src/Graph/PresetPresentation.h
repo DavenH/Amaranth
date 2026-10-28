@@ -54,6 +54,7 @@ struct PresetPresentation {
     juce::String pack;
     juce::String description;
     juce::String timeSurfaceStyle;
+    juce::String waveformColourStyle;
     juce::String bipolarSpectralSurfaceStyle;
     juce::StringArray tags;
     bool tagsSpecified {};

@@ -19,6 +19,7 @@
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/PresentationRefreshPolicy.h"
 #include "UI/CanvasPerformanceMetrics.h"
+#include "UI/WaveformColourStyles.h"
 #include "UI/ExplanationEditor.h"
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAuthoring.h"
@@ -88,6 +89,8 @@ public:
             String& errorMessage);
     bool isGraphDirty() const { return document.isDirty(); }
     const File& graphFile() const { return document.file(); }
+    WaveformColourStyles::Style waveformColourStyle() const;
+    void setWaveformColourStyle(WaveformColourStyles::Style style);
     ScalarSurfaceTimeStyle timeSurfaceStyle() const;
     void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style);
     std::optional<ScalarSurfaceTimeStyle> bipolarSpectralSurfaceStyle() const;

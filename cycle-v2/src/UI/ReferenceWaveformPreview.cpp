@@ -4,7 +4,6 @@
 #include <Algo/PeakCounter.h>
 #include <Audio/PitchedSample.h>
 #include <Array/ScopedAlloc.h>
-#include <Binary/Gradients.h>
 #include <algorithm>
 #include <array>
 
@@ -23,19 +22,13 @@ void normalizeDensity(std::vector<float>& density) {
     }
 }
 
-const std::array<juce::PixelARGB, 512>& signalHeatColours() {
-    static const auto colours = [] {
-        const auto gradient = juce::PNGImageFormat::loadFrom(Gradients::magenta_png, Gradients::magenta_pngSize);
-        std::array<juce::PixelARGB, 512> result;
-        for (int index = 0; index < (int) result.size(); ++index) {
-            // Keep even isolated traces above the dark canvas while retaining the dense pale highlight.
-            const float position = juce::jmap((float) index / (result.size() - 1), 0.45f, 1.f);
-            const int x = juce::roundToInt(position * (gradient.getWidth() - 1));
-            result[(size_t) index] = gradient.getPixelAt(x, 0).getPixelARGB();
-        }
-        return result;
-    }();
-    return colours;
+std::array<juce::PixelARGB, 512> signalHeatColours(WaveformColourStyles::Style style) {
+    const auto gradient = WaveformColourStyles::gradient(style);
+    std::array<juce::PixelARGB, 512> result;
+    for (int index = 0; index < (int) result.size(); ++index) {
+        result[(size_t) index] = gradient.getPixelAt(index, 0).withAlpha(1.f).getPixelARGB();
+    }
+    return result;
 }
 
 struct HeatPosition {
@@ -213,16 +206,25 @@ juce::Image signalWaveformHeatmap(const std::vector<float>& mono, int width, int
             resolution.useLine);
 }
 
-juce::Image signalWaveformHeatField(Buffer<float> mono) {
-    // A source-space grid preserves overlap richness and colour meaning at every zoom level.
+std::vector<float> signalWaveformHeatDensity(Buffer<float> mono) {
+    auto density = referenceWaveformDensity(mono, 768, 384);
+    if (!density.empty()) {
+        normalizeDensity(density);
+    }
+    return density;
+}
+
+juce::Image signalWaveformHeatField(Buffer<float> mono, WaveformColourStyles::Style style) {
+    return signalWaveformHeatField(signalWaveformHeatDensity(mono), style);
+}
+
+juce::Image signalWaveformHeatField(const std::vector<float>& density, WaveformColourStyles::Style style) {
     constexpr int columns = 768;
     constexpr int rows = 384;
-    auto density = referenceWaveformDensity(mono, columns, rows);
-    if (density.empty()) {
+    if (density.size() != (size_t) columns * rows) {
         return {};
     }
-    normalizeDensity(density);
-    const auto& colours = signalHeatColours();
+    const auto colours = signalHeatColours(style);
     juce::Image heat(juce::Image::ARGB, columns, rows, false, juce::SoftwareImageType());
     juce::Image::BitmapData pixels(heat, juce::Image::BitmapData::writeOnly);
     for (int y = 0; y < rows; ++y) {
@@ -233,6 +235,13 @@ juce::Image signalWaveformHeatField(Buffer<float> mono) {
         }
     }
     return heat;
+}
+
+juce::Image recolourSignalWaveform(const juce::Image& geometry, const juce::Image& heatField,
+        const ZoomRect& viewport) {
+    auto image = geometry.createCopy();
+    paintWaveformHeat(image, heatField, viewport, {});
+    return image;
 }
 
 juce::Image renderSignalWaveform(Buffer<float> mono, int width, int height,

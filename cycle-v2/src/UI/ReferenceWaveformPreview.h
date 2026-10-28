@@ -5,6 +5,8 @@
 #include <UI/Panels/ZoomRect.h>
 #include <vector>
 
+#include "UI/WaveformColourStyles.h"
+
 namespace CycleV2 {
 
 enum class WaveformPalette { Monochrome, CrossingHeat };
@@ -26,7 +28,12 @@ juce::Image referenceWaveformHeatmap(Buffer<float> normalizedMono, int width, in
         float y = 0.f, float span = 1.f);
 juce::Image signalWaveformHeatmap(const std::vector<float>& mono, int width, int height);
 // Full-source statistics remain fixed while the viewport and trace resolution change.
-juce::Image signalWaveformHeatField(Buffer<float> normalizedMono);
+std::vector<float> signalWaveformHeatDensity(Buffer<float> normalizedMono);
+juce::Image signalWaveformHeatField(const std::vector<float>& normalizedDensity, WaveformColourStyles::Style style);
+juce::Image signalWaveformHeatField(Buffer<float> normalizedMono,
+        WaveformColourStyles::Style style = WaveformColourStyles::current());
+juce::Image recolourSignalWaveform(const juce::Image& geometry, const juce::Image& heatField,
+        const ZoomRect& viewport);
 juce::Image renderSignalWaveform(Buffer<float> visibleMono, int width, int height,
         const ZoomRect& viewport, const juce::Image& heatField, bool useLine,
         juce::Range<float> sampleRange = {});

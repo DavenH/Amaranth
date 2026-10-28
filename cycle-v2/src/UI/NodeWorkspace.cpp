@@ -1,4 +1,6 @@
 #include "UI/NodeWorkspace.h"
+#include "UI/SurfaceAppearanceDialog.h"
+#include "UI/CanvasChromePalette.h"
 
 #include "Reference/ReferenceAutomation.h"
 
@@ -117,7 +119,35 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     timerCallback();
 }
 
+void NodeWorkspace::showSurfaceAppearance() {
+    if (surfaceAppearanceWindow != nullptr) {
+        surfaceAppearanceWindow->toFront(true);
+        return;
+    }
+    juce::DialogWindow::LaunchOptions options;
+    options.dialogTitle = "Surface Appearance";
+    options.dialogBackgroundColour = CanvasChromePalette::surface;
+    options.content.setOwned(new SurfaceAppearanceDialog(*this));
+    options.componentToCentreAround = this;
+    options.useNativeTitleBar = true;
+    options.resizable = false;
+    surfaceAppearanceWindow = options.launchAsync();
+}
+
+bool NodeWorkspace::selectSurfaceAppearanceStyle(const juce::String& section, const juce::String& styleId) {
+    auto* dialog = surfaceAppearanceWindow != nullptr
+            ? dynamic_cast<SurfaceAppearanceDialog*>(surfaceAppearanceWindow->getContentComponent()) : nullptr;
+    return dialog != nullptr && dialog->selectStyle(section, styleId);
+}
+
+bool NodeWorkspace::isSurfaceAppearanceOpen() const {
+    return surfaceAppearanceWindow != nullptr && surfaceAppearanceWindow->isVisible();
+}
+
 NodeWorkspace::~NodeWorkspace() {
+    if (surfaceAppearanceWindow != nullptr) {
+        delete surfaceAppearanceWindow.getComponent();
+    }
     stopTimer();
     audioEngine.setMidiRecordingEnabled(false);
     canvas.setOverlayOcclusionChangedCallback({});

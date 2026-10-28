@@ -70,6 +70,7 @@ struct ScalarSurfaceMaterial {
     static ScalarSurfaceMaterial timeDomain();
     static ScalarSurfaceMaterial unipolarMagnitude();
     static ScalarSurfaceMaterial bipolarMagnitude();
+    static ScalarSurfaceMaterial defaultBipolarMagnitude();
     static ScalarSurfaceMaterial bipolarPhase();
     static ScalarSurfaceTimeStyle timeSurfaceStyle();
     static ScalarSurfaceTimeStyle timeSurfaceStyleFromIndex(int index);

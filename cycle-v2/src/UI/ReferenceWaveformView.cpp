@@ -16,8 +16,27 @@ struct ReferenceWaveformView::Source {
     WaveformPalette palette { WaveformPalette::Monochrome };
     bool silent {};
     // Only this view's single worker accesses the cache; diagnostics reads the atomic count.
+    mutable std::vector<float> density;
     mutable juce::Image heatField;
+    mutable WaveformColourStyles::Style heatStyle { WaveformColourStyles::defaultStyle };
+    mutable std::atomic<int> colourBuilds {};
+    mutable std::atomic<int> geometryBuilds {};
     mutable std::atomic<int> heatBuilds {};
+
+    const juce::Image& coloursFor(WaveformColourStyles::Style style) const {
+        if (density.empty()) {
+            density = signalWaveformHeatDensity(Buffer<float>(
+                    const_cast<float*>(mono.getReadPointer(0)), mono.getNumSamples()));
+            ++heatBuilds;
+        }
+        if (!heatField.isValid() || heatStyle != style) {
+            heatField = signalWaveformHeatField(density, style);
+            heatStyle = style;
+            ++colourBuilds;
+        }
+        return heatField;
+    }
+
 };
 
 class ReferenceWaveformView::RenderJob final : public juce::ThreadPoolJob {
@@ -26,6 +45,9 @@ public:
             ThreadPoolJob("Reference waveform view")
         ,   owner(&view)
         ,   source(view.source)
+        ,   cachedGeometry(view.imageViewport == view.viewport && view.image.getWidth() == width
+                    && view.image.getHeight() == height ? view.image : juce::Image())
+        ,   colourStyle(view.colourStyle)
         ,   viewport(view.viewport)
         ,   revision(view.revision)
         ,   width(width)
@@ -49,12 +71,13 @@ public:
                 (viewport.x + viewport.w) * length - start);
         juce::Image image;
         if (source->palette == WaveformPalette::CrossingHeat) {
-            if (!source->heatField.isValid()) {
-                source->heatField = signalWaveformHeatField(Buffer<float>(
-                        const_cast<float*>(source->mono.getReadPointer(0)), length));
-                ++source->heatBuilds;
+            const auto& heat = source->coloursFor(colourStyle);
+            if (cachedGeometry.isValid()) {
+                image = recolourSignalWaveform(cachedGeometry, heat, viewport);
+            } else {
+                image = renderSignalWaveform(audio, width, height, viewport, heat, line, sampleRange);
+                ++source->geometryBuilds;
             }
-            image = renderSignalWaveform(audio, width, height, viewport, source->heatField, line, sampleRange);
         } else {
             image = line ? referenceWaveformLine(audio, width, height, viewport.y, viewport.h, sampleRange)
                     : referenceWaveformHeatmap(audio, width, height, viewport.y, viewport.h);
@@ -74,6 +97,8 @@ public:
 private:
     juce::Component::SafePointer<ReferenceWaveformView> owner;
     std::shared_ptr<const Source> source;
+    juce::Image cachedGeometry;
+    WaveformColourStyles::Style colourStyle;
     ZoomRect viewport;
     uint64_t revision {};
     int width {};
@@ -115,6 +140,7 @@ void ReferenceWaveformView::setSignal(std::shared_ptr<const std::vector<float>> 
     if (signalIdentity == samples && sampleIdentity == nullptr) {
         return;
     }
+    colourStyle = WaveformColourStyles::current();
     signalIdentity = std::move(samples);
     setTitle("Signal waveform");
     sampleIdentity = nullptr;
@@ -181,6 +207,10 @@ void ReferenceWaveformView::publish(uint64_t completed, juce::Image rendered,
 
 void ReferenceWaveformView::paint(juce::Graphics& graphics) {
     graphics.fillAll(CanvasChromePalette::surface);
+    if (signalIdentity != nullptr && colourStyle != WaveformColourStyles::current()) {
+        colourStyle = WaveformColourStyles::current();
+        requestImage();
+    }
     const float scale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
     if (physicalScale != scale) {
         physicalScale = scale;
@@ -227,6 +257,9 @@ juce::var ReferenceWaveformView::diagnostics() const {
     value->setProperty("pixelWidth", image.getWidth());
     value->setProperty("sourceBuilds", sourceBuildCount);
     value->setProperty("heatBuilds", source != nullptr ? source->heatBuilds.load() : 0);
+    value->setProperty("colourBuilds", source != nullptr ? source->colourBuilds.load() : 0);
+    value->setProperty("geometryBuilds", source != nullptr ? source->geometryBuilds.load() : 0);
+    value->setProperty("colourStyle", WaveformColourStyles::id(colourStyle));
     value->setProperty("imageBuilds", buildCount);
     value->setProperty("x", viewport.x);
     value->setProperty("w", viewport.w);

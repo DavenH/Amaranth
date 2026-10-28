@@ -7,6 +7,8 @@
 #include <memory>
 #include <vector>
 
+#include "UI/WaveformColourStyles.h"
+
 class PitchedSample;
 
 namespace CycleV2 {
@@ -40,6 +42,7 @@ private:
     const PitchedSample* sampleIdentity {};
     std::shared_ptr<const std::vector<float>> signalIdentity;
     std::shared_ptr<const Source> source;
+    WaveformColourStyles::Style colourStyle { WaveformColourStyles::defaultStyle };
     ZoomRect viewport;
     ZoomRect imageViewport;
     juce::Image image;

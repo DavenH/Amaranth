@@ -454,6 +454,8 @@ var CycleV2Automation::snapshotState() const {
     var state = workspace.exportAutomationState();
 
     if (auto* object = objectFor(state)) {
+        object->setProperty("surfaceAppearanceOpen", workspace.isSurfaceAppearanceOpen());
+        object->setProperty("waveformColourStyleId", WaveformColourStyles::id(workspace.waveformColourStyle()));
         object->setProperty("timeSurfaceStyleId", TimeSurfaceStyles::id(workspace.timeSurfaceStyle()));
         const auto spectralStyle = workspace.bipolarSpectralSurfaceStyle();
         object->setProperty(
@@ -593,14 +595,7 @@ var CycleV2Automation::listMenuItems() const {
             "Import Wave Reference...", true));
     items.add(menuItemToVar("view.comparisonShelf", "View",
             "Show Comparison Shelf", workspace.canShowComparisonShelf()));
-    for (const auto& entry : TimeSurfaceStyles::entries) {
-        items.add(menuItemToVar("view.surface." + String(entry.id),
-                "View > Time Surface Colour", entry.label, true));
-        items.add(menuItemToVar("view.spectralSurface." + String(entry.id),
-                "View > Bipolar Spectral Surface", entry.label, true));
-    }
-    items.add(menuItemToVar("view.spectralSurface.default",
-            "View > Bipolar Spectral Surface", "Blue / Amber", true));
+    items.add(menuItemToVar("view.surfaceAppearance", "View", "Surface Appearance...", true));
     items.add(menuItemToVar(
             "file.saveGraph",
             "File",
@@ -639,6 +634,24 @@ var CycleV2Automation::invokeMenuItem(const var& commandValue) {
         }
         workspace.toggleComparisonShelf();
         return okResult("invokeMenuItem", snapshotState());
+    }
+    if (id == "view.surfaceAppearance") {
+        workspace.showSurfaceAppearance();
+        return okResult("invokeMenuItem", snapshotState());
+    }
+    if (id.startsWith("view.appearance.")) {
+        const auto choice = id.fromFirstOccurrenceOf("view.appearance.", false, false);
+        return workspace.selectSurfaceAppearanceStyle(choice.upToFirstOccurrenceOf(".", false, false),
+                        choice.fromFirstOccurrenceOf(".", false, false))
+                ? okResult("invokeMenuItem", snapshotState())
+                : failedResult("invokeMenuItem", "Expected an open appearance dialog and a valid section/style");
+    }
+    if (id.startsWith("view.waveformSurface.")) {
+        const auto* entry = WaveformColourStyles::find(id.fromLastOccurrenceOf(".", false, false));
+        if (entry != nullptr) {
+            workspace.setWaveformColourStyle(entry->style);
+            return okResult("invokeMenuItem", snapshotState());
+        }
     }
     if (id == "view.spectralSurface.default") {
         workspace.setBipolarSpectralSurfaceStyle(std::nullopt);
@@ -1047,6 +1060,17 @@ var CycleV2Automation::waitForIdle(const var& commandValue) const {
 }
 
 Component* CycleV2Automation::componentForArea(const String& area) const {
+    if (area == "modal") {
+        return Component::getCurrentlyModalComponent();
+    }
+    if (area.startsWith("surfaceAppearance")) {
+        auto& desktop = Desktop::getInstance();
+        for (int index = 0; index < desktop.getNumComponents(); ++index) {
+            if (auto* match = findNamedComponent(*desktop.getComponent(index), area)) {
+                return match;
+            }
+        }
+    }
     if (area == "focused") {
         return Component::getCurrentlyFocusedComponent();
     }

@@ -189,6 +189,7 @@ PresetPresentationDecodeResult readPresentation(
     result.presentation.pack = object->getProperty("pack").toString();
     result.presentation.description = object->getProperty("description").toString();
     result.presentation.timeSurfaceStyle = object->getProperty("timeSurfaceStyle").toString();
+    result.presentation.waveformColourStyle = object->getProperty("waveformColourStyle").toString();
     result.presentation.bipolarSpectralSurfaceStyle =
             object->getProperty("bipolarSpectralSurfaceStyle").toString();
     result.presentation.patternId = object->getProperty("patternId").toString();
@@ -263,6 +264,7 @@ bool PresetPresentation::empty() const {
             && pack.isEmpty()
             && description.isEmpty()
             && timeSurfaceStyle.isEmpty()
+            && waveformColourStyle.isEmpty()
             && bipolarSpectralSurfaceStyle.isEmpty()
             && tags.isEmpty()
             && !tagsSpecified
@@ -282,6 +284,9 @@ juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentat
     result->setProperty("version", kPresentationVersion);
     if (presentation.title.isNotEmpty()) {
         result->setProperty("title", presentation.title);
+    }
+    if (presentation.waveformColourStyle.isNotEmpty()) {
+        result->setProperty("waveformColourStyle", presentation.waveformColourStyle);
     }
     if (presentation.timeSurfaceStyle.isNotEmpty()) {
         result->setProperty("timeSurfaceStyle", presentation.timeSurfaceStyle);
