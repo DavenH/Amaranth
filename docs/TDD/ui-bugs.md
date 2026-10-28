@@ -1252,3 +1252,16 @@ verification: existing UI fixture failures”: unchanged comparison morph captur
 (`TestNodeCanvasArchitecture.cpp:177`). Evidence:
 `.context/spy-waveform-focused-tests.log`. The new waveform and release/cache
 cases pass in `.context/spy-waveform-verified-tests.log`.
+
+
+## Output Spy view selection could retain the previous presentation
+
+2026-10-28: switching the default output Spy Spectrum → Cyclogram → Waveform
+could retain cyclogram pixels while the Waveform menu item was checked. The
+selected output view is presentation metadata, so these changes share a graph
+revision. Refresh deduplication omitted that view and skipped the new capture.
+Before-fix evidence: `.context/waveform-mode-reproduced-report.json` records
+`outputSpyView: waveform` with `waveformSamples: 0`. Resolved: the presentation
+request fingerprint includes the output view. The 85-command Spy waveform
+fixture verifies repeated changes and actual waveform presence/absence without
+a graph edit. Evidence: `.context/spy-waveform-contrast-ui-report.json`.

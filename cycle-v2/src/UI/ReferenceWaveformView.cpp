@@ -48,7 +48,7 @@ public:
         const juce::Range<float> sampleRange(viewport.x * length - start,
                 (viewport.x + viewport.w) * length - start);
         juce::Image image;
-        if (source->palette == WaveformPalette::BurntAlum) {
+        if (source->palette == WaveformPalette::CrossingHeat) {
             if (!source->heatField.isValid()) {
                 source->heatField = signalWaveformHeatField(Buffer<float>(
                         const_cast<float*>(source->mono.getReadPointer(0)), length));
@@ -131,7 +131,7 @@ void ReferenceWaveformView::setSignal(std::shared_ptr<const std::vector<float>> 
         }
         prepared->zeroCrossings = PeakCounter::findZeroCrossings(mono, 0);
         prepared->silent = peak == 0.f;
-        prepared->palette = WaveformPalette::BurntAlum;
+        prepared->palette = WaveformPalette::CrossingHeat;
         source = std::move(prepared);
         ++sourceBuildCount;
     }

@@ -3,8 +3,8 @@
 
 #include "UI/ReferenceWaveformPreview.h"
 #include "UI/LibraryIconRenderer.h"
+#include "UI/CanvasChromePalette.h"
 #include <Algo/PeakCounter.h>
-#include <UI/Panels/ScalarSurfaceMaterial.h>
 #include <cmath>
 
 using namespace CycleV2;
@@ -174,29 +174,39 @@ TEST_CASE("Every sidebar and library action has a parseable SVG icon",
     REQUIRE(juce::PNGImageFormat().writeImageToStream(sheet, *stream));
 }
 
-TEST_CASE("Waveform passage heat uses the Burnt Alum gradient with a fixed full-source scale",
+TEST_CASE("Waveform heat retains visible contrast at the finer full-source resolution",
         "[cycle-v2][waveform][density][palette]") {
     std::vector<float> samples(2049);
     for (size_t index = 0; index < samples.size(); ++index) {
         samples[index] = (index % 2 == 0 ? -1.f : 1.f) * (index < 1024 ? 1.f : 0.1f);
     }
-    const auto mono = Buffer<float>(samples.data(), (int) samples.size());
-    const auto heat = signalWaveformHeatField(mono);
-    const auto density = referenceWaveformDensity(mono, heat.getWidth(), heat.getHeight());
-    const auto gradient = ScalarSurfaceMaterialEvaluator::createGradientImage(ScalarSurfaceMaterial::unipolarMagnitude());
-    const float peak = *std::max_element(density.begin(), density.end());
-    bool differentHeat {};
-    int mismatches {};
+    const auto heat = signalWaveformHeatField(Buffer<float>(samples.data(), (int) samples.size()));
+    REQUIRE(heat.getWidth() == 768);
+    REQUIRE(heat.getHeight() == 384);
+    const auto luminance = [](juce::Colour colour) {
+        const auto linear = [](float value) {
+            return value <= 0.04045f ? value / 12.92f : std::pow((value + 0.055f) / 1.055f, 2.4f);
+        };
+        return 0.2126f * linear(colour.getFloatRed())
+                + 0.7152f * linear(colour.getFloatGreen())
+                + 0.0722f * linear(colour.getFloatBlue());
+    };
+    const float background = luminance(CanvasChromePalette::surface);
+    float minimumContrast = 100.f;
+    float maximumContrast {};
+    int translucent {};
     for (int x = 0; x < heat.getWidth(); ++x) {
         for (int y = 0; y < heat.getHeight(); ++y) {
-            const float count = density[(size_t) x * heat.getHeight() + (size_t) y];
-            const float unit = std::log1p(count) / std::log1p(peak);
-            mismatches += heat.getPixelAt(x, y) != gradient.getPixelAt(juce::roundToInt(unit * 511.f), 0) ? 1 : 0;
-            differentHeat |= count > 0.f && count < peak;
+            const auto colour = heat.getPixelAt(x, y);
+            const float contrast = (luminance(colour) + 0.05f) / (background + 0.05f);
+            minimumContrast = juce::jmin(minimumContrast, contrast);
+            maximumContrast = juce::jmax(maximumContrast, contrast);
+            translucent += colour.getAlpha() != 255 ? 1 : 0;
         }
     }
-    REQUIRE(mismatches == 0);
-    REQUIRE(differentHeat);
+    REQUIRE(minimumContrast >= 3.5f);
+    REQUIRE(maximumContrast > 12.f);
+    REQUIRE(translucent == 0);
 }
 
 TEST_CASE("Waveform colour stays attached to the signal through resizing zoom and path rendering",

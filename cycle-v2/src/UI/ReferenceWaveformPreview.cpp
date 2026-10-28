@@ -4,9 +4,10 @@
 #include <Algo/PeakCounter.h>
 #include <Audio/PitchedSample.h>
 #include <Array/ScopedAlloc.h>
-#include <UI/Panels/ScalarSurfaceMaterial.h>
+#include <Binary/Gradients.h>
 #include <algorithm>
 #include <array>
+
 #include "UI/CanvasChromePalette.h"
 
 namespace CycleV2 {
@@ -22,13 +23,15 @@ void normalizeDensity(std::vector<float>& density) {
     }
 }
 
-const std::array<juce::PixelARGB, 512>& burntAlumColours() {
+const std::array<juce::PixelARGB, 512>& signalHeatColours() {
     static const auto colours = [] {
-        const auto gradient = ScalarSurfaceMaterialEvaluator::createGradientImage(
-                ScalarSurfaceMaterial::unipolarMagnitude());
+        const auto gradient = juce::PNGImageFormat::loadFrom(Gradients::magenta_png, Gradients::magenta_pngSize);
         std::array<juce::PixelARGB, 512> result;
         for (int index = 0; index < (int) result.size(); ++index) {
-            result[(size_t) index] = gradient.getPixelAt(index, 0).getPixelARGB();
+            // Keep even isolated traces above the dark canvas while retaining the dense pale highlight.
+            const float position = juce::jmap((float) index / (result.size() - 1), 0.45f, 1.f);
+            const int x = juce::roundToInt(position * (gradient.getWidth() - 1));
+            result[(size_t) index] = gradient.getPixelAt(x, 0).getPixelARGB();
         }
         return result;
     }();
@@ -212,14 +215,14 @@ juce::Image signalWaveformHeatmap(const std::vector<float>& mono, int width, int
 
 juce::Image signalWaveformHeatField(Buffer<float> mono) {
     // A source-space grid preserves overlap richness and colour meaning at every zoom level.
-    constexpr int columns = 384;
-    constexpr int rows = 192;
+    constexpr int columns = 768;
+    constexpr int rows = 384;
     auto density = referenceWaveformDensity(mono, columns, rows);
     if (density.empty()) {
         return {};
     }
     normalizeDensity(density);
-    const auto& colours = burntAlumColours();
+    const auto& colours = signalHeatColours();
     juce::Image heat(juce::Image::ARGB, columns, rows, false, juce::SoftwareImageType());
     juce::Image::BitmapData pixels(heat, juce::Image::BitmapData::writeOnly);
     for (int y = 0; y < rows; ++y) {

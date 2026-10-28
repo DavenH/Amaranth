@@ -494,3 +494,30 @@ TEST_CASE("Waveform capture retains continuous samples independently of folded S
     REQUIRE(expanded->waveform->size() == 44100);
     REQUIRE(expanded->noteOffTime == 0.25);
 }
+
+TEST_CASE("Output Spy mode changes refresh preview content without a graph edit",
+        "[cycle-v2][probe][waveform][preview]") {
+    GraphDocument document(probeGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    const auto documentRevision = document.revision();
+    const auto graphRevision = document.graph().getRevision();
+    const auto audioRevision = presentation.audioPlanRevision();
+    const auto compilations = presentation.compilationCount();
+    GraphChangeSet change;
+    change.probesChanged = true;
+    for (const auto view : { PresetPreviewView::Time, PresetPreviewView::Waveform,
+            PresetPreviewView::Spectrum, PresetPreviewView::Waveform, PresetPreviewView::Time }) {
+        REQUIRE(commands.setDefaultOutputSpyView(view));
+        presentation.setOutputSpyView(document.presentation().outputSpyView);
+        REQUIRE(presentation.refresh(document.graph(), document.revision(), change));
+        const auto& output = presentation.previewResult().defaultOutput;
+        REQUIRE(output.has_value());
+        REQUIRE((output->waveform != nullptr) == (view == PresetPreviewView::Waveform));
+        REQUIRE(document.revision() == documentRevision);
+        REQUIRE(document.graph().getRevision() == graphRevision);
+        REQUIRE(presentation.audioPlanRevision() == audioRevision);
+        REQUIRE(presentation.compilationCount() == compilations);
+    }
+}

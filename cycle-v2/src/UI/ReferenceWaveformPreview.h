@@ -7,7 +7,7 @@
 
 namespace CycleV2 {
 
-enum class WaveformPalette { Monochrome, BurntAlum };
+enum class WaveformPalette { Monochrome, CrossingHeat };
 
 struct ReferenceWaveformResolution {
     size_t crossings {};

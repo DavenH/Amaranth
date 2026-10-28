@@ -134,7 +134,7 @@ bool GraphPresentationModel::refresh(
             documentRevision,
             change,
             { current.graphRevision, current.previewMidiNote,
-                    current.previewControllerValues },
+                    current.previewControllerValues, current.outputSpyView },
             compile,
             preview,
             PresentationRefreshScope::Downstream);
@@ -377,7 +377,7 @@ void GraphPresentationModel::refreshAsync(
             documentRevision,
             change,
             { current.graphRevision, current.previewMidiNote,
-                    current.previewControllerValues },
+                    current.previewControllerValues, current.outputSpyView },
             false,
             preview,
             scope);
