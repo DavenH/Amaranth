@@ -2,6 +2,7 @@
 #include <App/AppConstants.h>
 
 #include "Runtime/GraphPresentationModel.h"
+#include "Graph/DefaultOutputProbeResolver.h"
 #include "Runtime/GraphPresentationFacts.h"
 #include "Runtime/PreviewMorphBinding.h"
 #include "Graph/MeshDimensionality.h"
@@ -550,6 +551,9 @@ GraphPresentationModel::captureProbePreview(
     if (!current.compileResult.succeeded() || rasterRowCount == 0) {
         return std::nullopt;
     }
+    const auto* probe = graph.findSignalProbe(probeId);
+    const auto view = probeId == DefaultOutputProbeResolver::probeId
+            ? current.outputSpyView : probe != nullptr ? probe->view : PresetPreviewView::Time;
     return previewRenderer.captureProbePreview(
             graph,
             current.compileResult.plan,
@@ -558,7 +562,8 @@ GraphPresentationModel::captureProbePreview(
             midiNote,
             current.previewControllerValues,
             performance,
-            noteOffTime);
+            noteOffTime,
+            view);
 }
 
 std::vector<std::optional<GraphPreviewResult::SignalProbePreview>>
@@ -573,7 +578,7 @@ GraphPresentationModel::captureProbePreviews(
     }
     return previewRenderer.captureProbePreviews(
             graph, current.compileResult.plan, probeIds, rasterRowCount,
-            midiNote, current.previewControllerValues, performance);
+            midiNote, current.previewControllerValues, performance, current.outputSpyView);
 }
 
 double GraphPresentationModel::probeNoteOffTime(const String& probeId) const {

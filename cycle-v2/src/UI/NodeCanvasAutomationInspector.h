@@ -69,6 +69,7 @@ struct NodeCanvasAutomationPresentation {
     size_t probeDetailResolution {};
     size_t probeDetailColumns {};
     size_t probeDetailRows {};
+    juce::var probeWaveform;
     double probeDetailReleaseDuration {};
     float probeDetailNoteOffPosition { 1.f };
     double probeDetailNoteOffTime { 1. };

@@ -2,9 +2,12 @@
 
 #include <JuceHeader.h>
 #include <Array/StereoBuffer.h>
+#include <UI/Panels/ZoomRect.h>
 #include <vector>
 
 namespace CycleV2 {
+
+enum class WaveformPalette { Monochrome, BurntAlum };
 
 struct ReferenceWaveformResolution {
     size_t crossings {};
@@ -21,6 +24,12 @@ std::vector<float> referenceWaveformDensity(Buffer<float> mono, int width, int h
 juce::Image referenceWaveformHeatmap(const StereoBuffer& audio, int width, int height);
 juce::Image referenceWaveformHeatmap(Buffer<float> normalizedMono, int width, int height,
         float y = 0.f, float span = 1.f);
+juce::Image signalWaveformHeatmap(const std::vector<float>& mono, int width, int height);
+// Full-source statistics remain fixed while the viewport and trace resolution change.
+juce::Image signalWaveformHeatField(Buffer<float> normalizedMono);
+juce::Image renderSignalWaveform(Buffer<float> visibleMono, int width, int height,
+        const ZoomRect& viewport, const juce::Image& heatField, bool useLine,
+        juce::Range<float> sampleRange = {});
 juce::Image referenceWaveformLine(Buffer<float> normalizedMono, int width, int height,
         float y = 0.f, float span = 1.f, juce::Range<float> sampleRange = {});
 juce::Image loadReferenceWaveformHeatmap(const juce::File& file);

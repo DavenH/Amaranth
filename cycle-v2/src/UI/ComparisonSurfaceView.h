@@ -19,6 +19,10 @@ public:
     void setGrid(const std::vector<float>& values, size_t columns, size_t rows,
             PortDomain domain, int note, float displayGain = 1.f, bool includesDc = true,
             double sampleRate = 44100.0, const std::vector<float>& positions = {}, size_t maximumRows = 0);
+    void setWaveform(std::shared_ptr<const std::vector<float>> samples);
+    void setWaveformOverlay(std::function<void(juce::Graphics&)> overlay);
+    void mouseWheelMove(const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+    void mouseMagnify(const juce::MouseEvent&, float scaleFactor) override;
     void setCamera(const ZoomRect& camera);
     ZoomRect camera();
     void setZoomBarsVisible(bool visible);

@@ -5,6 +5,7 @@
 #include "Runtime/DefaultOutputPreview.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/NodePreviewRenderer.h"
+#include "UI/ReferenceWaveformPreview.h"
 
 namespace CycleV2 {
 
@@ -27,8 +28,9 @@ Image renderPreview(
             preview.frequencySampling,
             preview.frequencyMidiNote
     };
-    const Image heatmap = NodePreviewRenderer::createRuntimeHeatmapImage(
-            renderResult, false, 0.f, height);
+    const Image heatmap = preview.waveform != nullptr
+            ? signalWaveformHeatmap(*preview.waveform, width, height)
+            : NodePreviewRenderer::createRuntimeHeatmapImage(renderResult, false, 0.f, height);
     if (!heatmap.isValid()) {
         return {};
     }
@@ -68,7 +70,12 @@ GraphPreviewResult::SignalProbePreview PresetPreviewGenerator::forView(
     if (view == PresetPreviewView::Spectrum) {
         return DefaultOutputPreview::spectrum(timePreview);
     }
-    return DefaultOutputPreview::normalizedTime(timePreview);
+    auto result = view == PresetPreviewView::Time
+            ? DefaultOutputPreview::normalizedTime(timePreview) : timePreview;
+    if (view != PresetPreviewView::Waveform) {
+        result.waveform.reset();
+    }
+    return result;
 }
 
 PresetPreviewImage PresetPreviewGenerator::encodeJpeg(

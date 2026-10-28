@@ -43,6 +43,7 @@ enum class CycleV2AutomationCommand {
     CaptureLiveAudio,
     OpenNodeEditor,
     PinComparisonSpy,
+    SetSpyView,
     SelectReference,
     ListReferences,
     ImportReference,

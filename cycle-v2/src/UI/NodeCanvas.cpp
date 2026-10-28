@@ -15,6 +15,7 @@
 
 #include "App/Automation/ImpulseResponseImportAutomation.h"
 #include "UI/NodeCanvas.h"
+#include "UI/ComparisonSurfaceView.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/Editors/PropertyControls.h"
@@ -242,8 +243,8 @@ NodeCanvas::NodeCanvas() :
             AppSettings::GuideShelfMinimized) != 0;
     probeCanvasState.outputCanvasPosition = document.presentation().outputSpyPosition;
     probeCanvasState.outputSpyVisible = document.presentation().outputSpyVisible;
-    probeCanvasState.defaultOutputView = document.presentation().outputSpyFrequencyView
-            ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
+    probeCanvasState.defaultOutputView = document.presentation().outputSpyView;
+    presentation.setOutputSpyView(probeCanvasState.defaultOutputView);
     presentation.setProbeNoteOffTimes(document.presentation().spyNoteOffTimes);
     dockInteraction = std::make_unique<WorkspaceDockInteractionController>(
             commands,
@@ -479,6 +480,7 @@ void NodeCanvas::resized() {
     if (referenceEditor != nullptr && referenceEditor->isVisible()) {
         referenceEditor->setBounds(NodeCanvasEditorCoordinator::boundsFor(nullptr, editorContentBounds()).toNearestInt());
     }
+    updateProbeWaveformView();
     guideEditorCoordinator.layout(editorContentBounds());
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
     if (presetSidebar != nullptr) {
@@ -897,10 +899,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                             ? &*snapshot.previewResult.defaultOutput : nullptr)
                     : queries.presentationFacts().probePreviewFor(snapshot, cardProbe);
             if (preview != nullptr && preview->domain == PortDomain::TimeSignal) {
-                const bool frequency = cardProbe == DefaultOutputProbeResolver::probeId
-                        ? probeCanvasState.defaultOutputView == PresetPreviewView::Spectrum
-                        : graph.findSignalProbe(cardProbe)->frequencyView;
-                menu.addItem(2, frequency ? "Show Time Domain" : "Show Frequency Domain");
+                const auto view = cardProbe == DefaultOutputProbeResolver::probeId
+                        ? probeCanvasState.defaultOutputView : graph.findSignalProbe(cardProbe)->view;
+                menu.addItem(2, "Cyclogram", true, view == PresetPreviewView::Time);
+                menu.addItem(3, "Spectrogram", true, view == PresetPreviewView::Spectrum);
+                menu.addItem(4, "Waveform", true, view == PresetPreviewView::Waveform);
             }
             menu.addItem(1, "Stop Spying");
             const Point<int> click = event.getScreenPosition();
@@ -912,8 +915,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                     [safeThis = SafePointer<NodeCanvas>(this), cardProbe](int choice) {
                         if (safeThis != nullptr && choice == 1) {
                             safeThis->removeSpyCard(cardProbe);
-                        } else if (safeThis != nullptr && choice == 2) {
-                            safeThis->toggleSpyDomain(cardProbe);
+                        } else if (safeThis != nullptr && choice >= 2 && choice <= 4) {
+                            const PresetPreviewView views[] { PresetPreviewView::Time,
+                                    PresetPreviewView::Spectrum, PresetPreviewView::Waveform };
+                            safeThis->setSpyView(cardProbe, views[choice - 2]);
                         }
                     });
         } else if (event.getNumberOfClicks() >= 2) {
@@ -1366,6 +1371,12 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Viewport);
+    if (probeWaveformView != nullptr && probeWaveformView->isVisible()) {
+        if (probeWaveformView->getBounds().toFloat().contains(event.position)) {
+            probeWaveformView->mouseWheelMove(event.getEventRelativeTo(probeWaveformView.get()), wheel);
+        }
+        return;
+    }
     const Node* blockingEditorNode = queries.findNode(expandedNodeId);
     if (editorCoordinator.blocksCanvas(blockingEditorNode)) {
         return;
@@ -1424,6 +1435,10 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
 
 void NodeCanvas::mouseMagnify(const MouseEvent& event, float scaleFactor) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Viewport);
+    if (probeWaveformView != nullptr && probeWaveformView->isVisible()) {
+        probeWaveformView->mouseMagnify(event.getEventRelativeTo(probeWaveformView.get()), scaleFactor);
+        return;
+    }
     viewport.zoomAround(event.position, scaleFactor);
     requestCanvasRepaint();
 }
@@ -1807,25 +1822,33 @@ bool NodeCanvas::removeSpyCard(const String& probeId) {
     return applyAuthoringResult(authoring.removeSignalProbe(probeId));
 }
 
-void NodeCanvas::toggleSpyDomain(const String& probeId) {
+bool NodeCanvas::setSpyView(const String& probeId, PresetPreviewView view) {
+    const auto& snapshot = presentation.snapshot();
+    const auto* preview = probeId == DefaultOutputProbeResolver::probeId
+            ? (snapshot.previewResult.defaultOutput.has_value() ? &*snapshot.previewResult.defaultOutput : nullptr)
+            : queries.presentationFacts().probePreviewFor(snapshot, probeId);
+    if (preview == nullptr || preview->domain != PortDomain::TimeSignal) {
+        return false;
+    }
     if (probeId == DefaultOutputProbeResolver::probeId) {
-        const bool frequency = probeCanvasState.defaultOutputView != PresetPreviewView::Spectrum;
-        if (commands.setDefaultOutputSpyFrequencyView(frequency)) {
-            probeCanvasState.defaultOutputView = frequency
-                    ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
-            notifyGraphDocumentStateChanged();
-            requestCanvasRepaint();
+        if (document.presentation().outputSpyView == view) {
+            return true;
         }
-        return;
+        if (!commands.setDefaultOutputSpyView(view)) {
+            return false;
+        }
+        probeCanvasState.defaultOutputView = document.presentation().outputSpyView;
+        presentation.setOutputSpyView(probeCanvasState.defaultOutputView);
+    } else if (!commands.setSignalProbeView(probeId, view).succeeded()) {
+        return false;
     }
-
-    const SignalProbe* probe = graph.findSignalProbe(probeId);
-    if (probe != nullptr
-            && commands.setSignalProbeFrequencyView(probeId, !probe->frequencyView)
-                    .succeeded()) {
-        notifyGraphDocumentStateChanged();
-        requestCanvasRepaint();
-    }
+    notifyGraphDocumentStateChanged();
+    GraphChangeSet change;
+    change.probesChanged = true;
+    refreshCompiledStateAsync(PresentationRefreshScope::Downstream, &change);
+    refreshComparisonAfterCommit();
+    requestCanvasRepaint();
+    return true;
 }
 
 bool NodeCanvas::groupSelectedNodes() {
@@ -2122,14 +2145,16 @@ void NodeCanvas::refreshCompiledStateAsync(
 }
 
 void NodeCanvas::openProbeDetail(const String& probeId) {
+    if (probeDetailState.probeId != probeId) {
+        probeDetailState.waveformViewport = ZoomRect();
+    }
     const int midiNote = presentation.previewMidiNote();
     const size_t resolution = GraphPreviewExecutor::sourceFrameCountForMidiNote(
             midiNote);
     const SignalProbe* selectedProbe = graph.findSignalProbe(probeId);
     const PresetPreviewView view = probeId == DefaultOutputProbeResolver::probeId
             ? probeCanvasState.defaultOutputView
-            : selectedProbe != nullptr && selectedProbe->frequencyView
-                    ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
+            : selectedProbe != nullptr ? selectedProbe->view : PresetPreviewView::Time;
     const size_t captureResolution = PresetPreviewGenerator::sourceRowCountForView(
             resolution, view);
     auto preview = presentation.captureProbePreview(
@@ -2297,6 +2322,8 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.probeRefreshMode = probeCanvasState.refreshMode;
     result.probeDetailId = probeDetailState.probeId;
     result.probeDetailResolution = probeDetailState.resolution;
+    result.probeWaveform = probeWaveformView != nullptr && probeWaveformView->isVisible()
+            ? probeWaveformView->automationDiagnostics() : var();
     result.probeDetailColumns = probeDetailState.renderResult.gridColumns;
     result.probeDetailRows = probeDetailState.renderResult.gridRows;
     result.probeDetailReleaseDuration = probeDetailState.releaseDuration;
@@ -2424,8 +2451,8 @@ void NodeCanvas::resetDocumentPresentation() {
     probeCanvasState.draggedScreenOffset = {};
     probeCanvasState.outputCanvasPosition = document.presentation().outputSpyPosition;
     probeCanvasState.outputSpyVisible = document.presentation().outputSpyVisible;
-    probeCanvasState.defaultOutputView = document.presentation().outputSpyFrequencyView
-            ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
+    probeCanvasState.defaultOutputView = document.presentation().outputSpyView;
+    presentation.setOutputSpyView(probeCanvasState.defaultOutputView);
     editorCoordinator.resetDocumentPreviews();
     canvasPresentation.clearDocumentCaches();
     openGLContext.triggerRepaint();
@@ -3096,7 +3123,41 @@ void NodeCanvas::updatePresetSidebarVisibility() {
             expandedEditorBoundsForOverlay()));
 }
 
+void NodeCanvas::updateProbeWaveformView() {
+    const auto& samples = probeDetailState.renderResult.waveform;
+    if (!probeDetailState.isOpen() || samples == nullptr) {
+        if (probeWaveformView != nullptr) {
+            probeWaveformView->setVisible(false);
+        }
+        return;
+    }
+    if (probeWaveformView == nullptr) {
+        probeWaveformView = std::make_unique<ComparisonSurfaceView>();
+        addChildComponent(*probeWaveformView);
+        probeWaveformView->setInterceptsMouseClicks(false, true);
+        probeWaveformView->setZoomBarsVisible(true);
+        probeWaveformView->onCameraChanged = [this](const ZoomRect& camera) {
+            probeDetailState.waveformViewport = camera;
+            requestCanvasRepaint();
+        };
+        probeWaveformView->setWaveformOverlay([this](Graphics& graphics) {
+            const auto camera = probeWaveformView->camera();
+            const float split = (probeDetailState.noteOffPosition() - camera.x) / camera.w;
+            graphics.setColour(CanvasChromePalette::focus.withAlpha(0.5f));
+            const auto plot = probeWaveformView->plotBounds().toFloat();
+            graphics.drawVerticalLine(roundToInt(split * plot.getWidth()), 0.f, plot.getHeight());
+        });
+    }
+    const auto plot = SignalProbeDetailView::plotBounds(probeDetailBounds());
+    probeWaveformView->setBounds(NodePreviewRenderer::heatmapBounds(plot).toNearestInt());
+    probeWaveformView->setWaveform(samples);
+    probeWaveformView->setCamera(probeDetailState.waveformViewport);
+    probeWaveformView->setVisible(true);
+    probeWaveformView->toFront(false);
+}
+
 void NodeCanvas::notifyOverlayOcclusionChanged() {
+    updateProbeWaveformView();
     updatePresetSidebarVisibility();
     if (overlayOcclusionChanged) {
         overlayOcclusionChanged();

@@ -93,3 +93,22 @@ TEST_CASE("Spy preview tile cache reuses only complete presentation keys",
     REQUIRE_FALSE(access(2.f).hit);
     REQUIRE(cache.endFrame().misses == 1);
 }
+
+TEST_CASE("Waveform Spy tiles reuse immutable captures and invalidate changed samples",
+        "[cycle-v2][waveform][cache]") {
+    SignalProbePreviewTileCache cache;
+    auto preview = makePreview();
+    preview.waveform = std::make_shared<const std::vector<float>>(std::initializer_list<float> { -1.f, 1.f });
+    const NodeRenderSemantic semantic { PortDomain::TimeSignal, RenderScalePolicy::Bipolar,
+            RenderSemanticRole::Generic };
+    const Rectangle<int> bounds { 0, 0, 180, 120 };
+    cache.beginFrame();
+    REQUIRE_FALSE(cache.access(preview, semantic, bounds, 2.f).hit);
+    REQUIRE(cache.access(preview, semantic, bounds, 2.f).hit);
+    preview.waveform = std::make_shared<const std::vector<float>>(*preview.waveform);
+    REQUIRE(cache.access(preview, semantic, bounds, 2.f).hit);
+    preview.waveform = std::make_shared<const std::vector<float>>(std::initializer_list<float> { -0.5f, 1.f });
+    REQUIRE_FALSE(cache.access(preview, semantic, bounds, 2.f).hit);
+    preview.waveform.reset();
+    REQUIRE_FALSE(cache.access(preview, semantic, bounds, 2.f).hit);
+}

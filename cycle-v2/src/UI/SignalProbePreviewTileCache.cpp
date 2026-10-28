@@ -18,7 +18,10 @@ bool previewsEqual(
             && first.sourceRole == second.sourceRole
             && first.frequencySampling == second.frequencySampling
             && first.frequencyMidiNote == second.frequencyMidiNote
-            && first.connected == second.connected;
+            && first.connected == second.connected
+            && (first.waveform == second.waveform
+                    || (first.waveform != nullptr && second.waveform != nullptr
+                            && *first.waveform == *second.waveform));
 }
 
 bool semanticsEqual(NodeRenderSemantic first, NodeRenderSemantic second) {

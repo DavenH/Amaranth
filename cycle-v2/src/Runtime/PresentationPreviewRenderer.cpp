@@ -7,6 +7,7 @@
 #include "Runtime/GraphPreviewExecutor.h"
 #include "Graph/DefaultOutputProbeResolver.h"
 #include "Runtime/DefaultOutputPreview.h"
+#include "Runtime/SignalProbeWaveformCapture.h"
 #include "Nodes/Control/ModulationSource.h"
 
 namespace CycleV2 {
@@ -152,6 +153,7 @@ bool PresentationPreviewRenderer::render(
                 GraphPresentationPerformanceMetrics::Stage::PreviewExtraction,
                 performance.timestamp() - extractionStartedAt);
         renderProbeAuditions(graph, snapshot, performance);
+        renderProbeWaveforms(graph, snapshot, previewVoice);
         previewRendered = true;
         return true;
     }
@@ -208,9 +210,35 @@ bool PresentationPreviewRenderer::render(
             performance.timestamp() - extractionStartedAt);
     if (scope != PresentationRefreshScope::LocalEditor) {
         renderProbeAuditions(graph, snapshot, performance);
+        renderProbeWaveforms(graph, snapshot, previewVoice);
     }
     previewRendered = true;
     return true;
+}
+
+void PresentationPreviewRenderer::renderProbeWaveforms(
+        const NodeGraph& graph, GraphPresentationSnapshot& snapshot, const AudioVoiceContext& voice) {
+    const auto captureWaveform = [&](GraphPreviewResult::SignalProbePreview& preview, PresetPreviewView view) {
+        preview.waveform.reset();
+        if (view != PresetPreviewView::Waveform || !preview.connected
+                || preview.domain != PortDomain::TimeSignal) {
+            return;
+        }
+        const auto address = probeAddressFor(graph, snapshot.compileResult.plan, preview.probeId);
+        if (address.has_value()) {
+            preview.waveform = SignalProbeWaveformCapture::capture(snapshot.compileResult.plan,
+                    *address, voice, preview.releaseDuration, preview.noteOffTime);
+        }
+    };
+    for (auto& preview : snapshot.previewResult.probes) {
+        const auto* probe = graph.findSignalProbe(preview.probeId);
+        if (probe != nullptr) {
+            captureWaveform(preview, probe->view);
+        }
+    }
+    if (snapshot.previewResult.defaultOutput.has_value()) {
+        captureWaveform(*snapshot.previewResult.defaultOutput, snapshot.outputSpyView);
+    }
 }
 
 void PresentationPreviewRenderer::publishProbePreview(
@@ -276,7 +304,8 @@ PresentationPreviewRenderer::captureProbePreview(
         int midiNote,
         const std::array<int, 128>& controllerValues,
         GraphPresentationPerformanceMetrics& performance,
-        double noteOffTime) const {
+        double noteOffTime,
+        PresetPreviewView view) const {
     const uint64_t startedAt = performance.timestamp();
     const auto address = probeAddressFor(graph, plan, probeId);
     if (!address.has_value()) {
@@ -293,6 +322,15 @@ PresentationPreviewRenderer::captureProbePreview(
         recordTotal();
         return std::nullopt;
     }
+    if (view == PresetPreviewView::Waveform && preview.domain == PortDomain::TimeSignal) {
+        AudioVoiceContext voice;
+        voice.controls.noteNumber = midiNote;
+        for (size_t index = 0; index < controllerValues.size(); ++index) {
+            voice.controls.controllers[index] = (float) controllerValues[index] / 127.f;
+        }
+        preview.waveform = SignalProbeWaveformCapture::capture(
+                plan, *address, voice, preview.releaseDuration, noteOffTime);
+    }
     GraphPreviewExecutor::reduceProbeRows(
             preview,
             std::min(rasterRowCount, kMaximumExpandedProbeRows));
@@ -308,7 +346,8 @@ PresentationPreviewRenderer::captureProbePreviews(
         size_t rasterRowCount,
         int midiNote,
         const std::array<int, 128>& controllerValues,
-        GraphPresentationPerformanceMetrics& performance) const {
+        GraphPresentationPerformanceMetrics& performance,
+        PresetPreviewView outputView) const {
     std::vector<std::optional<GraphPreviewResult::SignalProbePreview>> previews(
             probeIds.size());
     std::vector<CompiledSignalProbe> addresses;
@@ -343,6 +382,12 @@ PresentationPreviewRenderer::captureProbePreviews(
     for (size_t index = 0; index < addresses.size(); ++index) {
         auto preview = extractor.captureProbe(plan, audio, addresses[index]);
         if (preview.connected) {
+            const auto* probe = graph.findSignalProbe(preview.probeId);
+            const auto view = probe != nullptr ? probe->view : outputView;
+            if (view == PresetPreviewView::Waveform && preview.domain == PortDomain::TimeSignal) {
+                preview.waveform = SignalProbeWaveformCapture::capture(
+                        plan, addresses[index], voice, preview.releaseDuration, preview.noteOffTime);
+            }
             GraphPreviewExecutor::reduceProbeRows(preview,
                     std::min(rasterRowCount, kMaximumExpandedProbeRows));
             previews[destinationIndices[index]] = std::move(preview);

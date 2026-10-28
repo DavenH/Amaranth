@@ -43,6 +43,7 @@
 namespace CycleV2 {
 
 enum class TransformMode;
+class ComparisonSurfaceView;
 
 struct ComparisonSpyOption {
     String id;
@@ -173,6 +174,7 @@ public:
         return document.presentation().comparisonSpyPins;
     }
     bool pinComparisonSpy(const String& probeId);
+    bool setSpyView(const String& probeId, PresetPreviewView view);
     bool unpinComparisonSpy(const String& probeId);
     String createAndPinTrimeshOutputSpy(const String& nodeId);
     std::vector<std::optional<GraphPreviewResult::SignalProbePreview>>
@@ -311,6 +313,7 @@ private:
     std::vector<std::pair<String, Point<float>>> nodeDragSpyStarts;
     GuideCurveShelfState guideShelfState;
     SignalProbeDetailState probeDetailState;
+    std::unique_ptr<ComparisonSurfaceView> probeWaveformView;
     OutputMeterBallistics outputMeterBallistics;
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
     std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
@@ -342,6 +345,7 @@ private:
     void requestHoverRepaint(HoverRepaint repaint);
     void updatePresetSidebarVisibility();
     void notifyOverlayOcclusionChanged();
+    void updateProbeWaveformView();
     std::optional<NodeAudioResourceSummary> audioResourceSummary(
             const String& nodeId) const override;
     uint32_t availableRenderInvalidations() const override;
@@ -413,7 +417,6 @@ private:
     bool setNodeGroupCollapsed(const String& groupId, bool collapsed);
     bool ungroupNodes(const String& groupId);
     bool removeSpyCard(const String& probeId);
-    void toggleSpyDomain(const String& probeId);
     void openGuideEditor(const String& guideId);
     void closeGuideEditor();
     void rebindGuideEditor();

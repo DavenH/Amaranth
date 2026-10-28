@@ -1227,8 +1227,9 @@ Vertical wheel zoom requires Command. CycleV2AutomationInput::pointerModifiers
 reads a boolean `command` from the same payload whose `command` string selects
 the operation, so a request cannot supply both values. Evidence:
 `.context/reference-pitch-zoom-wheel-failure/commands.jsonl`. Native vertical
-thumb dragging passes. Current status: open automation encoding gap; no change
-to production zoom semantics or the pointer protocol in the reference UI work.
+thumb dragging passes. Resolved 2026-10-27: pointer modifiers accept the boolean `cmd` alias; the Spy
+waveform fixture verifies amplitude wheel zoom through this encoding. Production
+zoom semantics remain unchanged.
 
 ## P2: Reference rendering could overwrite pending scrollbar movement
 
@@ -1239,3 +1240,15 @@ Reference preparation now runs on loading/history restoration and interaction;
 the render hook consumes the already-prepared curve. The focused reference-views
 check covers two surface pans, two pitch thumb-drag updates and wheel zoom from
 either plot. Evidence: `.context/reference-views/result.json`. Status: resolved.
+
+
+## Spy waveform verification: existing fixture failures reproduced
+
+2026-10-27: the broader `[probe],[waveform],[canvas][performance][cache]` run
+reproduced the three failures already recorded under “Playback cursor
+verification: existing UI fixture failures”: unchanged comparison morph capture
+(`TestSignalProbe.cpp:403`), zero spectral Spy after scratch-cable deletion
+(`TestNodeCanvasAuthoring.cpp:422`), and canvas Spy editor centring
+(`TestNodeCanvasArchitecture.cpp:177`). Evidence:
+`.context/spy-waveform-focused-tests.log`. The new waveform and release/cache
+cases pass in `.context/spy-waveform-verified-tests.log`.

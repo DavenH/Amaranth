@@ -521,6 +521,7 @@ void ComparisonDock::updateCards() {
                 card.title += "  /  Spectral";
             }
             card.surface = preview.values;
+            card.waveform = preview.waveform;
             card.columns = preview.gridColumns;
             card.rows = preview.gridRows;
             card.domain = preview.domain;
@@ -596,6 +597,8 @@ void ComparisonDock::updateCards() {
                 view->setGrid(card.surfaceValues(), card.columns, card.rows,
                         card.domain, card.midiNote, card.displayGain, false, card.sampleRate,
                         *card.positions, card.maximumRows);
+            } else if (card.waveform != nullptr) {
+                view->setWaveform(card.waveform);
             } else {
                 view->setGrid(card.surfaceValues(), card.columns, card.rows,
                         card.domain, card.midiNote, card.displayGain);

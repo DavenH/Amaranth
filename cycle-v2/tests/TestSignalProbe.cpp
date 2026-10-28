@@ -164,10 +164,10 @@ TEST_CASE("Spy display domains persist with the preset",
     REQUIRE(commands.setDefaultOutputSpyFrequencyView(false));
     const GraphLoadResult loaded = GraphSerializer().loadJsonString(document.toJson());
     REQUIRE(loaded.succeeded());
-    REQUIRE(loaded.graph.findSignalProbe(probeId)->frequencyView);
-    REQUIRE_FALSE(loaded.presentation.outputSpyFrequencyView);
+    REQUIRE(loaded.graph.findSignalProbe(probeId)->view == PresetPreviewView::Spectrum);
+    REQUIRE(loaded.presentation.outputSpyView == PresetPreviewView::Time);
     REQUIRE(document.undo());
-    REQUIRE_FALSE(document.graph().findSignalProbe(probeId)->frequencyView);
+    REQUIRE(document.graph().findSignalProbe(probeId)->view == PresetPreviewView::Time);
 }
 
 TEST_CASE("Time Spy capture publishes a matching frequency view",
@@ -424,4 +424,73 @@ TEST_CASE("Comparison morph capture preparation ignores unrelated graph and mesh
     REQUIRE(large.modelSerializations == small.modelSerializations);
     REQUIRE(large.nodeLinearScans == small.nodeLinearScans);
     REQUIRE(large.assignmentLinearScans == small.assignmentLinearScans);
+}
+
+TEST_CASE("Waveform Spy views survive save reload and authored undo redo",
+        "[cycle-v2][probe][waveform][serialization]") {
+    NodeGraph graph = probeGraph();
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    const String id = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.setSignalProbeView(id, PresetPreviewView::Waveform).succeeded());
+    REQUIRE(commands.setDefaultOutputSpyView(PresetPreviewView::Waveform));
+    const auto loaded = GraphSerializer().loadJsonString(document.toJson());
+    REQUIRE(loaded.succeeded());
+    REQUIRE(loaded.graph.findSignalProbe(id)->view == PresetPreviewView::Waveform);
+    REQUIRE(loaded.presentation.outputSpyView == PresetPreviewView::Waveform);
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findSignalProbe(id)->view == PresetPreviewView::Time);
+    REQUIRE(document.redo());
+    REQUIRE(document.graph().findSignalProbe(id)->view == PresetPreviewView::Waveform);
+
+    auto legacy = GraphSerializer().writeJSON(document.graph());
+    auto* probes = legacy.getProperty("probes", {}).getArray();
+    REQUIRE(probes != nullptr);
+    auto* encoded = probes->getReference(0).getDynamicObject();
+    encoded->removeProperty("view");
+    encoded->setProperty("frequencyView", true);
+    const auto migrated = GraphSerializer().loadJsonString(JSON::toString(legacy));
+    REQUIRE(migrated.succeeded());
+    REQUIRE(migrated.graph.findSignalProbe(id)->view == PresetPreviewView::Spectrum);
+}
+
+TEST_CASE("Waveform capture retains continuous samples independently of folded Spy rows",
+        "[cycle-v2][probe][waveform][preview]") {
+    NodeGraph graph;
+    auto source = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "wave", {});
+    source.model = TrimeshNodeModelState::takeOwnership(
+            TrimeshMeshFactory::createDefaultMesh("waveform-capture"), 1);
+    graph.addNode(std::move(source));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    REQUIRE(GraphCompiler().compile(graph).succeeded());
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    const String id = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    REQUIRE(presentation.previewResult().probes.front().waveform == nullptr);
+    REQUIRE(commands.setSignalProbeView(id, PresetPreviewView::Waveform).succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    auto preview = presentation.previewResult().probes.front();
+    REQUIRE(preview.waveform != nullptr);
+    REQUIRE(preview.waveform->size() == 44100);
+    const auto waveform = preview.waveform;
+    GraphPreviewExecutor::reduceProbeRows(preview, 32);
+    REQUIRE(preview.waveform == waveform);
+    REQUIRE(preview.gridRows == 32);
+    Buffer<float> samples(const_cast<float*>(waveform->data()), (int) waveform->size());
+    REQUIRE(samples.max() > 0.1f);
+    REQUIRE(samples.min() < -0.1f);
+    REQUIRE(samples[500] != samples[500 + 256]);
+
+    auto expanded = presentation.captureProbePreview(document.graph(), id, 512, 48, 0.25);
+    REQUIRE(expanded.has_value());
+    REQUIRE(expanded->waveform != nullptr);
+    REQUIRE(expanded->waveform->size() == 44100);
+    REQUIRE(expanded->noteOffTime == 0.25);
 }

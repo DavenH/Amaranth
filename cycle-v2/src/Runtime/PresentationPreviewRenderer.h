@@ -30,7 +30,8 @@ public:
             int midiNote,
             const std::array<int, 128>& controllerValues,
             GraphPresentationPerformanceMetrics& performance,
-            double noteOffTime = 1.) const;
+            double noteOffTime = 1.,
+            PresetPreviewView view = PresetPreviewView::Time) const;
     std::vector<std::optional<GraphPreviewResult::SignalProbePreview>> captureProbePreviews(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,
@@ -38,7 +39,8 @@ public:
             size_t rasterRowCount,
             int midiNote,
             const std::array<int, 128>& controllerValues,
-            GraphPresentationPerformanceMetrics& performance) const;
+            GraphPresentationPerformanceMetrics& performance,
+            PresetPreviewView outputView = PresetPreviewView::Time) const;
 
     static void publishProbePreview(
             GraphPresentationSnapshot& snapshot,
@@ -54,6 +56,9 @@ private:
             const NodeGraph& graph,
             GraphPresentationSnapshot& snapshot,
             GraphPresentationPerformanceMetrics& performance);
+
+    static void renderProbeWaveforms(
+            const NodeGraph& graph, GraphPresentationSnapshot& snapshot, const AudioVoiceContext& voice);
 
     GraphAudioExecutor audioExecutor;
 };

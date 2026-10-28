@@ -22,6 +22,7 @@ struct NodePreviewResult {
             TraversalGridFrequencySampling::LinearBins };
     int frequencyMidiNote { 48 };
     uint64_t contentRevision {};
+    std::shared_ptr<const std::vector<float>> waveform;
 };
 
 uint64_t nodePreviewResultFingerprint(const NodePreviewResult& preview);
@@ -45,6 +46,7 @@ struct GraphPreviewResult {
         bool connected {};
         double releaseDuration {};
         double noteOffTime { 1. };
+        std::shared_ptr<const std::vector<float>> waveform;
     };
 
     std::vector<NodePreviewResult> nodes;

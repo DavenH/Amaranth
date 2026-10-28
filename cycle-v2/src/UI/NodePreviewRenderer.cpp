@@ -7,6 +7,7 @@
 #include <UI/Panels/ScalarSurfaceProgram.h>
 
 #include "UI/NodePreviewRenderer.h"
+#include "UI/ReferenceWaveformPreview.h"
 #include "Graph/MeshDimensionality.h"
 
 #include "Runtime/PreviewContrastNormalization.h"
@@ -560,6 +561,11 @@ void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderReque
         return;
     }
 
+    if (request.runtimeResult != nullptr && request.runtimeResult->waveform != nullptr
+            && paintWaveform(graphics, request)) {
+        return;
+    }
+
     if (request.node.kind == NodeKind::TrilinearMesh
             && paintAuthoritativeModel(graphics, request)) {
         return;
@@ -684,6 +690,21 @@ bool NodePreviewRenderer::paintAuthoritativeModel(
     }
 
     return true;
+}
+
+bool NodePreviewRenderer::paintWaveform(Graphics& graphics, const NodePreviewRenderRequest& request) {
+    const auto content = heatmapBounds(request.area);
+    const float scale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
+    const int width = jmax(1, roundToInt(content.getWidth() * scale));
+    const int height = jmax(2, roundToInt(content.getHeight() * scale));
+    auto& cached = resources.cachedSprite(request.node.id);
+    const String signature = "waveform:" + runtimeSignature(*request.runtimeResult)
+            + ":" + String(width) + ":" + String(height);
+    if (!cached.runtimeHeatmap.isValid() || cached.runtimeHeatmapSignature != signature) {
+        cached.runtimeHeatmap = signalWaveformHeatmap(*request.runtimeResult->waveform, width, height);
+        cached.runtimeHeatmapSignature = signature;
+    }
+    return drawHeatmapImage(graphics, request.area, cached.runtimeHeatmap);
 }
 
 bool NodePreviewRenderer::paintRuntimeResult(

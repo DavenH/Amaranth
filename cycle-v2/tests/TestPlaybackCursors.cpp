@@ -709,3 +709,38 @@ TEST_CASE("Unchanged Trimesh profiles reuse prepared Guide tables",
     }
     REQUIRE(preparations() == before + 1);
 }
+
+TEST_CASE("Zoomed waveform release handles share the plot time mapping without recapturing",
+        "[cycle-v2][waveform][probe][release-audition]") {
+    GraphPreviewResult::SignalProbePreview preview;
+    preview.probeId = "probe";
+    preview.gridColumns = 512;
+    preview.gridRows = 512;
+    preview.noteOffTime = 0.5;
+    preview.releaseDuration = 0.5;
+    preview.waveform = std::make_shared<const std::vector<float>>(44100, 0.f);
+    SignalProbeDetailState detail;
+    detail.open(std::move(preview), RenderScalePolicy::Bipolar, 1, 60, 512);
+    detail.waveformViewport = { 0.2f, 0.f, 0.5f, 1.f };
+    const Rectangle<float> bounds { 0.f, 0.f, 920.f, 620.f };
+    const auto content = SignalProbeDetailView::contentBounds(bounds, detail);
+    const auto start = SignalProbeDetailView::releaseHandleBounds(bounds, detail).getCentre();
+    REQUIRE(start.x == Catch::Approx(content.getX() + content.getWidth()
+            * (detail.noteOffPosition() - 0.2f) / 0.5f));
+    const auto samples = detail.renderResult.waveform;
+    const auto revision = detail.renderResult.contentRevision;
+    const float width = SignalProbeDetailView::voiceBounds(bounds, detail).getWidth();
+    REQUIRE(detail.beginReleaseDrag(bounds, start));
+    for (const float movement : { 0.05f, 0.1f }) {
+        detail.dragRelease(start.translated(movement * width, 0.f));
+        REQUIRE(detail.displayedNoteOffTime() == Catch::Approx(0.5 + movement));
+        REQUIRE(detail.renderResult.waveform == samples);
+        REQUIRE(detail.renderResult.contentRevision == revision);
+        REQUIRE(detail.renderCount == 1);
+    }
+    REQUIRE(detail.endReleaseDrag(start.translated(0.1f * width, 0.f)));
+    REQUIRE(detail.noteOffTime == Catch::Approx(0.6));
+    detail.waveformViewport = { 0.8f, 0.f, 0.1f, 1.f };
+    REQUIRE_FALSE(detail.releaseHitTest(bounds,
+            SignalProbeDetailView::releaseHandleBounds(bounds, detail).getCentre()));
+}

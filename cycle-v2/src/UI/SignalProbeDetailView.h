@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <UI/Panels/ZoomRect.h>
 
 #include "UI/NodePreviewRenderer.h"
 #include "Runtime/GraphPreviewExecutor.h"
@@ -19,10 +20,12 @@ struct SignalProbeDetailState {
     double noteOffTime { 1. };
     uint64_t renderCount {};
     bool releaseDragging {};
+    ZoomRect waveformViewport;
 
     bool isOpen() const { return probeId.isNotEmpty(); }
     double displayedNoteOffTime() const;
     float noteOffPosition() const;
+    float plotTimePosition(float time) const;
     bool releaseHitTest(Rectangle<float> detailBounds, Point<float> position) const;
     bool beginReleaseDrag(Rectangle<float> detailBounds, Point<float> position);
     void dragRelease(Point<float> position);
@@ -49,6 +52,7 @@ public:
 
     static Rectangle<float> boundsFor(Rectangle<float> availableContent);
     static Rectangle<float> plotBounds(Rectangle<float> detailBounds);
+    static Rectangle<float> contentBounds(Rectangle<float> detailBounds, const SignalProbeDetailState& state);
     static Rectangle<float> voiceBounds(Rectangle<float> detailBounds, const SignalProbeDetailState& state);
     static Rectangle<float> releaseHandleBounds(Rectangle<float> detailBounds, const SignalProbeDetailState& state);
     static Rectangle<float> releaseIconBounds(Rectangle<float> detailBounds, const SignalProbeDetailState& state);

@@ -101,6 +101,14 @@ uint64_t nodePreviewResultFingerprint(const NodePreviewResult& preview) {
         std::memcpy(&bits, &value, sizeof(bits));
         fingerprint.add(bits);
     }
+    if (preview.waveform != nullptr) {
+        fingerprint.add((uint64_t) preview.waveform->size());
+        for (const float value : *preview.waveform) {
+            uint32_t bits {};
+            std::memcpy(&bits, &value, sizeof(bits));
+            fingerprint.add(bits);
+        }
+    }
     return fingerprint
             .add((uint64_t) preview.gridColumns)
             .add((uint64_t) preview.gridRows)
@@ -121,7 +129,10 @@ bool nodePreviewResultsHaveEqualContent(
             && first.gridRows == second.gridRows
             && first.domain == second.domain
             && first.frequencySampling == second.frequencySampling
-            && first.frequencyMidiNote == second.frequencyMidiNote;
+            && first.frequencyMidiNote == second.frequencyMidiNote
+            && (first.waveform == second.waveform
+                    || (first.waveform != nullptr && second.waveform != nullptr
+                            && *first.waveform == *second.waveform));
 }
 
 namespace {

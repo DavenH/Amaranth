@@ -1,5 +1,6 @@
 #include "UI/ReferenceWaveformView.h"
 
+#include <atomic>
 #include <cmath>
 #include <Algo/PeakCounter.h>
 #include <Audio/PitchedSample.h>
@@ -12,6 +13,11 @@ namespace CycleV2 {
 struct ReferenceWaveformView::Source {
     juce::AudioBuffer<float> mono;
     std::vector<int> zeroCrossings;
+    WaveformPalette palette { WaveformPalette::Monochrome };
+    bool silent {};
+    // Only this view's single worker accesses the cache; diagnostics reads the atomic count.
+    mutable juce::Image heatField;
+    mutable std::atomic<int> heatBuilds {};
 };
 
 class ReferenceWaveformView::RenderJob final : public juce::ThreadPoolJob {
@@ -29,25 +35,36 @@ public:
         if (shouldExit() || source == nullptr || source->mono.getNumSamples() == 0) {
             return jobHasFinished;
         }
+        const double started = juce::Time::getMillisecondCounterHiRes();
         const int length = source->mono.getNumSamples();
         const int start = juce::jlimit(0, length - 1, (int) (viewport.x * length));
         const int end = juce::jlimit(start + 1, length,
                 (int) std::ceil((viewport.x + viewport.w) * length));
         const auto resolution = referenceWaveformResolution(source->zeroCrossings, start, end, width);
         const auto crossings = resolution.crossings;
-        const bool line = resolution.useLine;
+        const bool line = resolution.useLine && !source->silent;
         const int sourceEnd = line ? juce::jmin(length, end + 1) : end;
         Buffer<float> audio(const_cast<float*>(source->mono.getReadPointer(0)) + start, sourceEnd - start);
         const juce::Range<float> sampleRange(viewport.x * length - start,
                 (viewport.x + viewport.w) * length - start);
-        auto image = line
-                ? referenceWaveformLine(audio, width, height, viewport.y, viewport.h, sampleRange)
-                : referenceWaveformHeatmap(audio, width, height, viewport.y, viewport.h);
+        juce::Image image;
+        if (source->palette == WaveformPalette::BurntAlum) {
+            if (!source->heatField.isValid()) {
+                source->heatField = signalWaveformHeatField(Buffer<float>(
+                        const_cast<float*>(source->mono.getReadPointer(0)), length));
+                ++source->heatBuilds;
+            }
+            image = renderSignalWaveform(audio, width, height, viewport, source->heatField, line, sampleRange);
+        } else {
+            image = line ? referenceWaveformLine(audio, width, height, viewport.y, viewport.h, sampleRange)
+                    : referenceWaveformHeatmap(audio, width, height, viewport.y, viewport.h);
+        }
+        const double renderMs = juce::Time::getMillisecondCounterHiRes() - started;
         if (!shouldExit()) {
             juce::MessageManager::callAsync([owner = owner, revision = revision,
-                    image = std::move(image), viewport = viewport, line, crossings]() mutable {
+                    image = std::move(image), viewport = viewport, line, crossings, renderMs]() mutable {
                 if (owner != nullptr) {
-                    owner->publish(revision, std::move(image), viewport, line, crossings);
+                    owner->publish(revision, std::move(image), viewport, line, crossings, renderMs);
                 }
             });
         }
@@ -76,10 +93,12 @@ ReferenceWaveformView::~ReferenceWaveformView() {
 }
 
 void ReferenceWaveformView::setSample(const PitchedSample* sample) {
-    if (sampleIdentity == sample) {
+    if (sampleIdentity == sample && signalIdentity == nullptr) {
         return;
     }
     sampleIdentity = sample;
+    setTitle("Reference waveform");
+    signalIdentity.reset();
     image = {};
     source.reset();
     if (sample != nullptr) {
@@ -90,6 +109,34 @@ void ReferenceWaveformView::setSample(const PitchedSample* sample) {
         ++sourceBuildCount;
     }
     requestImage();
+}
+
+void ReferenceWaveformView::setSignal(std::shared_ptr<const std::vector<float>> samples) {
+    if (signalIdentity == samples && sampleIdentity == nullptr) {
+        return;
+    }
+    signalIdentity = std::move(samples);
+    setTitle("Signal waveform");
+    sampleIdentity = nullptr;
+    image = {};
+    source.reset();
+    if (signalIdentity != nullptr && !signalIdentity->empty()) {
+        auto prepared = std::make_shared<Source>();
+        prepared->mono.setSize(1, (int) signalIdentity->size());
+        Buffer<float> mono(prepared->mono, 0);
+        Buffer<float>(const_cast<float*>(signalIdentity->data()), mono.size()).copyTo(mono);
+        const float peak = juce::jmax(mono.max(), -mono.min());
+        if (peak > 0.f) {
+            mono.mul(1.f / peak);
+        }
+        prepared->zeroCrossings = PeakCounter::findZeroCrossings(mono, 0);
+        prepared->silent = peak == 0.f;
+        prepared->palette = WaveformPalette::BurntAlum;
+        source = std::move(prepared);
+        ++sourceBuildCount;
+    }
+    requestImage();
+    repaint();
 }
 
 void ReferenceWaveformView::setViewport(const ZoomRect& next) {
@@ -119,7 +166,7 @@ void ReferenceWaveformView::handleAsyncUpdate() {
 }
 
 void ReferenceWaveformView::publish(uint64_t completed, juce::Image rendered,
-        ZoomRect view, bool useLine, size_t count) {
+        ZoomRect view, bool useLine, size_t count, double elapsedMs) {
     if (completed != revision) {
         return;
     }
@@ -127,6 +174,7 @@ void ReferenceWaveformView::publish(uint64_t completed, juce::Image rendered,
     imageViewport = view;
     line = useLine;
     crossings = count;
+    renderMs = elapsedMs;
     publishedRevision = completed;
     repaint();
 }
@@ -144,6 +192,9 @@ void ReferenceWaveformView::paint(juce::Graphics& graphics) {
                 (imageViewport.y - viewport.y) / viewport.h * getHeight(),
                 imageViewport.w / viewport.w * getWidth(),
                 imageViewport.h / viewport.h * getHeight() }, juce::RectanglePlacement::stretchToFit);
+    }
+    if (onOverlay) {
+        onOverlay(graphics);
     }
     graphics.setColour(CanvasChromePalette::border);
     graphics.drawRect(getLocalBounds());
@@ -172,8 +223,10 @@ juce::var ReferenceWaveformView::diagnostics() const {
     value->setProperty("ready", image.isValid() && publishedRevision == revision);
     value->setProperty("mode", line ? "line" : "density");
     value->setProperty("crossings", (juce::int64) crossings);
+    value->setProperty("renderMs", renderMs);
     value->setProperty("pixelWidth", image.getWidth());
     value->setProperty("sourceBuilds", sourceBuildCount);
+    value->setProperty("heatBuilds", source != nullptr ? source->heatBuilds.load() : 0);
     value->setProperty("imageBuilds", buildCount);
     value->setProperty("x", viewport.x);
     value->setProperty("w", viewport.w);

@@ -311,8 +311,8 @@ var probeToJSON(const SignalProbe& probe) {
     result->setProperty("label", probe.label);
     result->setProperty("tapPosition", probe.tapPosition);
     result->setProperty("railOrder", probe.railOrder);
-    if (probe.frequencyView) {
-        result->setProperty("frequencyView", true);
+    if (probe.view != PresetPreviewView::Time) {
+        result->setProperty("view", idForPresetPreviewView(probe.view));
     }
     if (probe.canvasPosition.has_value()) {
         result->setProperty("canvasX", probe.canvasPosition->x);
@@ -1318,7 +1318,9 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
         probe.label = encoded->getProperty("label").toString();
         probe.tapPosition = (float) encoded->getProperty("tapPosition");
         probe.railOrder = (int) encoded->getProperty("railOrder");
-        probe.frequencyView = (bool) encoded->getProperty("frequencyView");
+        probe.view = presetPreviewViewForId(encoded->getProperty("view").toString())
+                .value_or((bool) encoded->getProperty("frequencyView")
+                        ? PresetPreviewView::Spectrum : PresetPreviewView::Time);
         if (encoded->hasProperty("canvasX") && encoded->hasProperty("canvasY")) {
             const float x = (float) encoded->getProperty("canvasX");
             const float y = (float) encoded->getProperty("canvasY");

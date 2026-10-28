@@ -131,6 +131,7 @@ public:
     void setProbeNoteOffTimes(const std::map<String, double>& times) {
         current.probeNoteOffTimes = times;
     }
+    void setOutputSpyView(PresetPreviewView view) { current.outputSpyView = view; }
     bool prepareProbeCaptureForNode(const NodeGraph& graph, const String& nodeId);
 
 private:

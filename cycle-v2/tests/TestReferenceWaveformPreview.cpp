@@ -4,6 +4,8 @@
 #include "UI/ReferenceWaveformPreview.h"
 #include "UI/LibraryIconRenderer.h"
 #include <Algo/PeakCounter.h>
+#include <UI/Panels/ScalarSurfaceMaterial.h>
+#include <cmath>
 
 using namespace CycleV2;
 
@@ -170,4 +172,89 @@ TEST_CASE("Every sidebar and library action has a parseable SVG icon",
     const auto stream = file.createOutputStream();
     REQUIRE(stream != nullptr);
     REQUIRE(juce::PNGImageFormat().writeImageToStream(sheet, *stream));
+}
+
+TEST_CASE("Waveform passage heat uses the Burnt Alum gradient with a fixed full-source scale",
+        "[cycle-v2][waveform][density][palette]") {
+    std::vector<float> samples(2049);
+    for (size_t index = 0; index < samples.size(); ++index) {
+        samples[index] = (index % 2 == 0 ? -1.f : 1.f) * (index < 1024 ? 1.f : 0.1f);
+    }
+    const auto mono = Buffer<float>(samples.data(), (int) samples.size());
+    const auto heat = signalWaveformHeatField(mono);
+    const auto density = referenceWaveformDensity(mono, heat.getWidth(), heat.getHeight());
+    const auto gradient = ScalarSurfaceMaterialEvaluator::createGradientImage(ScalarSurfaceMaterial::unipolarMagnitude());
+    const float peak = *std::max_element(density.begin(), density.end());
+    bool differentHeat {};
+    int mismatches {};
+    for (int x = 0; x < heat.getWidth(); ++x) {
+        for (int y = 0; y < heat.getHeight(); ++y) {
+            const float count = density[(size_t) x * heat.getHeight() + (size_t) y];
+            const float unit = std::log1p(count) / std::log1p(peak);
+            mismatches += heat.getPixelAt(x, y) != gradient.getPixelAt(juce::roundToInt(unit * 511.f), 0) ? 1 : 0;
+            differentHeat |= count > 0.f && count < peak;
+        }
+    }
+    REQUIRE(mismatches == 0);
+    REQUIRE(differentHeat);
+}
+
+TEST_CASE("Waveform colour stays attached to the signal through resizing zoom and path rendering",
+        "[cycle-v2][waveform][density][palette]") {
+    std::vector<float> signal(32769);
+    for (size_t index = 0; index < signal.size(); ++index) {
+        signal[index] = (1.f - 0.7f * index / signal.size())
+                * std::sin((float) index * juce::MathConstants<float>::twoPi / 31.f);
+    }
+    const Buffer<float> mono(signal.data(), (int) signal.size());
+    const auto heat = signalWaveformHeatField(mono);
+    const auto compact = renderSignalWaveform(mono, 385, 193, ZoomRect(), heat, false);
+    const auto expanded = renderSignalWaveform(mono, 769, 385, ZoomRect(), heat, false);
+    const auto coverage = referenceWaveformDensity(mono, 769, 385);
+    int lostCoverage {};
+    int filledBackground {};
+    for (int y = 0; y < 385; ++y) {
+        for (int x = 0; x < 769; ++x) {
+            const bool visited = coverage[(size_t) x * 385 + (size_t) y] > 0.f;
+            const auto pixel = expanded.getPixelAt(x, y);
+            lostCoverage += visited && pixel.getAlpha() == 0 ? 1 : 0;
+            filledBackground += !visited && pixel.getAlpha() > 0 ? 1 : 0;
+        }
+    }
+    REQUIRE(lostCoverage == 0);
+    REQUIRE(filledBackground == 0);
+
+    const auto visible = mono.section(8192, 16385);
+    const ZoomRect viewport(0.25f, 0.25f, 0.5f, 0.5f);
+    const auto zoomed = renderSignalWaveform(visible, 385, 193, viewport, heat, false);
+    const auto path = renderSignalWaveform(visible, 385, 193, viewport, heat, true);
+    int resizedMatches {};
+    int zoomedMatches {};
+    int pathMatches {};
+    int mismatches {};
+    for (int y = 0; y < 193; ++y) {
+        for (int x = 0; x < 385; ++x) {
+            const auto small = compact.getPixelAt(x, y);
+            const auto large = expanded.getPixelAt(2 * x, 2 * y);
+            if (small.getAlpha() > 0 && large.getAlpha() > 0) {
+                ++resizedMatches;
+                mismatches += small != large ? 1 : 0;
+            }
+            const auto original = expanded.getPixelAt(192 + x, 96 + y);
+            const auto zoom = zoomed.getPixelAt(x, y);
+            const auto line = path.getPixelAt(x, y);
+            if (original.getAlpha() > 0 && zoom.getAlpha() > 0) {
+                ++zoomedMatches;
+                mismatches += original != zoom ? 1 : 0;
+            }
+            if (zoom.getAlpha() > 0 && line.getAlpha() == 255) {
+                ++pathMatches;
+                mismatches += zoom != line ? 1 : 0;
+            }
+        }
+    }
+    REQUIRE(resizedMatches > 1000);
+    REQUIRE(zoomedMatches > 1000);
+    REQUIRE(pathMatches > 1000);
+    REQUIRE(mismatches == 0);
 }

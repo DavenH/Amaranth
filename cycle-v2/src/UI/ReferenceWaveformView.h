@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <memory>
+#include <vector>
 
 class PitchedSample;
 
@@ -17,12 +18,14 @@ public:
     ReferenceWaveformView();
     ~ReferenceWaveformView() override;
     void setSample(const PitchedSample* sample);
+    void setSignal(std::shared_ptr<const std::vector<float>> samples);
     void setViewport(const ZoomRect& viewport);
     juce::var diagnostics() const;
     void paint(juce::Graphics& graphics) override;
     void resized() override;
     void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override;
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onWheel;
+    std::function<void(juce::Graphics&)> onOverlay;
 
 private:
     struct Source;
@@ -32,9 +35,10 @@ private:
     void componentPeerChanged() override {}
     void requestImage();
     void handleAsyncUpdate() override;
-    void publish(uint64_t revision, juce::Image image, ZoomRect viewport, bool line, size_t crossings);
+    void publish(uint64_t revision, juce::Image image, ZoomRect viewport, bool line, size_t crossings, double renderMs);
 
     const PitchedSample* sampleIdentity {};
+    std::shared_ptr<const std::vector<float>> signalIdentity;
     std::shared_ptr<const Source> source;
     ZoomRect viewport;
     ZoomRect imageViewport;
@@ -45,6 +49,7 @@ private:
     int buildCount {};
     int sourceBuildCount {};
     float physicalScale { 1.f };
+    double renderMs {};
     bool line {};
     size_t crossings {};
 };

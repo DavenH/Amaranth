@@ -81,6 +81,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Runtime/GraphRuntime.h` — Owns compiled runtime state and graph execution lifecycle.
 - `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime audio and cursor capture; GraphPreviewTiming measures tails for shared PreviewTraversal coordinates.
 - `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Runs scoped preview/analysis products without full audio work.
+- `cycle-v2/src/Runtime/SignalProbeWaveformCapture.h` — Private continuous Spy auditions through existing audio processors.
 - `cycle-v2/src/Runtime/NodeModuleRegistry.h` — Registration boundary for node model, DSP, preview, and view modules.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
@@ -97,10 +98,10 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodeCanvasScene.h` — Retained node scene and geometry used by hit-testing and rendering.
 - `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement; PanelPlaybackOverlay draws bounded audio cursor frames.
 - `cycle-v2/src/UI/NodeCanvasExplanations.cpp` — Preset/node/group explanations, shared editor and attached card orchestration.
-- `cycle-v2/src/UI/NodePreviewRenderer.h` — Node/Spy previews, shared heatmap bounds and Trimesh harmonic lanes.
-- `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy views share persisted note-off timing; SignalProbeDetailView owns capture-free dragging.
+- `cycle-v2/src/UI/NodePreviewRenderer.h`, `cycle-v2/src/UI/ComparisonSurfaceView.h` — Node/Spy pixels and harmonic lanes; shared surface hosting and waveform zoom.
+- `cycle-v2/src/UI/SignalProbeCanvas.h` — Saved Spy views; shared waveform density/path zoom and capture-free note-off dragging.
 - `cycle-v2/src/UI/InlinePresetBrowser.h` — Shared tabs; ReferenceAssetBrowser owns audio assets, ReferenceTrayBar owns tray disclosure.
-- `cycle-v2/src/UI/LibraryThumbnailCache.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Async asset images; linked density/line views.
+- `cycle-v2/src/UI/LibraryThumbnailCache.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Async images; references and Spies share indexed density/path rendering.
 - `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and suite export.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
 - `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.

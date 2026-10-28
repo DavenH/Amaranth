@@ -43,6 +43,7 @@ const std::pair<const char*, Command> commands[] {
             { "captureLiveAudio", Command::CaptureLiveAudio },
             { "openNodeEditor", Command::OpenNodeEditor },
             { "pinComparisonSpy", Command::PinComparisonSpy },
+            { "setSpyView", Command::SetSpyView },
             { "selectReference", Command::SelectReference },
             { "listReferences", Command::ListReferences },
             { "importReference", Command::ImportReference },

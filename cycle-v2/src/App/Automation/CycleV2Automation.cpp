@@ -349,6 +349,13 @@ var CycleV2Automation::runCommand(const var& commandValue) {
                     ? okResult("pinComparisonSpy", snapshotState())
                     : failedResult("pinComparisonSpy", "Could not pin Spy: " + probeId);
         }
+        case Command::SetSpyView: {
+            const String probeId = stringProperty(commandValue, "probeId");
+            const auto view = presetPreviewViewForId(stringProperty(commandValue, "view"));
+            return view.has_value() && workspace.getCanvas().setSpyView(probeId, *view)
+                    ? okResult("setSpyView", snapshotState())
+                    : failedResult("setSpyView", "Expected a time Spy and view: time, spectrum or waveform");
+        }
         case Command::SelectReference: {
             const String referenceId = stringProperty(commandValue, "referenceId");
             return workspace.selectReferenceForAutomation(referenceId)

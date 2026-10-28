@@ -1,4 +1,5 @@
 #include "UI/ComparisonSurfaceView.h"
+#include "UI/ReferenceWaveformView.h"
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 
 #include "Nodes/Trimesh/Panel/TrimeshInteractor3D.h"
@@ -173,6 +174,9 @@ public:
             PortDomain domain, int note, float displayGain, bool includesDc, double sampleRate,
             const std::vector<float>& positions, size_t maximumRows) {
         const juce::ScopedLock lock(panel.getRenderLock());
+        if (waveform != nullptr) {
+            waveform->setVisible(false);
+        }
         source.setGrid(values, columns, rows, domain, note, displayGain, includesDc,
                 sampleRate, positions, maximumRows);
         panel.setSignalDomain(domain);
@@ -182,7 +186,22 @@ public:
         owner.repaint();
     }
 
+    void setWaveform(std::shared_ptr<const std::vector<float>> samples) {
+        auto& view = waveformView();
+        view.setSignal(std::move(samples));
+        view.setViewport(camera());
+        view.setBounds(plotBounds());
+        view.setVisible(true);
+    }
+
+    void setWaveformOverlay(std::function<void(juce::Graphics&)> overlay) {
+        waveformView().onOverlay = std::move(overlay);
+    }
+
     void setCamera(const ZoomRect& camera) {
+        if (waveform != nullptr) {
+            waveform->setViewport(camera);
+        }
         if (panel.getZoomPanel()->rect == camera) {
             return;
         }
@@ -206,6 +225,9 @@ public:
     }
 
     bool renderOpenGL(float scaleFactor) {
+        if (waveform != nullptr && waveform->isVisible()) {
+            return false;
+        }
         const int width = inputHost->getWidth();
         const int height = inputHost->getHeight();
         if (width < 2 || height < 2) {
@@ -259,12 +281,16 @@ public:
     }
 
     void paint(juce::Graphics& graphicsToUse) const {
+        if (waveform != nullptr && waveform->isVisible()) {
+            return;
+        }
         surfaceCache.paintSnapshot(graphicsToUse, owner.getLocalBounds()
                 .withWidth(inputHost->getWidth()).withHeight(inputHost->getHeight()));
     }
 
     juce::var automationDiagnostics() {
         auto result = std::make_unique<juce::DynamicObject>();
+        result->setProperty("waveform", waveform != nullptr && waveform->isVisible() ? waveform->diagnostics() : juce::var());
         result->setProperty("attached", resourceReady.load());
         result->setProperty("renderCount", renderCount.load());
         result->setProperty("contextCreateCount", contextCreateCount.load());
@@ -290,10 +316,33 @@ public:
 
     void resized() {
         panel.getZoomPanel()->setBounds(0, 0, owner.getWidth(), owner.getHeight());
+        if (waveform != nullptr) {
+            waveform->setBounds(plotBounds());
+        }
         snapshotPending = true;
     }
 
+    void magnify(const juce::MouseEvent& event, float scaleFactor) {
+        if (scaleFactor > 0.f) {
+            panel.getZoomPanel()->zoomIn(event.mods.isCommandDown(), event.x, event.y, scaleFactor);
+        }
+    }
+
+    void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
+        static_cast<juce::Component*>(inputHost.get())->mouseWheelMove(
+                event.getEventRelativeTo(inputHost.get()), wheel);
+    }
+
 private:
+    ReferenceWaveformView& waveformView() {
+        if (waveform == nullptr) {
+            waveform = std::make_unique<ReferenceWaveformView>();
+            owner.addChildComponent(*waveform);
+            waveform->setInterceptsMouseClicks(false, false);
+        }
+        return *waveform;
+    }
+
     void scrollBarMoved(juce::ScrollBar*, double) override {
         if (relayingCamera) {
             return;
@@ -302,6 +351,9 @@ private:
         juce::MessageManager::callAsync([safeOwner] {
             if (safeOwner != nullptr) {
                 auto& self = *safeOwner->impl;
+                if (self.waveform != nullptr) {
+                    self.waveform->setViewport(self.camera());
+                }
                 self.snapshotPending = true;
                 self.panel.bakeTexturesNextRepaint();
                 if (safeOwner->onCameraChanged) {
@@ -313,6 +365,7 @@ private:
     }
 
     ComparisonSurfaceView& owner;
+    std::unique_ptr<ReferenceWaveformView> waveform;
     TrimeshPanelEnvironment environment;
     ComparisonGridSource source;
     Rasterization::TrilinearMeshRasterizer rasterizer;
@@ -347,6 +400,22 @@ void ComparisonSurfaceView::setGrid(
         size_t maximumRows) {
     impl->setGrid(values, columns, rows, domain, note, displayGain, includesDc,
             sampleRate, positions, maximumRows);
+}
+
+void ComparisonSurfaceView::setWaveform(std::shared_ptr<const std::vector<float>> samples) {
+    impl->setWaveform(std::move(samples));
+}
+
+void ComparisonSurfaceView::setWaveformOverlay(std::function<void(juce::Graphics&)> overlay) {
+    impl->setWaveformOverlay(std::move(overlay));
+}
+
+void ComparisonSurfaceView::mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
+    impl->mouseWheelMove(event, wheel);
+}
+
+void ComparisonSurfaceView::mouseMagnify(const juce::MouseEvent& event, float scaleFactor) {
+    impl->magnify(event, scaleFactor);
 }
 
 void ComparisonSurfaceView::setCamera(const ZoomRect& camera) {

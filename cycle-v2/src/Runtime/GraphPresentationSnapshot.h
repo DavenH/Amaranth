@@ -15,6 +15,7 @@ class GraphPresentationFacts;
 struct GraphPresentationSnapshot {
     uint64_t graphRevision {};
     int previewMidiNote { 48 };
+    PresetPreviewView outputSpyView { PresetPreviewView::Spectrum };
     std::array<int, 128> previewControllerValues {};
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;

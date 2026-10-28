@@ -15,6 +15,7 @@ GraphPreviewResult::SignalProbePreview DefaultOutputPreview::normalizedTime(
 GraphPreviewResult::SignalProbePreview DefaultOutputPreview::spectrum(
         const GraphPreviewResult::SignalProbePreview& preview) {
     auto result = preview;
+    result.waveform.reset();
     result.domain = PortDomain::SpectralMagnitudeSignal;
     result.frequencySampling = TraversalGridFrequencySampling::LinearBins;
     result.values.clear();
