@@ -581,6 +581,13 @@ void SignalProbeCanvas::paintCards(
             graphics.drawText("Disconnected", previewBounds, Justification::centred);
             continue;
         }
+        const auto view = defaultOutput ? state.defaultOutputView : probe->view;
+        if (view == PresetPreviewView::Waveform && preview->domain == PortDomain::TimeSignal
+                && preview->waveform == nullptr) {
+            graphics.setColour(CanvasChromePalette::mutedText);
+            graphics.drawText("Preparing waveform…", previewBounds, Justification::centred);
+            continue;
+        }
         const uint64_t startedAt = performanceObserver != nullptr
                 ? performanceObserver->presentationTimestamp()
                 : 0;

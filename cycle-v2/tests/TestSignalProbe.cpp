@@ -464,10 +464,18 @@ TEST_CASE("Waveform capture retains continuous samples independently of folded S
     graph.addNode(std::move(source));
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
     graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
-    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    SECTION("Direct voice output") {
+        graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    }
+    SECTION("Global Input exposes the mixed signal through its prepared output view") {
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalInput, "globalIn", {}));
+        graph.addEdge({ "wave", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+        graph.addEdge({ "globalIn", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    }
     REQUIRE(GraphCompiler().compile(graph).succeeded());
-    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, graph.getEdges().size() - 1, 0.5f).succeeded());
     const String id = graph.getSignalProbes().front().id;
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);

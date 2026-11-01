@@ -17,10 +17,16 @@ public:
         ,   samples(std::make_shared<std::vector<float>>(size, 0.f)) {}
 
     void nodeProcessed(const String& id, const AudioProcessContext& context) override {
-        if (id != nodeId || outputIndex >= context.outputs.size()) {
+        if (id != nodeId) {
             return;
         }
-        const auto& payload = context.outputs[outputIndex];
+        // Boundary nodes expose the mixed signal in the prepared output view.
+        const auto* output = outputIndex < context.outputs.size() ? &context.outputs[outputIndex]
+                : outputIndex < context.outputViews.size() ? context.outputViews[outputIndex] : nullptr;
+        if (output == nullptr) {
+            return;
+        }
+        const auto& payload = *output;
         if (payload.domain != PortDomain::TimeSignal || payload.block.samples.size() < context.frameCount) {
             return;
         }

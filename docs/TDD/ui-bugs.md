@@ -1278,3 +1278,14 @@ No production focus or launcher workaround is retained. The canonical appearance
 fixture selects through the same dialog handler used by popup callbacks, and
 checks routed dismissal, saved state, screenshots and unchanged rendering work.
 Native menu focus verification remains session-dependent.
+
+
+## Spy waveform on Global Input falls through to cyclogram (resolved)
+
+2026-11-01: Baroque Flute's authored Spy taps Global Input. Repeated Time /
+Waveform / Spectrum switches retain zero raw waveform samples while Waveform is
+selected (`.context/waveform-authored-before.json`). Global Input exposes the
+mixed signal through prepared output views, which the waveform observer did not
+read. Capture now uses that buffer when newly produced outputs are absent; the
+continuous-capture test covers nonzero direct and global samples. The focused
+actual-app regression is `cycle-v2-agent-global-input-waveform.json`.

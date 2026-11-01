@@ -21,6 +21,8 @@ private:
     void close();
     std::unique_ptr<Selector> time;
     std::unique_ptr<Selector> spectral;
+    std::unique_ptr<Selector> magnitudeFixed;
+    std::unique_ptr<Selector> phaseFixed;
     std::unique_ptr<Selector> waveform;
     juce::TextButton done { "Done" };
 };

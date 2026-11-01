@@ -15,7 +15,6 @@ struct Choice {
     juce::String id;
     juce::String label;
     juce::Image gradient;
-    TimeSurfaceStyles::Group group { TimeSurfaceStyles::Group::Canonical };
 };
 
 void paintChoice(juce::Graphics& graphics, juce::Rectangle<int> bounds, const Choice& choice) {
@@ -57,31 +56,36 @@ private:
     bool selected {};
 };
 
-std::vector<Choice> surfaceChoices(bool includeDefault) {
-    std::vector<Choice> result;
-    if (includeDefault) {
-        result.push_back({ "default", "Blue / Amber", ScalarSurfaceMaterialEvaluator::createGradientImage(
-                ScalarSurfaceMaterial::defaultBipolarMagnitude()) });
-    }
-    for (const auto& entry : TimeSurfaceStyles::entries) {
-        result.push_back({ entry.id, entry.label, ScalarSurfaceMaterialEvaluator::createGradientImage(
-                ScalarSurfaceMaterial::forTimeStyle(entry.style)), entry.group });
-    }
-    return result;
+Choice timeChoice(ScalarSurfaceTimeStyle style) {
+    const auto* entry = TimeSurfaceStyles::find(TimeSurfaceStyles::id(style));
+    return { entry->id, entry->label, ScalarSurfaceMaterialEvaluator::createGradientImage(
+            ScalarSurfaceMaterial::forTimeStyle(style)) };
+}
+
+Choice blueAmberChoice() {
+    return { "default", "Blue / Amber", ScalarSurfaceMaterialEvaluator::createGradientImage(
+            ScalarSurfaceMaterial::defaultBipolarMagnitude()) };
+}
+
+Choice waveformChoice(WaveformColourStyles::Style style) {
+    const auto* entry = WaveformColourStyles::find(WaveformColourStyles::id(style));
+    return { entry->id, entry->label, WaveformColourStyles::gradient(style) };
 }
 
 }
 
 class SurfaceAppearanceDialog::Selector final : public juce::Button {
 public:
-    Selector(juce::String name, std::vector<Choice> options, juce::String selectedId,
+    Selector(juce::String name, std::vector<Choice> options, Choice selectedChoice,
             std::function<void(const juce::String&)> change) :
             Button(name)
         ,   choices(std::move(options))
-        ,   selected(std::move(selectedId))
+        ,   selected(std::move(selectedChoice))
         ,   onChange(std::move(change)) {
         setName(name);
         setTitle(name.fromLastOccurrenceOf(".", false, false) + " colours");
+        setWantsKeyboardFocus(choices.size() > 1);
+        setDescription("Selected: " + selected.label);
         onClick = [this] { showChoices(); };
     }
 
@@ -90,9 +94,11 @@ public:
         if (found == choices.end()) {
             return false;
         }
-        selected = found->id;
+        selected = *found;
         setDescription("Selected: " + found->label);
-        onChange(selected);
+        if (onChange) {
+            onChange(selected.id);
+        }
         repaint();
         return true;
     }
@@ -107,10 +113,12 @@ public:
     }
 
     void paintButton(juce::Graphics& graphics, bool over, bool down) override {
-        graphics.fillAll(over || down ? CanvasChromePalette::hoveredControlSurface : CanvasChromePalette::restingControlSurface);
-        const auto found = std::find_if(choices.begin(), choices.end(), [&](const auto& choice) { return choice.id == selected; });
-        if (found != choices.end()) {
-            paintChoice(graphics, getLocalBounds(), *found);
+        const bool interactive = choices.size() > 1;
+        graphics.fillAll(interactive && (over || down)
+                ? CanvasChromePalette::hoveredControlSurface : CanvasChromePalette::restingControlSurface);
+        paintChoice(graphics, getLocalBounds(), selected);
+        if (!interactive) {
+            return;
         }
         graphics.setColour(hasKeyboardFocus(true) ? CanvasChromePalette::focus : CanvasChromePalette::border);
         graphics.drawRect(getLocalBounds());
@@ -123,20 +131,14 @@ public:
 
 private:
     void showChoices() {
+        if (choices.size() <= 1) {
+            return;
+        }
         juce::PopupMenu menu;
-        juce::PopupMenu experimental;
-        juce::PopupMenu legacy;
         for (size_t index = 0; index < choices.size(); ++index) {
             const auto& choice = choices[index];
-            auto& target = choice.group == TimeSurfaceStyles::Group::Experimental ? experimental
-                    : choice.group == TimeSurfaceStyles::Group::Legacy ? legacy : menu;
-            target.addCustomItem((int) index + 1,
-                    std::make_unique<GradientMenuItem>(choice, choice.id == selected), nullptr, choice.label);
-        }
-        if (experimental.getNumItems() > 0) {
-            menu.addSeparator();
-            menu.addSubMenu("Experimental", experimental);
-            menu.addSubMenu("Legacy", legacy);
+            menu.addCustomItem((int) index + 1,
+                    std::make_unique<GradientMenuItem>(choice, choice.id == selected.id), nullptr, choice.label);
         }
         const auto screen = getScreenBounds();
         menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(this)
@@ -149,7 +151,7 @@ private:
     }
 
     std::vector<Choice> choices;
-    juce::String selected;
+    Choice selected;
     std::function<void(const juce::String&)> onChange;
 };
 
@@ -157,38 +159,48 @@ SurfaceAppearanceDialog::SurfaceAppearanceDialog(NodeWorkspace& workspace) {
     setName("surfaceAppearance");
     setWantsKeyboardFocus(true);
     const auto owner = juce::Component::SafePointer<NodeWorkspace>(&workspace);
-    time = std::make_unique<Selector>("surfaceAppearance.time", surfaceChoices(false),
-            TimeSurfaceStyles::id(workspace.timeSurfaceStyle()), [owner](const auto& id) {
+    time = std::make_unique<Selector>("surfaceAppearance.time",
+            std::vector<Choice> { timeChoice(ScalarSurfaceTimeStyle::BlueDepth),
+                    timeChoice(ScalarSurfaceTimeStyle::IcyHotRaw), timeChoice(ScalarSurfaceTimeStyle::Greyscale) },
+            timeChoice(workspace.timeSurfaceStyle()), [owner](const auto& id) {
                 if (owner != nullptr) {
                     owner->setTimeSurfaceStyle(TimeSurfaceStyles::fromId(id));
                 }
             });
     const auto spectralStyle = workspace.bipolarSpectralSurfaceStyle();
-    spectral = std::make_unique<Selector>("surfaceAppearance.spectral", surfaceChoices(true),
-            spectralStyle.has_value() ? TimeSurfaceStyles::id(*spectralStyle) : "default", [owner](const auto& id) {
+    spectral = std::make_unique<Selector>("surfaceAppearance.spectral",
+            std::vector<Choice> { timeChoice(ScalarSurfaceTimeStyle::IcyHotRaw), blueAmberChoice() },
+            spectralStyle.has_value() ? timeChoice(*spectralStyle) : blueAmberChoice(), [owner](const auto& id) {
                 if (owner != nullptr) {
                     const auto* entry = TimeSurfaceStyles::find(id);
                     owner->setBipolarSpectralSurfaceStyle(entry != nullptr
                             ? std::optional<ScalarSurfaceTimeStyle>(entry->style) : std::nullopt);
                 }
             });
-    std::vector<Choice> waveformChoices;
-    for (const auto& entry : WaveformColourStyles::entries) {
-        waveformChoices.push_back({ entry.id, entry.label, WaveformColourStyles::gradient(entry.style) });
-    }
-    waveform = std::make_unique<Selector>("surfaceAppearance.waveform", std::move(waveformChoices),
-            WaveformColourStyles::id(workspace.waveformColourStyle()), [owner](const auto& id) {
+    using WaveformStyle = WaveformColourStyles::Style;
+    waveform = std::make_unique<Selector>("surfaceAppearance.waveform",
+            std::vector<Choice> { waveformChoice(WaveformStyle::BurntAlum),
+                    waveformChoice(WaveformStyle::Blues), waveformChoice(WaveformStyle::Greyscale) },
+            waveformChoice(workspace.waveformColourStyle()), [owner](const auto& id) {
                 if (owner != nullptr) {
                     owner->setWaveformColourStyle(WaveformColourStyles::fromId(id));
                 }
             });
-    for (auto* selector : { time.get(), spectral.get(), waveform.get() }) {
+    const Choice magnitude { "burnt-alum", "Burnt Alum", ScalarSurfaceMaterialEvaluator::createGradientImage(
+            ScalarSurfaceMaterial::unipolarMagnitude()) };
+    magnitudeFixed = std::make_unique<Selector>("surfaceAppearance.magnitude",
+            std::vector<Choice> { magnitude }, magnitude, nullptr);
+    const Choice phase { "phase", "Orange / Violet", ScalarSurfaceMaterialEvaluator::createGradientImage(
+            ScalarSurfaceMaterial::bipolarPhase()) };
+    phaseFixed = std::make_unique<Selector>("surfaceAppearance.phase",
+            std::vector<Choice> { phase }, phase, nullptr);
+    for (auto* selector : { time.get(), spectral.get(), magnitudeFixed.get(), phaseFixed.get(), waveform.get() }) {
         addAndMakeVisible(*selector);
     }
     done.setName("surfaceAppearance.done");
     done.onClick = [this] { close(); };
     addAndMakeVisible(done);
-    setSize(620, 322);
+    setSize(620, 490);
 }
 
 bool SurfaceAppearanceDialog::selectStyle(const juce::String& section, const juce::String& styleId) {
@@ -206,15 +218,15 @@ void SurfaceAppearanceDialog::paint(juce::Graphics& graphics) {
     graphics.fillAll(CanvasChromePalette::surface);
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(14.f);
-    const char* labels[] { "Time surface", "Bipolar spectrum", "Waveform density" };
-    for (int index = 0; index < 3; ++index) {
+    const char* labels[] { "Time", "Bipolar magnitude", "Unipolar magnitude", "Bipolar phase", "Waveform density" };
+    for (int index = 0; index < 5; ++index) {
         graphics.drawText(labels[index], 24, 18 + index * 84, getWidth() - 48, 20, juce::Justification::centredLeft);
     }
 }
 
 void SurfaceAppearanceDialog::resized() {
     int y = 42;
-    for (auto* selector : { time.get(), spectral.get(), waveform.get() }) {
+    for (auto* selector : { time.get(), spectral.get(), magnitudeFixed.get(), phaseFixed.get(), waveform.get() }) {
         selector->setBounds(24, y, getWidth() - 48, 38);
         y += 84;
     }
