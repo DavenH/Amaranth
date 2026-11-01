@@ -102,7 +102,8 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodePreviewRenderer.h`, `cycle-v2/src/UI/ComparisonSurfaceView.h` — Node/Spy pixels and harmonic lanes; shared surface hosting and waveform zoom.
 - `cycle-v2/src/UI/SignalProbeCanvas.h` — Saved Spy views; shared waveform density/path zoom and capture-free note-off dragging.
 - `cycle-v2/src/UI/InlinePresetBrowser.h` — Shared tabs; ReferenceAssetBrowser owns audio assets, ReferenceTrayBar owns tray disclosure.
-- `cycle-v2/src/UI/LibraryThumbnailCache.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Async images; references and Spies share indexed density/path rendering.
+- `cycle-v2/src/UI/LibraryThumbnailCache.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Async thumbnails and shared indexed density/path waveform views.
+- `cycle-v2/src/UI/WaveformHeatRenderer.h`, `scripts/fixtures/cycle-v2-agent-waveform-zoom-performance.json` — GPU waveform coverage/heat composition and zoom performance workload.
 - `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and suite export.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
 - `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.

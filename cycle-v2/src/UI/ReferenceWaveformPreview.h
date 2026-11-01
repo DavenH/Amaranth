@@ -14,10 +14,16 @@ enum class WaveformPalette { Monochrome, CrossingHeat };
 struct ReferenceWaveformResolution {
     size_t crossings {};
     bool useLine {};
+    bool useFill {};
 };
 
 ReferenceWaveformResolution referenceWaveformResolution(const std::vector<int>& crossings,
-        int start, int end, int pixelWidth);
+        int start, int end, int pixelWidth, float physicalScale = 1.f);
+
+struct ReferenceWaveformLineStyle {
+    float strokeWidth { 1.f };
+    float fillAlpha {};
+};
 
 // Presentation-only mono sum, scaled to fill the waveform's signed display range.
 juce::AudioBuffer<float> referenceWaveformPreview(const StereoBuffer& audio);
@@ -34,11 +40,17 @@ juce::Image signalWaveformHeatField(Buffer<float> normalizedMono,
         WaveformColourStyles::Style style = WaveformColourStyles::current());
 juce::Image recolourSignalWaveform(const juce::Image& geometry, const juce::Image& heatField,
         const ZoomRect& viewport);
+void paintWaveformImage(juce::Graphics& graphics, const juce::Image& image,
+        const ZoomRect& coverageViewport, const ZoomRect& viewport, juce::Rectangle<float> bounds);
+juce::Image signalWaveformCoverage(Buffer<float> visibleMono, int width, int height,
+        const ZoomRect& viewport, bool useLine, juce::Range<float> sampleRange = {},
+        ReferenceWaveformLineStyle style = {});
 juce::Image renderSignalWaveform(Buffer<float> visibleMono, int width, int height,
         const ZoomRect& viewport, const juce::Image& heatField, bool useLine,
         juce::Range<float> sampleRange = {});
 juce::Image referenceWaveformLine(Buffer<float> normalizedMono, int width, int height,
-        float y = 0.f, float span = 1.f, juce::Range<float> sampleRange = {});
+        float y = 0.f, float span = 1.f, juce::Range<float> sampleRange = {},
+        ReferenceWaveformLineStyle style = {});
 juce::Image loadReferenceWaveformHeatmap(const juce::File& file);
 
 }

@@ -187,6 +187,8 @@ public:
     }
 
     void setWaveform(std::shared_ptr<const std::vector<float>> samples) {
+        panel.setSignalDomain(PortDomain::TimeSignal);
+        panel.updateBackground(false);
         auto& view = waveformView();
         view.setSignal(std::move(samples));
         view.setViewport(camera());
@@ -339,6 +341,9 @@ private:
             waveform = std::make_unique<ReferenceWaveformView>();
             owner.addChildComponent(*waveform);
             waveform->setInterceptsMouseClicks(false, false);
+            waveform->onBackground = [this](juce::Graphics& graphics) {
+                panel.paintBackgroundGrid(graphics, 0.085f, 0.14f);
+            };
         }
         return *waveform;
     }

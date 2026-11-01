@@ -283,6 +283,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceWaveformPreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WaveformColourStyles.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceWaveformView.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WaveformHeatRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ComparisonSurfaceView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/ReferenceTrayBar.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SidebarMediaRow.cpp"

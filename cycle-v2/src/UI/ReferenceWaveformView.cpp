@@ -7,6 +7,7 @@
 
 #include "UI/CanvasChromePalette.h"
 #include "UI/ReferenceWaveformPreview.h"
+#include "UI/WaveformHeatRenderer.h"
 
 namespace CycleV2 {
 
@@ -45,11 +46,14 @@ public:
             ThreadPoolJob("Reference waveform view")
         ,   owner(&view)
         ,   source(view.source)
-        ,   cachedGeometry(view.imageViewport == view.viewport && view.image.getWidth() == width
+        ,   cachedGeometry(view.imageViewport == view.viewport && view.imageScale == view.physicalScale
+                    && view.image.getWidth() == width
                     && view.image.getHeight() == height ? view.image : juce::Image())
+        ,   prepareSoftware(view.gpuHeatPaintCount == 0)
         ,   colourStyle(view.colourStyle)
         ,   viewport(view.viewport)
         ,   revision(view.revision)
+        ,   physicalScale(view.physicalScale)
         ,   width(width)
         ,   height(height) {}
 
@@ -62,32 +66,39 @@ public:
         const int start = juce::jlimit(0, length - 1, (int) (viewport.x * length));
         const int end = juce::jlimit(start + 1, length,
                 (int) std::ceil((viewport.x + viewport.w) * length));
-        const auto resolution = referenceWaveformResolution(source->zeroCrossings, start, end, width);
-        const auto crossings = resolution.crossings;
-        const bool line = resolution.useLine && !source->silent;
+        auto resolution = referenceWaveformResolution(source->zeroCrossings, start, end, width, physicalScale);
+        resolution.useLine = resolution.useLine && !source->silent;
+        resolution.useFill = resolution.useFill && resolution.useLine;
+        const bool line = resolution.useLine;
+        const ReferenceWaveformLineStyle style {
+                resolution.useFill ? 1.5f * physicalScale : 1.f, resolution.useFill ? 0.2f : 0.f };
         const int sourceEnd = line ? juce::jmin(length, end + 1) : end;
         Buffer<float> audio(const_cast<float*>(source->mono.getReadPointer(0)) + start, sourceEnd - start);
         const juce::Range<float> sampleRange(viewport.x * length - start,
                 (viewport.x + viewport.w) * length - start);
         juce::Image image;
+        juce::Image heatField;
         if (source->palette == WaveformPalette::CrossingHeat) {
-            const auto& heat = source->coloursFor(colourStyle);
+            heatField = source->coloursFor(colourStyle);
             if (cachedGeometry.isValid()) {
-                image = recolourSignalWaveform(cachedGeometry, heat, viewport);
+                image = cachedGeometry;
             } else {
-                image = renderSignalWaveform(audio, width, height, viewport, heat, line, sampleRange);
+                image = signalWaveformCoverage(audio, width, height, viewport, line, sampleRange, style);
                 ++source->geometryBuilds;
             }
         } else {
-            image = line ? referenceWaveformLine(audio, width, height, viewport.y, viewport.h, sampleRange)
+            image = line ? referenceWaveformLine(audio, width, height, viewport.y, viewport.h, sampleRange, style)
                     : referenceWaveformHeatmap(audio, width, height, viewport.y, viewport.h);
         }
+        const auto software = prepareSoftware && heatField.isValid()
+                ? recolourSignalWaveform(image, heatField, viewport) : juce::Image();
         const double renderMs = juce::Time::getMillisecondCounterHiRes() - started;
         if (!shouldExit()) {
             juce::MessageManager::callAsync([owner = owner, revision = revision,
-                    image = std::move(image), viewport = viewport, line, crossings, renderMs]() mutable {
+                    image = std::move(image), heatField = std::move(heatField), software,
+                    viewport = viewport, resolution, renderMs]() mutable {
                 if (owner != nullptr) {
-                    owner->publish(revision, std::move(image), viewport, line, crossings, renderMs);
+                    owner->publish(revision, std::move(image), std::move(heatField), software, viewport, resolution, renderMs);
                 }
             });
         }
@@ -98,9 +109,11 @@ private:
     juce::Component::SafePointer<ReferenceWaveformView> owner;
     std::shared_ptr<const Source> source;
     juce::Image cachedGeometry;
+    bool prepareSoftware {};
     WaveformColourStyles::Style colourStyle;
     ZoomRect viewport;
     uint64_t revision {};
+    float physicalScale { 1.f };
     int width {};
     int height {};
 };
@@ -125,6 +138,10 @@ void ReferenceWaveformView::setSample(const PitchedSample* sample) {
     setTitle("Reference waveform");
     signalIdentity.reset();
     image = {};
+    heatField = {};
+    softwareImage = {};
+    softwareCoverage = {};
+    softwareHeat = {};
     source.reset();
     if (sample != nullptr) {
         auto prepared = std::make_shared<Source>();
@@ -145,6 +162,10 @@ void ReferenceWaveformView::setSignal(std::shared_ptr<const std::vector<float>> 
     setTitle("Signal waveform");
     sampleIdentity = nullptr;
     image = {};
+    heatField = {};
+    softwareImage = {};
+    softwareCoverage = {};
+    softwareHeat = {};
     source.reset();
     if (signalIdentity != nullptr && !signalIdentity->empty()) {
         auto prepared = std::make_shared<Source>();
@@ -191,43 +212,76 @@ void ReferenceWaveformView::handleAsyncUpdate() {
             juce::roundToInt(getHeight() * physicalScale)), true);
 }
 
-void ReferenceWaveformView::publish(uint64_t completed, juce::Image rendered,
-        ZoomRect view, bool useLine, size_t count, double elapsedMs) {
+void ReferenceWaveformView::publish(uint64_t completed, juce::Image rendered, juce::Image heat, juce::Image software,
+        ZoomRect view, ReferenceWaveformResolution resolution, double elapsedMs) {
     if (completed != revision) {
         return;
     }
     image = std::move(rendered);
+    heatField = std::move(heat);
+    softwareImage = std::move(software);
+    softwareCoverage = softwareImage.isValid() ? image : juce::Image();
+    softwareHeat = softwareImage.isValid() ? heatField : juce::Image();
     imageViewport = view;
-    line = useLine;
-    crossings = count;
+    imageScale = physicalScale;
+    line = resolution.useLine;
+    filled = resolution.useFill;
+    crossings = resolution.crossings;
     renderMs = elapsedMs;
     publishedRevision = completed;
     repaint();
 }
 
 void ReferenceWaveformView::paint(juce::Graphics& graphics) {
-    graphics.fillAll(CanvasChromePalette::surface);
+    const double started = juce::Time::getMillisecondCounterHiRes();
+    if (juce::OpenGLContext::getCurrentContext() != nullptr) {
+        ++gpuPaintCount;
+    }
+    graphics.fillAll(juce::Colours::black);
+    if (onBackground) {
+        onBackground(graphics);
+    }
     if (signalIdentity != nullptr && colourStyle != WaveformColourStyles::current()) {
         colourStyle = WaveformColourStyles::current();
         requestImage();
     }
     const float scale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
-    if (physicalScale != scale) {
+    // Software snapshots must not change an on-screen GL view's render resolution.
+    if (physicalScale != scale && (juce::OpenGLContext::getCurrentContext() != nullptr || gpuPaintCount == 0)) {
         physicalScale = scale;
         requestImage();
     }
-    if (image.isValid() && viewport.w > 0.f && viewport.h > 0.f) {
-        graphics.drawImage(image, {
-                (imageViewport.x - viewport.x) / viewport.w * getWidth(),
-                (imageViewport.y - viewport.y) / viewport.h * getHeight(),
-                imageViewport.w / viewport.w * getWidth(),
-                imageViewport.h / viewport.h * getHeight() }, juce::RectanglePlacement::stretchToFit);
+    bool paintedOnGpu {};
+    if (auto* context = juce::OpenGLContext::getCurrentContext()) {
+        if (auto* target = context->getTargetComponent()) {
+            const auto deviceBounds = target->getLocalArea(this, getLocalBounds()).toFloat()
+                    * (float) context->getRenderingScale();
+            paintedOnGpu = paintWaveformHeatOpenGL(graphics, image, heatField, imageViewport,
+                    viewport, getLocalBounds().toFloat(), deviceBounds);
+        }
+    }
+    if (paintedOnGpu) {
+        ++gpuHeatPaintCount;
+    } else {
+        if (image.isValid() && heatField.isValid()
+                && (softwareCoverage != image || softwareHeat != heatField)) {
+            softwareImage = recolourSignalWaveform(image, heatField, imageViewport);
+            softwareCoverage = image;
+            softwareHeat = heatField;
+        }
+        paintWaveformImage(graphics, heatField.isValid() ? softwareImage : image,
+                imageViewport, viewport, getLocalBounds().toFloat());
     }
     if (onOverlay) {
         onOverlay(graphics);
     }
     graphics.setColour(CanvasChromePalette::border);
     graphics.drawRect(getLocalBounds());
+    paintMs = juce::Time::getMillisecondCounterHiRes() - started;
+    if (paintedOnGpu) {
+        gpuHeatPaintTotalMs += paintMs;
+        gpuHeatPaintMaxMs = juce::jmax(gpuHeatPaintMaxMs, paintMs);
+    }
 }
 
 void ReferenceWaveformView::resized() { requestImage(); }
@@ -252,8 +306,15 @@ juce::var ReferenceWaveformView::diagnostics() const {
     auto value = std::make_unique<juce::DynamicObject>();
     value->setProperty("ready", image.isValid() && publishedRevision == revision);
     value->setProperty("mode", line ? "line" : "density");
+    value->setProperty("filled", filled);
     value->setProperty("crossings", (juce::int64) crossings);
     value->setProperty("renderMs", renderMs);
+    value->setProperty("paintMs", paintMs);
+    value->setProperty("gpuPaintCount", gpuPaintCount);
+    value->setProperty("gpuHeatPaintCount", gpuHeatPaintCount);
+    value->setProperty("gpuHeatPaintTotalMs", gpuHeatPaintTotalMs);
+    value->setProperty("gpuHeatPaintMaxMs", gpuHeatPaintMaxMs);
+    value->setProperty("background", "black");
     value->setProperty("pixelWidth", image.getWidth());
     value->setProperty("sourceBuilds", sourceBuildCount);
     value->setProperty("heatBuilds", source != nullptr ? source->heatBuilds.load() : 0);

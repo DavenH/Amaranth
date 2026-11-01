@@ -2,8 +2,8 @@
 
 ## Status
 
-Complete: the finer high-contrast heat field and output Spy mode refresh fix
-are implemented and verified.
+Complete: black waveform/time-slice plots, shared panel grids, GPU heat
+composition and filled sparse-path detail are implemented and verified.
 
 ## Contract and ownership
 
@@ -169,3 +169,125 @@ The fixed bright Magenta ramp was subsequently rejected because its density
 bands were too similar. The active configurator TDD supersedes that palette and
 its minimum-contrast acceptance rule with full-range, user-selectable gradients.
 Fixed source-space statistics and geometry are retained across recolouring.
+
+
+## Black plots and GPU heat composition (2026-11-01)
+
+The expanded waveform and time-domain mesh slice use black plot backgrounds.
+Waveforms reuse the owning Panel's major/minor grid coordinates (grey levels
+0.14 / 0.085) through a narrow Graphics adapter; no second spacing or zoom
+algorithm is introduced. Plot bounds also clip the grid, coverage, heat and
+existing overlays.
+
+The existing canvas OpenGLContext already renders JUCE component Graphics via
+createOpenGLGraphicsContext. Previously, waveform workers rebuilt fully coloured
+physical-size images for every viewport. Workers now return coverage only using
+the shared density/path producer, plus the unchanged fixed source heat image.
+WaveformHeatRenderer uses JUCE's OpenGLGraphicsContextCustomShader to sample the
+coverage and fixed heat textures in one fragment shader, preserving premultiplied
+alpha and stable source coordinates. Views without a GL paint backend retain worker-coloured, cached bitmaps.
+Software snapshots lazily recolour the same coverage once, then reuse that image;
+neither path builds CPU image-alpha edge tables during live zoom. JUCE image-alpha clipping was measured and rejected for the live
+path: its shared edge-table clipper scans/resamples masks on the CPU even in the
+GL Graphics backend. The final shader avoids that hidden CPU path.
+
+The canvas retains its existing GL context and lifecycle. A context-associated,
+waveform-specific cache holds at most eight image pairs; unchanged paint/zoom
+transforms reuse uploads, palette changes reuse coverage, and replacing a source
+reuses/evicts a bounded slot. JUCE OpenGLTexture handles upload/storage and context
+teardown releases resources on the GL thread. RenderResourceCache tracks existing
+CommonGfx Texture pointer versions and does not supply shader texture ownership;
+no duplicate generic cache facility is added. There is no new GL host or readback.
+Source/index, heat statistics and geometry counters remain stable on palette edits.
+
+The deterministic Stengah Debug workload is
+`cycle-v2-agent-waveform-zoom-performance.json`: warmed expanded waveform,
+eighteen wheel zoom steps with six intermediate settlements, final sparse path.
+Inspect worker times, canvas paint/repaint distributions and actual GPU paint
+counts; compare identical app sizes and workload. Before report:
+`.context/waveform-zoom-before.json`. These are local Debug measurements, not
+Release frame-rate guarantees.
+
+User screenshot also shows phase-dependent striping against bucket spacing.
+Follow-up options: filter source-space counts before nonlinear palette lookup,
+and fractional/supersampled trace coverage. Filtering the coloured image would
+mix palette bands. Any filter should remain source-anchored to preserve colour
+under zoom. This change does not claim to eliminate that aliasing.
+
+
+Size/responsibility review: Panel.cpp grows 1307→1325 and Panel.h 297→298.
+Panel remains the owner of zoom mapping and calculated grid positions; its new
+18-line Graphics adapter translates those coordinates without adding spacing,
+interaction, or cache policy. Extracting this single adapter would require
+exposing the same protected grid storage without removing ownership. The new
+WaveformHeatRenderer is a cohesive 128-line GPU compositor with bounded
+context-owned textures. ReferenceWaveformView coordinates immutable worker
+coverage/heat products and selects live GPU or cached software painting.
+ComparisonSurfaceView and ReferencePitchEditor add only their existing panel
+grid callbacks; no graph/DSP work enters a gesture or paint operation.
+
+
+Verification evidence for the black/GPU slice:
+
+- Exact Standalone Debug app and test target build: `.context/waveform-grid-accepted-build.log`.
+- Focused waveform/gradient/presentation/cache/gesture coverage: 40 cases,
+  69,736 assertions in `.context/waveform-filled-path-accepted-tests.log`. Bitmap
+  fallback coverage and source-anchored colours are checked alongside the
+  existing density/path and palette parity tests.
+- The native screen captures `.context/waveform-black-grid-full-native.png`,
+  `.context/waveform-gpu-native.png`, and `.context/time-surface-black-native.png`
+  establish actual shader output, full/sparse traces, shared grid and black
+  time slice. App-side screenshots alone would not verify native GPU output.
+- Identical pre/post Stengah Debug workload: warmed GPU redraws average about
+  3.1 ms, maximum 9.1 ms in `.context/waveform-zoom-gpu-final.json`. Worker
+  density preparations at the intermediate zoom samples fall from about
+  45 ms to 27–28 ms; final sparse path preparation falls from 22 ms to 8 ms.
+  The first sparse-path sample remains about 84 ms (previously 99 ms): path
+  rasterization is still a worker bottleneck, while cached texture transforms
+  update independently. These sampled timings are descriptive local results,
+  not a general frame-rate claim. Initial shader compilation/upload can cost
+  more than warmed drawing.
+- Context recreation retains CPU source/index, fixed heat statistics and
+  geometry while recreating shader resources under the existing context owner.
+  GPU heat paint counters continue increasing after context create count reaches
+  two. Software snapshots no longer change the GL view's physical resolution
+  or trigger needless coverage jobs.
+
+
+## Filled sparse-path detail
+
+Once the visible signal has at least twelve logical pixels per zero crossing,
+the shared resolution classifier enables filled path detail. This threshold is
+independent of Retina scale and distinct from the earlier one-crossing-per-physical
+pixel switch to a stroke. The same reference path closes to the bipolar zero
+line and fades from 40% opacity at the signed extrema to 20% at zero,
+following Panel2D's existing centre-baseline fill convention; its original edge remains opaque with a 1.5-logical-pixel stroke.
+The existing heat field colours both fill and edge, so GPU composition needs no
+extra geometry pass or source statistics. Monochrome references share the same
+geometry. Density and intermediate stroke-only views remain unchanged.
+
+Focused tests cover both polarities, translucent interior, opaque/wider edge,
+no fill outside the trace, a zero line outside the cropped viewport, and equal
+classification at normal and Retina scales. The zoom fixture asserts filled
+detail at its final zoom, with one source/index and one heat-statistics build.
+
+Final filled-detail evidence: `.context/waveform-filled-path-native.json` passes
+the zoom, filled-detail, source-statistics and context-recreation assertions.
+The native Burnt Alum capture is `.context/waveform-filled-path-native.png`.
+The complete 85-command Spy fixture passes again in
+`.context/waveform-filled-path-spy-regression.json`; palette persistence and
+unchanged source/heat/geometry work pass in
+`.context/waveform-filled-path-palette-regression.json`. Final exact app/tests
+build: `.context/waveform-filled-path-accepted-build.log`. With the filled detail
+enabled, deep-zoom worker preparation is about 22 ms, while warmed GPU redraws
+average about 3.15 ms. The extra fill rasterization stays on the worker and does
+not enter the live texture-transform path. Density-to-stroke and stroke-to-fill
+are separate transitions; image-cache identity includes physical scale so the
+logical stroke width remains correct after display changes.
+
+Palette review also captures the filled detail with Blues in
+`.context/waveform-filled-blues-native.png`. The corresponding report confirms
+that switching the filled view's palette increments colour builds while source,
+heat statistics and geometry counts remain unchanged. Native Burnt Alum and
+Blues detail were reviewed together with the unzoomed density and time-slice
+plots.

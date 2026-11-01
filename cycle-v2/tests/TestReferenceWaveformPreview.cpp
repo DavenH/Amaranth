@@ -6,6 +6,7 @@
 #include <Algo/PeakCounter.h>
 #include <UI/Panels/ScalarSurfaceMaterial.h>
 #include <cmath>
+#include <numeric>
 
 using namespace CycleV2;
 
@@ -290,4 +291,86 @@ TEST_CASE("Program gradient strips match actual flat surface colours",
             REQUIRE(gradient.getPixelAt(x, 0) == surface.getPixelAt(x, 0));
         }
     }
+}
+
+TEST_CASE("Waveform bitmap fallback preserves coverage and source anchored colours",
+        "[cycle-v2][waveform][palette][composition]") {
+    constexpr int width = 128;
+    constexpr int height = 64;
+    juce::Image heat(juce::Image::ARGB, width, height, true);
+    juce::Graphics heatGraphics(heat);
+    heatGraphics.fillAll(juce::Colours::red);
+    heatGraphics.setColour(juce::Colours::blue);
+    heatGraphics.fillRect(width / 2, 0, width / 2, height);
+    std::vector<float> samples(width * 8);
+    for (size_t index = 0; index < samples.size(); ++index) {
+        samples[index] = 0.7f * std::sin((float) index * 0.7f);
+    }
+    const auto coverage = signalWaveformCoverage(
+            Buffer<float>(samples.data(), (int) samples.size()), width, height, ZoomRect(), false);
+    const auto coloured = recolourSignalWaveform(coverage, heat, ZoomRect());
+    const auto render = [&](const ZoomRect& viewport) {
+        juce::Image image(juce::Image::ARGB, width, height, true);
+        juce::Graphics graphics(image);
+        paintWaveformImage(graphics, coloured, ZoomRect(), viewport, image.getBounds().toFloat());
+        return image;
+    };
+    const auto full = render(ZoomRect());
+    const auto zoomed = render(ZoomRect(0.5f, 0.f, 0.5f, 1.f));
+    int occupied {};
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            REQUIRE(full.getPixelAt(x, y).getAlpha() == coverage.getPixelAt(x, y).getAlpha());
+            if (full.getPixelAt(x, y).getAlpha() > 0 && x > 2 && x < width - 2) {
+                ++occupied;
+                if (x < width / 2 - 2) {
+                    REQUIRE(full.getPixelAt(x, y) == juce::Colours::red);
+                } else if (x > width / 2 + 2) {
+                    REQUIRE(full.getPixelAt(x, y) == juce::Colours::blue);
+                }
+            }
+            if (zoomed.getPixelAt(x, y).getAlpha() == 255 && x > 4 && x < width - 4) {
+                REQUIRE(zoomed.getPixelAt(x, y) == juce::Colours::blue);
+            }
+        }
+    }
+    REQUIRE(occupied > 1000);
+}
+
+TEST_CASE("Sparse waveform paths fill both polarities translucently and retain a thicker edge",
+        "[cycle-v2][waveform][path][fill]") {
+    for (const float amplitude : { -0.5f, 0.5f }) {
+        float samples[] { amplitude, amplitude, amplitude };
+        const Buffer<float> mono(samples, 3);
+        const auto stroke = referenceWaveformLine(mono, 129, 129);
+        const auto filled = referenceWaveformLine(mono, 129, 129, 0.f, 1.f, {}, { 3.f, 0.2f });
+        const int edge = amplitude > 0.f ? 32 : 96;
+        const int interior = amplitude > 0.f ? 48 : 80;
+        const int outside = amplitude > 0.f ? 20 : 110;
+        REQUIRE(stroke.getPixelAt(64, interior).getAlpha() == 0);
+        REQUIRE(filled.getPixelAt(64, interior).getAlpha() > 0);
+        REQUIRE(filled.getPixelAt(64, interior).getAlpha() < 80);
+        REQUIRE(filled.getPixelAt(64, edge).getAlpha() == 255);
+        REQUIRE(filled.getPixelAt(64, outside).getAlpha() == 0);
+        const int widenedEdge = amplitude > 0.f ? edge - 2 : edge + 1;
+        REQUIRE(stroke.getPixelAt(64, widenedEdge).getAlpha() == 0);
+        REQUIRE(filled.getPixelAt(64, widenedEdge).getAlpha() > 0);
+    }
+    float samples[] { -0.5f, -0.5f };
+    const auto cropped = referenceWaveformLine(Buffer<float>(samples, 2), 129, 129,
+            0.6f, 0.2f, {}, { 3.f, 0.2f });
+    REQUIRE(cropped.getPixelAt(64, 30).getAlpha() > 0);
+    REQUIRE(cropped.getPixelAt(64, 110).getAlpha() == 0);
+}
+
+TEST_CASE("Filled waveform detail requires resolved oscillations at the same logical zoom on Retina",
+        "[cycle-v2][waveform][resolution][fill]") {
+    std::vector<int> crossings(200);
+    std::iota(crossings.begin(), crossings.end(), 0);
+    REQUIRE(referenceWaveformResolution(crossings, 0, 85, 1024).useFill);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 86, 1024).useFill);
+    REQUIRE(referenceWaveformResolution(crossings, 0, 85, 2048, 2.f).useFill);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 86, 2048, 2.f).useFill);
+    REQUIRE(referenceWaveformResolution(crossings, 0, 200, 1024).useLine);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 200, 1024).useFill);
 }

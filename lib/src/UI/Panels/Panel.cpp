@@ -364,6 +364,24 @@ void Panel::constrainZoom() {
     // zoomPanel->validateRect("Panel::constrainZoom-after");
 }
 
+void Panel::paintBackgroundGrid(juce::Graphics& graphics, float minorLevel, float majorLevel) const {
+    juce::Graphics::ScopedSaveState saved(graphics);
+    graphics.reduceClipRegion(getLocalBounds());
+    const float top = jmin(sy(bgPaddingTop), sy(1.f - bgPaddingBttm));
+    const float bottom = jmax(sy(bgPaddingTop), sy(1.f - bgPaddingBttm));
+    const auto drawLines = [&](Buffer<float> vertical, Buffer<float> horizontal, float brightness) {
+        graphics.setColour(juce::Colour::greyLevel(brightness));
+        for (const float x : vertical) {
+            graphics.drawVerticalLine(juce::roundToInt(sx(x)), top, bottom);
+        }
+        for (const float y : horizontal) {
+            graphics.drawHorizontalLine(juce::roundToInt(sy(y)), sx(bgPaddingLeft), sx(1.f - bgPaddingRight));
+        }
+    };
+    drawLines(vertMinorLines, horzMinorLines, minorLevel);
+    drawLines(vertMajorLines, horzMajorLines, majorLevel);
+}
+
 void Panel::drawBackground(bool fillBackground) {
     drawBackground(getLocalBounds(), fillBackground);
 }

@@ -42,8 +42,7 @@ HeatPosition heatPosition(float unit, int size) {
     return { index, (unsigned int) juce::roundToInt((position - index) * 256.f) };
 }
 
-void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRect& viewport,
-        const std::vector<float>& coverage) {
+void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRect& viewport) {
     const int width = image.getWidth();
     const int height = image.getHeight();
     std::vector<HeatPosition> columns((size_t) width);
@@ -53,8 +52,6 @@ void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRe
     }
     std::vector<juce::PixelARGB> heatRow((size_t) heat.getWidth());
     const auto* columnLookup = columns.data();
-    const auto* counts = coverage.data();
-    const bool hasCoverage = !coverage.empty();
     auto* blendedRow = heatRow.data();
     juce::Image::BitmapData pixels(image, juce::Image::BitmapData::readWrite);
     juce::Image::BitmapData colours(heat, juce::Image::BitmapData::readOnly);
@@ -68,8 +65,7 @@ void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRe
         }
         auto* row = reinterpret_cast<juce::PixelARGB*>(pixels.getLinePointer(y));
         for (int x = 0; x < width; ++x) {
-            const int alpha = hasCoverage ? (counts[(size_t) x * (size_t) height + (size_t) y] > 0.f ? 255 : 0)
-                    : row[x].getAlpha();
+            const int alpha = row[x].getAlpha();
             if (alpha > 0) {
                 const auto column = columnLookup[x];
                 auto colour = blendedRow[column.index];
@@ -86,11 +82,14 @@ void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRe
 }
 
 ReferenceWaveformResolution referenceWaveformResolution(const std::vector<int>& crossings,
-        int start, int end, int pixelWidth) {
+        int start, int end, int pixelWidth, float physicalScale) {
     const auto first = std::lower_bound(crossings.begin(), crossings.end(), start);
     const auto last = std::lower_bound(first, crossings.end(), end);
     const auto count = (size_t) std::distance(first, last);
-    return { count, pixelWidth > 0 && count <= (size_t) pixelWidth };
+    const bool useLine = pixelWidth > 0 && count <= (size_t) pixelWidth;
+    const bool useFill = useLine && physicalScale > 0.f
+            && count <= (size_t) ((float) pixelWidth / (12.f * physicalScale));
+    return { count, useLine, useFill };
 }
 
 juce::AudioBuffer<float> referenceWaveformPreview(const StereoBuffer& audio) {
@@ -237,36 +236,68 @@ juce::Image signalWaveformHeatField(const std::vector<float>& density, WaveformC
     return heat;
 }
 
+void paintWaveformImage(juce::Graphics& graphics, const juce::Image& image,
+        const ZoomRect& imageViewport, const ZoomRect& viewport, juce::Rectangle<float> bounds) {
+    if (!image.isValid() || viewport.w <= 0.f || viewport.h <= 0.f) {
+        return;
+    }
+    const juce::Rectangle<float> imageBounds {
+            bounds.getX() + (imageViewport.x - viewport.x) / viewport.w * bounds.getWidth(),
+            bounds.getY() + (imageViewport.y - viewport.y) / viewport.h * bounds.getHeight(),
+            imageViewport.w / viewport.w * bounds.getWidth(),
+            imageViewport.h / viewport.h * bounds.getHeight() };
+    juce::Graphics::ScopedSaveState saved(graphics);
+    graphics.reduceClipRegion(bounds.toNearestInt());
+    graphics.drawImage(image, imageBounds, juce::RectanglePlacement::stretchToFit);
+}
+
 juce::Image recolourSignalWaveform(const juce::Image& geometry, const juce::Image& heatField,
         const ZoomRect& viewport) {
     auto image = geometry.createCopy();
-    paintWaveformHeat(image, heatField, viewport, {});
+    paintWaveformHeat(image, heatField, viewport);
     return image;
 }
 
 juce::Image renderSignalWaveform(Buffer<float> mono, int width, int height,
         const ZoomRect& viewport, const juce::Image& heatField, bool useLine,
         juce::Range<float> sampleRange) {
-    if (width < 1 || height < 2 || viewport.h <= 0.f || !heatField.isValid()) {
+    if (!heatField.isValid()) {
+        return {};
+    }
+    auto image = signalWaveformCoverage(mono, width, height, viewport, useLine, sampleRange);
+    if (image.isValid()) {
+        paintWaveformHeat(image, heatField, viewport);
+    }
+    return image;
+}
+
+juce::Image signalWaveformCoverage(Buffer<float> mono, int width, int height,
+        const ZoomRect& viewport, bool useLine, juce::Range<float> sampleRange, ReferenceWaveformLineStyle style) {
+    if (width < 1 || height < 2 || viewport.h <= 0.f) {
         return {};
     }
     if (useLine) {
-        auto image = referenceWaveformLine(mono, width, height, viewport.y, viewport.h, sampleRange);
-        if (image.isValid()) {
-            paintWaveformHeat(image, heatField, viewport, {});
-        }
-        return image;
+        return referenceWaveformLine(mono, width, height, viewport.y, viewport.h, sampleRange, style);
     }
     juce::Image image(juce::Image::ARGB, width, height, true, juce::SoftwareImageType());
     if (!mono.empty() && (mono.max() != 0.f || mono.min() != 0.f)) {
         const auto density = referenceWaveformDensity(mono, width, height, viewport.y, viewport.h);
-        paintWaveformHeat(image, heatField, viewport, density);
+        juce::Image::BitmapData pixels(image, juce::Image::BitmapData::writeOnly);
+        const auto white = juce::Colours::white.getPixelARGB();
+        for (int y = 0; y < height; ++y) {
+            auto* row = reinterpret_cast<juce::PixelARGB*>(pixels.getLinePointer(y));
+            for (int x = 0; x < width; ++x) {
+                if (density[(size_t) x * (size_t) height + (size_t) y] > 0.f) {
+                    row[x] = white;
+                }
+            }
+        }
     }
     return image;
 }
 
 juce::Image referenceWaveformLine(Buffer<float> mono, int width, int height,
-        float y, float span, juce::Range<float> sampleRange) {
+        float y, float span, juce::Range<float> sampleRange, ReferenceWaveformLineStyle style) {
     if (mono.empty() || width < 1 || height < 2 || span <= 0.f) {
         return {};
     }
@@ -291,8 +322,22 @@ juce::Image referenceWaveformLine(Buffer<float> mono, int width, int height,
         trace.lineTo((float) (width - 1), vertical.back());
     }
     juce::Graphics graphics(image);
+    if (style.fillAlpha > 0.f) {
+        const float baseline = (0.5f - y) * (float) (height - 1) / span;
+        auto area = trace;
+        area.lineTo(trace.getCurrentPosition().x, baseline);
+        area.lineTo(horizontal[0], baseline);
+        area.closeSubPath();
+        const float peakAlpha = juce::jmin(1.f, 2.f * style.fillAlpha);
+        juce::ColourGradient opacity(CanvasChromePalette::text.withAlpha(peakAlpha),
+                0.f, -y * (height - 1) / span, CanvasChromePalette::text.withAlpha(peakAlpha),
+                0.f, (1.f - y) * (height - 1) / span, false);
+        opacity.addColour(0.5, CanvasChromePalette::text.withAlpha(style.fillAlpha));
+        graphics.setGradientFill(opacity);
+        graphics.fillPath(area);
+    }
     graphics.setColour(CanvasChromePalette::text);
-    graphics.strokePath(trace, juce::PathStrokeType(1.f));
+    graphics.strokePath(trace, juce::PathStrokeType(style.strokeWidth));
     return image;
 }
 

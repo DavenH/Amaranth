@@ -13,6 +13,8 @@ class PitchedSample;
 
 namespace CycleV2 {
 
+struct ReferenceWaveformResolution;
+
 class ReferenceWaveformView final : public juce::Component,
                                     private juce::AsyncUpdater,
                                     private juce::ComponentMovementWatcher {
@@ -27,6 +29,7 @@ public:
     void resized() override;
     void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override;
     std::function<void(const juce::MouseEvent&, const juce::MouseWheelDetails&)> onWheel;
+    std::function<void(juce::Graphics&)> onBackground;
     std::function<void(juce::Graphics&)> onOverlay;
 
 private:
@@ -37,7 +40,8 @@ private:
     void componentPeerChanged() override {}
     void requestImage();
     void handleAsyncUpdate() override;
-    void publish(uint64_t revision, juce::Image image, ZoomRect viewport, bool line, size_t crossings, double renderMs);
+    void publish(uint64_t revision, juce::Image image, juce::Image heatField, juce::Image softwareImage,
+            ZoomRect viewport, ReferenceWaveformResolution resolution, double renderMs);
 
     const PitchedSample* sampleIdentity {};
     std::shared_ptr<const std::vector<float>> signalIdentity;
@@ -46,14 +50,25 @@ private:
     ZoomRect viewport;
     ZoomRect imageViewport;
     juce::Image image;
+    juce::Image heatField;
+    juce::Image softwareImage;
+    juce::Image softwareCoverage;
+    juce::Image softwareHeat;
     juce::ThreadPool worker { 1 };
     uint64_t revision {};
     uint64_t publishedRevision {};
     int buildCount {};
     int sourceBuildCount {};
+    int gpuPaintCount {};
+    int gpuHeatPaintCount {};
+    double paintMs {};
+    double gpuHeatPaintTotalMs {};
+    double gpuHeatPaintMaxMs {};
     float physicalScale { 1.f };
+    float imageScale { 1.f };
     double renderMs {};
     bool line {};
+    bool filled {};
     size_t crossings {};
 };
 
