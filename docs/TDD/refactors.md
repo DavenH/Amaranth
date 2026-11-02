@@ -1,5 +1,36 @@
 # Refactor Notes
 
+## Cycle V2 Spy waveform reuse review
+
+Review date: 2026-11-02. These are implementation findings, not completed
+extractions. Existing canvas coordination plans remain applicable.
+
+- `PresentationPreviewRenderer::renderProbeWaveforms`, `captureProbePreview`
+  and `captureProbePreviews` independently call the continuous capture owner.
+  A compact, expanded and pinned view with identical audition inputs can
+  therefore repeat the same capture. The pinned path batches raster captures
+  but runs a separate complete realtime graph traversal for each continuous
+  waveform. Keep capture ownership in the runtime; reuse immutable results for
+  matching plan/content, address, note, controllers and release timing, and
+  collect compatible probe outputs in one audition. Delete the repeated
+  executions, not just the call-site plumbing. Verify execution counts and
+  sample equality, including different reference pitches and note-off times.
+- `ComparisonDock::updateCards` computes Spy content fingerprints but restricts
+  its unchanged-view guard to reference samples. Fresh equal-content captures
+  still reset Spy grids or rebuild waveform normalization, crossings and heat.
+  Extend the existing reuse decision to Spies, including mode, dimensions,
+  domain, pitch and display gain. Verify equal captures retain source/geometry
+  build counts while real edits and view changes still publish.
+- `NodePreviewRenderer::paintWaveform` keys its final bitmap by dimensions and
+  palette; each miss calls `signalWaveformHeatmap`, which recopies/normalizes
+  samples, indexes crossings and rebuilds the fixed full-source density field.
+  `ReferenceWaveformView::Source` already separates this preparation from
+  viewport geometry and palette lookup. Extract that preparation/cache behind
+  a waveform owner shared by compact and interactive views; retain per-view
+  geometry and single-worker ownership of mutable caches. Delete duplicate
+  normalization/index preparation. Verify resize/graph zoom retain source and
+  density build counts, and palette changes rebuild only colour lookup.
+
 ## Cycle V2 performance keyboard phrase transport
 
 Review date: 2026-10-01. `PerformanceKeyboard.cpp` is 804 lines after adding
