@@ -58,6 +58,7 @@ private:
         juce::String id;
         juce::String title;
         std::vector<float> surface;
+        std::shared_ptr<const std::vector<float>> waveform;
         const std::vector<float>* sampleSurface {};
         const PitchedSample* sampleIdentity {};
         const std::vector<float>* positions {};

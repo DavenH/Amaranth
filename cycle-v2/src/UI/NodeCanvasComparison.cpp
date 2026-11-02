@@ -4,6 +4,7 @@
 
 #include "Graph/DefaultOutputProbeResolver.h"
 #include "Runtime/GraphPreviewExecutor.h"
+#include "UI/PresetPreviewGenerator.h"
 
 namespace CycleV2 {
 
@@ -36,9 +37,20 @@ void NodeCanvas::requestComparisonRendering() {
 }
 
 void NodeCanvas::refreshComparisonAfterCommit() {
-    if (!document.presentation().comparisonSpyPins.empty() && comparisonRefreshCallback) {
-        comparisonRefreshPending = false;
+    if (!commands.hasTransientEdit()
+            && !document.presentation().comparisonSpyPins.empty() && comparisonRefreshCallback) {
         comparisonRefreshCallback();
+    }
+}
+
+void NodeCanvas::refreshComparisonAfterLocalCommit(const String& nodeId) {
+    if (document.presentation().comparisonSpyPins.empty()) {
+        return;
+    }
+    if (presentation.prepareProbeCaptureForNode(graph, nodeId)) {
+        refreshComparisonAfterCommit();
+    } else {
+        refreshCompiledStateAsync(PresentationRefreshScope::Downstream);
     }
 }
 
@@ -141,11 +153,19 @@ String NodeCanvas::createAndPinTrimeshOutputSpy(const String& nodeId) {
 std::vector<std::optional<GraphPreviewResult::SignalProbePreview>>
 NodeCanvas::captureComparisonSpies(int midiNote) {
     const auto& pins = document.presentation().comparisonSpyPins;
-    return presentation.captureProbePreviews(
-            graph,
-            pins,
-            GraphPreviewExecutor::sourceFrameCountForMidiNote(midiNote),
-            midiNote);
+    auto previews = presentation.captureProbePreviews(
+            graph, pins, GraphPreviewExecutor::sourceFrameCountForMidiNote(midiNote), midiNote);
+    for (auto& preview : previews) {
+        if (!preview.has_value() || preview->domain != PortDomain::TimeSignal) {
+            continue;
+        }
+        const auto* probe = graph.findSignalProbe(preview->probeId);
+        const auto view = probe != nullptr ? probe->view : probeCanvasState.defaultOutputView;
+        if (view == PresetPreviewView::Spectrum) {
+            *preview = PresetPreviewGenerator::forView(*preview, view);
+        }
+    }
+    return previews;
 }
 
 }

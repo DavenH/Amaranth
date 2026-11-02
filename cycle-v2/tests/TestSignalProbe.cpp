@@ -12,6 +12,8 @@
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Runtime/GraphPresentationModel.h"
 #include "UI/SignalProbeCanvas.h"
+#include "UI/PresetPreviewGenerator.h"
+#include "UI/NodePreviewRenderer.h"
 #include "UI/WorkspaceDockInteractionController.h"
 
 using namespace CycleV2;
@@ -164,10 +166,10 @@ TEST_CASE("Spy display domains persist with the preset",
     REQUIRE(commands.setDefaultOutputSpyFrequencyView(false));
     const GraphLoadResult loaded = GraphSerializer().loadJsonString(document.toJson());
     REQUIRE(loaded.succeeded());
-    REQUIRE(loaded.graph.findSignalProbe(probeId)->frequencyView);
-    REQUIRE_FALSE(loaded.presentation.outputSpyFrequencyView);
+    REQUIRE(loaded.graph.findSignalProbe(probeId)->view == PresetPreviewView::Spectrum);
+    REQUIRE(loaded.presentation.outputSpyView == PresetPreviewView::Time);
     REQUIRE(document.undo());
-    REQUIRE_FALSE(document.graph().findSignalProbe(probeId)->frequencyView);
+    REQUIRE(document.graph().findSignalProbe(probeId)->view == PresetPreviewView::Time);
 }
 
 TEST_CASE("Time Spy capture publishes a matching frequency view",
@@ -424,4 +426,239 @@ TEST_CASE("Comparison morph capture preparation ignores unrelated graph and mesh
     REQUIRE(large.modelSerializations == small.modelSerializations);
     REQUIRE(large.nodeLinearScans == small.nodeLinearScans);
     REQUIRE(large.assignmentLinearScans == small.assignmentLinearScans);
+}
+
+TEST_CASE("Waveform Spy views survive save reload and authored undo redo",
+        "[cycle-v2][probe][waveform][serialization]") {
+    NodeGraph graph = probeGraph();
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());
+    const String id = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.setSignalProbeView(id, PresetPreviewView::Waveform).succeeded());
+    REQUIRE(commands.setDefaultOutputSpyView(PresetPreviewView::Waveform));
+    const auto loaded = GraphSerializer().loadJsonString(document.toJson());
+    REQUIRE(loaded.succeeded());
+    REQUIRE(loaded.graph.findSignalProbe(id)->view == PresetPreviewView::Waveform);
+    REQUIRE(loaded.presentation.outputSpyView == PresetPreviewView::Waveform);
+    REQUIRE(document.undo());
+    REQUIRE(document.graph().findSignalProbe(id)->view == PresetPreviewView::Time);
+    REQUIRE(document.redo());
+    REQUIRE(document.graph().findSignalProbe(id)->view == PresetPreviewView::Waveform);
+
+    auto legacy = GraphSerializer().writeJSON(document.graph());
+    auto* probes = legacy.getProperty("probes", {}).getArray();
+    REQUIRE(probes != nullptr);
+    auto* encoded = probes->getReference(0).getDynamicObject();
+    encoded->removeProperty("view");
+    encoded->setProperty("frequencyView", true);
+    const auto migrated = GraphSerializer().loadJsonString(JSON::toString(legacy));
+    REQUIRE(migrated.succeeded());
+    REQUIRE(migrated.graph.findSignalProbe(id)->view == PresetPreviewView::Spectrum);
+}
+
+TEST_CASE("Waveform capture retains continuous samples independently of folded Spy rows",
+        "[cycle-v2][probe][waveform][preview]") {
+    NodeGraph graph;
+    auto source = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "wave", {});
+    source.model = TrimeshNodeModelState::takeOwnership(
+            TrimeshMeshFactory::createDefaultMesh("waveform-capture"), 1);
+    graph.addNode(std::move(source));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    SECTION("Direct voice output") {
+        graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    }
+    SECTION("Global Input exposes the mixed signal through its prepared output view") {
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceOutput, "voiceOut", {}));
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalInput, "globalIn", {}));
+        graph.addEdge({ "wave", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+        graph.addEdge({ "globalIn", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    }
+    REQUIRE(GraphCompiler().compile(graph).succeeded());
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, graph.getEdges().size() - 1, 0.5f).succeeded());
+    const String id = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    REQUIRE(presentation.previewResult().probes.front().waveform == nullptr);
+    REQUIRE(commands.setSignalProbeView(id, PresetPreviewView::Waveform).succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    auto preview = presentation.previewResult().probes.front();
+    REQUIRE(preview.waveform != nullptr);
+    REQUIRE(preview.waveform->size() == 44100);
+    const auto waveform = preview.waveform;
+    GraphPreviewExecutor::reduceProbeRows(preview, 32);
+    REQUIRE(preview.waveform == waveform);
+    REQUIRE(preview.gridRows == 32);
+    Buffer<float> samples(const_cast<float*>(waveform->data()), (int) waveform->size());
+    REQUIRE(samples.max() > 0.1f);
+    REQUIRE(samples.min() < -0.1f);
+    REQUIRE(samples[500] != samples[500 + 256]);
+
+    auto expanded = presentation.captureProbePreview(document.graph(), id, 512, 48, 0.25);
+    REQUIRE(expanded.has_value());
+    REQUIRE(expanded->waveform != nullptr);
+    REQUIRE(expanded->waveform->size() == 44100);
+    REQUIRE(expanded->noteOffTime == 0.25);
+}
+
+TEST_CASE("Output Spy mode changes refresh preview content without a graph edit",
+        "[cycle-v2][probe][waveform][preview]") {
+    GraphDocument document(probeGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    const auto documentRevision = document.revision();
+    const auto graphRevision = document.graph().getRevision();
+    const auto audioRevision = presentation.audioPlanRevision();
+    const auto compilations = presentation.compilationCount();
+    GraphChangeSet change;
+    change.probesChanged = true;
+    for (const auto view : { PresetPreviewView::Time, PresetPreviewView::Waveform,
+            PresetPreviewView::Spectrum, PresetPreviewView::Waveform, PresetPreviewView::Time }) {
+        REQUIRE(commands.setDefaultOutputSpyView(view));
+        presentation.setOutputSpyView(document.presentation().outputSpyView);
+        REQUIRE(presentation.refresh(document.graph(), document.revision(), change));
+        const auto& output = presentation.previewResult().defaultOutput;
+        REQUIRE(output.has_value());
+        REQUIRE((output->waveform != nullptr) == (view == PresetPreviewView::Waveform));
+        REQUIRE(document.revision() == documentRevision);
+        REQUIRE(document.graph().getRevision() == graphRevision);
+        REQUIRE(presentation.audioPlanRevision() == audioRevision);
+        REQUIRE(presentation.compilationCount() == compilations);
+    }
+}
+
+TEST_CASE("Waveform auditions share compatible outputs and retain distinct audition inputs",
+        "[cycle-v2][probe][waveform][reuse]") {
+    NodeGraph graph;
+    GraphNodeFactory factory;
+    auto source = factory.createNode(NodeKind::TrilinearMesh, "wave", {});
+    source.model = TrimeshNodeModelState::takeOwnership(
+            TrimeshMeshFactory::createDefaultMesh("waveform-reuse"), 1);
+    auto second = factory.createNode(NodeKind::TrilinearMesh, "secondWave", {});
+    second.model = source.model;
+    graph.addNode(std::move(source));
+    graph.addNode(std::move(second));
+    graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::Output, "secondOut", {}));
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "voice", "context", "secondWave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "secondWave", "out", "secondOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 2, 0.5f).succeeded());
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 3, 0.5f).succeeded());
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    std::vector<String> ids;
+    for (const auto& probe : document.graph().getSignalProbes()) {
+        ids.push_back(probe.id);
+    }
+    for (const auto& id : ids) {
+        REQUIRE(commands.setSignalProbeView(id, PresetPreviewView::Waveform).succeeded());
+    }
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    REQUIRE(presentation.compileResult().succeeded());
+    const int note = presentation.previewMidiNote();
+    const auto cache = presentation.snapshot().waveformCaptures;
+    REQUIRE(cache->executionCount() == 1);
+    const auto batch = presentation.captureProbePreviews(document.graph(), ids, 512, note);
+    REQUIRE(cache->executionCount() == 1);
+    for (size_t index = 0; index < ids.size(); ++index) {
+        REQUIRE(batch[index].has_value());
+        const auto compact = presentation.previewResult().probes[index].waveform;
+        REQUIRE(batch[index]->waveform == compact);
+        const auto detail = presentation.captureProbePreview(document.graph(), ids[index], 512, note);
+        REQUIRE(detail->waveform == compact);
+    }
+    REQUIRE(cache->executionCount() == 1);
+
+    const auto shifted = presentation.captureProbePreviews(document.graph(), ids, 512, note + 12);
+    REQUIRE(cache->executionCount() == 2);
+    const auto& plan = presentation.compileResult().plan;
+    for (size_t index = 0; index < ids.size(); ++index) {
+        SignalProbeWaveformCapture independent;
+        const auto expected = independent.capture(plan,
+                { { plan.signalProbes[index], batch[index]->releaseDuration, 1. } }, note + 12, {});
+        REQUIRE(shifted[index]->waveform != batch[index]->waveform);
+        REQUIRE(*shifted[index]->waveform == *expected.front());
+    }
+    const auto released = presentation.captureProbePreview(document.graph(), ids.front(), 512, note, 0.25);
+    REQUIRE(cache->executionCount() == 3);
+    REQUIRE(released->waveform != batch.front()->waveform);
+    auto controllers = presentation.previewControllerValues();
+    controllers[1] = 100;
+    REQUIRE(cache->capture(plan, { { plan.signalProbes.front(), 0., 1. } }, note, controllers).front()
+            != batch.front()->waveform);
+    REQUIRE(cache->executionCount() == 4);
+
+    REQUIRE(presentation.refreshPreviewMidiNote(document.graph(), document.revision(), note + 1));
+    REQUIRE(presentation.snapshot().waveformCaptures != cache);
+    REQUIRE(presentation.snapshot().waveformCaptures->executionCount() == 1);
+    const auto previous = presentation.previewResult().probes.front().waveform;
+    const auto prepared = presentation.snapshot().waveformCaptures;
+    const auto edit = commands.setNodeParameter("wave", "gain", "Gain", "0.75");
+    REQUIRE(edit.succeeded());
+    REQUIRE(edit.changed);
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), edit.changes));
+    REQUIRE(presentation.snapshot().waveformCaptures != prepared);
+    REQUIRE(*presentation.previewResult().probes.front().waveform != *previous);
+    const auto changed = presentation.captureProbePreview(document.graph(), ids.front(), 512,
+            presentation.previewMidiNote());
+    REQUIRE(changed->waveform == presentation.previewResult().probes.front().waveform);
+    const auto beforeLocal = presentation.snapshot().waveformCaptures;
+    REQUIRE(presentation.prepareProbeCaptureForNode(document.graph(), "wave"));
+    REQUIRE(presentation.snapshot().waveformCaptures != beforeLocal);
+}
+
+TEST_CASE("Expanded and pinned spectrum Spies preserve enough harmonics to fill the full frequency plot",
+        "[cycle-v2][probe][spectral][refresh-continuity]") {
+    NodeGraph graph;
+    auto source = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "wave", {});
+    source.model = TrimeshNodeModelState::takeOwnership(
+            TrimeshMeshFactory::createDefaultMesh("spectrum-full-range"), 1);
+    graph.addNode(std::move(source));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
+    const String id = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(commands.setSignalProbeView(id, PresetPreviewView::Spectrum).succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    for (const int note : { 36, 49 }) {
+        const auto single = presentation.captureProbePreview(document.graph(), id, 512, note);
+        const auto batch = presentation.captureProbePreviews(document.graph(), { id }, 512, note);
+        REQUIRE(single.has_value());
+        REQUIRE(batch.front().has_value());
+        REQUIRE(single->gridRows > 512);
+        REQUIRE(batch.front()->gridRows == single->gridRows);
+        for (const auto* captured : { &*single, &*batch.front() }) {
+            const auto spectrum = PresetPreviewGenerator::forView(*captured, PresetPreviewView::Spectrum);
+            NodePreviewResult result;
+            result.role = PreviewModuleRole::SignalSpy;
+            result.primary = spectrum.values;
+            result.gridColumns = spectrum.gridColumns;
+            result.gridRows = spectrum.gridRows;
+            result.domain = spectrum.domain;
+            result.frequencySampling = spectrum.frequencySampling;
+            result.frequencyMidiNote = spectrum.frequencyMidiNote;
+            // Uniform nonzero magnitudes distinguish uncovered rows from legitimate spectral silence.
+            result.primary.assign(result.primary.size(), 1.f);
+            const auto image = NodePreviewRenderer::createRuntimeHeatmapImage(result, false, 0.f, 200);
+            REQUIRE(image.isValid());
+            for (int y = 0; y < image.getHeight(); ++y) {
+                CAPTURE(note, captured->gridRows, spectrum.gridRows, spectrum.frequencyMidiNote, y);
+                REQUIRE(image.getPixelAt(0, y).getAlpha() == 255);
+            }
+        }
+    }
 }

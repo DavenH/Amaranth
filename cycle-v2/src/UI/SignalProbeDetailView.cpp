@@ -3,6 +3,8 @@
 
 #include "UI/SignalProbeDetailView.h"
 
+#include <UI/Panels/ZoomPanel.h>
+
 #include "Runtime/PreviewTraversal.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
@@ -33,9 +35,12 @@ Rectangle<float> iconBounds(Rectangle<float> plot, float left, float right, bool
     return Rectangle<float>(36.f, 24.f).withCentre({ centre, plot.getY() - kTimelineHeight * 0.5f });
 }
 
-void paintTimeline(Graphics& graphics, Rectangle<float> plot, const SignalProbeDetailState& state) {
-    const float noteOff = state.noteOffPosition();
-    const auto content = NodePreviewRenderer::heatmapBounds(plot);
+void paintTimeline(Graphics& graphics, Rectangle<float> plot, Rectangle<float> content,
+        const SignalProbeDetailState& state) {
+    Graphics::ScopedSaveState saved(graphics);
+    graphics.reduceClipRegion(content.withY(plot.getY() - kTimelineHeight)
+            .withHeight(content.getHeight() + kTimelineHeight).toNearestInt());
+    const float noteOff = state.plotTimePosition(state.noteOffPosition());
     const float split = content.getX() + content.getWidth() * noteOff;
     const auto paintRegion = [&](float left, float right, bool release) {
         if (const Drawable* icon = envelopeIcon(release)) {
@@ -64,8 +69,14 @@ float SignalProbeDetailState::noteOffPosition() const {
     return PreviewTraversal(renderResult.gridColumns, releaseDuration, displayedNoteOffTime()).noteOffPosition();
 }
 
+float SignalProbeDetailState::plotTimePosition(float time) const {
+    return renderResult.waveform != nullptr ? (time - waveformViewport.x) / waveformViewport.w : time;
+}
+
 bool SignalProbeDetailState::releaseHitTest(Rectangle<float> detail, Point<float> position) const {
-    return isOpen() && (SignalProbeDetailView::releaseHandleBounds(detail, *this).contains(position)
+    const float split = plotTimePosition(noteOffPosition());
+    return isOpen() && split >= 0.f && split <= 1.f
+            && (SignalProbeDetailView::releaseHandleBounds(detail, *this).contains(position)
             || SignalProbeDetailView::releaseIconBounds(detail, *this).contains(position));
 }
 
@@ -133,6 +144,7 @@ void SignalProbeDetailState::open(
             previewToUse.frequencySampling,
             previewToUse.frequencyMidiNote
     };
+    renderResult.waveform = std::move(previewToUse.waveform);
     renderResult.contentRevision = nodePreviewResultFingerprint(renderResult);
 }
 
@@ -143,14 +155,24 @@ Rectangle<float> SignalProbeDetailView::boundsFor(Rectangle<float> availableCont
 }
 
 Rectangle<float> SignalProbeDetailView::plotBounds(Rectangle<float> detailBounds) {
-    return detailBounds.reduced(14.f).withTrimmedTop(kTimelineHeight);
+    return detailBounds.reduced(14.f).withTrimmedTop(kTimelineHeight + 32.f);
+}
+
+Rectangle<float> SignalProbeDetailView::contentBounds(
+        Rectangle<float> detail, const SignalProbeDetailState& state) {
+    const auto content = NodePreviewRenderer::heatmapBounds(plotBounds(detail));
+    return state.renderResult.waveform != nullptr
+            ? content.withTrimmedRight((float) ZoomPanel::scrollbarWidth)
+                    .withTrimmedBottom((float) ZoomPanel::scrollbarWidth)
+            : content;
 }
 
 Rectangle<float> SignalProbeDetailView::voiceBounds(
         Rectangle<float> detail, const SignalProbeDetailState& state) {
     const auto plot = plotBounds(detail);
-    const auto content = NodePreviewRenderer::heatmapBounds(plot);
-    const float end = PreviewTraversal(state.renderResult.gridColumns, state.releaseDuration).noteOffPosition();
+    const auto content = contentBounds(detail, state);
+    const float end = PreviewTraversal(state.renderResult.gridColumns, state.releaseDuration).noteOffPosition()
+            / (state.renderResult.waveform != nullptr ? state.waveformViewport.w : 1.f);
     return Rectangle<float>(content.getX(), plot.getY() - kTimelineHeight,
             content.getWidth() * end, content.getBottom() - plot.getY() + kTimelineHeight);
 }
@@ -158,20 +180,21 @@ Rectangle<float> SignalProbeDetailView::voiceBounds(
 Rectangle<float> SignalProbeDetailView::releaseHandleBounds(
         Rectangle<float> detail, const SignalProbeDetailState& state) {
     const auto plot = plotBounds(detail);
-    const auto content = NodePreviewRenderer::heatmapBounds(plot);
-    const float split = content.getX() + content.getWidth() * state.noteOffPosition();
+    const auto content = contentBounds(detail, state);
+    const float split = content.getX() + content.getWidth() * state.plotTimePosition(state.noteOffPosition());
     return { split - 7.f, plot.getY() - kTimelineHeight, 14.f,
             content.getBottom() - plot.getY() + kTimelineHeight };
 }
 
 Rectangle<float> SignalProbeDetailView::releaseIconBounds(
         Rectangle<float> detail, const SignalProbeDetailState& state) {
-    if (state.noteOffPosition() >= 1.f) {
+    const float position = state.plotTimePosition(state.noteOffPosition());
+    if (state.noteOffPosition() >= 1.f || position < 0.f || position > 1.f) {
         return {};
     }
     const auto plot = plotBounds(detail);
-    const auto content = NodePreviewRenderer::heatmapBounds(plot);
-    return iconBounds(plot, content.getX() + content.getWidth() * state.noteOffPosition(),
+    const auto content = contentBounds(detail, state);
+    return iconBounds(plot, content.getX() + content.getWidth() * state.plotTimePosition(state.noteOffPosition()),
             content.getRight(), true);
 }
 
@@ -203,28 +226,33 @@ void SignalProbeDetailView::paint(
             CanvasChromeMetrics::restingBorderWidth);
 
     const Rectangle<float> plot = plotBounds(detail);
-    paintTimeline(graphics, plot, state);
+    const auto content = contentBounds(detail, state);
+    paintTimeline(graphics, plot, content, state);
 
     Node displayNode;
     displayNode.id = state.renderResult.nodeId;
     displayNode.kind = NodeKind::GenericProcessor;
-    renderer.paint(graphics, {
-            displayNode,
-            &state.renderResult,
-            plot,
-            TrimeshRenderProfile::fromSemantic({
-                    state.domain,
-                    state.scalePolicy,
-                    RenderSemanticRole::Generic
-            }),
-            1.f,
-            true,
-            {},
-            true
-    });
+    if (state.renderResult.waveform == nullptr) {
+        renderer.paint(graphics, {
+                displayNode,
+                &state.renderResult,
+                plot,
+                TrimeshRenderProfile::fromSemantic({
+                        state.domain,
+                        state.scalePolicy,
+                        RenderSemanticRole::Generic
+                }),
+                1.f,
+                true,
+                {},
+                true
+        });
+    }
 
-    const auto content = NodePreviewRenderer::heatmapBounds(plot);
     const float split = releaseHandleBounds(detail, state).getCentreX();
+    if (split < content.getX() || split > content.getRight()) {
+        return;
+    }
     graphics.setColour(CanvasChromePalette::focus.withAlpha(state.releaseDragging ? 0.85f : 0.5f));
     graphics.drawVerticalLine(roundToInt(split), plot.getY() - 3.f, content.getBottom());
     Path handle;

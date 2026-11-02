@@ -35,6 +35,7 @@ public:
     explicit GraphCommandDispatcher(GraphDocument& documentToUse) : document(documentToUse) {}
 
     GraphEditResult addNode(NodeKind kind, juce::Point<float> position);
+    bool setWaveformColourStyle(const juce::String& styleId);
     bool setTimeSurfaceStyle(const juce::String& styleId);
     bool setBipolarSpectralSurfaceStyle(const juce::String& styleId);
     bool setPresetSequence(PresetMidiSequence sequence);
@@ -58,6 +59,8 @@ public:
     bool moveDefaultOutputSpy(juce::Point<float> position);
     bool setDefaultOutputSpyVisible(bool visible);
     bool setDefaultOutputSpyFrequencyView(bool frequencyView);
+    bool setDefaultOutputSpyView(PresetPreviewView view);
+    GraphEditResult setSignalProbeView(const juce::String& probeId, PresetPreviewView view);
     bool setSpyNoteOffTime(const juce::String& probeId, double noteOffTime);
     bool pinComparisonSpy(const juce::String& probeId);
     bool unpinComparisonSpy(const juce::String& probeId);

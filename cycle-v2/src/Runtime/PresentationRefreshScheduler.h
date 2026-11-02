@@ -18,6 +18,7 @@ struct PresentationRequestContext {
     uint64_t publishedGraphRevision {};
     int previewMidiNote { 48 };
     std::array<int, 128> previewControllerValues {};
+    PresetPreviewView outputSpyView { PresetPreviewView::Spectrum };
 };
 
 class PresentationRefreshScheduler final {

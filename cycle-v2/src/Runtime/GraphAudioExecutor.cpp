@@ -524,6 +524,7 @@ GraphAudioResult GraphAudioExecutor::processInternal(
                 stepIndex);
         if (oscillatorRegion != nullptr
                 && !captureDiagnostics
+                && observer == nullptr
                 && stepIndex != (size_t) oscillatorRegion->materializationStepIndex) {
             continue;
         }

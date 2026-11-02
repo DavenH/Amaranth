@@ -91,6 +91,16 @@ Inspect artifacts in this order:
 3. Raw log: only when the filtered log omits needed detail.
 4. LLDB transcript for breakpoint runs, or a crash report when available.
 
+Run `python3 scripts/test_cycle_v2_spy_refresh.py` for opened/pinned Spy content
+refreshes. It checks one root-note capture/publication, retained images without
+blank paints, node edits and undo/redo, layout/zoom without recapture, and full
+spectral coverage. Pass `--no-build` only after building the exact app target.
+
+Run `scripts/fixtures/cycle-v2-agent-spy-waveform-reuse.json` through the coordinator
+for unchanged tray captures. Re-selecting the same reference captures fresh data
+while retaining the Spy's source, heat and geometry counts; changing presentation
+still updates the view.
+
 ## Direct Live Authoring
 
 Keep one socket open and inspect the current model before editing. Capabilities
@@ -129,6 +139,15 @@ its axis. Explicit `setNodeParameter` remains available for saved fallback edits
 Run `python3 scripts/test_cycle_v2_trimesh_interaction_publication.py` for the
 actual-app pointer/readback, edit-ID, document, surface and commit/undo checks;
 hosted editor tests also assert zero copies and serialization during movement.
+
+Run `python3 scripts/test_cycle_v2_surface_appearance.py` to verify the modal
+surface selectors, preset save/reload and palette-only recolouring. The fixture
+uses the same selector handler as the popup callbacks, plus routed Done/Escape
+input and actual component screenshots. It asserts unchanged signal content,
+graph/preview revisions, source preparation, crossing statistics and geometry.
+Use `--no-build` only after building the exact app target. Native popup keyboard
+checks require a foreground session: isolated coordinator launches deliberately
+use `activates = false`, and JUCE dismisses inactive-application menus.
 
 Run `python3 scripts/test_cycle_v2_spy_release_audition.py` to verify expanded
 Spy note-off dragging. It uses an isolated `--clean` app and checks two pointer
@@ -394,7 +413,9 @@ scripts/cycle_automation.py run --product cycle-v2 --clean \
 ```
 
 Compare reports from the same build, preset contents, window size, cache state,
-and power source. `waitForIdle` marks queue progress rather than visibility.
+and power source. `waitForIdle` marks queue progress rather than visibility. Use an explicit
+`waitForIdle` command; legacy wait fields attached to other fixture commands
+are not executed by the coordinator.
 For expanded Trimesh morph gestures, run the live and on-release fixtures
 separately and inspect their operation-count assertions.
 

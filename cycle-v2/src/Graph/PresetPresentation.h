@@ -11,7 +11,8 @@ namespace CycleV2 {
 
 enum class PresetPreviewView {
     Time,
-    Spectrum
+    Spectrum,
+    Waveform
 };
 
 struct PresetPreviewImage {
@@ -53,6 +54,7 @@ struct PresetPresentation {
     juce::String pack;
     juce::String description;
     juce::String timeSurfaceStyle;
+    juce::String waveformColourStyle;
     juce::String bipolarSpectralSurfaceStyle;
     juce::StringArray tags;
     bool tagsSpecified {};
@@ -62,7 +64,7 @@ struct PresetPresentation {
     std::optional<PresetMidiSequence> sequence;
     std::optional<juce::Point<float>> outputSpyPosition;
     bool outputSpyVisible { true };
-    bool outputSpyFrequencyView { true };
+    PresetPreviewView outputSpyView { PresetPreviewView::Spectrum };
     std::vector<juce::String> comparisonSpyPins;
     std::map<juce::String, double> spyNoteOffTimes;
 

@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
+#include <UI/Panels/ScalarSurfaceMaterial.h>
 
 #include "UI/SignalProbePreviewTileCache.h"
+#include "UI/WaveformColourStyles.h"
 
 using namespace CycleV2;
 
@@ -92,4 +94,46 @@ TEST_CASE("Spy preview tile cache reuses only complete presentation keys",
     cache.beginFrame();
     REQUIRE_FALSE(access(2.f).hit);
     REQUIRE(cache.endFrame().misses == 1);
+}
+
+TEST_CASE("Waveform Spy tiles reuse immutable captures and invalidate changed samples",
+        "[cycle-v2][waveform][cache]") {
+    SignalProbePreviewTileCache cache;
+    auto preview = makePreview();
+    preview.waveform = std::make_shared<const std::vector<float>>(std::initializer_list<float> { -1.f, 1.f });
+    const NodeRenderSemantic semantic { PortDomain::TimeSignal, RenderScalePolicy::Bipolar,
+            RenderSemanticRole::Generic };
+    const Rectangle<int> bounds { 0, 0, 180, 120 };
+    cache.beginFrame();
+    REQUIRE_FALSE(cache.access(preview, semantic, bounds, 2.f).hit);
+    REQUIRE(cache.access(preview, semantic, bounds, 2.f).hit);
+    preview.waveform = std::make_shared<const std::vector<float>>(*preview.waveform);
+    REQUIRE(cache.access(preview, semantic, bounds, 2.f).hit);
+    preview.waveform = std::make_shared<const std::vector<float>>(std::initializer_list<float> { -0.5f, 1.f });
+    REQUIRE_FALSE(cache.access(preview, semantic, bounds, 2.f).hit);
+    const auto originalStyle = WaveformColourStyles::current();
+    WaveformColourStyles::setCurrent(WaveformColourStyles::Style::Blues);
+    REQUIRE_FALSE(cache.access(preview, semantic, bounds, 2.f).hit);
+    REQUIRE(cache.access(preview, semantic, bounds, 2.f).hit);
+    WaveformColourStyles::setCurrent(originalStyle);
+    preview.waveform.reset();
+    REQUIRE_FALSE(cache.access(preview, semantic, bounds, 2.f).hit);
+}
+
+TEST_CASE("Cyclogram Spy tiles follow the shared surface material selection",
+        "[cycle-v2][surface][cache]") {
+    SignalProbePreviewTileCache cache;
+    const auto preview = makePreview();
+    const NodeRenderSemantic semantic { PortDomain::TimeSignal, RenderScalePolicy::Bipolar,
+            RenderSemanticRole::Generic };
+    const Rectangle<int> bounds { 0, 0, 180, 120 };
+    cache.beginFrame();
+    REQUIRE_FALSE(cache.access(preview, semantic, bounds, 2.f).hit);
+    REQUIRE(cache.access(preview, semantic, bounds, 2.f).hit);
+    const auto previous = ScalarSurfaceMaterial::timeSurfaceStyle();
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(previous == ScalarSurfaceTimeStyle::BlueDepth
+            ? ScalarSurfaceTimeStyle::Greyscale : ScalarSurfaceTimeStyle::BlueDepth);
+    REQUIRE_FALSE(cache.access(preview, semantic, bounds, 2.f).hit);
+    REQUIRE(cache.access(preview, semantic, bounds, 2.f).hit);
+    ScalarSurfaceMaterial::setTimeSurfaceStyle(previous);
 }

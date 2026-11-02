@@ -1,4 +1,5 @@
 #include "UI/ComparisonSurfaceView.h"
+#include "UI/ReferenceWaveformView.h"
 #include "Nodes/Curve/Panel/CurvePanelInfrastructure.h"
 
 #include "Nodes/Trimesh/Panel/TrimeshInteractor3D.h"
@@ -17,6 +18,7 @@
 #include <Util/LogRegionMapping.h>
 
 #include <atomic>
+#include <cmath>
 
 using namespace gl;
 
@@ -173,6 +175,10 @@ public:
             PortDomain domain, int note, float displayGain, bool includesDc, double sampleRate,
             const std::vector<float>& positions, size_t maximumRows) {
         const juce::ScopedLock lock(panel.getRenderLock());
+        interactor.setWheelZoomSensitivity(1.f);
+        if (waveform != nullptr) {
+            waveform->setVisible(false);
+        }
         source.setGrid(values, columns, rows, domain, note, displayGain, includesDc,
                 sampleRate, positions, maximumRows);
         panel.setSignalDomain(domain);
@@ -182,7 +188,25 @@ public:
         owner.repaint();
     }
 
+    void setWaveform(std::shared_ptr<const std::vector<float>> samples) {
+        interactor.setWheelZoomSensitivity(1.5f);
+        panel.setSignalDomain(PortDomain::TimeSignal);
+        panel.updateBackground(false);
+        auto& view = waveformView();
+        view.setSignal(std::move(samples));
+        view.setViewport(camera());
+        view.setBounds(plotBounds());
+        view.setVisible(true);
+    }
+
+    void setWaveformOverlay(std::function<void(juce::Graphics&)> overlay) {
+        waveformView().onOverlay = std::move(overlay);
+    }
+
     void setCamera(const ZoomRect& camera) {
+        if (waveform != nullptr) {
+            waveform->setViewport(camera);
+        }
         if (panel.getZoomPanel()->rect == camera) {
             return;
         }
@@ -196,6 +220,11 @@ public:
 
     ZoomRect camera() { return panel.getZoomPanel()->rect; }
 
+    void setPlotInterceptsMouseClicks(bool intercepts) {
+        inputHost->setInterceptsMouseClicks(intercepts, true);
+        panel.getZoomPanel()->setInterceptsMouseClicks(intercepts, true);
+    }
+
     void setZoomBarsVisible(bool visible) {
         stylePanelZoomScrollbars(*panel.getZoomPanel());
         panel.getZoomPanel()->setScrollbarsVisible(visible);
@@ -206,6 +235,9 @@ public:
     }
 
     bool renderOpenGL(float scaleFactor) {
+        if (waveform != nullptr && waveform->isVisible()) {
+            return false;
+        }
         const int width = inputHost->getWidth();
         const int height = inputHost->getHeight();
         if (width < 2 || height < 2) {
@@ -259,12 +291,16 @@ public:
     }
 
     void paint(juce::Graphics& graphicsToUse) const {
+        if (waveform != nullptr && waveform->isVisible()) {
+            return;
+        }
         surfaceCache.paintSnapshot(graphicsToUse, owner.getLocalBounds()
                 .withWidth(inputHost->getWidth()).withHeight(inputHost->getHeight()));
     }
 
     juce::var automationDiagnostics() {
         auto result = std::make_unique<juce::DynamicObject>();
+        result->setProperty("waveform", waveform != nullptr && waveform->isVisible() ? waveform->diagnostics() : juce::var());
         result->setProperty("attached", resourceReady.load());
         result->setProperty("renderCount", renderCount.load());
         result->setProperty("contextCreateCount", contextCreateCount.load());
@@ -290,10 +326,61 @@ public:
 
     void resized() {
         panel.getZoomPanel()->setBounds(0, 0, owner.getWidth(), owner.getHeight());
+        if (waveform != nullptr) {
+            waveform->setBounds(plotBounds());
+        }
         snapshotPending = true;
     }
 
+    void zoomToAttack() {
+        panel.getZoomPanel()->zoomToAttack();
+        publishCamera();
+    }
+
+    void zoomToFull() {
+        panel.getZoomPanel()->zoomToFull();
+        publishCamera();
+    }
+
+    void magnify(const juce::MouseEvent& event, float scaleFactor) {
+        if (waveform != nullptr && waveform->isVisible()) {
+            scaleFactor = std::pow(scaleFactor, 1.5f);
+        }
+        if (scaleFactor > 0.f) {
+            panel.getZoomPanel()->zoomIn(event.mods.isCommandDown(), event.x, event.y, scaleFactor);
+        }
+    }
+
+    void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
+        static_cast<juce::Component*>(inputHost.get())->mouseWheelMove(
+                event.getEventRelativeTo(inputHost.get()), wheel);
+    }
+
 private:
+    ReferenceWaveformView& waveformView() {
+        if (waveform == nullptr) {
+            waveform = std::make_unique<ReferenceWaveformView>();
+            owner.addChildComponent(*waveform);
+            waveform->setInterceptsMouseClicks(false, false);
+            waveform->onBackground = [this](juce::Graphics& graphics) {
+                panel.paintBackgroundGrid(graphics, 0.085f, 0.14f);
+            };
+        }
+        return *waveform;
+    }
+
+    void publishCamera() {
+        if (waveform != nullptr) {
+            waveform->setViewport(camera());
+        }
+        snapshotPending = true;
+        panel.bakeTexturesNextRepaint();
+        if (owner.onCameraChanged) {
+            owner.onCameraChanged(camera());
+        }
+        owner.repaint();
+    }
+
     void scrollBarMoved(juce::ScrollBar*, double) override {
         if (relayingCamera) {
             return;
@@ -302,17 +389,13 @@ private:
         juce::MessageManager::callAsync([safeOwner] {
             if (safeOwner != nullptr) {
                 auto& self = *safeOwner->impl;
-                self.snapshotPending = true;
-                self.panel.bakeTexturesNextRepaint();
-                if (safeOwner->onCameraChanged) {
-                    safeOwner->onCameraChanged(self.camera());
-                }
-                safeOwner->repaint();
+                self.publishCamera();
             }
         });
     }
 
     ComparisonSurfaceView& owner;
+    std::unique_ptr<ReferenceWaveformView> waveform;
     TrimeshPanelEnvironment environment;
     ComparisonGridSource source;
     Rasterization::TrilinearMeshRasterizer rasterizer;
@@ -349,12 +432,35 @@ void ComparisonSurfaceView::setGrid(
             sampleRate, positions, maximumRows);
 }
 
+void ComparisonSurfaceView::setWaveform(std::shared_ptr<const std::vector<float>> samples) {
+    impl->setWaveform(std::move(samples));
+}
+
+void ComparisonSurfaceView::setWaveformOverlay(std::function<void(juce::Graphics&)> overlay) {
+    impl->setWaveformOverlay(std::move(overlay));
+}
+
+void ComparisonSurfaceView::mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
+    impl->mouseWheelMove(event, wheel);
+}
+
+void ComparisonSurfaceView::mouseMagnify(const juce::MouseEvent& event, float scaleFactor) {
+    impl->magnify(event, scaleFactor);
+}
+
 void ComparisonSurfaceView::setCamera(const ZoomRect& camera) {
     impl->setCamera(camera);
 }
 
 ZoomRect ComparisonSurfaceView::camera() {
     return impl->camera();
+}
+
+void ComparisonSurfaceView::zoomToAttack() { impl->zoomToAttack(); }
+void ComparisonSurfaceView::zoomToFull() { impl->zoomToFull(); }
+
+void ComparisonSurfaceView::setPlotInterceptsMouseClicks(bool intercepts) {
+    impl->setPlotInterceptsMouseClicks(intercepts);
 }
 
 void ComparisonSurfaceView::setZoomBarsVisible(bool visible) { impl->setZoomBarsVisible(visible); }

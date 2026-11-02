@@ -38,6 +38,14 @@ public:
     const File& graphFile() const { return canvas.graphFile(); }
     ProbeRefreshMode probeRefreshMode() const { return canvas.probeRefreshMode(); }
     void setProbeRefreshMode(ProbeRefreshMode mode) { canvas.setProbeRefreshMode(mode); }
+    void showSurfaceAppearance();
+    bool selectSurfaceAppearanceStyle(const juce::String& section, const juce::String& styleId);
+    bool isSurfaceAppearanceOpen() const;
+    WaveformColourStyles::Style waveformColourStyle() const { return canvas.waveformColourStyle(); }
+    void setWaveformColourStyle(WaveformColourStyles::Style style) {
+        canvas.setWaveformColourStyle(style);
+        comparisonDock.repaint();
+    }
     ScalarSurfaceTimeStyle timeSurfaceStyle() const { return canvas.timeSurfaceStyle(); }
     void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style) {
         canvas.setTimeSurfaceStyle(style);
@@ -169,6 +177,7 @@ private:
     void updateOutputMeter(const StandaloneAudioEngine::Status& status);
     var outputMeterStateForAutomation() const;
 
+    juce::Component::SafePointer<juce::DialogWindow> surfaceAppearanceWindow;
     StandaloneAudioEngine& audioEngine;
     NodeCanvas canvas;
     ReferenceLibrary referenceLibrary;

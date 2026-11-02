@@ -487,6 +487,7 @@ void SignalProbeCanvas::paintCachedPreview(
                 preview.frequencySampling,
                 preview.frequencyMidiNote
         };
+        compactResult.waveform = preview.waveform;
         Node displayNode;
         displayNode.id = "probe-preview-" + probe.id;
         displayNode.kind = NodeKind::GenericProcessor;
@@ -567,7 +568,7 @@ void SignalProbeCanvas::paintCards(
                 && sourcePreview->domain == PortDomain::TimeSignal
                 && (defaultOutput
                         ? state.defaultOutputView == PresetPreviewView::Spectrum
-                        : probe->frequencyView)) {
+                        : probe->view == PresetPreviewView::Spectrum)) {
             if (defaultOutput) {
                 const auto& spectrum = snapshot.previewResult.defaultOutputSpectrum;
                 preview = spectrum.has_value() ? &*spectrum : nullptr;
@@ -578,6 +579,13 @@ void SignalProbeCanvas::paintCards(
         if (preview == nullptr || !preview->connected) {
             graphics.setColour(CanvasChromePalette::mutedText);
             graphics.drawText("Disconnected", previewBounds, Justification::centred);
+            continue;
+        }
+        const auto view = defaultOutput ? state.defaultOutputView : probe->view;
+        if (view == PresetPreviewView::Waveform && preview->domain == PortDomain::TimeSignal
+                && preview->waveform == nullptr) {
+            graphics.setColour(CanvasChromePalette::mutedText);
+            graphics.drawText("Preparing waveform…", previewBounds, Justification::centred);
             continue;
         }
         const uint64_t startedAt = performanceObserver != nullptr

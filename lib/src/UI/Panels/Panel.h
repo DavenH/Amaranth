@@ -185,6 +185,7 @@ public:
     void constrainZoom() override;
     virtual void drawBackground(bool fillBackground = true);
     virtual void drawBackground(const Rectangle<int>& bounds, bool fillBackground);
+    void paintBackgroundGrid(juce::Graphics& graphics, float minorLevel, float majorLevel) const;
     virtual void drawInterceptsAndHighlightClosest();
     virtual void paintSharedCanvasBackground(juce::Graphics& g, const juce::Rectangle<int>& bounds) const;
     virtual void paintSharedCanvasSurface(juce::Graphics& g, const juce::Rectangle<int>& bounds) const;

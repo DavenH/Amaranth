@@ -4,6 +4,7 @@
 
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
 #include <Util/Arithmetic.h>
+#include <Util/LogRegionMapping.h>
 
 #include "Runtime/GraphPreviewExecutor.h"
 
@@ -40,6 +41,12 @@ size_t GraphPreviewExecutor::periodRowsForMidiNote(int midiNote, double sampleRa
         return 0;
     }
     return (size_t) Arithmetic::getNextPow2((float) (1.0 / angleDelta));
+}
+
+size_t GraphPreviewExecutor::spectrumSourceFrameCountForMidiNote(int midiNote, double sampleRate) {
+    const int harmonics = LogRegionMapping(midiNote, sampleRate).regionSize();
+    return jmax(kMinimumProbeSourceFrames,
+            (size_t) Arithmetic::getNextPow2((float) (2 * harmonics)));
 }
 
 size_t GraphPreviewExecutor::sourceFrameCountForMidiNote(int midiNote, double sampleRate) {
@@ -101,6 +108,14 @@ uint64_t nodePreviewResultFingerprint(const NodePreviewResult& preview) {
         std::memcpy(&bits, &value, sizeof(bits));
         fingerprint.add(bits);
     }
+    if (preview.waveform != nullptr) {
+        fingerprint.add((uint64_t) preview.waveform->size());
+        for (const float value : *preview.waveform) {
+            uint32_t bits {};
+            std::memcpy(&bits, &value, sizeof(bits));
+            fingerprint.add(bits);
+        }
+    }
     return fingerprint
             .add((uint64_t) preview.gridColumns)
             .add((uint64_t) preview.gridRows)
@@ -121,7 +136,10 @@ bool nodePreviewResultsHaveEqualContent(
             && first.gridRows == second.gridRows
             && first.domain == second.domain
             && first.frequencySampling == second.frequencySampling
-            && first.frequencyMidiNote == second.frequencyMidiNote;
+            && first.frequencyMidiNote == second.frequencyMidiNote
+            && (first.waveform == second.waveform
+                    || (first.waveform != nullptr && second.waveform != nullptr
+                            && *first.waveform == *second.waveform));
 }
 
 namespace {

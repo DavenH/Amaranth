@@ -5,12 +5,11 @@
 #include "Runtime/DefaultOutputPreview.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/NodePreviewRenderer.h"
+#include "UI/ReferenceWaveformPreview.h"
 
 namespace CycleV2 {
 
 namespace {
-
-constexpr size_t kMinimumSpectrumSourceRows = 512;
 
 Image renderPreview(
         const GraphPreviewResult::SignalProbePreview& preview,
@@ -27,8 +26,9 @@ Image renderPreview(
             preview.frequencySampling,
             preview.frequencyMidiNote
     };
-    const Image heatmap = NodePreviewRenderer::createRuntimeHeatmapImage(
-            renderResult, false, 0.f, height);
+    const Image heatmap = preview.waveform != nullptr
+            ? signalWaveformHeatmap(*preview.waveform, width, height)
+            : NodePreviewRenderer::createRuntimeHeatmapImage(renderResult, false, 0.f, height);
     if (!heatmap.isValid()) {
         return {};
     }
@@ -56,9 +56,10 @@ Image renderPreview(
 
 size_t PresetPreviewGenerator::sourceRowCountForView(
         size_t requestedRows,
-        PresetPreviewView view) {
+        PresetPreviewView view,
+        int midiNote) {
     return view == PresetPreviewView::Spectrum
-            ? std::max(requestedRows, kMinimumSpectrumSourceRows)
+            ? std::max(requestedRows, GraphPreviewExecutor::spectrumSourceFrameCountForMidiNote(midiNote))
             : requestedRows;
 }
 
@@ -68,7 +69,12 @@ GraphPreviewResult::SignalProbePreview PresetPreviewGenerator::forView(
     if (view == PresetPreviewView::Spectrum) {
         return DefaultOutputPreview::spectrum(timePreview);
     }
-    return DefaultOutputPreview::normalizedTime(timePreview);
+    auto result = view == PresetPreviewView::Time
+            ? DefaultOutputPreview::normalizedTime(timePreview) : timePreview;
+    if (view != PresetPreviewView::Waveform) {
+        result.waveform.reset();
+    }
+    return result;
 }
 
 PresetPreviewImage PresetPreviewGenerator::encodeJpeg(

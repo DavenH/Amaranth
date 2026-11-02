@@ -15,6 +15,7 @@
 
 #include "App/Automation/ImpulseResponseImportAutomation.h"
 #include "UI/NodeCanvas.h"
+#include "UI/SignalProbeDetailPanel.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/Editors/PropertyControls.h"
@@ -242,8 +243,8 @@ NodeCanvas::NodeCanvas() :
             AppSettings::GuideShelfMinimized) != 0;
     probeCanvasState.outputCanvasPosition = document.presentation().outputSpyPosition;
     probeCanvasState.outputSpyVisible = document.presentation().outputSpyVisible;
-    probeCanvasState.defaultOutputView = document.presentation().outputSpyFrequencyView
-            ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
+    probeCanvasState.defaultOutputView = document.presentation().outputSpyView;
+    presentation.setOutputSpyView(probeCanvasState.defaultOutputView);
     presentation.setProbeNoteOffTimes(document.presentation().spyNoteOffTimes);
     dockInteraction = std::make_unique<WorkspaceDockInteractionController>(
             commands,
@@ -479,6 +480,7 @@ void NodeCanvas::resized() {
     if (referenceEditor != nullptr && referenceEditor->isVisible()) {
         referenceEditor->setBounds(NodeCanvasEditorCoordinator::boundsFor(nullptr, editorContentBounds()).toNearestInt());
     }
+    updateProbeDetailPanel();
     guideEditorCoordinator.layout(editorContentBounds());
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
     if (presetSidebar != nullptr) {
@@ -897,10 +899,11 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                             ? &*snapshot.previewResult.defaultOutput : nullptr)
                     : queries.presentationFacts().probePreviewFor(snapshot, cardProbe);
             if (preview != nullptr && preview->domain == PortDomain::TimeSignal) {
-                const bool frequency = cardProbe == DefaultOutputProbeResolver::probeId
-                        ? probeCanvasState.defaultOutputView == PresetPreviewView::Spectrum
-                        : graph.findSignalProbe(cardProbe)->frequencyView;
-                menu.addItem(2, frequency ? "Show Time Domain" : "Show Frequency Domain");
+                const auto view = cardProbe == DefaultOutputProbeResolver::probeId
+                        ? probeCanvasState.defaultOutputView : graph.findSignalProbe(cardProbe)->view;
+                menu.addItem(2, "Cyclogram", true, view == PresetPreviewView::Time);
+                menu.addItem(3, "Spectrogram", true, view == PresetPreviewView::Spectrum);
+                menu.addItem(4, "Waveform", true, view == PresetPreviewView::Waveform);
             }
             menu.addItem(1, "Stop Spying");
             const Point<int> click = event.getScreenPosition();
@@ -912,8 +915,10 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
                     [safeThis = SafePointer<NodeCanvas>(this), cardProbe](int choice) {
                         if (safeThis != nullptr && choice == 1) {
                             safeThis->removeSpyCard(cardProbe);
-                        } else if (safeThis != nullptr && choice == 2) {
-                            safeThis->toggleSpyDomain(cardProbe);
+                        } else if (safeThis != nullptr && choice >= 2 && choice <= 4) {
+                            const PresetPreviewView views[] { PresetPreviewView::Time,
+                                    PresetPreviewView::Spectrum, PresetPreviewView::Waveform };
+                            safeThis->setSpyView(cardProbe, views[choice - 2]);
                         }
                     });
         } else if (event.getNumberOfClicks() >= 2) {
@@ -1366,6 +1371,12 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Viewport);
+    if (probeDetailPanel != nullptr && probeDetailPanel->isVisible()) {
+        if (probeDetailPanel->getBounds().toFloat().contains(event.position)) {
+            probeDetailPanel->mouseWheelMove(event.getEventRelativeTo(probeDetailPanel.get()), wheel);
+        }
+        return;
+    }
     const Node* blockingEditorNode = queries.findNode(expandedNodeId);
     if (editorCoordinator.blocksCanvas(blockingEditorNode)) {
         return;
@@ -1424,6 +1435,10 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
 
 void NodeCanvas::mouseMagnify(const MouseEvent& event, float scaleFactor) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Viewport);
+    if (probeDetailPanel != nullptr && probeDetailPanel->isVisible()) {
+        probeDetailPanel->mouseMagnify(event.getEventRelativeTo(probeDetailPanel.get()), scaleFactor);
+        return;
+    }
     viewport.zoomAround(event.position, scaleFactor);
     requestCanvasRepaint();
 }
@@ -1807,25 +1822,33 @@ bool NodeCanvas::removeSpyCard(const String& probeId) {
     return applyAuthoringResult(authoring.removeSignalProbe(probeId));
 }
 
-void NodeCanvas::toggleSpyDomain(const String& probeId) {
+bool NodeCanvas::setSpyView(const String& probeId, PresetPreviewView view) {
+    const auto& snapshot = presentation.snapshot();
+    const auto* preview = probeId == DefaultOutputProbeResolver::probeId
+            ? (snapshot.previewResult.defaultOutput.has_value() ? &*snapshot.previewResult.defaultOutput : nullptr)
+            : queries.presentationFacts().probePreviewFor(snapshot, probeId);
+    if (preview == nullptr || preview->domain != PortDomain::TimeSignal) {
+        return false;
+    }
     if (probeId == DefaultOutputProbeResolver::probeId) {
-        const bool frequency = probeCanvasState.defaultOutputView != PresetPreviewView::Spectrum;
-        if (commands.setDefaultOutputSpyFrequencyView(frequency)) {
-            probeCanvasState.defaultOutputView = frequency
-                    ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
-            notifyGraphDocumentStateChanged();
-            requestCanvasRepaint();
+        if (document.presentation().outputSpyView == view) {
+            return true;
         }
-        return;
+        if (!commands.setDefaultOutputSpyView(view)) {
+            return false;
+        }
+        probeCanvasState.defaultOutputView = document.presentation().outputSpyView;
+        presentation.setOutputSpyView(probeCanvasState.defaultOutputView);
+    } else if (!commands.setSignalProbeView(probeId, view).succeeded()) {
+        return false;
     }
-
-    const SignalProbe* probe = graph.findSignalProbe(probeId);
-    if (probe != nullptr
-            && commands.setSignalProbeFrequencyView(probeId, !probe->frequencyView)
-                    .succeeded()) {
-        notifyGraphDocumentStateChanged();
-        requestCanvasRepaint();
-    }
+    notifyGraphDocumentStateChanged();
+    GraphChangeSet change;
+    change.probesChanged = true;
+    refreshCompiledStateAsync(PresentationRefreshScope::Downstream, &change);
+    notifyOverlayOcclusionChanged();
+    requestCanvasRepaint();
+    return true;
 }
 
 bool NodeCanvas::groupSelectedNodes() {
@@ -2066,6 +2089,7 @@ void NodeCanvas::refreshCompiledState() {
     editorCoordinator.previewResources().setPreviewMidiNote(midiNote);
     globalUnisonPreviewContext.midiNote = midiNote;
     refreshProbeDetail();
+    refreshComparisonAfterCommit();
 }
 
 void NodeCanvas::refreshCompiledStateAsync(
@@ -2084,7 +2108,7 @@ void NodeCanvas::refreshCompiledStateAsync(
             ? commands.transientChanges()
             : document.lastChange();
     editorCoordinator.previewResources().refreshGraph(refreshGraph, refreshChange);
-    auto completion = [safeThis = SafePointer<NodeCanvas>(this)] {
+    auto completion = [safeThis = SafePointer<NodeCanvas>(this), scope] {
         if (safeThis == nullptr) {
             return;
         }
@@ -2104,12 +2128,8 @@ void NodeCanvas::refreshCompiledStateAsync(
         safeThis->openGLContext.triggerRepaint();
         safeThis->refreshProbeDetail();
         safeThis->requestCanvasRepaint();
-        if (safeThis->comparisonRefreshPending
-                && !safeThis->commands.hasTransientEdit()) {
-            safeThis->comparisonRefreshPending = false;
-            if (safeThis->comparisonRefreshCallback) {
-                safeThis->comparisonRefreshCallback();
-            }
+        if (scope == PresentationRefreshScope::Downstream) {
+            safeThis->refreshComparisonAfterCommit();
         }
     };
     if (snapshot != nullptr) {
@@ -2122,16 +2142,18 @@ void NodeCanvas::refreshCompiledStateAsync(
 }
 
 void NodeCanvas::openProbeDetail(const String& probeId) {
+    if (probeDetailState.probeId != probeId) {
+        probeDetailState.waveformViewport = ZoomRect();
+    }
     const int midiNote = presentation.previewMidiNote();
     const size_t resolution = GraphPreviewExecutor::sourceFrameCountForMidiNote(
             midiNote);
     const SignalProbe* selectedProbe = graph.findSignalProbe(probeId);
     const PresetPreviewView view = probeId == DefaultOutputProbeResolver::probeId
             ? probeCanvasState.defaultOutputView
-            : selectedProbe != nullptr && selectedProbe->frequencyView
-                    ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
+            : selectedProbe != nullptr ? selectedProbe->view : PresetPreviewView::Time;
     const size_t captureResolution = PresetPreviewGenerator::sourceRowCountForView(
-            resolution, view);
+            resolution, view, midiNote);
     auto preview = presentation.captureProbePreview(
             commands.editingGraph(),
             probeId,
@@ -2247,6 +2269,12 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
         requestCanvasRepaint();
     }
     notifyGraphDocumentStateChanged();
+    if (result.succeeded && result.graphChanged
+            && (presentation.requiresCompilation(document.lastChange())
+                    || presentation.requiresPreview(document.lastChange()))) {
+        refreshProbeDetail();
+        refreshComparisonAfterCommit();
+    }
 
     return result.succeeded;
 }
@@ -2295,8 +2323,16 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.hoveredEdgeIndex = hoveredEdgeIndex;
     result.previewVoiceLengthSeconds = unisonPreviewContext().voiceDurationSeconds;
     result.probeRefreshMode = probeCanvasState.refreshMode;
+    if (probeDetailPanel != nullptr && probeDetailPanel->isVisible()) {
+        for (const auto& [id, bounds] : probeDetailPanel->pointerTargets()) {
+            result.probeDetailTargets.emplace_back(id, bounds.translated(
+                    (float) probeDetailPanel->getX(), (float) probeDetailPanel->getY()));
+        }
+    }
     result.probeDetailId = probeDetailState.probeId;
     result.probeDetailResolution = probeDetailState.resolution;
+    result.probeWaveform = probeDetailPanel != nullptr && probeDetailPanel->isVisible()
+            ? probeDetailPanel->waveformDiagnostics() : var();
     result.probeDetailColumns = probeDetailState.renderResult.gridColumns;
     result.probeDetailRows = probeDetailState.renderResult.gridRows;
     result.probeDetailReleaseDuration = probeDetailState.releaseDuration;
@@ -2424,8 +2460,8 @@ void NodeCanvas::resetDocumentPresentation() {
     probeCanvasState.draggedScreenOffset = {};
     probeCanvasState.outputCanvasPosition = document.presentation().outputSpyPosition;
     probeCanvasState.outputSpyVisible = document.presentation().outputSpyVisible;
-    probeCanvasState.defaultOutputView = document.presentation().outputSpyFrequencyView
-            ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
+    probeCanvasState.defaultOutputView = document.presentation().outputSpyView;
+    presentation.setOutputSpyView(probeCanvasState.defaultOutputView);
     editorCoordinator.resetDocumentPreviews();
     canvasPresentation.clearDocumentCaches();
     openGLContext.triggerRepaint();
@@ -2457,7 +2493,6 @@ void NodeCanvas::fitDocumentInViewport() {
 var NodeCanvas::exportAutomationState() const {
     var state = automation.exportState(automationPresentationState());
     if (auto* object = state.getDynamicObject()) {
-        object->setProperty("comparisonRefreshPending", comparisonRefreshPending);
         object->setProperty("presentationGraphRevision",
                 (int64) presentation.snapshot().graphRevision);
         object->setProperty("documentGraphRevision", (int64) document.revision());
@@ -2548,7 +2583,6 @@ bool NodeCanvas::undoForAutomation() {
     applyAuthoringResult(result);
     if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
-        refreshComparisonAfterCommit();
     }
     return result.succeeded;
 }
@@ -2559,7 +2593,6 @@ bool NodeCanvas::redoForAutomation() {
     applyAuthoringResult(result);
     if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
-        refreshComparisonAfterCommit();
     }
     return result.succeeded;
 }
@@ -2586,7 +2619,6 @@ void NodeCanvas::refreshAfterAutomationEdit() {
     presentation.refresh(document.graph(), document.revision(), document.lastChange());
     applyAuthoringResult({ true, true, true, GraphEditCode::Connected, {}, { true, true } });
     rebindGuideEditor();
-    refreshComparisonAfterCommit();
 }
 
 bool NodeCanvas::setGuideParameterForAutomation(
@@ -2751,20 +2783,27 @@ bool NodeCanvas::setPreviewMidiNote(int midiNote) {
     if (selectedNote == presentation.previewMidiNote()) {
         return true;
     }
-    if (!persistPreviewMorph(
-                selectedNote,
-                PreviewMorphEditScope::KeyScale).succeeded()) {
+    const auto edit = editPreviewMorph(selectedNote, PreviewMorphEditScope::KeyScale);
+    if (!edit.succeeded()) {
         return false;
+    }
+    if (edit.changed) {
+        editorCoordinator.clearPreviewCache();
+        editorCoordinator.previewResources().refreshGraph(commands.editingGraph(), edit.changes);
+        notifyGraphDocumentStateChanged();
     }
     if (!presentation.refreshPreviewMidiNote(
                 commands.editingGraph(),
                 document.revision(),
-                selectedNote)) {
+                selectedNote,
+                edit.changes.nodeIds)) {
         return false;
     }
     editorCoordinator.previewResources().setPreviewMidiNote(selectedNote);
+    rebindNodeEditor();
     globalUnisonPreviewContext.midiNote = selectedNote;
     refreshProbeDetail();
+    refreshComparisonAfterCommit();
     requestCanvasRepaint();
     return true;
 }
@@ -2810,6 +2849,7 @@ bool NodeCanvas::setPreviewControllerValue(int controller, int value) {
             return false;
         }
         refreshProbeDetail();
+        refreshComparisonAfterCommit();
     }
     requestCanvasRepaint();
     return true;
@@ -2928,24 +2968,6 @@ void NodeCanvas::endPreviewControllerGesture(int controller, int finalValue) {
     }
 }
 
-GraphEditResult NodeCanvas::persistPreviewMorph(
-        int midiNote,
-        PreviewMorphEditScope scope,
-        int controller,
-        int controllerValue) {
-    const GraphEditResult edit = editPreviewMorph(
-            midiNote, scope, controller, controllerValue);
-    if (!edit.succeeded() || !edit.changed) {
-        return edit;
-    }
-    editorCoordinator.clearPreviewCache();
-    if (graphDocumentStateChangedCallback) {
-        graphDocumentStateChangedCallback();
-    }
-    scheduleCompiledStateRefresh();
-    return edit;
-}
-
 GraphEditResult NodeCanvas::editPreviewMorph(
         int midiNote,
         PreviewMorphEditScope scope,
@@ -3006,6 +3028,17 @@ void NodeCanvas::setOverlayOcclusionChangedCallback(std::function<void()> callba
 void NodeCanvas::setGraphDocumentStateChangedCallback(
         std::function<void()> callback) {
     graphDocumentStateChangedCallback = std::move(callback);
+}
+
+WaveformColourStyles::Style NodeCanvas::waveformColourStyle() const {
+    return WaveformColourStyles::fromId(document.presentation().waveformColourStyle);
+}
+
+void NodeCanvas::setWaveformColourStyle(WaveformColourStyles::Style style) {
+    if (commands.setWaveformColourStyle(WaveformColourStyles::id(style))) {
+        synchronizeSurfaceStyles();
+        notifyGraphDocumentStateChanged();
+    }
 }
 
 ScalarSurfaceTimeStyle NodeCanvas::timeSurfaceStyle() const {
@@ -3076,9 +3109,12 @@ void NodeCanvas::synchronizeSurfaceStyles() {
     const auto timeStyle = timeSurfaceStyle();
     const auto spectralStyle = bipolarSpectralSurfaceStyle();
     const int spectralStyleIndex = spectralStyle.has_value() ? (int) *spectralStyle : -1;
-    const bool changed = ScalarSurfaceMaterial::timeSurfaceStyle() != timeStyle
+    const auto waveformStyle = waveformColourStyle();
+    const bool changed = WaveformColourStyles::current() != waveformStyle
+            || ScalarSurfaceMaterial::timeSurfaceStyle() != timeStyle
             || ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex() != spectralStyleIndex;
     if (changed) {
+        WaveformColourStyles::setCurrent(waveformStyle);
         ScalarSurfaceMaterial::setTimeSurfaceStyle(timeStyle);
         ScalarSurfaceMaterial::setBipolarMagnitudeStyleIndex(spectralStyleIndex);
         repaintNodeEditor(true);
@@ -3096,7 +3132,35 @@ void NodeCanvas::updatePresetSidebarVisibility() {
             expandedEditorBoundsForOverlay()));
 }
 
+void NodeCanvas::updateProbeDetailPanel() {
+    if (!probeDetailState.isOpen()) {
+        if (probeDetailPanel != nullptr) {
+            probeDetailPanel->setVisible(false);
+        }
+        return;
+    }
+    if (probeDetailPanel == nullptr) {
+        probeDetailPanel = std::make_unique<SignalProbeDetailPanel>(probeDetailState);
+        addChildComponent(*probeDetailPanel);
+        probeDetailPanel->onModeChanged = [this](PresetPreviewView view) {
+            setSpyView(probeDetailState.probeId, view);
+        };
+        probeDetailPanel->onCameraChanged = [this] { requestCanvasRepaint(); };
+    }
+    const auto& snapshot = presentation.snapshot();
+    const auto* source = queries.presentationFacts().probePreviewFor(snapshot, probeDetailState.probeId);
+    const auto* probe = graph.findSignalProbe(probeDetailState.probeId);
+    const bool output = probeDetailState.probeId == DefaultOutputProbeResolver::probeId;
+    probeDetailPanel->setBounds(probeDetailBounds().toNearestInt());
+    probeDetailPanel->sync(output ? probeCanvasState.defaultOutputView
+            : probe != nullptr ? probe->view : PresetPreviewView::Time,
+            output || (source != nullptr && source->domain == PortDomain::TimeSignal));
+    probeDetailPanel->setVisible(true);
+    probeDetailPanel->toFront(false);
+}
+
 void NodeCanvas::notifyOverlayOcclusionChanged() {
+    updateProbeDetailPanel();
     updatePresetSidebarVisibility();
     if (overlayOcclusionChanged) {
         overlayOcclusionChanged();
@@ -3455,27 +3519,13 @@ void NodeCanvas::finishNodeEditorGesture(
         return;
     }
     notifyGraphDocumentStateChanged();
-    const Node* editedNode = graph.findNode(nodeId);
-    if (editedNode != nullptr && editedNode->kind == NodeKind::TrilinearMesh
-            && !document.presentation().comparisonSpyPins.empty()) {
-        if (presentation.prepareProbeCaptureForNode(graph, nodeId)) {
-            comparisonRefreshPending = false;
-            if (comparisonRefreshCallback) {
-                comparisonRefreshCallback();
-            }
-        } else {
-            comparisonRefreshPending = true;
-        }
-    }
     if (localField.isNotEmpty()) {
         presentation.commitLocalEditorState(
                 nodeId,
                 localField,
                 finished.effectiveFingerprint,
                 graphDocument.revision());
-        if (comparisonRefreshPending) {
-            refreshCompiledStateAsync(PresentationRefreshScope::Downstream);
-        }
+        refreshComparisonAfterLocalCommit(nodeId);
         return;
     }
 
@@ -3491,6 +3541,8 @@ void NodeCanvas::finishNodeEditorGesture(
                 PresentationRefreshScope::Downstream,
                 nullptr,
                 finished.finalSnapshot);
+    } else {
+        refreshComparisonAfterLocalCommit(nodeId);
     }
 }
 

@@ -501,7 +501,7 @@ void ComparisonDock::updateCards() {
     if (!canvas.comparisonSpyPins().empty()) {
         ++captureCount;
     }
-    const auto previews = canvas.captureComparisonSpies(note);
+    auto previews = canvas.captureComparisonSpies(note);
     const auto& pins = canvas.comparisonSpyPins();
     const auto options = canvas.comparisonSpyOptions();
     for (size_t index = 0; index < pins.size(); ++index) {
@@ -514,13 +514,25 @@ void ComparisonDock::updateCards() {
         card.displayGain = card.id == DefaultOutputProbeResolver::probeId
                 ? 1.f / 3.f : 1.f;
         if (index < previews.size() && previews[index].has_value()) {
-            const auto& preview = *previews[index];
+            auto& preview = *previews[index];
             card.connected = preview.connected;
             card.spectral = preview.domain != PortDomain::TimeSignal;
             if (card.spectral) {
                 card.title += "  /  Spectral";
             }
-            card.surface = preview.values;
+            card.waveform = preview.waveform;
+            NodePreviewResult result;
+            result.nodeId = card.id;
+            result.role = PreviewModuleRole::SignalSpy;
+            result.primary = std::move(preview.values);
+            result.waveform = preview.waveform;
+            result.gridColumns = preview.gridColumns;
+            result.gridRows = preview.gridRows;
+            result.domain = preview.domain;
+            result.frequencySampling = preview.frequencySampling;
+            result.frequencyMidiNote = preview.frequencyMidiNote;
+            card.surfaceRevision = nodePreviewResultFingerprint(result);
+            card.surface = std::move(result.primary);
             card.columns = preview.gridColumns;
             card.rows = preview.gridRows;
             card.domain = preview.domain;
@@ -586,16 +598,26 @@ void ComparisonDock::updateCards() {
         };
         const auto oldCard = std::find_if(previousCards.begin(), previousCards.end(),
                 [&](const Card& candidate) { return candidate.id == card.id; });
-        const bool sampleUnchanged = viewWasVisible && card.sample
+        const bool contentUnchanged = viewWasVisible
                 && oldCard != previousCards.end()
+                && oldCard->sample == card.sample
                 && oldCard->sampleIdentity == card.sampleIdentity
                 && oldCard->spectral == card.spectral
+                && (oldCard->waveform != nullptr) == (card.waveform != nullptr)
+                && oldCard->domain == card.domain
+                && oldCard->columns == card.columns && oldCard->rows == card.rows
+                && oldCard->midiNote == card.midiNote
+                && oldCard->displayGain == card.displayGain
+                && oldCard->sampleRate == card.sampleRate
+                && oldCard->maximumRows == card.maximumRows
                 && oldCard->surfaceRevision == card.surfaceRevision;
-        if (!sampleUnchanged) {
+        if (!contentUnchanged) {
             if (card.sample) {
                 view->setGrid(card.surfaceValues(), card.columns, card.rows,
                         card.domain, card.midiNote, card.displayGain, false, card.sampleRate,
                         *card.positions, card.maximumRows);
+            } else if (card.waveform != nullptr) {
+                view->setWaveform(card.waveform);
             } else {
                 view->setGrid(card.surfaceValues(), card.columns, card.rows,
                         card.domain, card.midiNote, card.displayGain);
@@ -705,6 +727,7 @@ juce::var ComparisonDock::exportAutomationState() const {
         item->setProperty("connected", card.connected);
         item->setProperty("spectral", card.spectral);
         item->setProperty("midiNote", card.midiNote);
+        item->setProperty("contentRevision", juce::String(card.surfaceRevision));
         item->setProperty("hasSurface", !card.surfaceValues().empty());
         if (index < surfaceViews.size() && surfaceViews[index] != nullptr) {
             item->setProperty("surfaceView",

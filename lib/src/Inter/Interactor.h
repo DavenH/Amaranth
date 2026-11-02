@@ -171,6 +171,7 @@ public:
     void mouseExit      (const MouseEvent& e) override;
     void mouseMove      (const MouseEvent& e) override;
     void mouseWheelMove (const MouseEvent& e, const MouseWheelDetails& wheel) override;
+    void setWheelZoomSensitivity(float sensitivity) { wheelZoomSensitivity = sensitivity; }
     void timerCallback  () override;
     virtual void commitPath         (const MouseEvent& e);
 
@@ -258,6 +259,7 @@ protected:
     bool wasPollingMouseOver;
 
     int updateSource;
+    float wheelZoomSensitivity { 1.f };
 
     Point<int> lastPolledMouse;
 

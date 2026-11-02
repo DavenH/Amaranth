@@ -193,6 +193,7 @@ public:
         object->setProperty("anchorDestNodeId", probe.anchorDestNodeId);
         object->setProperty("anchorDestPortId", probe.anchorDestPortId);
         object->setProperty("label", probe.label);
+        object->setProperty("view", idForPresetPreviewView(probe.view));
         object->setProperty("tapPosition", probe.tapPosition);
         object->setProperty("railOrder", probe.railOrder);
         object->setProperty("connected", probe.sourceNodeId.isNotEmpty());
@@ -218,6 +219,7 @@ public:
         object->setProperty("releaseDuration", preview.releaseDuration);
         object->setProperty("sampleCount", (int) preview.values.size());
         object->setProperty("absoluteSum", absoluteTotal);
+        object->setProperty("waveformSamples", preview.waveform != nullptr ? (int) preview.waveform->size() : 0);
         return object;
     }
 
@@ -767,6 +769,8 @@ var NodeCanvasAutomationInspector::exportState(const NodeCanvasAutomationPresent
     root->setProperty("guideAssignmentCount", (int) graph.getGuideAssignments().size());
     root->setProperty("probeDetailId", state.probeDetailId);
     root->setProperty("probeDetailOpen", state.probeDetailId.isNotEmpty());
+    root->setProperty("probeWaveform", state.probeWaveform);
+    root->setProperty("outputSpyView", idForPresetPreviewView(context.document.presentation().outputSpyView));
     root->setProperty("probeDetailResolution", (int) state.probeDetailResolution);
     root->setProperty("probeDetailColumns", (int) state.probeDetailColumns);
     root->setProperty("probeDetailRows", (int) state.probeDetailRows);
@@ -1129,6 +1133,9 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
                 target.id,
                 "expandedEditorControl",
                 target.bounds));
+    }
+    for (const auto& [id, bounds] : state.probeDetailTargets) {
+        targets.add(AutomationValueEncoder::pointerTargetToVar(id, "probeDetailControl", bounds));
     }
     if (state.probeDetailId.isNotEmpty()) {
         targets.add(AutomationValueEncoder::pointerTargetToVar(

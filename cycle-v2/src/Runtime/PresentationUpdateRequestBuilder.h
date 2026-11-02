@@ -21,7 +21,8 @@ public:
             uint64_t documentRevision,
             const GraphChangeSet& change,
             int previewMidiNote,
-            const std::array<int, 128>& previewControllerValues);
+            const std::array<int, 128>& previewControllerValues,
+            PresetPreviewView outputSpyView);
     static CausalUpdateRequest build(
             const NodeGraph& graph,
             const GraphExecutionPlan& plan,

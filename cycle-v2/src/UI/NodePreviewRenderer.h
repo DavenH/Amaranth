@@ -55,6 +55,7 @@ public:
 
 private:
     bool paintAuthoritativeModel(Graphics& graphics, const NodePreviewRenderRequest& request);
+    bool paintWaveform(Graphics& graphics, const NodePreviewRenderRequest& request);
     bool paintRuntimeResult(Graphics& graphics, const NodePreviewRenderRequest& request);
     bool paintRuntimeHeatmap(Graphics& graphics, const NodePreviewRenderRequest& request);
     void paintQualitative(Graphics& graphics, const NodePreviewRenderRequest& request);

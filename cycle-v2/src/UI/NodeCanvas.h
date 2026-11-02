@@ -19,6 +19,7 @@
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/PresentationRefreshPolicy.h"
 #include "UI/CanvasPerformanceMetrics.h"
+#include "UI/WaveformColourStyles.h"
 #include "UI/ExplanationEditor.h"
 #include "UI/NodeCanvasAutomationController.h"
 #include "UI/NodeCanvasAuthoring.h"
@@ -43,6 +44,7 @@
 namespace CycleV2 {
 
 enum class TransformMode;
+class SignalProbeDetailPanel;
 
 struct ComparisonSpyOption {
     String id;
@@ -87,6 +89,8 @@ public:
             String& errorMessage);
     bool isGraphDirty() const { return document.isDirty(); }
     const File& graphFile() const { return document.file(); }
+    WaveformColourStyles::Style waveformColourStyle() const;
+    void setWaveformColourStyle(WaveformColourStyles::Style style);
     ScalarSurfaceTimeStyle timeSurfaceStyle() const;
     void setTimeSurfaceStyle(ScalarSurfaceTimeStyle style);
     std::optional<ScalarSurfaceTimeStyle> bipolarSpectralSurfaceStyle() const;
@@ -173,6 +177,7 @@ public:
         return document.presentation().comparisonSpyPins;
     }
     bool pinComparisonSpy(const String& probeId);
+    bool setSpyView(const String& probeId, PresetPreviewView view);
     bool unpinComparisonSpy(const String& probeId);
     String createAndPinTrimeshOutputSpy(const String& nodeId);
     std::vector<std::optional<GraphPreviewResult::SignalProbePreview>>
@@ -311,6 +316,7 @@ private:
     std::vector<std::pair<String, Point<float>>> nodeDragSpyStarts;
     GuideCurveShelfState guideShelfState;
     SignalProbeDetailState probeDetailState;
+    std::unique_ptr<SignalProbeDetailPanel> probeDetailPanel;
     OutputMeterBallistics outputMeterBallistics;
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
     std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
@@ -325,7 +331,6 @@ private:
     std::function<void(float)> comparisonRenderCallback;
     std::function<void()> comparisonGlClosingCallback;
     juce::CriticalSection comparisonRenderLock;
-    bool comparisonRefreshPending {};
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
     void openGLContextClosing() override;
@@ -342,6 +347,7 @@ private:
     void requestHoverRepaint(HoverRepaint repaint);
     void updatePresetSidebarVisibility();
     void notifyOverlayOcclusionChanged();
+    void updateProbeDetailPanel();
     std::optional<NodeAudioResourceSummary> audioResourceSummary(
             const String& nodeId) const override;
     uint32_t availableRenderInvalidations() const override;
@@ -362,11 +368,6 @@ private:
         KeyScale,
         Controller
     };
-    GraphEditResult persistPreviewMorph(
-            int midiNote,
-            PreviewMorphEditScope scope,
-            int controller = 1,
-            int controllerValue = 0);
     GraphEditResult editPreviewMorph(
             int midiNote,
             PreviewMorphEditScope scope,
@@ -375,6 +376,7 @@ private:
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     void refreshAfterAutomationEdit();
     void refreshComparisonAfterCommit();
+    void refreshComparisonAfterLocalCommit(const String& nodeId);
     bool finishExplanationEdit(const GraphEditResult& result);
     void updateInformationCards() const;
     std::optional<GroupInformationCardPreview> informationCardPreview() const;
@@ -413,7 +415,6 @@ private:
     bool setNodeGroupCollapsed(const String& groupId, bool collapsed);
     bool ungroupNodes(const String& groupId);
     bool removeSpyCard(const String& probeId);
-    void toggleSpyDomain(const String& probeId);
     void openGuideEditor(const String& guideId);
     void closeGuideEditor();
     void rebindGuideEditor();

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "Graph/SharedAudioSamples.h"
+#include "Graph/PresetPresentation.h"
 
 namespace CycleV2 {
 
@@ -312,7 +313,7 @@ struct SignalProbe {
     float tapPosition { 0.5f };
     int railOrder {};
     std::optional<juce::Point<float>> canvasPosition;
-    bool frequencyView {};
+    PresetPreviewView view { PresetPreviewView::Time };
 };
 
 struct NodeNaturalSize {

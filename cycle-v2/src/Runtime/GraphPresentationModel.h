@@ -31,7 +31,8 @@ public:
     bool refreshPreviewMidiNote(
             const NodeGraph& graph,
             uint64_t documentRevision,
-            int midiNote);
+            int midiNote,
+            const std::vector<String>& changedMorphNodes = {});
     bool refreshPreviewModWheelValue(
             const NodeGraph& graph,
             uint64_t documentRevision,
@@ -131,13 +132,14 @@ public:
     void setProbeNoteOffTimes(const std::map<String, double>& times) {
         current.probeNoteOffTimes = times;
     }
+    void setOutputSpyView(PresetPreviewView view) { current.outputSpyView = view; }
     bool prepareProbeCaptureForNode(const NodeGraph& graph, const String& nodeId);
+    bool requiresPreview(const GraphChangeSet& change) const;
+    bool requiresCompilation(const GraphChangeSet& change) const;
 
 private:
     using AsyncRefresh = PresentationRefreshScheduler::AsyncRefresh;
 
-    bool requiresCompilation(const GraphChangeSet& change) const;
-    bool requiresPreview(const GraphChangeSet& change) const;
     bool canAcceptSnapshot(const GraphPresentationSnapshot& snapshot) const;
     bool acceptSnapshot(
             GraphPresentationSnapshot snapshot,
@@ -155,6 +157,7 @@ private:
             const NodeGraph& graph,
             GraphExecutionStep& step);
     void refreshPreviewMorphBindings();
+    void publishConfigurationChange();
     bool executeAsyncProducts(
             AsyncRefresh& refresh,
             const std::vector<PlannedNodeProduct>& products);

@@ -9,7 +9,8 @@ class PresetPreviewGenerator {
 public:
     static size_t sourceRowCountForView(
             size_t requestedRows,
-            PresetPreviewView view);
+            PresetPreviewView view,
+            int midiNote);
     static GraphPreviewResult::SignalProbePreview forView(
             const GraphPreviewResult::SignalProbePreview& timePreview,
             PresetPreviewView view);

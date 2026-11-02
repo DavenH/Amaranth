@@ -492,9 +492,8 @@ void Interactor::mouseWheelMove(const MouseEvent& e, const MouseWheelDetails& wh
         showConsoleMsg(String("Axe size: ") + String(realValue(PencilRadius), 1));
     } else {
         state.currentMouse = Vertex2(-1, 0);
-        const float ratio = wheel.isSmooth
-                ? std::pow(ZoomPanel::zoomRatio, 1.f / 3.f)
-                : ZoomPanel::zoomRatio;
+        const float ratio = std::pow(ZoomPanel::zoomRatio,
+                wheelZoomSensitivity * (wheel.isSmooth ? 1.f / 3.f : 1.f));
 
         if(yInc > 0) {
             panel->zoomPanel->zoomIn(e.mods.isCommandDown(), e.x, e.y, ratio);

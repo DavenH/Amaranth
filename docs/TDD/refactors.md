@@ -1,5 +1,33 @@
 # Refactor Notes
 
+## Cycle V2 Spy waveform reuse review
+
+Status: addressed 2026-11-02. The three findings from the Spy review now share
+existing runtime and waveform owners instead of adding parallel algorithms.
+
+- `SignalProbeWaveformCapture` retains at most sixteen immutable auditions per
+  prepared snapshot. Compact, detail and tray paths share matching source,
+  pitch, controller and release inputs. Compatible missing probes use one
+  executor audition with indexed observer routing. New preview/configuration
+  work and targeted local capture preparation replace the cache. The three
+  direct capture paths and separate per-probe batch auditions are deleted.
+- `ComparisonDock` extends its existing unchanged-reference decision to Spies,
+  including all surface inputs. Equal captures retain the view's source,
+  density and geometry; changed content and presentation still update.
+- `WaveformPreviewSource` in `ReferenceWaveformPreview` owns normalization,
+  crossing indexing and lazy density/colour preparation for compact and
+  interactive views. Each instance has one rendering owner/thread. Compact
+  sprites retain separate coverage and colour caches: resize rebuilds coverage,
+  palette changes recolour it. Duplicate compact source preparation is deleted.
+
+Proof: compatible multiple probes execute once; expanded and pinned requests
+reuse compact sample identities; separate auditions match samples exactly.
+Pitch/controller/release and configuration changes invalidate. Compact resize
+and palette changes preserve density/index preparation, and palette changes
+preserve coverage. The 27-command `cycle-v2-agent-spy-waveform-reuse.json` fixture
+keeps tray source/heat/geometry counts fixed over equal captures. Acceptance and
+size evidence are in `cycle-v2-spy-waveform.md`.
+
 ## Cycle V2 performance keyboard phrase transport
 
 Review date: 2026-10-01. `PerformanceKeyboard.cpp` is 804 lines after adding

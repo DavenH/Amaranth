@@ -1,6 +1,8 @@
 #include <algorithm>
 
 #include "UI/SignalProbePreviewTileCache.h"
+#include "UI/WaveformColourStyles.h"
+#include "Nodes/Trimesh/Rendering/TrimeshRenderProfile.h"
 
 namespace CycleV2 {
 
@@ -18,7 +20,10 @@ bool previewsEqual(
             && first.sourceRole == second.sourceRole
             && first.frequencySampling == second.frequencySampling
             && first.frequencyMidiNote == second.frequencyMidiNote
-            && first.connected == second.connected;
+            && first.connected == second.connected
+            && (first.waveform == second.waveform
+                    || (first.waveform != nullptr && second.waveform != nullptr
+                            && *first.waveform == *second.waveform));
 }
 
 bool semanticsEqual(NodeRenderSemantic first, NodeRenderSemantic second) {
@@ -39,7 +44,11 @@ bool SignalProbePreviewTileCache::Entry::matches(
         NodeRenderSemantic semantic,
         Rectangle<int> bounds,
         float scale) const {
-    return previewsEqual(previewSnapshot, preview)
+    return (preview.waveform == nullptr
+                    || waveformColourStyle == WaveformColourStyles::id(WaveformColourStyles::current()))
+            && (preview.waveform != nullptr || surfaceStyleSignature
+                    == TrimeshRenderProfile::fromSemantic(semantic).getSurfaceStyle().materialStyleSignature())
+            && previewsEqual(previewSnapshot, preview)
             && semanticsEqual(semanticSnapshot, semantic)
             && logicalBounds == bounds
             && physicalScale == scale
@@ -87,6 +96,8 @@ void SignalProbePreviewTileCache::replaceEntry(
     const int imageHeight = jmax(1, roundToInt(logicalBounds.getHeight() * physicalScale));
     entry.probeId = preview.probeId;
     entry.previewSnapshot = preview;
+    entry.waveformColourStyle = WaveformColourStyles::id(WaveformColourStyles::current());
+    entry.surfaceStyleSignature = TrimeshRenderProfile::fromSemantic(semantic).getSurfaceStyle().materialStyleSignature();
     entry.semanticSnapshot = semantic;
     entry.logicalBounds = logicalBounds;
     entry.physicalScale = physicalScale;

@@ -2,8 +2,13 @@
 #include <catch2/catch_approx.hpp>
 
 #include "UI/ReferenceWaveformPreview.h"
+#include "UI/ReferenceWaveformView.h"
+#include "UI/CanvasChromePalette.h"
 #include "UI/LibraryIconRenderer.h"
 #include <Algo/PeakCounter.h>
+#include <UI/Panels/ScalarSurfaceMaterial.h>
+#include <cmath>
+#include <numeric>
 
 using namespace CycleV2;
 
@@ -170,4 +175,285 @@ TEST_CASE("Every sidebar and library action has a parseable SVG icon",
     const auto stream = file.createOutputStream();
     REQUIRE(stream != nullptr);
     REQUIRE(juce::PNGImageFormat().writeImageToStream(sheet, *stream));
+}
+
+TEST_CASE("Waveform palettes retain their full range and recolour fixed source statistics",
+        "[cycle-v2][waveform][density][palette]") {
+    std::vector<float> samples(2049);
+    for (size_t index = 0; index < samples.size(); ++index) {
+        samples[index] = (index % 2 == 0 ? -1.f : 1.f) * (index < 1024 ? 1.f : 0.1f);
+    }
+    const auto density = signalWaveformHeatDensity(Buffer<float>(samples.data(), (int) samples.size()));
+    const auto original = density;
+    for (const auto& entry : WaveformColourStyles::entries) {
+        const auto gradient = WaveformColourStyles::gradient(entry.style);
+        REQUIRE(gradient.isValid());
+        int transitions {};
+        for (int index = 1; index < gradient.getWidth(); ++index) {
+            transitions += gradient.getPixelAt(index, 0) != gradient.getPixelAt(index - 1, 0) ? 1 : 0;
+        }
+        REQUIRE(transitions > 100);
+        const auto heat = signalWaveformHeatField(density, entry.style);
+        REQUIRE(heat.getWidth() == 768);
+        REQUIRE(heat.getHeight() == 384);
+        REQUIRE(density == original);
+    }
+    const auto magenta = WaveformColourStyles::gradient(WaveformColourStyles::Style::Magenta);
+    REQUIRE(magenta.getPixelAt(0, 0) == juce::Colours::black);
+    REQUIRE(magenta.getPixelAt(255, 0).getRed() > 240);
+}
+
+TEST_CASE("Waveform colour stays attached to the signal through resizing zoom and path rendering",
+        "[cycle-v2][waveform][density][palette]") {
+    std::vector<float> signal(32769);
+    for (size_t index = 0; index < signal.size(); ++index) {
+        signal[index] = (1.f - 0.7f * index / signal.size())
+                * std::sin((float) index * juce::MathConstants<float>::twoPi / 31.f);
+    }
+    const Buffer<float> mono(signal.data(), (int) signal.size());
+    const auto heat = signalWaveformHeatField(mono);
+    const auto compact = renderSignalWaveform(mono, 385, 193, ZoomRect(), heat, false);
+    const auto expanded = renderSignalWaveform(mono, 769, 385, ZoomRect(), heat, false);
+    const auto blueHeat = signalWaveformHeatField(signalWaveformHeatDensity(mono), WaveformColourStyles::Style::Blues);
+    const auto recoloured = recolourSignalWaveform(expanded, blueHeat, ZoomRect());
+    int changedColours {};
+    int changedCoverage {};
+    for (int y = 0; y < expanded.getHeight(); ++y) {
+        for (int x = 0; x < expanded.getWidth(); ++x) {
+            const auto before = expanded.getPixelAt(x, y);
+            const auto after = recoloured.getPixelAt(x, y);
+            changedColours += before != after ? 1 : 0;
+            changedCoverage += before.getAlpha() != after.getAlpha() ? 1 : 0;
+        }
+    }
+    REQUIRE(changedColours > 1000);
+    REQUIRE(changedCoverage == 0);
+    const auto coverage = referenceWaveformDensity(mono, 769, 385);
+    int lostCoverage {};
+    int filledBackground {};
+    for (int y = 0; y < 385; ++y) {
+        for (int x = 0; x < 769; ++x) {
+            const bool visited = coverage[(size_t) x * 385 + (size_t) y] > 0.f;
+            const auto pixel = expanded.getPixelAt(x, y);
+            lostCoverage += visited && pixel.getAlpha() == 0 ? 1 : 0;
+            filledBackground += !visited && pixel.getAlpha() > 0 ? 1 : 0;
+        }
+    }
+    REQUIRE(lostCoverage == 0);
+    REQUIRE(filledBackground == 0);
+
+    const auto visible = mono.section(8192, 16385);
+    const ZoomRect viewport(0.25f, 0.25f, 0.5f, 0.5f);
+    const auto zoomed = renderSignalWaveform(visible, 385, 193, viewport, heat, false);
+    const auto path = renderSignalWaveform(visible, 385, 193, viewport, heat, true);
+    int resizedMatches {};
+    int zoomedMatches {};
+    int pathMatches {};
+    int mismatches {};
+    for (int y = 0; y < 193; ++y) {
+        for (int x = 0; x < 385; ++x) {
+            const auto small = compact.getPixelAt(x, y);
+            const auto large = expanded.getPixelAt(2 * x, 2 * y);
+            if (small.getAlpha() > 0 && large.getAlpha() > 0) {
+                ++resizedMatches;
+                mismatches += small != large ? 1 : 0;
+            }
+            const auto original = expanded.getPixelAt(192 + x, 96 + y);
+            const auto zoom = zoomed.getPixelAt(x, y);
+            const auto line = path.getPixelAt(x, y);
+            if (original.getAlpha() > 0 && zoom.getAlpha() > 0) {
+                ++zoomedMatches;
+                mismatches += original != zoom ? 1 : 0;
+            }
+            if (zoom.getAlpha() > 0 && line.getAlpha() == 255) {
+                ++pathMatches;
+                mismatches += zoom != line ? 1 : 0;
+            }
+        }
+    }
+    REQUIRE(resizedMatches > 1000);
+    REQUIRE(zoomedMatches > 1000);
+    REQUIRE(pathMatches > 1000);
+    REQUIRE(mismatches == 0);
+}
+
+TEST_CASE("Program gradient strips match actual flat surface colours",
+        "[cycle-v2][surface][gradient]") {
+    constexpr int width = 129;
+    std::vector<float> values(width * 2);
+    for (int x = 0; x < width; ++x) {
+        values[(size_t) x * 2] = values[(size_t) x * 2 + 1] = (float) x / (width - 1);
+    }
+    for (const auto style : { ScalarSurfaceTimeStyle::IcyHot13,
+            ScalarSurfaceTimeStyle::IcyHotRaw, ScalarSurfaceTimeStyle::Bullion }) {
+        const auto material = ScalarSurfaceMaterial::forTimeStyle(style);
+        const auto gradient = ScalarSurfaceMaterialEvaluator::createGradientImage(material, width);
+        const auto surface = ScalarSurfaceMaterialEvaluator::createImage(values.data(), (int) values.size(), width, 2, material);
+        for (int x = 0; x < width; ++x) {
+            REQUIRE(gradient.getPixelAt(x, 0) == surface.getPixelAt(x, 0));
+        }
+    }
+}
+
+TEST_CASE("Waveform bitmap fallback preserves coverage and source anchored colours",
+        "[cycle-v2][waveform][palette][composition]") {
+    constexpr int width = 128;
+    constexpr int height = 64;
+    juce::Image heat(juce::Image::ARGB, width, height, true);
+    juce::Graphics heatGraphics(heat);
+    heatGraphics.fillAll(juce::Colours::red);
+    heatGraphics.setColour(juce::Colours::blue);
+    heatGraphics.fillRect(width / 2, 0, width / 2, height);
+    std::vector<float> samples(width * 8);
+    for (size_t index = 0; index < samples.size(); ++index) {
+        samples[index] = 0.7f * std::sin((float) index * 0.7f);
+    }
+    const auto coverage = signalWaveformCoverage(
+            Buffer<float>(samples.data(), (int) samples.size()), width, height, ZoomRect(), false);
+    const auto coloured = recolourSignalWaveform(coverage, heat, ZoomRect());
+    const auto render = [&](const ZoomRect& viewport) {
+        juce::Image image(juce::Image::ARGB, width, height, true);
+        juce::Graphics graphics(image);
+        paintWaveformImage(graphics, coloured, ZoomRect(), viewport, image.getBounds().toFloat());
+        return image;
+    };
+    const auto full = render(ZoomRect());
+    const auto zoomed = render(ZoomRect(0.5f, 0.f, 0.5f, 1.f));
+    int occupied {};
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            REQUIRE(full.getPixelAt(x, y).getAlpha() == coverage.getPixelAt(x, y).getAlpha());
+            if (full.getPixelAt(x, y).getAlpha() > 0 && x > 2 && x < width - 2) {
+                ++occupied;
+                if (x < width / 2 - 2) {
+                    REQUIRE(full.getPixelAt(x, y) == juce::Colours::red);
+                } else if (x > width / 2 + 2) {
+                    REQUIRE(full.getPixelAt(x, y) == juce::Colours::blue);
+                }
+            }
+            if (zoomed.getPixelAt(x, y).getAlpha() == 255 && x > 4 && x < width - 4) {
+                REQUIRE(zoomed.getPixelAt(x, y) == juce::Colours::blue);
+            }
+        }
+    }
+    REQUIRE(occupied > 1000);
+}
+
+TEST_CASE("Sparse waveform paths fill both polarities translucently and retain a thicker edge",
+        "[cycle-v2][waveform][path][fill]") {
+    for (const float amplitude : { -0.5f, 0.5f }) {
+        float samples[] { amplitude, amplitude, amplitude };
+        const Buffer<float> mono(samples, 3);
+        const auto stroke = referenceWaveformLine(mono, 129, 129);
+        const auto filled = referenceWaveformLine(mono, 129, 129, 0.f, 1.f, {}, { 3.f, 0.2f });
+        const int edge = amplitude > 0.f ? 32 : 96;
+        const int interior = amplitude > 0.f ? 48 : 80;
+        const int outside = amplitude > 0.f ? 20 : 110;
+        REQUIRE(stroke.getPixelAt(64, interior).getAlpha() == 0);
+        REQUIRE(filled.getPixelAt(64, interior).getAlpha() > 0);
+        REQUIRE(filled.getPixelAt(64, interior).getAlpha() < 80);
+        REQUIRE(filled.getPixelAt(64, edge).getAlpha() == 255);
+        REQUIRE(filled.getPixelAt(64, outside).getAlpha() == 0);
+        const int widenedEdge = amplitude > 0.f ? edge - 2 : edge + 1;
+        REQUIRE(stroke.getPixelAt(64, widenedEdge).getAlpha() == 0);
+        REQUIRE(filled.getPixelAt(64, widenedEdge).getAlpha() > 0);
+    }
+    float samples[] { -0.5f, -0.5f };
+    const auto cropped = referenceWaveformLine(Buffer<float>(samples, 2), 129, 129,
+            0.6f, 0.2f, {}, { 3.f, 0.2f });
+    REQUIRE(cropped.getPixelAt(64, 30).getAlpha() > 0);
+    REQUIRE(cropped.getPixelAt(64, 110).getAlpha() == 0);
+}
+
+TEST_CASE("Filled waveform detail requires resolved oscillations at the same logical zoom on Retina",
+        "[cycle-v2][waveform][resolution][fill]") {
+    std::vector<int> crossings(600);
+    std::iota(crossings.begin(), crossings.end(), 0);
+    REQUIRE(referenceWaveformResolution(crossings, 0, 512, 1024).useFill);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 513, 1024).useFill);
+    REQUIRE(referenceWaveformResolution(crossings, 0, 512, 2048, 2.f).useFill);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 513, 2048, 2.f).useFill);
+    REQUIRE(referenceWaveformResolution(crossings, 0, 600, 1024).useLine);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 600, 1024).useFill);
+}
+
+TEST_CASE("Filled waveform and its edge stay neutral across heat palettes",
+        "[cycle-v2][waveform][palette][composition][fill]") {
+    for (const float amplitude : { -0.5f, 0.5f }) {
+        float samples[] { amplitude, amplitude, amplitude };
+        const auto coverage = referenceWaveformLine(Buffer<float>(samples, 3), 129, 129,
+                0.f, 1.f, {}, { 3.f, 0.2f, true });
+        juce::Image heat(juce::Image::ARGB, 2, 2, true);
+        juce::Graphics graphics(heat);
+        graphics.fillAll(juce::Colours::red);
+        const auto red = recolourSignalWaveform(coverage, heat, ZoomRect(), true);
+        graphics.fillAll(juce::Colours::blue);
+        const auto blue = recolourSignalWaveform(coverage, heat, ZoomRect(), true);
+        const int edge = amplitude > 0.f ? 32 : 96;
+        const int interior = amplitude > 0.f ? 48 : 80;
+        REQUIRE(red.getPixelAt(64, edge) == CanvasChromePalette::text);
+        REQUIRE(blue.getPixelAt(64, edge) == CanvasChromePalette::text);
+        for (int x : { 16, 64, 112 }) {
+            const auto fill = red.getPixelAt(x, interior);
+            REQUIRE(fill == blue.getPixelAt(x, interior));
+            REQUIRE(fill.getAlpha() == 153);
+            const auto onBlack = juce::Colours::black.overlaidWith(fill);
+            const auto expected = juce::Colours::black.overlaidWith(CanvasChromePalette::text.withAlpha(0.2f));
+            REQUIRE(onBlack.getRed() == Catch::Approx(expected.getRed()).margin(3));
+            REQUIRE(onBlack.getGreen() == Catch::Approx(expected.getGreen()).margin(3));
+            REQUIRE(onBlack.getBlue() == Catch::Approx(expected.getBlue()).margin(3));
+            const auto grid = juce::Colour(0xff333333);
+            const auto onGrid = grid.overlaidWith(fill);
+            REQUIRE(onGrid.getRed() - onBlack.getRed() < grid.getRed() / 2);
+        }
+        const juce::Image::BitmapData mask(coverage, juce::Image::BitmapData::readOnly);
+        for (int y = 0; y < 129; ++y) {
+            const auto* row = reinterpret_cast<const juce::PixelARGB*>(mask.getLinePointer(y));
+            for (int x = 0; x < 129; ++x) {
+                const int alpha = juce::jmin(255, row[x].getAlpha()
+                        + WaveformColourStyles::fillGridBacking * (row[x].getAlpha() - row[x].getRed()));
+                REQUIRE(red.getPixelAt(x, y).getAlpha() == alpha);
+                REQUIRE(blue.getPixelAt(x, y).getAlpha() == alpha);
+            }
+        }
+    }
+}
+
+TEST_CASE("Waveform source replacement retains the last complete image and never reuses its geometry",
+        "[cycle-v2][waveform][refresh-continuity]") {
+    juce::ScopedJuceInitialiser_GUI gui;
+    ReferenceWaveformView view;
+    view.setBounds(0, 0, 128, 64);
+    view.addToDesktop(0);
+    view.setVisible(true);
+    const auto waitForImage = [&] {
+        for (int attempt = 0; attempt < 200 && !bool(view.diagnostics()["ready"]); ++attempt) {
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        }
+        REQUIRE(bool(view.diagnostics()["ready"]));
+    };
+    const auto paint = [&] {
+        juce::Image image(juce::Image::ARGB, 128, 64, true);
+        juce::Graphics graphics(image);
+        view.paint(graphics);
+        return image;
+    };
+    view.setSignal(std::make_shared<const std::vector<float>>(512, 0.5f));
+    waitForImage();
+    const auto positive = paint();
+    const int blankPaints = view.diagnostics()["blankPaints"];
+    view.setSignal(std::make_shared<const std::vector<float>>(512, -0.5f));
+    REQUIRE_FALSE(bool(view.diagnostics()["ready"]));
+    REQUIRE(bool(view.diagnostics()["hasImage"]));
+    const auto retained = paint();
+    REQUIRE(retained.getPixelAt(64, 16) == positive.getPixelAt(64, 16));
+    REQUIRE(retained.getPixelAt(64, 48) == positive.getPixelAt(64, 48));
+    REQUIRE(int(view.diagnostics()["blankPaints"]) == blankPaints);
+    waitForImage();
+    const auto negative = paint();
+    REQUIRE(positive.getPixelAt(64, 16) != negative.getPixelAt(64, 16));
+    REQUIRE(positive.getPixelAt(64, 48) != negative.getPixelAt(64, 48));
+    REQUIRE(int(view.diagnostics()["sourceBuilds"]) == 2);
+    view.setSignal(nullptr);
+    REQUIRE_FALSE(bool(view.diagnostics()["hasImage"]));
 }

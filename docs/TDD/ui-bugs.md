@@ -1,5 +1,46 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Selected-capture test assumes an older Baroque Flute probe source
+
+The broader 2026-11-01 Spy refresh check reaches
+TestDefaultOutputProbe.cpp:180, which expects `volumeMultiply`; the current
+Baroque Flute probe targets `globalInput`. Full and selected data equality and
+selected-node count pass before this hard-coded name assertion. This case uses
+the user's currently modified factory preset. GraphAudioExecutor and the selected
+capture/extraction path are unchanged by the refresh fixes. Evidence:
+`.context/spy-refresh-broad-initial-tests.log` (initial broad run).
+
+## Fixed: Root-note Spy refreshes flashed twice and pinned views stayed stale
+
+On 2026-11-01, old/stengah, expanded and pinned probe2 Waveform, root note59→49:
+`.context/spy-refresh-before.json` reports two expanded captures and two source
+builds, with a zero-width displayed image during replacement. The key-scale edit
+queued a delayed refresh after the synchronous note preview; that first preview
+also used the old mapped configurations. The tray capture count stayed1.
+One combined configuration/note refresh now produces one opened capture and
+one pinned refresh. The waveform retains its completed image through replacement
+and invalidates geometry by source identity. Committed sync/async publication
+refreshes pinned views, including node edits and undo/redo. Expanded spectrum
+capture sizes its time grid from the shared harmonic range and retains it until
+FFT, eliminating the unrepresented upper bands. Regression:
+`scripts/test_cycle_v2_spy_refresh.py`, `.context/spy-refresh-accepted.json`.
+
+The new waveform component unit test initially omitted ScopedJuceInitialiser_GUI,
+leaving Desktop/Timer assertions at process shutdown. The harness now owns GUI
+initialization explicitly; the accepted focused run exits cleanly.
+
+## Fixed: Expanded waveform plot swallowed release-line input
+
+On 2026-11-01, `cycle-v2-agent-spy-popup-controls.json` selected Waveform on
+the default output Spy, restored the full view and pressed the release line
+inside the plot. The routed target was `CycleV2TrimeshPanel3D` and
+`probeDetailReleaseDragging` stayed false. The comparison host declined mesh
+pointer-down but still intercepted it, preventing the canvas release handler.
+The Spy popup now disables interception on the host plot and its ZoomPanel
+container while preserving interactive scrollbars. Wheel/pinch continue through
+the existing canvas forwarding; comparison cards retain their own click handlers.
+The fixture verifies that release-line down/up starts and ends the Spy gesture.
+
 ## P2: Pinned comparison Spies remain stale after direct Guide edits
 
 Confirmed in a native Cycle V2 socket session on 2026-10-22: open the reed
@@ -1227,8 +1268,9 @@ Vertical wheel zoom requires Command. CycleV2AutomationInput::pointerModifiers
 reads a boolean `command` from the same payload whose `command` string selects
 the operation, so a request cannot supply both values. Evidence:
 `.context/reference-pitch-zoom-wheel-failure/commands.jsonl`. Native vertical
-thumb dragging passes. Current status: open automation encoding gap; no change
-to production zoom semantics or the pointer protocol in the reference UI work.
+thumb dragging passes. Resolved 2026-10-27: pointer modifiers accept the boolean `cmd` alias; the Spy
+waveform fixture verifies amplitude wheel zoom through this encoding. Production
+zoom semantics remain unchanged.
 
 ## P2: Reference rendering could overwrite pending scrollbar movement
 
@@ -1239,3 +1281,65 @@ Reference preparation now runs on loading/history restoration and interaction;
 the render hook consumes the already-prepared curve. The focused reference-views
 check covers two surface pans, two pitch thumb-drag updates and wheel zoom from
 either plot. Evidence: `.context/reference-views/result.json`. Status: resolved.
+
+
+## Spy waveform verification: existing fixture failures reproduced
+
+2026-10-27: the broader `[probe],[waveform],[canvas][performance][cache]` run
+reproduced the three failures already recorded under “Playback cursor
+verification: existing UI fixture failures”: unchanged comparison morph capture
+(`TestSignalProbe.cpp:403`), zero spectral Spy after scratch-cable deletion
+(`TestNodeCanvasAuthoring.cpp:422`), and canvas Spy editor centring
+(`TestNodeCanvasArchitecture.cpp:177`). Evidence:
+`.context/spy-waveform-focused-tests.log`. The new waveform and release/cache
+cases pass in `.context/spy-waveform-verified-tests.log`.
+
+
+## Output Spy view selection could retain the previous presentation
+
+2026-10-28: switching the default output Spy Spectrum → Cyclogram → Waveform
+could retain cyclogram pixels while the Waveform menu item was checked. The
+selected output view is presentation metadata, so these changes share a graph
+revision. Refresh deduplication omitted that view and skipped the new capture.
+Before-fix evidence: `.context/waveform-mode-reproduced-report.json` records
+`outputSpyView: waveform` with `waveformSamples: 0`. Resolved: the presentation
+request fingerprint includes the output view. The 85-command Spy waveform
+fixture verifies repeated changes and actual waveform presence/absence without
+a graph edit. Evidence: `.context/spy-waveform-contrast-ui-report.json`.
+
+
+## Surface appearance verification: inactive native popup menus
+
+2026-10-28: the first 26- and 56-command menu runs passed, but repeated isolated
+runs intermittently dismissed popups before keyboard selection. Coordinator
+launches deliberately set `activates = false`; JUCE closes background-app menus.
+The foreground helper could not raise/activate this session’s window (AX -25206
+and foreground-PID failure). Evidence: `.context/surface-appearance-native-ui.log`.
+No production focus or launcher workaround is retained. The canonical appearance
+fixture selects through the same dialog handler used by popup callbacks, and
+checks routed dismissal, saved state, screenshots and unchanged rendering work.
+Native menu focus verification remains session-dependent.
+
+
+## Spy waveform on Global Input falls through to cyclogram (resolved)
+
+2026-11-01: Baroque Flute's authored Spy taps Global Input. Repeated Time /
+Waveform / Spectrum switches retain zero raw waveform samples while Waveform is
+selected (`.context/waveform-authored-before.json`). Global Input exposes the
+mixed signal through prepared output views, which the waveform observer did not
+read. Capture now uses that buffer when newly produced outputs are absent; the
+continuous-capture test covers nonzero direct and global samples. The focused
+actual-app regression is `cycle-v2-agent-global-input-waveform.json`.
+
+## Spy reuse verification: existing broader-test failures
+
+2026-11-02: the broader Spy/presentation selection reproduces the previously
+recorded comparison morph-capture failure (`TestSignalProbe.cpp:405`), scratch
+spectral-cable deletion failure (`TestNodeCanvasAuthoring.cpp:422`) and Spy editor
+centring assertion (`TestNodeCanvasArchitecture.cpp:177`). Evidence:
+`.context/spy-reuse-broad-final.log` (111/114 cases pass). The initial fourth
+failure was an outdated 44 px detail
+plot offset, predating the 32 px mode-selector header; that assertion now checks
+76 px. The focused 58-case waveform/presentation selection passes. The same
+three incidental empty-Guide `SignalBuffer.h:123` assertions recur in the broader
+selection; their existing investigation remains in `audio-bugs.md`.

@@ -9,6 +9,10 @@
 
 namespace CycleV2 {
 
+bool GraphCommandDispatcher::setWaveformColourStyle(const juce::String& styleId) {
+    return setPresentationStyle(document.presetPresentation.waveformColourStyle, styleId);
+}
+
 bool GraphCommandDispatcher::setTimeSurfaceStyle(const juce::String& styleId) {
     return setPresentationStyle(document.presetPresentation.timeSurfaceStyle, styleId);
 }
@@ -170,11 +174,15 @@ bool GraphCommandDispatcher::setDefaultOutputSpyVisible(bool visible) {
 }
 
 bool GraphCommandDispatcher::setDefaultOutputSpyFrequencyView(bool frequencyView) {
+    return setDefaultOutputSpyView(frequencyView ? PresetPreviewView::Spectrum : PresetPreviewView::Time);
+}
+
+bool GraphCommandDispatcher::setDefaultOutputSpyView(PresetPreviewView view) {
     if (hasTransientEdit()
-            || document.presetPresentation.outputSpyFrequencyView == frequencyView) {
+            || document.presetPresentation.outputSpyView == view) {
         return false;
     }
-    document.presetPresentation.outputSpyFrequencyView = frequencyView;
+    document.presetPresentation.outputSpyView = view;
     ++document.presentationRevision;
     return true;
 }
@@ -229,12 +237,17 @@ bool GraphCommandDispatcher::unpinComparisonSpy(const juce::String& probeId) {
 
 GraphEditResult GraphCommandDispatcher::setSignalProbeFrequencyView(
         const juce::String& probeId, bool frequencyView) {
+    return setSignalProbeView(probeId, frequencyView ? PresetPreviewView::Spectrum : PresetPreviewView::Time);
+}
+
+GraphEditResult GraphCommandDispatcher::setSignalProbeView(
+        const juce::String& probeId, PresetPreviewView view) {
     return apply([&](auto& graph) {
         SignalProbe* probe = graph.findSignalProbeForEditing(probeId);
         if (probe == nullptr) {
             return GraphEditResult { GraphEditCode::MissingNode, probeId, {} };
         }
-        probe->frequencyView = frequencyView;
+        probe->view = view;
         graph.markChanged();
         GraphEditResult result { GraphEditCode::Connected, probeId, {} };
         result.changes.probesChanged = true;

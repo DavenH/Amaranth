@@ -50,6 +50,9 @@ ReferencePitchEditor::ReferencePitchEditor(ReferenceLibrary& libraryToUse) :
     }
     addAndMakeVisible(zoom);
     addChildComponent(waveform);
+    waveform.onBackground = [this](juce::Graphics& graphics) {
+        panel->hostedPanel().paintBackgroundGrid(graphics, 0.085f, 0.14f);
+    };
     waveform.onWheel = [this](const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
         if (auto* component = host->componentIfCreated()) {
             component->mouseWheelMove(event.getEventRelativeTo(component), wheel);

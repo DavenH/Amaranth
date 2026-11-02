@@ -80,7 +80,8 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Graph/NodeDefinition.h` — Node types, ports, defaults, constraints, and synthesis capability metadata.
 - `cycle-v2/src/Runtime/GraphRuntime.h` — Owns compiled runtime state and graph execution lifecycle.
 - `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime audio and cursor capture; GraphPreviewTiming measures tails for shared PreviewTraversal coordinates.
-- `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Runs scoped preview/analysis products without full audio work.
+- `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Scoped preview extraction, full-band spectrum sizing and view-specific row reduction.
+- `cycle-v2/src/Runtime/SignalProbeWaveformCapture.h` — Snapshot-scoped continuous Spy audition reuse and compatible multi-probe capture.
 - `cycle-v2/src/Runtime/NodeModuleRegistry.h` — Registration boundary for node model, DSP, preview, and view modules.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
@@ -97,10 +98,14 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodeCanvasScene.h` — Retained node scene and geometry used by hit-testing and rendering.
 - `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement; PanelPlaybackOverlay draws bounded audio cursor frames.
 - `cycle-v2/src/UI/NodeCanvasExplanations.cpp` — Preset/node/group explanations, shared editor and attached card orchestration.
-- `cycle-v2/src/UI/NodePreviewRenderer.h` — Node/Spy previews, shared heatmap bounds and Trimesh harmonic lanes.
-- `cycle-v2/src/UI/SignalProbeCanvas.h` — Spy views share persisted note-off timing; SignalProbeDetailView owns capture-free dragging.
+- `cycle-v2/src/UI/SurfaceAppearanceDialog.h`, `cycle-v2/src/UI/WaveformColourStyles.h`, `scripts/test_cycle_v2_surface_appearance.py` — Modal palette selectors, waveform gradient identity, and UI verification.
+- `cycle-v2/src/UI/NodePreviewRenderer.h`, `cycle-v2/src/UI/ComparisonSurfaceView.h`, `cycle-v2/src/UI/SignalProbeDetailPanel.h` — Preview rendering; shared surfaces and Spy mode/zoom controls.
+- `cycle-v2/src/UI/SignalProbeCanvas.h`, `scripts/test_cycle_v2_spy_refresh.py` — Spy views; refresh-count, tray update and retained-waveform regression checks.
 - `cycle-v2/src/UI/InlinePresetBrowser.h` — Shared tabs; ReferenceAssetBrowser owns audio assets, ReferenceTrayBar owns tray disclosure.
-- `cycle-v2/src/UI/LibraryThumbnailCache.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Async asset images; linked density/line views.
+- `cycle-v2/src/UI/LibraryThumbnailCache.h` — Async reference-asset thumbnails.
+- `cycle-v2/src/UI/ReferenceWaveformPreview.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Shared waveform analysis/cache and async indexed density/path views.
+- `scripts/fixtures/cycle-v2-agent-spy-waveform-reuse.json` — Checks unchanged tray analysis and presentation invalidation.
+- `cycle-v2/src/UI/WaveformHeatRenderer.h`, `scripts/fixtures/cycle-v2-agent-waveform-zoom-performance.json` — GPU waveform coverage/heat composition and zoom performance workload.
 - `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and suite export.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
 - `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.

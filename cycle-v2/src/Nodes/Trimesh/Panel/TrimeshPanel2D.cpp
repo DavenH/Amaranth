@@ -247,15 +247,11 @@ void TrimeshPanel2D::drawSpectralPartials() {
 void TrimeshPanel2D::drawWaveformBackground(bool fillBackground) {
     minorBrightness = 0.085f;
     majorBrightness = 0.14f;
-    Panel::drawBackground(fillBackground);
-
-    if (gfx == nullptr) {
-        return;
+    if (fillBackground && gfx != nullptr) {
+        gfx->setCurrentColour(0.f, 0.f, 0.f);
+        gfx->fillRect(0, 0, getWidth(), getHeight(), false);
     }
-
-    gfx->setCurrentColour(0.28f, 0.28f, 0.32f, 0.18f);
-    gfx->fillRect(0, 0, 1.f, 0.25f, true);
-    gfx->fillRect(0, 0.75f, 1.f, 1.f, true);
+    Panel::drawBackground(false);
 }
 
 void TrimeshPanel2D::drawSpectrumMagnitudeBackground(bool fillBackground) {

@@ -127,7 +127,7 @@ ModifierKeys pointerModifiers(const var& command, bool buttonDown) {
     if (boolProperty(command, "shift")) {
         modifiers = modifiers.withFlags(ModifierKeys::shiftModifier);
     }
-    if (boolProperty(command, "command")) {
+    if (boolProperty(command, "cmd") || boolProperty(command, "command")) {
         modifiers = modifiers.withFlags(ModifierKeys::commandModifier);
     }
     if (boolProperty(command, "ctrl")) {

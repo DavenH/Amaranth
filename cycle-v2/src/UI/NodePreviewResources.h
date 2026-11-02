@@ -15,12 +15,16 @@ namespace CycleV2 {
 class NodeEditorCommandService;
 class GraphPresentationModel;
 struct GraphChangeSet;
+struct WaveformPreviewSource;
 
 struct CachedNodePreviewSprite {
     Image image;
     String signature;
     Image runtimeHeatmap;
     String runtimeHeatmapSignature;
+    std::shared_ptr<const std::vector<float>> waveformIdentity;
+    std::shared_ptr<const WaveformPreviewSource> waveformSource;
+    Image waveformGeometry;
     PortDomain domain { PortDomain::ControlSignal };
     RenderScalePolicy scalePolicy { RenderScalePolicy::Bipolar };
     int width {};

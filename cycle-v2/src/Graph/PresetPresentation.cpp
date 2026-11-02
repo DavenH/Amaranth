@@ -189,6 +189,7 @@ PresetPresentationDecodeResult readPresentation(
     result.presentation.pack = object->getProperty("pack").toString();
     result.presentation.description = object->getProperty("description").toString();
     result.presentation.timeSurfaceStyle = object->getProperty("timeSurfaceStyle").toString();
+    result.presentation.waveformColourStyle = object->getProperty("waveformColourStyle").toString();
     result.presentation.bipolarSpectralSurfaceStyle =
             object->getProperty("bipolarSpectralSurfaceStyle").toString();
     result.presentation.patternId = object->getProperty("patternId").toString();
@@ -196,9 +197,11 @@ PresetPresentationDecodeResult readPresentation(
     if (object->hasProperty("outputSpyVisible")) {
         result.presentation.outputSpyVisible = (bool) object->getProperty("outputSpyVisible");
     }
-    if (object->hasProperty("outputSpyFrequencyView")) {
-        result.presentation.outputSpyFrequencyView =
-                (bool) object->getProperty("outputSpyFrequencyView");
+    if (const auto view = presetPreviewViewForId(object->getProperty("outputSpyView").toString())) {
+        result.presentation.outputSpyView = *view;
+    } else if (object->hasProperty("outputSpyFrequencyView")) {
+        result.presentation.outputSpyView = (bool) object->getProperty("outputSpyFrequencyView")
+                ? PresetPreviewView::Spectrum : PresetPreviewView::Time;
     }
     if (object->hasProperty("outputSpyX") && object->hasProperty("outputSpyY")) {
         const float x = (float) object->getProperty("outputSpyX");
@@ -261,6 +264,7 @@ bool PresetPresentation::empty() const {
             && pack.isEmpty()
             && description.isEmpty()
             && timeSurfaceStyle.isEmpty()
+            && waveformColourStyle.isEmpty()
             && bipolarSpectralSurfaceStyle.isEmpty()
             && tags.isEmpty()
             && !tagsSpecified
@@ -270,7 +274,7 @@ bool PresetPresentation::empty() const {
             && !sequence.has_value()
             && !outputSpyPosition.has_value()
             && outputSpyVisible
-            && outputSpyFrequencyView
+            && outputSpyView == PresetPreviewView::Spectrum
             && comparisonSpyPins.empty()
             && spyNoteOffTimes.empty();
 }
@@ -280,6 +284,9 @@ juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentat
     result->setProperty("version", kPresentationVersion);
     if (presentation.title.isNotEmpty()) {
         result->setProperty("title", presentation.title);
+    }
+    if (presentation.waveformColourStyle.isNotEmpty()) {
+        result->setProperty("waveformColourStyle", presentation.waveformColourStyle);
     }
     if (presentation.timeSurfaceStyle.isNotEmpty()) {
         result->setProperty("timeSurfaceStyle", presentation.timeSurfaceStyle);
@@ -331,8 +338,8 @@ juce::var PresetPresentationCodec::writeJSON(const PresetPresentation& presentat
     if (!presentation.outputSpyVisible) {
         result->setProperty("outputSpyVisible", false);
     }
-    if (!presentation.outputSpyFrequencyView) {
-        result->setProperty("outputSpyFrequencyView", false);
+    if (presentation.outputSpyView != PresetPreviewView::Spectrum) {
+        result->setProperty("outputSpyView", idForPresetPreviewView(presentation.outputSpyView));
     }
     if (!presentation.spyNoteOffTimes.empty()) {
         auto times = std::make_unique<juce::DynamicObject>();
@@ -371,10 +378,19 @@ std::optional<PresetMidiSequence> PresetPresentationCodec::readSequenceJSON(
 }
 
 juce::String idForPresetPreviewView(PresetPreviewView view) {
-    return view == PresetPreviewView::Time ? "time" : "spectrum";
+    switch (view) {
+        case PresetPreviewView::Time:     return "time";
+        case PresetPreviewView::Spectrum: return "spectrum";
+        case PresetPreviewView::Waveform: return "waveform";
+    }
+    jassertfalse;
+    return "time";
 }
 
 std::optional<PresetPreviewView> presetPreviewViewForId(const juce::String& id) {
+    if (id == "waveform") {
+        return PresetPreviewView::Waveform;
+    }
     if (id == "time") {
         return PresetPreviewView::Time;
     }
