@@ -51,12 +51,12 @@ def frame_states(schedule, fps):
         yield index, float(time_seconds), values.copy()
 
 
-def encode_mp4(output, fps, frame_count):
+def encode_mp4(output, fps, frame_count, bitrate_mbps=8):
     temporary = output / "sequence.partial.mp4"
     command = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-n",
                "-framerate", str(Fraction(str(fps))), "-start_number", "0",
                "-i", str(output / "frame-%06d.png"), "-frames:v", str(frame_count),
-               "-c:v", "libx264", "-crf", "18", "-preset", "medium",
+               "-c:v", "libx264", "-b:v", str(round(bitrate_mbps * 1_000_000)), "-preset", "slow",
                "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-pix_fmt", "yuv420p",
                "-movflags", "+faststart", str(temporary)]
     try:
@@ -80,6 +80,7 @@ def export_sequence(args, send):
     interrupted = False
     if args.mp4:
         manifest["mp4"] = {"path": "sequence.mp4", "status": "pending", "codec": "h264",
+                           "targetBitrateMbps": args.mp4_bitrate,
                            "width": args.width + args.width % 2,
                            "height": args.height + args.height % 2}
     try:
@@ -124,7 +125,7 @@ def export_sequence(args, send):
             manifest["mp4"]["status"] = "encoding"
             write_manifest(output, manifest)
             print("Encoding sequence.mp4 with ffmpeg", flush=True)
-            encode_mp4(output, args.fps, manifest["completedFrames"])
+            encode_mp4(output, args.fps, manifest["completedFrames"], args.mp4_bitrate)
             manifest["mp4"]["status"] = "complete"
         manifest["status"] = "complete"
     except (Exception, KeyboardInterrupt) as error:
@@ -153,12 +154,16 @@ def arguments(argv=None):
     parser.add_argument("--note", type=int, help="Fixed MIDI note (default: preset preview note)")
     parser.add_argument("--gradient", help="Built-in gradient ID or display name (default: preset style)")
     parser.add_argument("--mp4", action="store_true", help="Also encode sequence.mp4 with ffmpeg (H.264); keep PNGs")
+    parser.add_argument("--mp4-bitrate", type=float, default=8, metavar="MBPS",
+                        help="Target MP4 bitrate in megabits per second (default: 8)")
     parser.add_argument("--list-gradients", action="store_true", help="List built-in IDs, names and groups")
     parser.add_argument("--no-build", action="store_true", help="Use an already built app")
     parser.add_argument("--in-session", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if not math.isfinite(args.fps) or args.fps <= 0:
         parser.error("--fps must be finite and positive")
+    if not math.isfinite(args.mp4_bitrate) or args.mp4_bitrate <= 0:
+        parser.error("--mp4-bitrate must be finite and positive (megabits per second)")
     if (not 1 <= args.width <= 16384 or not 1 <= args.height <= 16384
             or args.width * args.height > 64 * 1024 * 1024):
         parser.error("Image dimensions must be in [1, 16384] and at most 64 megapixels")
@@ -198,7 +203,7 @@ def main(argv=None):
             if args.gradient is not None:
                 worker.extend(["--gradient", args.gradient])
             if args.mp4:
-                worker.append("--mp4")
+                worker.extend(["--mp4", "--mp4-bitrate", str(args.mp4_bitrate)])
         return subprocess.run(coordinator + ["--"] + worker, cwd=SCRIPT_DIR.parent,
                               check=False).returncode
     if not os.environ.get("CYCLE_AGENT_SESSION") or os.environ.get("CYCLE_AUTOMATION_SCOPED") != "1":

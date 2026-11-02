@@ -12,8 +12,9 @@ and preset time-surface style. Explicit named styles include Bullion.
 
 Python owns frame iteration, source snapshots, manifests and failure reporting.
 Optional `--mp4` runs installed ffmpeg after all PNGs finish, creating
-`sequence.mp4` (H.264/libx264, CRF 18, yuv420p, faststart) at the same exact
-rational frame rate. Pad odd dimensions on the right/bottom to even dimensions.
+`sequence.mp4` (H.264/libx264, target 8 Mb/s, slow preset, yuv420p, faststart)
+at the same exact rational frame rate and image resolution. `--mp4-bitrate`
+sets the target in megabits per second and is recorded in the manifest. Pad odd dimensions on the right/bottom to even dimensions.
 Keep all PNGs; publish the video from a temporary MP4 only after successful
 encoding. Manifest video status/dimensions distinguish encoding failures from a
 failed frame, and partial videos are removed on failure or interruption.
@@ -77,6 +78,13 @@ controller invalidation ownership. New export policy belongs to focused services
 - Real `--mp4` export: `.context/spy-export-mp4/sequence.mp4`, H.264/yuv420p,
   six frames at 6 fps, one second; 321x201 PNGs retained and padded to 322x202
   for video. Encoding status and dimensions are recorded in its manifest.
+- High-quality ten-second Honerism-3/Bullion loop:
+  `.context/honerism-bullion-10s-1080p/sequence.mp4`. ffprobe verifies exactly
+  300 frames at 30 fps, 10 seconds, 1920x1080 matching all PNGs, and 8.33 Mb/s
+  measured bitrate against the 8 Mb/s target (10.4 MB). The saved pattern eases
+  CC1 from 0 to 127 and back. Proof: `video-info.json` beside the movie.
+  Bitrate default/override forwarding, validation and manifest metadata pass
+  all 29 Python tests in `.context/spy-export-hq-all-tests.log`.
 - Two isolated honerism-3/Bullion sweeps at 6 fps, 640x400: all six corresponding
   PNGs are byte-identical and all six frames within each sweep differ. Source
   files retain their original hashes. Proof: `.context/spy-export-repeatability.json`;

@@ -41,7 +41,7 @@ class SpySequenceExportTest(unittest.TestCase):
         preset.write_text("{}")
         pattern.write_text(json.dumps({"version": 1, "sequence": {"durationSeconds": 1}}))
         args = argparse.Namespace(output_dir=root / "frames", preset=preset, pattern=pattern,
-                                  spy="probe1", fps=4, width=160, height=96, note=48, gradient="Bullion", mp4=mp4)
+                                  spy="probe1", fps=4, width=160, height=96, note=48, gradient="Bullion", mp4=mp4, mp4_bitrate=8)
         commands = []
 
         def send(command):
@@ -92,7 +92,8 @@ class SpySequenceExportTest(unittest.TestCase):
 
     def test_listing_needs_no_export_arguments_and_cli_rejects_invalid_settings(self):
         self.assertTrue(arguments(["--list-gradients"]).list_gradients)
-        for settings in [["--fps", "nan"], ["--fps", "0"], ["--width", "0"], ["--note", "128"]]:
+        for settings in [["--fps", "nan"], ["--fps", "0"], ["--width", "0"], ["--note", "128"],
+                         ["--mp4-bitrate", "nan"], ["--mp4-bitrate", "0"]]:
             with self.subTest(settings=settings), self.assertRaises(SystemExit):
                 arguments(["--list-gradients", *settings])
 
@@ -110,13 +111,14 @@ class SpySequenceExportTest(unittest.TestCase):
             with self.subTest(error=error), tempfile.TemporaryDirectory() as directory:
                 with patch("export_cycle_v2_spy_sequence.encode_mp4", side_effect=error) as encode:
                     result, manifest, _ = self.run_export(Path(directory), mp4=True)
-                encode.assert_called_once_with(Path(directory) / "frames", 4, 4)
+                encode.assert_called_once_with(Path(directory) / "frames", 4, 4, 8)
                 self.assertEqual(manifest["completedFrames"], 4)
                 self.assertEqual(len(manifest["frames"]), 4)
                 self.assertEqual(manifest["mp4"]["status"], manifest["status"])
                 if error is None:
                     self.assertEqual(result, 0)
                     self.assertEqual(manifest["mp4"]["path"], "sequence.mp4")
+                    self.assertEqual(manifest["mp4"]["targetBitrateMbps"], 8)
                 else:
                     self.assertNotEqual(result, 0)
                     self.assertIsNone(manifest["failedFrame"])
@@ -130,9 +132,10 @@ class SpySequenceExportTest(unittest.TestCase):
             with patch("export_cycle_v2_spy_sequence.subprocess.run") as run:
                 run.return_value.returncode = 0
                 main(["--preset", str(preset), "--pattern", str(pattern), "--output-dir", str(root / "frames"),
-                      "--mp4", "--gradient", "Bullion"])
+                      "--mp4", "--mp4-bitrate", "12", "--gradient", "Bullion"])
             worker = run.call_args.args[0]
             self.assertIn("--mp4", worker[worker.index("--"):])
+            self.assertEqual(worker[worker.index("--mp4-bitrate") + 1], "12.0")
             self.assertEqual(worker[worker.index("--gradient") + 1], "Bullion")
 
     def test_failed_encoder_cleans_partial_video(self):
@@ -140,6 +143,8 @@ class SpySequenceExportTest(unittest.TestCase):
             root = Path(directory)
 
             def fail(command, **_):
+                self.assertEqual(command[command.index("-b:v") + 1], "8000000")
+                self.assertNotIn("-crf", command)
                 Path(command[-1]).write_bytes(b"partial")
                 raise subprocess.CalledProcessError(1, command, stderr="encoder unavailable")
 

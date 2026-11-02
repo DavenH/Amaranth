@@ -117,8 +117,9 @@ than playback without dropping frames. Patterns must contain controller
 automation and fit the existing schedule export capacity.
 
 Add `--mp4` to encode the completed frames into `sequence.mp4` with ffmpeg
-(assumed installed). It uses H.264, CRF 18, yuv420p, and the export frame rate;
-the PNGs remain available. Odd dimensions get one black padding pixel on the
+(assumed installed). It uses H.264 at a target 8 Mb/s, the slow encoding preset,
+yuv420p, and the export frame rate and resolution; the PNGs remain available.
+Use `--mp4-bitrate 12` to choose another target in megabits per second. Odd dimensions get one black padding pixel on the
 right/bottom as needed for H.264. Video publication is atomic; encoding failures
 or interruptions preserve the PNG sequence and are recorded in the manifest.
 
