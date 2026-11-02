@@ -17,6 +17,10 @@ The emphasis is semantic, not syntactic. Prefer summaries of the form:
 - `User Preference`: what the user chose or clarified
 - `Guideline`: how a future agent should act in similar cases
 
+Record what the conversation teaches about collaborating with the user.
+Feature requirements, product decisions, implementation notes, and verification
+history belong in the relevant TDD or ADR, even when the user decided them in chat.
+
 ## When To Update
 
 Update this folder:
@@ -27,6 +31,9 @@ Update this folder:
 
 Do not update it for trivial confirmations or one-off ephemeral choices unless
 they reveal a broader pattern.
+Compaction is a reminder to capture any such guidance, not a reason to turn task
+history into a playbook entry. Keep task-resumption state in `.context/` or the
+active TDD.
 
 Canonical user trigger:
 
@@ -66,6 +73,7 @@ Each session file should include:
 
 - raw transcripts
 - low-value chronology
+- feature changelogs or lists of feature-specific decisions
 - private chain-of-thought style notes
 - speculative personality claims unsupported by repeated behavior
 
