@@ -87,6 +87,41 @@ previous resource, size and model. The response includes source rate, retained
 sample count, IR length, actual processing parameters and committed revisions.
 Source samples retain their original rate without output-rate resampling.
 
+## Export Spy PNG sequences
+
+Export a Cyclogram plot while a preview pattern's controller automation advances:
+
+```bash
+python3 scripts/export_cycle_v2_spy_sequence.py \
+    --preset cycle-v2/content/presets/honerism-3.cyclegraph \
+    --pattern cycle-v2/content/patterns/factory-basic-keys.cyclepattern \
+    --gradient bullion --fps 30 --width 1280 --height 720 \
+    --output-dir .context/spy-sequence
+
+python3 scripts/export_cycle_v2_spy_sequence.py --list-gradients
+```
+
+The script builds and launches an isolated app instance, then closes it. Pass
+`--no-build` after building the exact CycleV2 target. Choose an authored Spy with
+`--spy <id>`; the default is `default-output`. `--note <0..127>` overrides the
+fixed preset preview note. Gradient IDs and display names are case-insensitive;
+omitting `--gradient` uses the preset's saved time-surface style. All catalog
+entries, including experimental and legacy materials, retain their existing
+filtering and shading. No saved preset or gradient setting changes.
+
+Frames show the full expanded preview at each controller state, using the
+player's existing 5 ms controller schedule. Pattern notes do not advance voices.
+There are `ceil(durationSeconds * fps)` opaque, plot-only PNGs at `index / fps`,
+starting at zero and excluding the duration endpoint. Rendering may take longer
+than playback without dropping frames. Patterns must contain controller
+automation and fit the existing schedule export capacity.
+
+The output directory must be new. It contains `frame-000000.png` onward,
+source snapshots and hashes, a `manifest.json` with resolved settings and frame
+records, and a flushed `frames.jsonl` journal. Failures and interruptions retain
+finished PNGs and identify the failed frame in the manifest. The journal also
+preserves completed records if the process is forcibly terminated.
+
 ## Synthesis Capability Discovery
 
 `inspectSynthesisCapabilities` returns the registered node types, declared ports,

@@ -14,6 +14,7 @@
 #include "App/Automation/CycleV2AutomationWorkspaceCommands.h"
 #include "App/Automation/OfflineAudioCaptureAutomation.h"
 #include "App/Automation/PatternScheduleAutomation.h"
+#include "App/Automation/SpyFrameAutomation.h"
 #include "Graph/NodeDefinition.h"
 #include "UI/NodePalette.h"
 #include "UI/NodeWorkspace.h"
@@ -337,6 +338,22 @@ var CycleV2Automation::runCommand(const var& commandValue) {
             return captureAudio(commandValue);
         case Command::ExportPatternSchedule:
             return exportPatternSchedule(commandValue);
+        case Command::ListSpyGradients:
+            return SpyFrameAutomation::gradients();
+        case Command::RenderSpyFrame: {
+            String error;
+            const auto request = SpyFrameAutomation::readRequest(commandValue, error);
+            const File path = resolveCommandPath(stringProperty(commandValue, "path"));
+            if (!request.has_value()) {
+                return failedResult(command, error);
+            }
+            if (path == File() || path.exists()) {
+                return failedResult(command, "Expected a new PNG path");
+            }
+            const auto frame = workspace.getCanvas().renderSpyFrame(*request, error);
+            return error.isNotEmpty() ? failedResult(command, error)
+                    : SpyFrameAutomation::writeFrame(frame, path);
+        }
         case Command::SetPresetSequence:
             return workspaceCommands->setPresetSequence(commandValue);
         case Command::CaptureLiveAudio:

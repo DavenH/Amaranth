@@ -1,5 +1,6 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "NodeGraphTestAccess.h"
 #include "EnvelopeAuthoringTestSupport.h"
@@ -21,6 +22,9 @@
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/RealtimeGraphRenderer.h"
 #include "UI/PerformanceKeyboard.h"
+#include "UI/SpyFrameRenderer.h"
+#include "UI/SignalProbeDetailView.h"
+#include "App/Automation/SpyFrameAutomation.h"
 
 using namespace CycleV2;
 
@@ -324,4 +328,217 @@ TEST_CASE("A live controller updates held audio without adding a voice",
     renderer.process(queue, channels, 2, 64, 48000., 1.0 + 64. / 48000.);
     REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
     REQUIRE(output.getSample(0, 63) > before + .01f);
+}
+
+TEST_CASE("Controller batches refresh shared roots once without unrelated graph work",
+        "[cycle-v2][spy-export][preview-controller][complexity]") {
+    ScopedJuceInitialiser_GUI juce;
+    for (const int unrelated : { 1, 80 }) {
+        auto graph = controllerGraph(unrelated);
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::ModulationSource, "second", {}));
+        GraphNodeStateEditor state;
+        REQUIRE(state.setNodeParameter(graph, "second", "source", "Source", "midiCC").succeeded());
+        REQUIRE(state.setNodeParameter(graph, "second", "controller", "Controller", "74").succeeded());
+        graph.addEdge({ "second", "value", "mesh", "yellow", PortDomain::ControlSignal, ConnectionKind::Signal });
+        GraphDocument document(std::move(graph));
+        GraphPresentationModel presentation;
+        REQUIRE(presentation.refresh(document.graph(), document.revision()));
+        const auto revision = document.revision();
+        const auto audioRevision = presentation.audioPlanRevision();
+        const auto compilations = presentation.compilationCount();
+        const auto renders = presentation.previewRenderCount();
+        const auto unrelatedProcesses = presentation.previewAudioProcessCount("unrelated0");
+        auto values = presentation.previewControllerValues();
+        values[73] = 32;
+        values[74] = 96;
+        values[125] = 80;
+        InteractionComplexityDiagnostics::reset();
+        REQUIRE(presentation.refreshPreviewControllerValues(document.graph(), revision, values));
+        const auto counts = InteractionComplexityDiagnostics::counts();
+        CHECK(counts.graphCopies == 0);
+        CHECK(counts.meshCopies == 0);
+        CHECK(counts.modelSerializations == 0);
+        CHECK(presentation.previewRenderCount() == renders + 1);
+        CHECK(presentation.previewAudioProcessCount("unrelated0") == unrelatedProcesses);
+        CHECK(presentation.audioPlanRevision() == audioRevision);
+        CHECK(presentation.compilationCount() == compilations);
+        CHECK(document.revision() == revision);
+        REQUIRE(presentation.refreshPreviewControllerValues(document.graph(), revision, values));
+        CHECK(presentation.previewRenderCount() == renders + 1);
+        values[73] = 128;
+        CHECK_FALSE(presentation.refreshPreviewControllerValues(document.graph(), revision, values));
+        CHECK(presentation.previewControllerValue(73) == 32);
+    }
+}
+
+namespace {
+
+bool equalPixels(const Image& first, const Image& second) {
+    if (first.getBounds() != second.getBounds()) {
+        return false;
+    }
+    for (int y = 0; y < first.getHeight(); ++y) {
+        for (int x = 0; x < first.getWidth(); ++x) {
+            if (first.getPixelAt(x, y) != second.getPixelAt(x, y)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+var spyRequest(const String& gradient) {
+    auto object = std::make_unique<DynamicObject>();
+    Array<var> values;
+    values.insertMultiple(0, var(0), 128);
+    object->setProperty("controllers", values);
+    object->setProperty("gradient", gradient);
+    return var(object.release());
+}
+
+}
+
+TEST_CASE("Spy export uses expanded capture and built-in materials without document changes",
+        "[cycle-v2][spy-export][surface-program]") {
+    ScopedJuceInitialiser_GUI juce;
+    NodeGraph graph = controllerGraph(0);
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.setNodeParameter("mesh", "yellow", "Yellow", "0.2").changed);
+    REQUIRE(document.undo());
+    REQUIRE(document.canRedo());
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    PresetPresentation metadata;
+    metadata.timeSurfaceStyle = "bullion";
+    const String authored = document.graph().getSignalProbes().front().id;
+    presentation.setProbeNoteOffTimes({ { authored, 0.4 }, { "default-output", 0.4 } });
+    const auto before = GraphSerializer().toJsonString(document.graph());
+    const auto audioRevision = presentation.audioPlanRevision();
+    const auto compilations = presentation.compilationCount();
+    const auto globalStyle = ScalarSurfaceMaterial::timeSurfaceStyle();
+    String error;
+    SpyFrameRequest request;
+    request.width = 160;
+    request.height = 96;
+    request.controllers[73] = 32;
+
+    InteractionComplexityDiagnostics::reset();
+    for (const auto& id : { String("default-output"), authored }) {
+        request.probeId = id;
+        const auto inherited = SpyFrameRenderer::render(document.graph(), presentation, metadata, request, error);
+        REQUIRE(error.isEmpty());
+        REQUIRE(inherited.image.isValid());
+        CHECK(inherited.image.getPixelAt(0, 0).isOpaque());
+        CHECK(inherited.image.getWidth() == request.width);
+        CHECK(inherited.image.getHeight() == request.height);
+        CHECK(inherited.gradient == ScalarSurfaceTimeStyle::Bullion);
+        CHECK(inherited.noteOffTime == Catch::Approx(0.4));
+        for (const auto style : { ScalarSurfaceTimeStyle::Bullion,
+                    ScalarSurfaceTimeStyle::Greyscale, ScalarSurfaceTimeStyle::BlueDepth }) {
+            request.gradient = style;
+            const auto actual = SpyFrameRenderer::render(document.graph(), presentation, metadata, request, error);
+            REQUIRE(error.isEmpty());
+            SignalProbeDetailState detail;
+            REQUIRE(detail.capture(document.graph(), presentation, id, PresetPreviewView::Time, 0.4, 0));
+            const auto profile = TrimeshRenderProfile::fromSemantic({ detail.domain, detail.scalePolicy,
+                    RenderSemanticRole::Generic }).withTimeStyle(style);
+            const auto heat = NodePreviewRenderer::createRuntimeHeatmapImage(detail.renderResult, profile);
+            Image expected(Image::RGB, request.width, request.height, true);
+            Graphics graphics(expected);
+            graphics.setImageResamplingQuality(Graphics::highResamplingQuality);
+            graphics.drawImage(heat, expected.getBounds().toFloat());
+            CHECK(equalPixels(actual.image, expected));
+            CHECK(actual.contentRevision == inherited.contentRevision);
+            CHECK(profile.getSurfaceStyle().materialStyleSignature() == (int) style);
+            if (style == ScalarSurfaceTimeStyle::Bullion) {
+                CHECK(equalPixels(actual.image, inherited.image));
+            } else {
+                CHECK_FALSE(equalPixels(actual.image, inherited.image));
+            }
+            const auto repeated = SpyFrameRenderer::render(document.graph(), presentation, metadata, request, error);
+            CHECK(equalPixels(actual.image, repeated.image));
+        }
+        request.gradient.reset();
+    }
+    metadata.timeSurfaceStyle.clear();
+    const auto fallback = SpyFrameRenderer::render(document.graph(), presentation, metadata, request, error);
+    CHECK(fallback.gradient == TimeSurfaceStyles::defaultStyle);
+    request.midiNote = 72;
+    const auto selectedNote = SpyFrameRenderer::render(document.graph(), presentation, metadata, request, error);
+    REQUIRE(error.isEmpty());
+    CHECK(selectedNote.midiNote == 72);
+    const auto copies = InteractionComplexityDiagnostics::counts();
+    CHECK(copies.graphCopies == 0);
+    CHECK(copies.meshCopies == 0);
+    CHECK(copies.modelSerializations == 0);
+    CHECK(ScalarSurfaceMaterial::timeSurfaceStyle() == globalStyle);
+    CHECK(GraphSerializer().toJsonString(document.graph()) == before);
+    CHECK_FALSE(document.canUndo());
+    CHECK(document.canRedo());
+    CHECK(presentation.audioPlanRevision() == audioRevision);
+    CHECK(presentation.compilationCount() == compilations);
+}
+
+TEST_CASE("Spy frame protocol lists gradients and rejects malformed requests and invalid targets",
+        "[cycle-v2][spy-export][automation]") {
+    ScopedJuceInitialiser_GUI juce;
+    String error;
+    const auto listed = SpyFrameAutomation::gradients();
+    const auto entries = listed["data"];
+    REQUIRE(entries.isArray());
+    CHECK(entries.getArray()->size() == (int) TimeSurfaceStyles::entries.size());
+    for (const auto& entry : TimeSurfaceStyles::entries) {
+        for (const auto& name : { String(entry.id).toUpperCase(), String(entry.label).toUpperCase() }) {
+            const auto decoded = SpyFrameAutomation::readRequest(spyRequest(name), error);
+            REQUIRE(decoded.has_value());
+            CHECK(decoded->gradient == entry.style);
+        }
+    }
+    CHECK_FALSE(SpyFrameAutomation::readRequest(spyRequest("missing"), error).has_value());
+    CHECK(error.contains("bullion"));
+    auto invalid = spyRequest("bullion");
+    invalid.getDynamicObject()->setProperty("midiNote", 128);
+    CHECK_FALSE(SpyFrameAutomation::readRequest(invalid, error).has_value());
+    invalid.getDynamicObject()->removeProperty("midiNote");
+    invalid.getDynamicObject()->setProperty("width", 0);
+    CHECK_FALSE(SpyFrameAutomation::readRequest(invalid, error).has_value());
+    invalid.getDynamicObject()->removeProperty("width");
+    invalid.getDynamicObject()->setProperty("controllers", Array<var> { 0 });
+    CHECK_FALSE(SpyFrameAutomation::readRequest(invalid, error).has_value());
+
+    auto graph = controllerGraph(0);
+    graph.removeEdgeAt(1);
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Fft, "fft", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Ifft, "ifft", {}));
+    graph.addEdge({ "mesh", "out", "fft", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "fft", "mag", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
+    graph.addEdge({ "fft", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal });
+    graph.addEdge({ "ifft", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 2, 0.5f).succeeded());
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(graph, 1));
+    SpyFrameRequest request;
+    request.probeId = "missing";
+    CHECK_FALSE(SpyFrameRenderer::render(graph, presentation, {}, request, error).image.isValid());
+    request.probeId = graph.getSignalProbes().front().id;
+    CHECK_FALSE(SpyFrameRenderer::render(graph, presentation, {}, request, error).image.isValid());
+    CHECK(error.contains("time-signal"));
+    request.probeId = "default-output";
+    request.gradient = ScalarSurfaceTimeStyle::Bullion;
+    request.width = 80;
+    request.height = 48;
+    const auto frame = SpyFrameRenderer::render(graph, presentation, {}, request, error);
+    REQUIRE(frame.image.isValid());
+    TemporaryFile target(".png");
+    REQUIRE((bool) SpyFrameAutomation::writeFrame(frame, target.getFile())["ok"]);
+    CHECK(equalPixels(frame.image, ImageFileFormat::loadFrom(target.getFile())));
+    CHECK_FALSE((bool) SpyFrameAutomation::writeFrame(frame, target.getFile())["ok"]);
+    const File blocked = target.getFile().getChildFile("frame.png");
+    CHECK_FALSE((bool) SpyFrameAutomation::writeFrame(frame, blocked)["ok"]);
+    request.probeId = graph.getSignalProbes().front().id;
+    graph.removeNode("fft");
+    REQUIRE(presentation.refresh(graph, graph.getRevision()));
+    CHECK_FALSE(SpyFrameRenderer::render(graph, presentation, {}, request, error).image.isValid());
 }

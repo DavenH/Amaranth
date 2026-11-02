@@ -8,6 +8,8 @@
 
 namespace CycleV2 {
 
+class GraphPresentationModel;
+
 struct SignalProbeDetailState {
     String probeId;
     NodePreviewResult renderResult;
@@ -31,6 +33,13 @@ struct SignalProbeDetailState {
     void dragRelease(Point<float> position);
     bool endReleaseDrag(Point<float> position);
     bool cancelReleaseDrag();
+    bool capture(
+            const NodeGraph& graph,
+            GraphPresentationModel& presentation,
+            const String& id,
+            PresetPreviewView view,
+            double noteOff,
+            int probeOrdinal);
     void open(
             GraphPreviewResult::SignalProbePreview previewToUse,
             RenderScalePolicy scalePolicyToUse,

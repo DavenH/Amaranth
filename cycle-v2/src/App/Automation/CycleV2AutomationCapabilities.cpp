@@ -114,6 +114,14 @@ var CycleV2Automation::inspectSynthesisCapabilities(const var& command) const {
     controllerFields.setProperty("ephemeral", true);
     controllerFields.setProperty("rawMidi", "sendMidi type=controller, channel=1..16, controller/value=0..127; does not synchronize previews");
     objectFor(capabilities)->setProperty("previewControllers", controllers);
+    var spyExport = makeObject();
+    objectFor(spyExport)->setProperty("renderCommand", "renderSpyFrame");
+    objectFor(spyExport)->setProperty("gradientCommand", "listSpyGradients");
+    objectFor(spyExport)->setProperty("view", "time");
+    objectFor(spyExport)->setProperty("controllers", "128 integers in [0,127]; one synchronous batch");
+    objectFor(spyExport)->setProperty("gradient", "Optional catalog ID or case-insensitive label; defaults to preset style");
+    objectFor(spyExport)->setProperty("ephemeral", true);
+    objectFor(capabilities)->setProperty("spyFrameExport", spyExport);
     var explanations = makeObject();
     objectFor(explanations)->setProperty("scopes", var(StringArray { "preset", "node", "group" }));
     objectFor(explanations)->setProperty("readCommand", automationCommandName(CycleV2AutomationCommand::InspectExplanation));

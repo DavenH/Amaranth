@@ -6,6 +6,10 @@
 #include <UI/Panels/ZoomPanel.h>
 
 #include "Runtime/PreviewTraversal.h"
+#include "Runtime/GraphPresentationModel.h"
+#include "Runtime/GraphPresentationFacts.h"
+#include "UI/PresetPreviewGenerator.h"
+#include "Graph/DefaultOutputProbeResolver.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UiIconData.h"
@@ -115,6 +119,38 @@ bool SignalProbeDetailState::cancelReleaseDrag() {
     const bool wasDragging = releaseDragging;
     releaseDragging = false;
     return wasDragging;
+}
+
+bool SignalProbeDetailState::capture(
+        const NodeGraph& graph,
+        GraphPresentationModel& presentation,
+        const String& id,
+        PresetPreviewView view,
+        double noteOff,
+        int probeOrdinal) {
+    const int note = presentation.previewMidiNote();
+    const size_t rows = PresetPreviewGenerator::sourceRowCountForView(
+            GraphPreviewExecutor::sourceFrameCountForMidiNote(note), view, note);
+    auto preview = presentation.captureProbePreview(graph, id, rows, note, noteOff, view);
+    if (!preview.has_value()) {
+        return false;
+    }
+    if (preview->noteOffTime != presentation.probeNoteOffTime(id)) {
+        presentation.commitProbePreview(*preview);
+    }
+    const bool output = id == DefaultOutputProbeResolver::probeId;
+    if (output || preview->domain == PortDomain::TimeSignal && view == PresetPreviewView::Spectrum) {
+        *preview = PresetPreviewGenerator::forView(*preview, view);
+    }
+
+    NodeRenderSemantic semantic;
+    if (const auto* probe = graph.findSignalProbe(id)) {
+        semantic = presentation.snapshot().facts->renderSemanticForNodeOutput(
+                graph, probe->sourceNodeId, probe->sourcePortId);
+    }
+    semantic = GraphRenderSemanticResolver::semanticForDisplay(semantic, preview->domain, output);
+    open(std::move(*preview), semantic.scalePolicy, probeOrdinal, note, rows);
+    return true;
 }
 
 void SignalProbeDetailState::open(

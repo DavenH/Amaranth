@@ -45,6 +45,8 @@ namespace CycleV2 {
 
 enum class TransformMode;
 class SignalProbeDetailPanel;
+struct SpyFrameRequest;
+struct SpyFrameResult;
 
 struct ComparisonSpyOption {
     String id;
@@ -208,6 +210,7 @@ public:
     void endPreviewModWheelGesture(int finalValue);
     bool setPreviewControllerValue(int controller, int value);
     bool setAuditionControllerValue(int controller, int value);
+    SpyFrameResult renderSpyFrame(const SpyFrameRequest& request, String& error);
     int previewControllerValue(int controller) const { return presentation.previewControllerValue(controller); }
     var inspectPreviewControllersForAutomation() const;
     void beginPreviewControllerGesture(int controller);

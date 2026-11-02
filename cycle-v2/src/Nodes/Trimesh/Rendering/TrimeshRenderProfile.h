@@ -9,6 +9,7 @@
 
 #include <JuceHeader.h>
 
+#include <optional>
 #include <vector>
 
 namespace CycleV2 {
@@ -25,6 +26,7 @@ struct TrimeshSurfaceStyle {
     juce::Colour minorGridColour;
     juce::Colour majorGridColour;
     bool textureUsesAlpha {};
+    std::optional<ScalarSurfaceTimeStyle> timeStyleOverride;
 
     juce::Image gradientImage() const;
     juce::Colour colourForValue(float value) const;
@@ -54,6 +56,7 @@ class TrimeshRenderProfile {
 public:
     static TrimeshRenderProfile fromDomain(PortDomain domain);
     static TrimeshRenderProfile fromSemantic(NodeRenderSemantic semantic);
+    TrimeshRenderProfile withTimeStyle(ScalarSurfaceTimeStyle style) const;
 
     PortDomain getDomain() const { return domain; }
     RenderScalePolicy getScalePolicy() const { return scalePolicy; }

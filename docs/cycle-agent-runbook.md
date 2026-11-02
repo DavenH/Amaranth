@@ -29,7 +29,8 @@ target incrementally, launches through NSWorkspace, validates the returned PID,
 and reuses that workspace's healthy session. That session may also be in use by
 the user. Use `--clean` for automated fixtures while the user is working in the
 app: it creates an isolated run PID and socket and leaves the persistent session
-intact. Use only the socket returned by that run; do not reuse a socket from an
+intact. `exec --clean` uses the same isolated lifecycle and closes its owned
+instance after the worker exits, including on failure. Use only the socket returned by that run; do not reuse a socket from an
 earlier artifact. `--no-build` opts out of freshness
 building. Default reports and screenshots live under
 `.context/cycle-automation/<product>/<run-id>/`.
@@ -440,6 +441,22 @@ The fixture must inspect the area before a report-based crop. Accessibility
 and Screen Recording permissions belong to macOS privacy controls; an
 AppleScript or LaunchServices error alone does not identify a missing privacy
 permission.
+
+## Spy image sequences
+
+Use `scripts/export_cycle_v2_spy_sequence.py` for deterministic, plot-only
+Cyclogram sequences driven by a `.cyclepattern` controller schedule. See
+`cycle-v2/README.md` for arguments and artifact layout. It uses isolated
+`exec --clean` and needs no native input or screen-capture permission.
+
+`listSpyGradients` returns the shared time-style catalog (`id`, `label`, `group`).
+`renderSpyFrame` takes `probeId` (default `default-output`), `controllers` (all
+128 integer values in 0..127), optional `midiNote` and `gradient` (catalog ID or
+case-insensitive display name), `width`, `height`, and a new PNG `path`.
+The response arrives after synchronous refresh, expanded capture, and PNG write;
+it includes resolved note, gradient, release time, content revision and dimensions.
+Image dimensions are 1..16384, bounded to 64 megapixels. The command forces a
+Cyclogram capture without changing saved Spy mode, note-off position or style.
 
 ## UI Video
 

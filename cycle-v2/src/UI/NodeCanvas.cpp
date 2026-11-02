@@ -15,6 +15,7 @@
 
 #include "App/Automation/ImpulseResponseImportAutomation.h"
 #include "UI/NodeCanvas.h"
+#include "UI/SpyFrameRenderer.h"
 #include "UI/SignalProbeDetailPanel.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
@@ -2145,55 +2146,18 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
     if (probeDetailState.probeId != probeId) {
         probeDetailState.waveformViewport = ZoomRect();
     }
-    const int midiNote = presentation.previewMidiNote();
-    const size_t resolution = GraphPreviewExecutor::sourceFrameCountForMidiNote(
-            midiNote);
     const SignalProbe* selectedProbe = graph.findSignalProbe(probeId);
     const PresetPreviewView view = probeId == DefaultOutputProbeResolver::probeId
             ? probeCanvasState.defaultOutputView
             : selectedProbe != nullptr ? selectedProbe->view : PresetPreviewView::Time;
-    const size_t captureResolution = PresetPreviewGenerator::sourceRowCountForView(
-            resolution, view, midiNote);
-    auto preview = presentation.captureProbePreview(
-            commands.editingGraph(),
-            probeId,
-            captureResolution,
-            midiNote,
-            probeDetailState.probeId == probeId
-                    ? probeDetailState.noteOffTime : presentation.probeNoteOffTime(probeId));
-    if (!preview.has_value()) {
+    const double noteOff = probeDetailState.probeId == probeId
+            ? probeDetailState.noteOffTime : presentation.probeNoteOffTime(probeId);
+    if (!probeDetailState.capture(commands.editingGraph(), presentation, probeId, view,
+                noteOff, SignalProbeCanvas::ordinalForProbe(graph, probeId))) {
         probeDetailState.close();
-        notifyOverlayOcclusionChanged();
-        return;
+    } else {
+        editorCoordinator.close();
     }
-
-    if (preview->noteOffTime != presentation.probeNoteOffTime(probeId)) {
-        presentation.commitProbePreview(*preview);
-    }
-
-    if (probeId == DefaultOutputProbeResolver::probeId
-            || preview->domain == PortDomain::TimeSignal
-                    && view == PresetPreviewView::Spectrum) {
-        *preview = PresetPreviewGenerator::forView(*preview, view);
-    }
-
-    const SignalProbe* probe = graph.findSignalProbe(probeId);
-    NodeRenderSemantic semantic;
-    if (probe != nullptr) {
-        semantic = queries.presentationFacts().renderSemanticForNodeOutput(
-                graph,
-                probe->sourceNodeId,
-                probe->sourcePortId);
-    }
-    semantic = GraphRenderSemanticResolver::semanticForDisplay(
-            semantic, preview->domain, probe == nullptr);
-    editorCoordinator.close();
-    probeDetailState.open(
-            std::move(*preview),
-            semantic.scalePolicy,
-            SignalProbeCanvas::ordinalForProbe(graph, probeId),
-            midiNote,
-            captureResolution);
     notifyOverlayOcclusionChanged();
 }
 
@@ -3209,6 +3173,11 @@ bool NodeCanvas::loadGraphFromFile(const File& file) {
 void NodeCanvas::presetLoadWorkspaceStageCompleted(
         CanvasPerformanceMetrics::PresetLoadWorkspaceStage stage) {
     performanceMetrics.presetLoadWorkspaceStageCompleted(stage);
+}
+
+SpyFrameResult NodeCanvas::renderSpyFrame(const SpyFrameRequest& request, String& error) {
+    return SpyFrameRenderer::render(commands.editingGraph(), presentation,
+            document.presentation(), request, error);
 }
 
 bool NodeCanvas::capturePresetPreviewForAutomation(

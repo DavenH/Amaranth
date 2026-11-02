@@ -99,14 +99,14 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement; PanelPlaybackOverlay draws bounded audio cursor frames.
 - `cycle-v2/src/UI/NodeCanvasExplanations.cpp` — Preset/node/group explanations, shared editor and attached card orchestration.
 - `cycle-v2/src/UI/SurfaceAppearanceDialog.h`, `cycle-v2/src/UI/WaveformColourStyles.h`, `scripts/test_cycle_v2_surface_appearance.py` — Modal palette selectors, waveform gradient identity, and UI verification.
-- `cycle-v2/src/UI/NodePreviewRenderer.h`, `cycle-v2/src/UI/ComparisonSurfaceView.h`, `cycle-v2/src/UI/SignalProbeDetailPanel.h` — Preview rendering; shared surfaces and Spy mode/zoom controls.
+- `cycle-v2/src/UI/NodePreviewRenderer.h`, `cycle-v2/src/UI/ComparisonSurfaceView.h`, `cycle-v2/src/UI/SignalProbeDetailPanel.h`, `cycle-v2/src/UI/SpyFrameRenderer.h` — Preview rendering, Spy controls, shared expanded capture and fixed-size Cyclogram exports.
 - `cycle-v2/src/UI/SignalProbeCanvas.h`, `scripts/test_cycle_v2_spy_refresh.py` — Spy views; refresh-count, tray update and retained-waveform regression checks.
 - `cycle-v2/src/UI/InlinePresetBrowser.h` — Shared tabs; ReferenceAssetBrowser owns audio assets, ReferenceTrayBar owns tray disclosure.
 - `cycle-v2/src/UI/LibraryThumbnailCache.h` — Async reference-asset thumbnails.
 - `cycle-v2/src/UI/ReferenceWaveformPreview.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Shared waveform analysis/cache and async indexed density/path views.
 - `scripts/fixtures/cycle-v2-agent-spy-waveform-reuse.json` — Checks unchanged tray analysis and presentation invalidation.
 - `cycle-v2/src/UI/WaveformHeatRenderer.h`, `scripts/fixtures/cycle-v2-agent-waveform-zoom-performance.json` — GPU waveform coverage/heat composition and zoom performance workload.
-- `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and suite export.
+- `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and exports.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
 - `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.
 
@@ -138,7 +138,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `scripts/launch_cycle_app.swift` — Exact-PID NSWorkspace launch and native window activation for parallel workspaces.
 - `scripts/capture_cycle_screenshot.swift`, `scripts/capture_cycle_window.swift` — PID-window screenshot, region crop, and video helpers.
 - `scripts/run_cycle_agent.sh`, `scripts/run_cycle_v2_agent.sh` — Product aliases for fixture runs.
-- `scripts/capture_cycle_ui.sh`, `scripts/capture_cycle_v2_ui.sh` — Product aliases for screenshots.
+- `scripts/capture_cycle_ui.sh`, `scripts/capture_cycle_v2_ui.sh`, `scripts/export_cycle_v2_spy_sequence.py` — Screenshot aliases and deterministic Spy PNG sequences from pattern automation and named materials.
 - `scripts/cycle_v2_architecture_audit.py` — Report CycleV2 file-size review triggers for touched production code.
 - `scripts/check_code_map.py` — Validate semantic-map paths, description lengths, and fixed size budgets.
 - `scripts/compare_cycle_audio.py` — Render declared-equivalent Cycle 1/2 presets and compare audio output.
