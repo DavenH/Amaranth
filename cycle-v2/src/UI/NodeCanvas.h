@@ -44,7 +44,7 @@
 namespace CycleV2 {
 
 enum class TransformMode;
-class ComparisonSurfaceView;
+class SignalProbeDetailPanel;
 
 struct ComparisonSpyOption {
     String id;
@@ -316,7 +316,7 @@ private:
     std::vector<std::pair<String, Point<float>>> nodeDragSpyStarts;
     GuideCurveShelfState guideShelfState;
     SignalProbeDetailState probeDetailState;
-    std::unique_ptr<ComparisonSurfaceView> probeWaveformView;
+    std::unique_ptr<SignalProbeDetailPanel> probeDetailPanel;
     OutputMeterBallistics outputMeterBallistics;
     std::optional<OutputMeterLevels> liveOutputMeterLevels;
     std::unique_ptr<WorkspaceDockInteractionController> dockInteraction;
@@ -348,7 +348,7 @@ private:
     void requestHoverRepaint(HoverRepaint repaint);
     void updatePresetSidebarVisibility();
     void notifyOverlayOcclusionChanged();
-    void updateProbeWaveformView();
+    void updateProbeDetailPanel();
     std::optional<NodeAudioResourceSummary> audioResourceSummary(
             const String& nodeId) const override;
     uint32_t availableRenderInvalidations() const override;

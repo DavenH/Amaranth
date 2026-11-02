@@ -312,6 +312,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailView.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailPanel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbePreviewTileCache.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeCanvas.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/WorkspaceDock.cpp"

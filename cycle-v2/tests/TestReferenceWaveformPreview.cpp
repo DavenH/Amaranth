@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 
 #include "UI/ReferenceWaveformPreview.h"
+#include "UI/CanvasChromePalette.h"
 #include "UI/LibraryIconRenderer.h"
 #include <Algo/PeakCounter.h>
 #include <UI/Panels/ScalarSurfaceMaterial.h>
@@ -367,10 +368,43 @@ TEST_CASE("Filled waveform detail requires resolved oscillations at the same log
         "[cycle-v2][waveform][resolution][fill]") {
     std::vector<int> crossings(200);
     std::iota(crossings.begin(), crossings.end(), 0);
-    REQUIRE(referenceWaveformResolution(crossings, 0, 85, 1024).useFill);
-    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 86, 1024).useFill);
-    REQUIRE(referenceWaveformResolution(crossings, 0, 85, 2048, 2.f).useFill);
-    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 86, 2048, 2.f).useFill);
+    REQUIRE(referenceWaveformResolution(crossings, 0, 170, 1024).useFill);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 171, 1024).useFill);
+    REQUIRE(referenceWaveformResolution(crossings, 0, 170, 2048, 2.f).useFill);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 171, 2048, 2.f).useFill);
     REQUIRE(referenceWaveformResolution(crossings, 0, 200, 1024).useLine);
     REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 200, 1024).useFill);
+}
+
+TEST_CASE("Filled waveform colour stays uniform across heat palettes while its edge retains heat",
+        "[cycle-v2][waveform][palette][composition][fill]") {
+    for (const float amplitude : { -0.5f, 0.5f }) {
+        float samples[] { amplitude, amplitude, amplitude };
+        const auto coverage = referenceWaveformLine(Buffer<float>(samples, 3), 129, 129,
+                0.f, 1.f, {}, { 3.f, 0.2f, true });
+        juce::Image heat(juce::Image::ARGB, 2, 2, true);
+        juce::Graphics graphics(heat);
+        graphics.fillAll(juce::Colours::red);
+        const auto red = recolourSignalWaveform(coverage, heat, ZoomRect(), true);
+        graphics.fillAll(juce::Colours::blue);
+        const auto blue = recolourSignalWaveform(coverage, heat, ZoomRect(), true);
+        const int edge = amplitude > 0.f ? 32 : 96;
+        const int interior = amplitude > 0.f ? 48 : 80;
+        REQUIRE(red.getPixelAt(64, edge) == juce::Colours::red);
+        REQUIRE(blue.getPixelAt(64, edge) == juce::Colours::blue);
+        for (int x : { 16, 64, 112 }) {
+            const auto fill = red.getPixelAt(x, interior);
+            REQUIRE(fill == blue.getPixelAt(x, interior));
+            REQUIRE(fill.getAlpha() == 51);
+            REQUIRE(fill.getRed() == Catch::Approx(CanvasChromePalette::text.getRed()).margin(5));
+            REQUIRE(fill.getGreen() == Catch::Approx(CanvasChromePalette::text.getGreen()).margin(5));
+            REQUIRE(fill.getBlue() == Catch::Approx(CanvasChromePalette::text.getBlue()).margin(5));
+        }
+        for (int y = 0; y < 129; ++y) {
+            for (int x = 0; x < 129; ++x) {
+                REQUIRE(red.getPixelAt(x, y).getAlpha() == coverage.getPixelAt(x, y).getAlpha());
+                REQUIRE(blue.getPixelAt(x, y).getAlpha() == coverage.getPixelAt(x, y).getAlpha());
+            }
+        }
+    }
 }

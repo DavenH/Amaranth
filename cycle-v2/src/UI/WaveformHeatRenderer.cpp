@@ -1,4 +1,5 @@
 #include "UI/WaveformHeatRenderer.h"
+#include "UI/CanvasChromePalette.h"
 
 #include <algorithm>
 #include <array>
@@ -15,6 +16,8 @@ uniform vec4 viewport;
 uniform vec4 coverageViewport;
 uniform vec4 coverageScale;
 uniform vec4 heatScale;
+uniform float filled;
+uniform vec3 fillColour;
 void main() {
     vec2 position = (pixelPos - plotBounds.xy) / plotBounds.zw;
     vec2 source = viewport.xy + position * viewport.zw;
@@ -24,8 +27,11 @@ void main() {
                       1.0 - mask.y * coverageScale.y - coverageScale.w);
     vec2 heatUV = vec2(source.x * heatScale.x + heatScale.z,
                       1.0 - source.y * heatScale.y - heatScale.w);
-    float alpha = texture2D(coverageTexture, maskUV).a * inside * pixelAlpha;
-    gl_FragColor = vec4(texture2D(heatTexture, heatUV).rgb * alpha, alpha);
+    vec4 coverage = texture2D(coverageTexture, maskUV);
+    float stroke = mix(coverage.a, coverage.r, filled);
+    float fill = coverage.a - stroke;
+    vec3 colour = texture2D(heatTexture, heatUV).rgb * stroke + fillColour * fill;
+    gl_FragColor = vec4(colour, coverage.a) * inside * pixelAlpha;
 }
 )glsl";
 
@@ -79,7 +85,7 @@ void setTextureScale(juce::OpenGLShaderProgram& program, const char* name,
 
 bool paintWaveformHeatOpenGL(juce::Graphics& graphics, const juce::Image& coverage,
         const juce::Image& heat, const ZoomRect& coverageViewport, const ZoomRect& viewport,
-        juce::Rectangle<float> bounds, juce::Rectangle<float> deviceBounds) {
+        juce::Rectangle<float> bounds, juce::Rectangle<float> deviceBounds, bool filled) {
     auto* context = juce::OpenGLContext::getCurrentContext();
     if (context == nullptr || !coverage.isValid() || !heat.isValid() || deviceBounds.isEmpty()) {
         return false;
@@ -102,13 +108,16 @@ bool paintWaveformHeatOpenGL(juce::Graphics& graphics, const juce::Image& covera
         glGetIntegerv(GL_TEXTURE_BINDING_2D, &bindings[(size_t) unit]);
     }
     auto& textures = resources->texturesFor(coverage, heat);
-    resources->shader.onShaderActivated = [context, &textures, coverage, heat, deviceBounds, viewport, coverageViewport](auto& program) {
+    resources->shader.onShaderActivated = [context, &textures, coverage, heat, deviceBounds, viewport, coverageViewport, filled](auto& program) {
         context->extensions.glActiveTexture(GL_TEXTURE0);
         textures.coverageTexture.bind();
         context->extensions.glActiveTexture(GL_TEXTURE1);
         textures.heatTexture.bind();
         program.setUniform("coverageTexture", 0);
         program.setUniform("heatTexture", 1);
+        program.setUniform("filled", filled ? 1.f : 0.f);
+        program.setUniform("fillColour", CanvasChromePalette::text.getFloatRed(),
+                CanvasChromePalette::text.getFloatGreen(), CanvasChromePalette::text.getFloatBlue());
         program.setUniform("plotBounds", deviceBounds.getX(), deviceBounds.getY(), deviceBounds.getWidth(), deviceBounds.getHeight());
         program.setUniform("viewport", viewport.x, viewport.y, viewport.w, viewport.h);
         program.setUniform("coverageViewport", coverageViewport.x, coverageViewport.y, coverageViewport.w, coverageViewport.h);

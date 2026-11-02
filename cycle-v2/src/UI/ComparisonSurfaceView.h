@@ -26,6 +26,9 @@ public:
     void setCamera(const ZoomRect& camera);
     ZoomRect camera();
     void setZoomBarsVisible(bool visible);
+    void setPlotInterceptsMouseClicks(bool intercepts);
+    void zoomToAttack();
+    void zoomToFull();
     juce::Rectangle<int> plotBounds() const;
     bool renderOpenGL(float scaleFactor);
     void releaseOpenGLResources();

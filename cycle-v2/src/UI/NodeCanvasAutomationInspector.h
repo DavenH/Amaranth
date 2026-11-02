@@ -70,6 +70,7 @@ struct NodeCanvasAutomationPresentation {
     size_t probeDetailColumns {};
     size_t probeDetailRows {};
     juce::var probeWaveform;
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>> probeDetailTargets;
     double probeDetailReleaseDuration {};
     float probeDetailNoteOffPosition { 1.f };
     double probeDetailNoteOffTime { 1. };

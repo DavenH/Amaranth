@@ -71,7 +71,8 @@ public:
         resolution.useFill = resolution.useFill && resolution.useLine;
         const bool line = resolution.useLine;
         const ReferenceWaveformLineStyle style {
-                resolution.useFill ? 1.5f * physicalScale : 1.f, resolution.useFill ? 0.2f : 0.f };
+                resolution.useFill ? 1.5f * physicalScale : 1.f, resolution.useFill ? 0.2f : 0.f,
+                resolution.useFill && source->palette == WaveformPalette::CrossingHeat };
         const int sourceEnd = line ? juce::jmin(length, end + 1) : end;
         Buffer<float> audio(const_cast<float*>(source->mono.getReadPointer(0)) + start, sourceEnd - start);
         const juce::Range<float> sampleRange(viewport.x * length - start,
@@ -91,7 +92,7 @@ public:
                     : referenceWaveformHeatmap(audio, width, height, viewport.y, viewport.h);
         }
         const auto software = prepareSoftware && heatField.isValid()
-                ? recolourSignalWaveform(image, heatField, viewport) : juce::Image();
+                ? recolourSignalWaveform(image, heatField, viewport, resolution.useFill) : juce::Image();
         const double renderMs = juce::Time::getMillisecondCounterHiRes() - started;
         if (!shouldExit()) {
             juce::MessageManager::callAsync([owner = owner, revision = revision,
@@ -257,7 +258,7 @@ void ReferenceWaveformView::paint(juce::Graphics& graphics) {
             const auto deviceBounds = target->getLocalArea(this, getLocalBounds()).toFloat()
                     * (float) context->getRenderingScale();
             paintedOnGpu = paintWaveformHeatOpenGL(graphics, image, heatField, imageViewport,
-                    viewport, getLocalBounds().toFloat(), deviceBounds);
+                    viewport, getLocalBounds().toFloat(), deviceBounds, filled);
         }
     }
     if (paintedOnGpu) {
@@ -265,7 +266,7 @@ void ReferenceWaveformView::paint(juce::Graphics& graphics) {
     } else {
         if (image.isValid() && heatField.isValid()
                 && (softwareCoverage != image || softwareHeat != heatField)) {
-            softwareImage = recolourSignalWaveform(image, heatField, imageViewport);
+            softwareImage = recolourSignalWaveform(image, heatField, imageViewport, filled);
             softwareCoverage = image;
             softwareHeat = heatField;
         }

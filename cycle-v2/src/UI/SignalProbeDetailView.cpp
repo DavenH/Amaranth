@@ -155,7 +155,7 @@ Rectangle<float> SignalProbeDetailView::boundsFor(Rectangle<float> availableCont
 }
 
 Rectangle<float> SignalProbeDetailView::plotBounds(Rectangle<float> detailBounds) {
-    return detailBounds.reduced(14.f).withTrimmedTop(kTimelineHeight);
+    return detailBounds.reduced(14.f).withTrimmedTop(kTimelineHeight + 32.f);
 }
 
 Rectangle<float> SignalProbeDetailView::contentBounds(

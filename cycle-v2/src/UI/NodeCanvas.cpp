@@ -15,7 +15,7 @@
 
 #include "App/Automation/ImpulseResponseImportAutomation.h"
 #include "UI/NodeCanvas.h"
-#include "UI/ComparisonSurfaceView.h"
+#include "UI/SignalProbeDetailPanel.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/Editors/PropertyControls.h"
@@ -480,7 +480,7 @@ void NodeCanvas::resized() {
     if (referenceEditor != nullptr && referenceEditor->isVisible()) {
         referenceEditor->setBounds(NodeCanvasEditorCoordinator::boundsFor(nullptr, editorContentBounds()).toNearestInt());
     }
-    updateProbeWaveformView();
+    updateProbeDetailPanel();
     guideEditorCoordinator.layout(editorContentBounds());
     editorCoordinator.updateHost(queries.findNode(expandedNodeId), editorContentBounds());
     if (presetSidebar != nullptr) {
@@ -1371,9 +1371,9 @@ void NodeCanvas::mouseUp(const MouseEvent& event) {
 
 void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Viewport);
-    if (probeWaveformView != nullptr && probeWaveformView->isVisible()) {
-        if (probeWaveformView->getBounds().toFloat().contains(event.position)) {
-            probeWaveformView->mouseWheelMove(event.getEventRelativeTo(probeWaveformView.get()), wheel);
+    if (probeDetailPanel != nullptr && probeDetailPanel->isVisible()) {
+        if (probeDetailPanel->getBounds().toFloat().contains(event.position)) {
+            probeDetailPanel->mouseWheelMove(event.getEventRelativeTo(probeDetailPanel.get()), wheel);
         }
         return;
     }
@@ -1435,8 +1435,8 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
 
 void NodeCanvas::mouseMagnify(const MouseEvent& event, float scaleFactor) {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Viewport);
-    if (probeWaveformView != nullptr && probeWaveformView->isVisible()) {
-        probeWaveformView->mouseMagnify(event.getEventRelativeTo(probeWaveformView.get()), scaleFactor);
+    if (probeDetailPanel != nullptr && probeDetailPanel->isVisible()) {
+        probeDetailPanel->mouseMagnify(event.getEventRelativeTo(probeDetailPanel.get()), scaleFactor);
         return;
     }
     viewport.zoomAround(event.position, scaleFactor);
@@ -1847,6 +1847,7 @@ bool NodeCanvas::setSpyView(const String& probeId, PresetPreviewView view) {
     change.probesChanged = true;
     refreshCompiledStateAsync(PresentationRefreshScope::Downstream, &change);
     refreshComparisonAfterCommit();
+    notifyOverlayOcclusionChanged();
     requestCanvasRepaint();
     return true;
 }
@@ -2320,10 +2321,16 @@ NodeCanvasAutomationPresentation NodeCanvas::automationPresentationState() const
     result.hoveredEdgeIndex = hoveredEdgeIndex;
     result.previewVoiceLengthSeconds = unisonPreviewContext().voiceDurationSeconds;
     result.probeRefreshMode = probeCanvasState.refreshMode;
+    if (probeDetailPanel != nullptr && probeDetailPanel->isVisible()) {
+        for (const auto& [id, bounds] : probeDetailPanel->pointerTargets()) {
+            result.probeDetailTargets.emplace_back(id, bounds.translated(
+                    (float) probeDetailPanel->getX(), (float) probeDetailPanel->getY()));
+        }
+    }
     result.probeDetailId = probeDetailState.probeId;
     result.probeDetailResolution = probeDetailState.resolution;
-    result.probeWaveform = probeWaveformView != nullptr && probeWaveformView->isVisible()
-            ? probeWaveformView->automationDiagnostics() : var();
+    result.probeWaveform = probeDetailPanel != nullptr && probeDetailPanel->isVisible()
+            ? probeDetailPanel->waveformDiagnostics() : var();
     result.probeDetailColumns = probeDetailState.renderResult.gridColumns;
     result.probeDetailRows = probeDetailState.renderResult.gridRows;
     result.probeDetailReleaseDuration = probeDetailState.releaseDuration;
@@ -3137,41 +3144,35 @@ void NodeCanvas::updatePresetSidebarVisibility() {
             expandedEditorBoundsForOverlay()));
 }
 
-void NodeCanvas::updateProbeWaveformView() {
-    const auto& samples = probeDetailState.renderResult.waveform;
-    if (!probeDetailState.isOpen() || samples == nullptr) {
-        if (probeWaveformView != nullptr) {
-            probeWaveformView->setVisible(false);
+void NodeCanvas::updateProbeDetailPanel() {
+    if (!probeDetailState.isOpen()) {
+        if (probeDetailPanel != nullptr) {
+            probeDetailPanel->setVisible(false);
         }
         return;
     }
-    if (probeWaveformView == nullptr) {
-        probeWaveformView = std::make_unique<ComparisonSurfaceView>();
-        addChildComponent(*probeWaveformView);
-        probeWaveformView->setInterceptsMouseClicks(false, true);
-        probeWaveformView->setZoomBarsVisible(true);
-        probeWaveformView->onCameraChanged = [this](const ZoomRect& camera) {
-            probeDetailState.waveformViewport = camera;
-            requestCanvasRepaint();
+    if (probeDetailPanel == nullptr) {
+        probeDetailPanel = std::make_unique<SignalProbeDetailPanel>(probeDetailState);
+        addChildComponent(*probeDetailPanel);
+        probeDetailPanel->onModeChanged = [this](PresetPreviewView view) {
+            setSpyView(probeDetailState.probeId, view);
         };
-        probeWaveformView->setWaveformOverlay([this](Graphics& graphics) {
-            const auto camera = probeWaveformView->camera();
-            const float split = (probeDetailState.noteOffPosition() - camera.x) / camera.w;
-            graphics.setColour(CanvasChromePalette::focus.withAlpha(0.5f));
-            const auto plot = probeWaveformView->plotBounds().toFloat();
-            graphics.drawVerticalLine(roundToInt(split * plot.getWidth()), 0.f, plot.getHeight());
-        });
+        probeDetailPanel->onCameraChanged = [this] { requestCanvasRepaint(); };
     }
-    const auto plot = SignalProbeDetailView::plotBounds(probeDetailBounds());
-    probeWaveformView->setBounds(NodePreviewRenderer::heatmapBounds(plot).toNearestInt());
-    probeWaveformView->setWaveform(samples);
-    probeWaveformView->setCamera(probeDetailState.waveformViewport);
-    probeWaveformView->setVisible(true);
-    probeWaveformView->toFront(false);
+    const auto& snapshot = presentation.snapshot();
+    const auto* source = queries.presentationFacts().probePreviewFor(snapshot, probeDetailState.probeId);
+    const auto* probe = graph.findSignalProbe(probeDetailState.probeId);
+    const bool output = probeDetailState.probeId == DefaultOutputProbeResolver::probeId;
+    probeDetailPanel->setBounds(probeDetailBounds().toNearestInt());
+    probeDetailPanel->sync(output ? probeCanvasState.defaultOutputView
+            : probe != nullptr ? probe->view : PresetPreviewView::Time,
+            output || (source != nullptr && source->domain == PortDomain::TimeSignal));
+    probeDetailPanel->setVisible(true);
+    probeDetailPanel->toFront(false);
 }
 
 void NodeCanvas::notifyOverlayOcclusionChanged() {
-    updateProbeWaveformView();
+    updateProbeDetailPanel();
     updatePresetSidebarVisibility();
     if (overlayOcclusionChanged) {
         overlayOcclusionChanged();

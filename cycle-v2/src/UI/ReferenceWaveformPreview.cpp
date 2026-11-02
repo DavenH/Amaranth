@@ -42,7 +42,7 @@ HeatPosition heatPosition(float unit, int size) {
     return { index, (unsigned int) juce::roundToInt((position - index) * 256.f) };
 }
 
-void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRect& viewport) {
+void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRect& viewport, bool constantFill) {
     const int width = image.getWidth();
     const int height = image.getHeight();
     std::vector<HeatPosition> columns((size_t) width);
@@ -53,6 +53,7 @@ void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRe
     std::vector<juce::PixelARGB> heatRow((size_t) heat.getWidth());
     const auto* columnLookup = columns.data();
     auto* blendedRow = heatRow.data();
+    const auto fillColour = CanvasChromePalette::text.getPixelARGB();
     juce::Image::BitmapData pixels(image, juce::Image::BitmapData::readWrite);
     juce::Image::BitmapData colours(heat, juce::Image::BitmapData::readOnly);
     for (int y = 0; y < height; ++y) {
@@ -70,7 +71,16 @@ void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRe
                 const auto column = columnLookup[x];
                 auto colour = blendedRow[column.index];
                 colour.tween(blendedRow[column.index + 1], column.fraction);
-                if (alpha < 255) {
+                if (constantFill) {
+                    const int strokeAlpha = row[x].getRed();
+                    auto fill = fillColour;
+                    fill.multiplyAlpha(alpha - strokeAlpha);
+                    colour.multiplyAlpha(strokeAlpha);
+                    colour.setARGB((juce::uint8) alpha,
+                            (juce::uint8) (colour.getRed() + fill.getRed()),
+                            (juce::uint8) (colour.getGreen() + fill.getGreen()),
+                            (juce::uint8) (colour.getBlue() + fill.getBlue()));
+                } else if (alpha < 255) {
                     colour.multiplyAlpha(alpha);
                 }
                 row[x] = colour;
@@ -88,7 +98,7 @@ ReferenceWaveformResolution referenceWaveformResolution(const std::vector<int>& 
     const auto count = (size_t) std::distance(first, last);
     const bool useLine = pixelWidth > 0 && count <= (size_t) pixelWidth;
     const bool useFill = useLine && physicalScale > 0.f
-            && count <= (size_t) ((float) pixelWidth / (12.f * physicalScale));
+            && count <= (size_t) ((float) pixelWidth / (6.f * physicalScale));
     return { count, useLine, useFill };
 }
 
@@ -252,9 +262,9 @@ void paintWaveformImage(juce::Graphics& graphics, const juce::Image& image,
 }
 
 juce::Image recolourSignalWaveform(const juce::Image& geometry, const juce::Image& heatField,
-        const ZoomRect& viewport) {
+        const ZoomRect& viewport, bool constantFill) {
     auto image = geometry.createCopy();
-    paintWaveformHeat(image, heatField, viewport);
+    paintWaveformHeat(image, heatField, viewport, constantFill);
     return image;
 }
 
@@ -266,7 +276,7 @@ juce::Image renderSignalWaveform(Buffer<float> mono, int width, int height,
     }
     auto image = signalWaveformCoverage(mono, width, height, viewport, useLine, sampleRange);
     if (image.isValid()) {
-        paintWaveformHeat(image, heatField, viewport);
+        paintWaveformHeat(image, heatField, viewport, false);
     }
     return image;
 }
@@ -328,15 +338,11 @@ juce::Image referenceWaveformLine(Buffer<float> mono, int width, int height,
         area.lineTo(trace.getCurrentPosition().x, baseline);
         area.lineTo(horizontal[0], baseline);
         area.closeSubPath();
-        const float peakAlpha = juce::jmin(1.f, 2.f * style.fillAlpha);
-        juce::ColourGradient opacity(CanvasChromePalette::text.withAlpha(peakAlpha),
-                0.f, -y * (height - 1) / span, CanvasChromePalette::text.withAlpha(peakAlpha),
-                0.f, (1.f - y) * (height - 1) / span, false);
-        opacity.addColour(0.5, CanvasChromePalette::text.withAlpha(style.fillAlpha));
-        graphics.setGradientFill(opacity);
+        graphics.setColour((style.encodeFill ? juce::Colours::black : CanvasChromePalette::text)
+                .withAlpha(style.fillAlpha));
         graphics.fillPath(area);
     }
-    graphics.setColour(CanvasChromePalette::text);
+    graphics.setColour(style.encodeFill ? juce::Colours::white : CanvasChromePalette::text);
     graphics.strokePath(trace, juce::PathStrokeType(style.strokeWidth));
     return image;
 }

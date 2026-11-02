@@ -18,6 +18,7 @@
 #include <Util/LogRegionMapping.h>
 
 #include <atomic>
+#include <cmath>
 
 using namespace gl;
 
@@ -174,6 +175,7 @@ public:
             PortDomain domain, int note, float displayGain, bool includesDc, double sampleRate,
             const std::vector<float>& positions, size_t maximumRows) {
         const juce::ScopedLock lock(panel.getRenderLock());
+        interactor.setWheelZoomSensitivity(1.f);
         if (waveform != nullptr) {
             waveform->setVisible(false);
         }
@@ -187,6 +189,7 @@ public:
     }
 
     void setWaveform(std::shared_ptr<const std::vector<float>> samples) {
+        interactor.setWheelZoomSensitivity(1.5f);
         panel.setSignalDomain(PortDomain::TimeSignal);
         panel.updateBackground(false);
         auto& view = waveformView();
@@ -216,6 +219,11 @@ public:
     }
 
     ZoomRect camera() { return panel.getZoomPanel()->rect; }
+
+    void setPlotInterceptsMouseClicks(bool intercepts) {
+        inputHost->setInterceptsMouseClicks(intercepts, true);
+        panel.getZoomPanel()->setInterceptsMouseClicks(intercepts, true);
+    }
 
     void setZoomBarsVisible(bool visible) {
         stylePanelZoomScrollbars(*panel.getZoomPanel());
@@ -324,7 +332,20 @@ public:
         snapshotPending = true;
     }
 
+    void zoomToAttack() {
+        panel.getZoomPanel()->zoomToAttack();
+        publishCamera();
+    }
+
+    void zoomToFull() {
+        panel.getZoomPanel()->zoomToFull();
+        publishCamera();
+    }
+
     void magnify(const juce::MouseEvent& event, float scaleFactor) {
+        if (waveform != nullptr && waveform->isVisible()) {
+            scaleFactor = std::pow(scaleFactor, 1.5f);
+        }
         if (scaleFactor > 0.f) {
             panel.getZoomPanel()->zoomIn(event.mods.isCommandDown(), event.x, event.y, scaleFactor);
         }
@@ -348,6 +369,18 @@ private:
         return *waveform;
     }
 
+    void publishCamera() {
+        if (waveform != nullptr) {
+            waveform->setViewport(camera());
+        }
+        snapshotPending = true;
+        panel.bakeTexturesNextRepaint();
+        if (owner.onCameraChanged) {
+            owner.onCameraChanged(camera());
+        }
+        owner.repaint();
+    }
+
     void scrollBarMoved(juce::ScrollBar*, double) override {
         if (relayingCamera) {
             return;
@@ -356,15 +389,7 @@ private:
         juce::MessageManager::callAsync([safeOwner] {
             if (safeOwner != nullptr) {
                 auto& self = *safeOwner->impl;
-                if (self.waveform != nullptr) {
-                    self.waveform->setViewport(self.camera());
-                }
-                self.snapshotPending = true;
-                self.panel.bakeTexturesNextRepaint();
-                if (safeOwner->onCameraChanged) {
-                    safeOwner->onCameraChanged(self.camera());
-                }
-                safeOwner->repaint();
+                self.publishCamera();
             }
         });
     }
@@ -429,6 +454,13 @@ void ComparisonSurfaceView::setCamera(const ZoomRect& camera) {
 
 ZoomRect ComparisonSurfaceView::camera() {
     return impl->camera();
+}
+
+void ComparisonSurfaceView::zoomToAttack() { impl->zoomToAttack(); }
+void ComparisonSurfaceView::zoomToFull() { impl->zoomToFull(); }
+
+void ComparisonSurfaceView::setPlotInterceptsMouseClicks(bool intercepts) {
+    impl->setPlotInterceptsMouseClicks(intercepts);
 }
 
 void ComparisonSurfaceView::setZoomBarsVisible(bool visible) { impl->setZoomBarsVisible(visible); }

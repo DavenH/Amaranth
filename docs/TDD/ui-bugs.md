@@ -1,5 +1,17 @@
 # Cycle V2 UI Bug Notes
 
+## Fixed: Expanded waveform plot swallowed release-line input
+
+On 2026-11-01, `cycle-v2-agent-spy-popup-controls.json` selected Waveform on
+the default output Spy, restored the full view and pressed the release line
+inside the plot. The routed target was `CycleV2TrimeshPanel3D` and
+`probeDetailReleaseDragging` stayed false. The comparison host declined mesh
+pointer-down but still intercepted it, preventing the canvas release handler.
+The Spy popup now disables interception on the host plot and its ZoomPanel
+container while preserving interactive scrollbars. Wheel/pinch continue through
+the existing canvas forwarding; comparison cards retain their own click handlers.
+The fixture verifies that release-line down/up starts and ends the Spy gesture.
+
 ## P2: Pinned comparison Spies remain stale after direct Guide edits
 
 Confirmed in a native Cycle V2 socket session on 2026-10-22: open the reed
