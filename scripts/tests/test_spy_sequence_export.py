@@ -1,16 +1,20 @@
 import argparse
 import json
 from pathlib import Path
+import shutil
+import struct
+import subprocess
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+import zlib
 
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
-from export_cycle_v2_spy_sequence import arguments, export_sequence, frame_states, main
+from export_cycle_v2_spy_sequence import arguments, encode_mp4, export_sequence, frame_states, main
 
 
 class SpySequenceExportTest(unittest.TestCase):
@@ -31,13 +35,13 @@ class SpySequenceExportTest(unittest.TestCase):
         self.assertEqual(len(list(frame_states({"durationMs": 1001, "events": []}, 30))), 31)
         self.assertEqual(len(list(frame_states({"durationMs": 1000, "events": []}, 29.97))), 30)
 
-    def run_export(self, root, failure=None):
+    def run_export(self, root, failure=None, mp4=False):
         preset = root / "test.cyclegraph"
         pattern = root / "test.cyclepattern"
         preset.write_text("{}")
         pattern.write_text(json.dumps({"version": 1, "sequence": {"durationSeconds": 1}}))
         args = argparse.Namespace(output_dir=root / "frames", preset=preset, pattern=pattern,
-                                  spy="probe1", fps=4, width=160, height=96, note=48, gradient="Bullion")
+                                  spy="probe1", fps=4, width=160, height=96, note=48, gradient="Bullion", mp4=mp4)
         commands = []
 
         def send(command):
@@ -100,6 +104,75 @@ class SpySequenceExportTest(unittest.TestCase):
             self.assertIn("--clean", command)
             self.assertIn("--no-build", command)
             self.assertIn("--list-gradients", command)
+
+    def test_mp4_success_and_failure_preserve_completed_frames_and_report_encoding_status(self):
+        for error in [None, RuntimeError("ffmpeg failed"), KeyboardInterrupt()]:
+            with self.subTest(error=error), tempfile.TemporaryDirectory() as directory:
+                with patch("export_cycle_v2_spy_sequence.encode_mp4", side_effect=error) as encode:
+                    result, manifest, _ = self.run_export(Path(directory), mp4=True)
+                encode.assert_called_once_with(Path(directory) / "frames", 4, 4)
+                self.assertEqual(manifest["completedFrames"], 4)
+                self.assertEqual(len(manifest["frames"]), 4)
+                self.assertEqual(manifest["mp4"]["status"], manifest["status"])
+                if error is None:
+                    self.assertEqual(result, 0)
+                    self.assertEqual(manifest["mp4"]["path"], "sequence.mp4")
+                else:
+                    self.assertNotEqual(result, 0)
+                    self.assertIsNone(manifest["failedFrame"])
+
+    def test_mp4_flag_reaches_worker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            preset, pattern = root / "preset.cyclegraph", root / "pattern.cyclepattern"
+            preset.touch()
+            pattern.touch()
+            with patch("export_cycle_v2_spy_sequence.subprocess.run") as run:
+                run.return_value.returncode = 0
+                main(["--preset", str(preset), "--pattern", str(pattern), "--output-dir", str(root / "frames"),
+                      "--mp4", "--gradient", "Bullion"])
+            worker = run.call_args.args[0]
+            self.assertIn("--mp4", worker[worker.index("--"):])
+            self.assertEqual(worker[worker.index("--gradient") + 1], "Bullion")
+
+    def test_failed_encoder_cleans_partial_video(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            def fail(command, **_):
+                Path(command[-1]).write_bytes(b"partial")
+                raise subprocess.CalledProcessError(1, command, stderr="encoder unavailable")
+
+            with patch("export_cycle_v2_spy_sequence.subprocess.run", side_effect=fail):
+                with self.assertRaisesRegex(RuntimeError, "encoder unavailable"):
+                    encode_mp4(root, 30, 3)
+            self.assertFalse((root / "sequence.partial.mp4").exists())
+            self.assertFalse((root / "sequence.mp4").exists())
+
+    @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "ffmpeg/ffprobe required")
+    def test_real_mp4_keeps_frame_count_fractional_rate_and_pads_odd_dimensions(self):
+        def chunk(kind, data):
+            return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for index in range(3):
+                pixels = (b"\0" + bytes([index * 80, 40, 120]) * 3) * 5
+                png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 3, 5, 8, 2, 0, 0, 0))
+                       + chunk(b"IDAT", zlib.compress(pixels)) + chunk(b"IEND", b""))
+                (root / f"frame-{index:06d}.png").write_bytes(png)
+            encode_mp4(root, 29.97, 3)
+            result = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0",
+                                     "-show_entries", "stream=codec_name,width,height,r_frame_rate,nb_frames,pix_fmt",
+                                     "-of", "json", str(root / "sequence.mp4")],
+                                    check=True, capture_output=True, text=True)
+            stream = json.loads(result.stdout)["streams"][0]
+            self.assertEqual(stream["codec_name"], "h264")
+            self.assertEqual((stream["width"], stream["height"]), (4, 6))
+            self.assertEqual(stream["r_frame_rate"], "2997/100")
+            self.assertEqual(stream["nb_frames"], "3")
+            self.assertEqual(stream["pix_fmt"], "yuv420p")
+            self.assertEqual(len(list(root.glob("frame-*.png"))), 3)
 
 
 if __name__ == "__main__":

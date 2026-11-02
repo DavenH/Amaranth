@@ -51,6 +51,24 @@ def frame_states(schedule, fps):
         yield index, float(time_seconds), values.copy()
 
 
+def encode_mp4(output, fps, frame_count):
+    temporary = output / "sequence.partial.mp4"
+    command = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-n",
+               "-framerate", str(Fraction(str(fps))), "-start_number", "0",
+               "-i", str(output / "frame-%06d.png"), "-frames:v", str(frame_count),
+               "-c:v", "libx264", "-crf", "18", "-preset", "medium",
+               "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-pix_fmt", "yuv420p",
+               "-movflags", "+faststart", str(temporary)]
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.PIPE, text=True)
+        temporary.replace(output / "sequence.mp4")
+    except subprocess.CalledProcessError as error:
+        raise RuntimeError(f"ffmpeg encoding failed: {error.stderr.strip()}") from error
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def export_sequence(args, send):
     output = args.output_dir
     output.mkdir(parents=True, exist_ok=False)
@@ -60,6 +78,10 @@ def export_sequence(args, send):
                 "framesFile": "frames.jsonl", "completedFrames": 0}
     failed_frame = None
     interrupted = False
+    if args.mp4:
+        manifest["mp4"] = {"path": "sequence.mp4", "status": "pending", "codec": "h264",
+                           "width": args.width + args.width % 2,
+                           "height": args.height + args.height % 2}
     try:
         write_manifest(output, manifest)
         manifest["preset"] = source_snapshot(args.preset, output / "source-preset.cyclegraph")
@@ -97,11 +119,20 @@ def export_sequence(args, send):
                 manifest["completedFrames"] += 1
                 if index % max(1, round(args.fps)) == 0:
                     print(f"Exported {index + 1} frames ({timestamp:.3f}s)", flush=True)
+        failed_frame = None
+        if args.mp4:
+            manifest["mp4"]["status"] = "encoding"
+            write_manifest(output, manifest)
+            print("Encoding sequence.mp4 with ffmpeg", flush=True)
+            encode_mp4(output, args.fps, manifest["completedFrames"])
+            manifest["mp4"]["status"] = "complete"
         manifest["status"] = "complete"
     except (Exception, KeyboardInterrupt) as error:
         interrupted = isinstance(error, KeyboardInterrupt)
         manifest.update(status="interrupted" if interrupted else "failed",
                         error=str(error) or "Export interrupted", failedFrame=failed_frame)
+        if args.mp4:
+            manifest["mp4"]["status"] = manifest["status"]
     finally:
         write_manifest(output, manifest)
     print(f"{manifest['status']}: {output / 'manifest.json'}", flush=True)
@@ -121,6 +152,7 @@ def arguments(argv=None):
     parser.add_argument("--height", type=int, default=720)
     parser.add_argument("--note", type=int, help="Fixed MIDI note (default: preset preview note)")
     parser.add_argument("--gradient", help="Built-in gradient ID or display name (default: preset style)")
+    parser.add_argument("--mp4", action="store_true", help="Also encode sequence.mp4 with ffmpeg (H.264); keep PNGs")
     parser.add_argument("--list-gradients", action="store_true", help="List built-in IDs, names and groups")
     parser.add_argument("--no-build", action="store_true", help="Use an already built app")
     parser.add_argument("--in-session", action="store_true", help=argparse.SUPPRESS)
@@ -165,6 +197,8 @@ def main(argv=None):
                 worker.extend(["--note", str(args.note)])
             if args.gradient is not None:
                 worker.extend(["--gradient", args.gradient])
+            if args.mp4:
+                worker.append("--mp4")
         return subprocess.run(coordinator + ["--"] + worker, cwd=SCRIPT_DIR.parent,
                               check=False).returncode
     if not os.environ.get("CYCLE_AGENT_SESSION") or os.environ.get("CYCLE_AUTOMATION_SCOPED") != "1":

@@ -138,7 +138,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `scripts/launch_cycle_app.swift` — Exact-PID NSWorkspace launch and native window activation for parallel workspaces.
 - `scripts/capture_cycle_screenshot.swift`, `scripts/capture_cycle_window.swift` — PID-window screenshot, region crop, and video helpers.
 - `scripts/run_cycle_agent.sh`, `scripts/run_cycle_v2_agent.sh` — Product aliases for fixture runs.
-- `scripts/capture_cycle_ui.sh`, `scripts/capture_cycle_v2_ui.sh`, `scripts/export_cycle_v2_spy_sequence.py` — Screenshot aliases and deterministic Spy PNG sequences from pattern automation and named materials.
+- `scripts/capture_cycle_ui.sh`, `scripts/capture_cycle_v2_ui.sh`, `scripts/export_cycle_v2_spy_sequence.py` — Screenshot aliases and deterministic Spy PNG/MP4 sequences from pattern automation and named materials.
 - `scripts/cycle_v2_architecture_audit.py` — Report CycleV2 file-size review triggers for touched production code.
 - `scripts/check_code_map.py` — Validate semantic-map paths, description lengths, and fixed size budgets.
 - `scripts/compare_cycle_audio.py` — Render declared-equivalent Cycle 1/2 presets and compare audio output.

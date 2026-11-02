@@ -95,7 +95,7 @@ Export a Cyclogram plot while a preview pattern's controller automation advances
 python3 scripts/export_cycle_v2_spy_sequence.py \
     --preset cycle-v2/content/presets/honerism-3.cyclegraph \
     --pattern cycle-v2/content/patterns/factory-basic-keys.cyclepattern \
-    --gradient bullion --fps 30 --width 1280 --height 720 \
+    --gradient bullion --fps 30 --width 1280 --height 720 --mp4 \
     --output-dir .context/spy-sequence
 
 python3 scripts/export_cycle_v2_spy_sequence.py --list-gradients
@@ -115,6 +115,12 @@ There are `ceil(durationSeconds * fps)` opaque, plot-only PNGs at `index / fps`,
 starting at zero and excluding the duration endpoint. Rendering may take longer
 than playback without dropping frames. Patterns must contain controller
 automation and fit the existing schedule export capacity.
+
+Add `--mp4` to encode the completed frames into `sequence.mp4` with ffmpeg
+(assumed installed). It uses H.264, CRF 18, yuv420p, and the export frame rate;
+the PNGs remain available. Odd dimensions get one black padding pixel on the
+right/bottom as needed for H.264. Video publication is atomic; encoding failures
+or interruptions preserve the PNG sequence and are recorded in the manifest.
 
 The output directory must be new. It contains `frame-000000.png` onward,
 source snapshots and hashes, a `manifest.json` with resolved settings and frame

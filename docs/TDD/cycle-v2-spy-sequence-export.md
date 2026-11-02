@@ -11,6 +11,12 @@ performance recording. Defaults: default-output, 30 fps, 1280x720, preset note
 and preset time-surface style. Explicit named styles include Bullion.
 
 Python owns frame iteration, source snapshots, manifests and failure reporting.
+Optional `--mp4` runs installed ffmpeg after all PNGs finish, creating
+`sequence.mp4` (H.264/libx264, CRF 18, yuv420p, faststart) at the same exact
+rational frame rate. Pad odd dimensions on the right/bottom to even dimensions.
+Keep all PNGs; publish the video from a temporary MP4 only after successful
+encoding. Manifest video status/dimensions distinguish encoding failures from a
+failed frame, and partial videos are removed on failure or interruption.
 PatternPlaybackSchedule/PatternControlScheduler remain the interpolation owners;
 exportPatternSchedule retains its existing validation and event-capacity limit.
 The coordinator owns isolated exact-PID launch/cleanup. Extend clean exec to use
@@ -34,7 +40,7 @@ copy, serialization, compilation, document/history edit, or audio-plan publicati
 per frame. Controller refresh scales with changed roots and required downstream
 products, independently of unrelated graph content. Image rendering scales with
 the requested plot and existing bounded recipe filtering. No realtime allocations.
-No new UI controls, live capture, audio/video output or other Spy modes.
+No new UI controls, live capture, audio output or other Spy modes.
 
 NodeCanvas and GraphPresentationModel are pre-existing large orchestration roots;
 the former becomes smaller through capture extraction, and the latter retains
@@ -50,6 +56,7 @@ controller invalidation ownership. New export policy belongs to focused services
 - [x] Invalid targets/domains/arguments and output failures report cleanly.
 - [x] Two real app sweeps have identical corresponding PNGs and changing content.
 - [x] Focused tests, exact-target build, code-map and architecture checks pass.
+- [x] Optional ffmpeg MP4 preserves frames, rate/count, and handles odd sizes/failures.
 
 ## Evidence
 
@@ -61,10 +68,15 @@ controller invalidation ownership. New export policy belongs to focused services
   targets, PNG publication failures, document/history/publication stability,
   no graph/mesh copies or serialization, and two changed controller roots with
   1 versus 80 unrelated nodes. Log: `.context/spy-export-cpp-tests-final.log`.
-- Host/export/coordinator/session Python suites: 25 tests pass. Include exact
+- Host/export/coordinator/session Python suites: 29 tests pass. Include exact
   boundaries, multiple lanes, nonintegral frame rates, failure/interruption
   artifacts, and isolated coordinator arguments. Log:
-  `.context/spy-export-python-tests.log`.
+  `.context/spy-export-mp4-all-tests.log`. MP4 coverage includes worker flag
+  forwarding, success/failure/interruption reporting, partial-file cleanup, and
+  real ffmpeg/ffprobe verification of fractional rate, frame count and odd sizes.
+- Real `--mp4` export: `.context/spy-export-mp4/sequence.mp4`, H.264/yuv420p,
+  six frames at 6 fps, one second; 321x201 PNGs retained and padded to 322x202
+  for video. Encoding status and dimensions are recorded in its manifest.
 - Two isolated honerism-3/Bullion sweeps at 6 fps, 640x400: all six corresponding
   PNGs are byte-identical and all six frames within each sweep differ. Source
   files retain their original hashes. Proof: `.context/spy-export-repeatability.json`;
