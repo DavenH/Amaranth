@@ -76,7 +76,8 @@ void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRe
                     auto fill = fillColour;
                     fill.multiplyAlpha(alpha - strokeAlpha);
                     colour.multiplyAlpha(strokeAlpha);
-                    colour.setARGB((juce::uint8) alpha,
+                    colour.setARGB((juce::uint8) juce::jmin(255,
+                                    alpha + WaveformColourStyles::fillGridBacking * (alpha - strokeAlpha)),
                             (juce::uint8) (colour.getRed() + fill.getRed()),
                             (juce::uint8) (colour.getGreen() + fill.getGreen()),
                             (juce::uint8) (colour.getBlue() + fill.getBlue()));
@@ -98,7 +99,7 @@ ReferenceWaveformResolution referenceWaveformResolution(const std::vector<int>& 
     const auto count = (size_t) std::distance(first, last);
     const bool useLine = pixelWidth > 0 && count <= (size_t) pixelWidth;
     const bool useFill = useLine && physicalScale > 0.f
-            && count <= (size_t) ((float) pixelWidth / (6.f * physicalScale));
+            && count <= (size_t) ((float) pixelWidth / (2.f * physicalScale));
     return { count, useLine, useFill };
 }
 

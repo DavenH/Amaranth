@@ -4,7 +4,8 @@
 
 Complete: black waveform/time-slice plots, shared panel grids, GPU heat
 composition, earlier constant fill, popup presentation selector and inline zoom
-controls are implemented and verified.
+controls, single root-note refresh, retained images, committed tray updates and
+full-band spectra are implemented and verified.
 
 ## Contract and ownership
 
@@ -257,7 +258,7 @@ Verification evidence for the black/GPU slice:
 
 ## Filled sparse-path detail
 
-Once the visible signal has at least six logical pixels per zero crossing,
+Once the visible signal has at least two logical pixels per zero crossing,
 the shared resolution classifier enables filled path detail. This threshold is
 independent of Retina scale and distinct from the earlier one-crossing-per-physical
 pixel switch to a stroke. The same reference path closes to the bipolar zero
@@ -314,11 +315,14 @@ other views retain 1. Pinch ratios use the same exponent in the shared
 comparison host. No wheel or scroll state machine is copied. One unsmoothed step
 retains 70.71% of the horizontal interval instead of 79.37%.
 
-The fill/wider-edge threshold halves from twelve to six logical pixels per
-crossing, enabling it one zoom octave sooner. Stroke coverage is encoded in RGB,
+The initial fill threshold halved from twelve to six logical pixels per crossing.
+Further visual review moves it to two logical pixels per crossing, enabling
+fill around a 5–6% time window in the dense Stengah workload. Stroke coverage is encoded in RGB,
 combined stroke/fill coverage in alpha using a black fill plus white stroke.
 Software and GPU colour adapters recover stroke = red and fill = alpha-red;
-only the edge samples the heat palette. This preserves antialiasing with one
+only the edge samples the heat palette. A shared dark-backing multiplier
+halves the grid contrast beneath the fill while preserving its brightness
+on the black plot background. This preserves antialiasing with one
 coverage image and the existing heat texture; no extra texture, counting pass,
 or source preparation is added. The fill is uniformly neutral at 20% opacity.
 
@@ -361,3 +365,133 @@ existing child interception flags. Scrollbars retain their own targets, and
 wheel/pinch still use canvas forwarding. Comparison cards keep their click
 callbacks. The focused fixture asserts release-line down/up at the plot centre;
 this replaces the prior state-only proof for that path.
+
+
+## Refresh continuity audit (2026-11-01)
+
+Workload: Debug, old/stengah, probe2 Waveform, pinned reference-tray Spy,
+expanded detail, right-click root note 59→49. Baseline report
+`.context/spy-refresh-before.json`: detail captures 1→3, waveform source builds
+1→3, and the immediate replacement has pixelWidth=0. ExpandedProbeTotal has
+two calls (mean169ms), previewAudio two calls, synchronousRefresh one and worker
+one. The tray capture count remains1. The two images have different content
+fingerprints even though their shapes appear similar. persistPreviewMorph
+schedules a 55ms refresh after the note handler already refreshed synchronously;
+that first refresh did not prepare the newly mapped key-scale configurations.
+
+Keep GraphPresentationModel the configuration/preview owner: its note refresh
+accepts changed mapped-node facts, prepares only those configurations and runs
+one global pitch preview. Remove the redundant deferred refresh. Canvas
+publication routes refresh detail and pinned views after committed content is
+ready; layout-only edits and live gestures retain existing capture policy.
+WaveformView keeps its presented images while a replacement source renders,
+and keys reusable geometry by source identity as well as camera/scale. Explicit
+source removal still clears the view. Count publications, blank paints and
+retained-image paints to verify the actual transition, including stale jobs.
+
+The spectral gap is missing frequency coverage: expanded capture reduces time
+rows to512 before FFT, leaving too few harmonic bins at low MIDI notes. Keep
+full period-resolution time data until the existing spectrum conversion, in
+both detail and pinned capture paths. Do not stretch harmonic spacing or copy
+FFT/mapping code. The shared source-row reduction owner decides this exception.
+
+Acceptance: one root-note preview and detail capture; exactly one new waveform
+source/publication; no blank paint after an established image; pinned content
+changes after node edits, root/controllers and undo/redo; layout/zoom does not
+recapture; spectral single/batched captures fill the same plot at low notes.
+
+
+Spectrum sizing also accounts for the shared LogRegionMapping legacy octave
+convention: sourceFrameCountForMidiNote alone is smaller than twice the displayed
+harmonic range. GraphPreviewExecutor now owns spectrumSourceFrameCountForMidiNote,
+using that exact range and the existing power-of-two policy. Both single and
+batched captures request this resolution; the UI preview generator delegates to
+it. Full-spectrum time grids are not reduced before FFT. Existing harmonic
+spacing, FFT code, source-note metadata and the mature renderer stay unchanged.
+
+Root-note mapped configurations are prepared only for the edited node IDs, before
+the sole global pitch preview. GraphPresentationModel's shared configuration
+publication helper updates audio revision and effective bindings consistently
+with synchronous/asynchronous edits. Pure note auditions retain their previous
+no-audio-publication behavior when no mapped values change. The old
+persistPreviewMorph scheduling wrapper is deleted. Ready synchronous authoring
+and async completion refresh the tray; redundant immediate callbacks in mode
+selection and automation undo/redo paths are removed. Local Trimesh commits keep
+the existing targeted preparation; other local commits with pinned Spies queue
+downstream preparation. Transient gestures and layout-only edits do not capture.
+
+Source replacement preserves the complete image/heat/software tuple and its
+source identity until a matching worker revision publishes. Empty-source removal
+clears it. An old image cannot be reused as new-source geometry at the same zoom.
+Diagnostics distinguish completed publications, paints with retained images and
+initial blank paints. Pending mode switches also retain the current waveform
+until the next capture arrives.
+
+Size/responsibility review: NodeCanvas.cpp 3800→3776 and header498→493.
+Canvas still owns publication routing, editor lifecycle and capture orchestration;
+changed-node configuration remains in GraphPresentationModel. Removing the deferred
+wrapper and duplicate callbacks reduces lifecycle duplication. Existing broader
+canvas extraction plans remain applicable. ComparisonDock grows865→877 to retain
+a content fingerprint for observable tray freshness; it moves the capture values
+into the hash adapter and card rather than making an extra signal copy. No new
+capture algorithm lives in the dock. GraphPresentationModel711→716 remains the
+single configuration/preview scheduler; GraphPreviewExecutor673→680 owns source
+resolution and row reduction. ReferenceWaveformView333→350 owns the retained
+presentation/worker handover; it retains one completed source and its pixels,
+not an unbounded history. PresentationPreviewRenderer401→417 owns the single/batch
+resolution adapter. No realtime allocation or per-pixel scalar math is added.
+
+Grid/fill review: the user screenshot's thumb is about5–6% of the full time axis.
+The shared fill/wider-edge classifier now allows two logical pixels per crossing.
+The dense Stengah octave0 workload fills at w≈0.05. A dark backing adds alpha
+without increasing the fill's premultiplied colour: existing20% neutral brightness
+is retained while grid transmission falls80%→40%. GPU/software adapters share
+WaveformColourStyles::fillGridBacking. Tests assert unchanged fill brightness,
+constant colour and less than half the original grid contrast.
+
+The local-commit regression (`cycle-v2-agent-spy-commit-refresh.json`) exercises
+actual Trimesh gain-control down/drag/up with a reference and pinned output. Comparison stays
+cached through movement and refreshes exactly once on commit, including when
+PresentationRefreshPolicy needs no second downstream publication. The shared
+refreshComparisonAfterLocalCommit adapter owns targeted preparation or async
+fallback. The obsolete comparisonRefreshPending field and diagnostics are deleted;
+completion always refreshes a visible committed comparison through its canonical
+callback. No second gesture state machine is added.
+
+
+Final audit evidence: `.context/spy-refresh-accepted.json` passes53 commands.
+One root change now produces one synchronous preview, zero deferred workers,
+one expanded capture, one new waveform source and one completed publication.
+The displayed image remains1726px wide during replacement; blankPaints stays2
+(initial loading only), retainedImagePaints increases0→2. Tray captures increase
+1→2; edits and undo/redo each add one, while layout, no-op root selection and zoom
+add none. The single popup capture measures156.9ms versus two at mean169.2ms in
+the baseline; global preview audio measures71.1ms once versus mean74.8ms twice.
+These are same-machine Debug stage samples, not a Release latency guarantee.
+Capture/DSP and CPU coverage generation remain the source-update cost; paint
+retains the existing GL texture path throughout preparation.
+
+The final broad targeted run passes70 of71 cases (144,466 passing assertions).
+The remaining TestDefaultOutputProbe.cpp:180 expects `volumeMultiply` in the
+user's modified Baroque Flute preset, whose probe now targets `globalInput`;
+selected/full equality passes first. This unchanged selected-executor test is
+recorded in ui-bugs.md, with proof in `.context/spy-refresh-final-tests.log`.
+The new combined root/configuration, retained-image and full-band spectrum tests
+pass, including normal/Retina fill classification and software grid contrast.
+
+UI regressions pass: Trimesh commit36 commands, Guide edit/undo/redo13, existing
+waveform navigation85, appearance/persistence55, new refresh workflow53 and
+native GL fill19. Native evidence is `.context/spy-refresh-filled-native.png`;
+full-height spectrum evidence is `.context/spy-spectrogram-refreshed.png`.
+A smoother Baroque Flute fill/grid capture is
+`.context/spy-refresh-fill-smooth-native.png`. Exact CycleV2/CycleV2_tests builds,
+architecture audit, code-map validation, Python compilation and diff checks pass.
+The commit fixture uses explicit waitForIdle after release to observe the ready
+asynchronous publication; legacy inline wait fields do not wait in the coordinator.
+
+Comparison notifications are restricted to ready Downstream publications. Local
+editor renders and PreviewOnly movement cannot refresh the shelf, including
+On Release gestures whose edits do not own a transient graph. The commit fixture
+waits through movement in both Live and On Release modes and verifies one capture
+per release. This keeps the original interaction complexity and removes pending-
+flag policy from completion routing.

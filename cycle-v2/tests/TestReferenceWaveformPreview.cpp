@@ -2,6 +2,7 @@
 #include <catch2/catch_approx.hpp>
 
 #include "UI/ReferenceWaveformPreview.h"
+#include "UI/ReferenceWaveformView.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/LibraryIconRenderer.h"
 #include <Algo/PeakCounter.h>
@@ -366,14 +367,14 @@ TEST_CASE("Sparse waveform paths fill both polarities translucently and retain a
 
 TEST_CASE("Filled waveform detail requires resolved oscillations at the same logical zoom on Retina",
         "[cycle-v2][waveform][resolution][fill]") {
-    std::vector<int> crossings(200);
+    std::vector<int> crossings(600);
     std::iota(crossings.begin(), crossings.end(), 0);
-    REQUIRE(referenceWaveformResolution(crossings, 0, 170, 1024).useFill);
-    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 171, 1024).useFill);
-    REQUIRE(referenceWaveformResolution(crossings, 0, 170, 2048, 2.f).useFill);
-    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 171, 2048, 2.f).useFill);
-    REQUIRE(referenceWaveformResolution(crossings, 0, 200, 1024).useLine);
-    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 200, 1024).useFill);
+    REQUIRE(referenceWaveformResolution(crossings, 0, 512, 1024).useFill);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 513, 1024).useFill);
+    REQUIRE(referenceWaveformResolution(crossings, 0, 512, 2048, 2.f).useFill);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 513, 2048, 2.f).useFill);
+    REQUIRE(referenceWaveformResolution(crossings, 0, 600, 1024).useLine);
+    REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 600, 1024).useFill);
 }
 
 TEST_CASE("Filled waveform colour stays uniform across heat palettes while its edge retains heat",
@@ -395,16 +396,64 @@ TEST_CASE("Filled waveform colour stays uniform across heat palettes while its e
         for (int x : { 16, 64, 112 }) {
             const auto fill = red.getPixelAt(x, interior);
             REQUIRE(fill == blue.getPixelAt(x, interior));
-            REQUIRE(fill.getAlpha() == 51);
-            REQUIRE(fill.getRed() == Catch::Approx(CanvasChromePalette::text.getRed()).margin(5));
-            REQUIRE(fill.getGreen() == Catch::Approx(CanvasChromePalette::text.getGreen()).margin(5));
-            REQUIRE(fill.getBlue() == Catch::Approx(CanvasChromePalette::text.getBlue()).margin(5));
+            REQUIRE(fill.getAlpha() == 153);
+            const auto onBlack = juce::Colours::black.overlaidWith(fill);
+            const auto expected = juce::Colours::black.overlaidWith(CanvasChromePalette::text.withAlpha(0.2f));
+            REQUIRE(onBlack.getRed() == Catch::Approx(expected.getRed()).margin(3));
+            REQUIRE(onBlack.getGreen() == Catch::Approx(expected.getGreen()).margin(3));
+            REQUIRE(onBlack.getBlue() == Catch::Approx(expected.getBlue()).margin(3));
+            const auto grid = juce::Colour(0xff333333);
+            const auto onGrid = grid.overlaidWith(fill);
+            REQUIRE(onGrid.getRed() - onBlack.getRed() < grid.getRed() / 2);
         }
+        const juce::Image::BitmapData mask(coverage, juce::Image::BitmapData::readOnly);
         for (int y = 0; y < 129; ++y) {
+            const auto* row = reinterpret_cast<const juce::PixelARGB*>(mask.getLinePointer(y));
             for (int x = 0; x < 129; ++x) {
-                REQUIRE(red.getPixelAt(x, y).getAlpha() == coverage.getPixelAt(x, y).getAlpha());
-                REQUIRE(blue.getPixelAt(x, y).getAlpha() == coverage.getPixelAt(x, y).getAlpha());
+                const int alpha = juce::jmin(255, row[x].getAlpha()
+                        + WaveformColourStyles::fillGridBacking * (row[x].getAlpha() - row[x].getRed()));
+                REQUIRE(red.getPixelAt(x, y).getAlpha() == alpha);
+                REQUIRE(blue.getPixelAt(x, y).getAlpha() == alpha);
             }
         }
     }
+}
+
+TEST_CASE("Waveform source replacement retains the last complete image and never reuses its geometry",
+        "[cycle-v2][waveform][refresh-continuity]") {
+    juce::ScopedJuceInitialiser_GUI gui;
+    ReferenceWaveformView view;
+    view.setBounds(0, 0, 128, 64);
+    view.addToDesktop(0);
+    view.setVisible(true);
+    const auto waitForImage = [&] {
+        for (int attempt = 0; attempt < 200 && !bool(view.diagnostics()["ready"]); ++attempt) {
+            juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        }
+        REQUIRE(bool(view.diagnostics()["ready"]));
+    };
+    const auto paint = [&] {
+        juce::Image image(juce::Image::ARGB, 128, 64, true);
+        juce::Graphics graphics(image);
+        view.paint(graphics);
+        return image;
+    };
+    view.setSignal(std::make_shared<const std::vector<float>>(512, 0.5f));
+    waitForImage();
+    const auto positive = paint();
+    const int blankPaints = view.diagnostics()["blankPaints"];
+    view.setSignal(std::make_shared<const std::vector<float>>(512, -0.5f));
+    REQUIRE_FALSE(bool(view.diagnostics()["ready"]));
+    REQUIRE(bool(view.diagnostics()["hasImage"]));
+    const auto retained = paint();
+    REQUIRE(retained.getPixelAt(64, 16) == positive.getPixelAt(64, 16));
+    REQUIRE(retained.getPixelAt(64, 48) == positive.getPixelAt(64, 48));
+    REQUIRE(int(view.diagnostics()["blankPaints"]) == blankPaints);
+    waitForImage();
+    const auto negative = paint();
+    REQUIRE(positive.getPixelAt(64, 16) != negative.getPixelAt(64, 16));
+    REQUIRE(positive.getPixelAt(64, 48) != negative.getPixelAt(64, 48));
+    REQUIRE(int(view.diagnostics()["sourceBuilds"]) == 2);
+    view.setSignal(nullptr);
+    REQUIRE_FALSE(bool(view.diagnostics()["hasImage"]));
 }

@@ -46,7 +46,8 @@ public:
             ThreadPoolJob("Reference waveform view")
         ,   owner(&view)
         ,   source(view.source)
-        ,   cachedGeometry(view.imageViewport == view.viewport && view.imageScale == view.physicalScale
+        ,   cachedGeometry(view.imageSource == view.source
+                    && view.imageViewport == view.viewport && view.imageScale == view.physicalScale
                     && view.image.getWidth() == width
                     && view.image.getHeight() == height ? view.image : juce::Image())
         ,   prepareSoftware(view.gpuHeatPaintCount == 0)
@@ -138,11 +139,6 @@ void ReferenceWaveformView::setSample(const PitchedSample* sample) {
     sampleIdentity = sample;
     setTitle("Reference waveform");
     signalIdentity.reset();
-    image = {};
-    heatField = {};
-    softwareImage = {};
-    softwareCoverage = {};
-    softwareHeat = {};
     source.reset();
     if (sample != nullptr) {
         auto prepared = std::make_shared<Source>();
@@ -150,6 +146,9 @@ void ReferenceWaveformView::setSample(const PitchedSample* sample) {
         prepared->zeroCrossings = PeakCounter::findZeroCrossings(Buffer<float>(prepared->mono, 0), 0);
         source = std::move(prepared);
         ++sourceBuildCount;
+    }
+    if (source == nullptr) {
+        clearPresentedImage();
     }
     requestImage();
 }
@@ -162,11 +161,6 @@ void ReferenceWaveformView::setSignal(std::shared_ptr<const std::vector<float>> 
     signalIdentity = std::move(samples);
     setTitle("Signal waveform");
     sampleIdentity = nullptr;
-    image = {};
-    heatField = {};
-    softwareImage = {};
-    softwareCoverage = {};
-    softwareHeat = {};
     source.reset();
     if (signalIdentity != nullptr && !signalIdentity->empty()) {
         auto prepared = std::make_shared<Source>();
@@ -183,6 +177,9 @@ void ReferenceWaveformView::setSignal(std::shared_ptr<const std::vector<float>> 
         source = std::move(prepared);
         ++sourceBuildCount;
     }
+    if (source == nullptr) {
+        clearPresentedImage();
+    }
     requestImage();
     repaint();
 }
@@ -194,6 +191,15 @@ void ReferenceWaveformView::setViewport(const ZoomRect& next) {
     viewport = next;
     requestImage();
     repaint();
+}
+
+void ReferenceWaveformView::clearPresentedImage() {
+    image = {};
+    heatField = {};
+    softwareImage = {};
+    softwareCoverage = {};
+    softwareHeat = {};
+    imageSource.reset();
 }
 
 void ReferenceWaveformView::requestImage() {
@@ -218,6 +224,8 @@ void ReferenceWaveformView::publish(uint64_t completed, juce::Image rendered, ju
     if (completed != revision) {
         return;
     }
+    imageSource = source;
+    ++publicationCount;
     image = std::move(rendered);
     heatField = std::move(heat);
     softwareImage = std::move(software);
@@ -235,6 +243,11 @@ void ReferenceWaveformView::publish(uint64_t completed, juce::Image rendered, ju
 
 void ReferenceWaveformView::paint(juce::Graphics& graphics) {
     const double started = juce::Time::getMillisecondCounterHiRes();
+    if (source != nullptr && !image.isValid()) {
+        ++blankPaintCount;
+    } else if (image.isValid() && publishedRevision != revision) {
+        ++retainedImagePaintCount;
+    }
     if (juce::OpenGLContext::getCurrentContext() != nullptr) {
         ++gpuPaintCount;
     }
@@ -306,6 +319,10 @@ void ReferenceWaveformView::mouseWheelMove(const juce::MouseEvent& event, const 
 juce::var ReferenceWaveformView::diagnostics() const {
     auto value = std::make_unique<juce::DynamicObject>();
     value->setProperty("ready", image.isValid() && publishedRevision == revision);
+    value->setProperty("hasImage", image.isValid());
+    value->setProperty("publications", publicationCount);
+    value->setProperty("blankPaints", blankPaintCount);
+    value->setProperty("retainedImagePaints", retainedImagePaintCount);
     value->setProperty("mode", line ? "line" : "density");
     value->setProperty("filled", filled);
     value->setProperty("crossings", (juce::int64) crossings);

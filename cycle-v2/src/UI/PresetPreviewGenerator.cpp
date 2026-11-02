@@ -11,8 +11,6 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr size_t kMinimumSpectrumSourceRows = 512;
-
 Image renderPreview(
         const GraphPreviewResult::SignalProbePreview& preview,
         int width,
@@ -58,9 +56,10 @@ Image renderPreview(
 
 size_t PresetPreviewGenerator::sourceRowCountForView(
         size_t requestedRows,
-        PresetPreviewView view) {
+        PresetPreviewView view,
+        int midiNote) {
     return view == PresetPreviewView::Spectrum
-            ? std::max(requestedRows, kMinimumSpectrumSourceRows)
+            ? std::max(requestedRows, GraphPreviewExecutor::spectrumSourceFrameCountForMidiNote(midiNote))
             : requestedRows;
 }
 

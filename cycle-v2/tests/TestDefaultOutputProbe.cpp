@@ -273,7 +273,8 @@ TEST_CASE("Expanded output spectrum retains the compact FFT resolution",
             presentation.previewMidiNote());
     const size_t sourceRows = PresetPreviewGenerator::sourceRowCountForView(
             noteRows,
-            PresetPreviewView::Spectrum);
+            PresetPreviewView::Spectrum,
+            presentation.previewMidiNote());
     const auto detailTime = presentation.captureProbePreview(
             graph,
             DefaultOutputProbeResolver::probeId,

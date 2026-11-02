@@ -117,11 +117,7 @@ bool GraphPresentationModel::refresh(
         previewRenderer.resetExecutionState();
     } else if (change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration)) {
-        const uint64_t configurationStartedAt = performance.timestamp();
         refreshConfigurations(graph, next.compileResult.plan, change.nodeIds);
-        performance.record(
-                Performance::Stage::Configuration,
-                performance.timestamp() - configurationStartedAt);
     }
     if (!compile && change.probesChanged) {
         compiler.refreshSignalProbes(graph, next.compileResult.plan);
@@ -166,9 +162,7 @@ bool GraphPresentationModel::refresh(
     if (accepted && (compile
             || change.guidesChanged
             || hasImpact(change.parameterImpacts, ParameterImpact::DspConfiguration))) {
-        controllerPreviewRootNodeIds = controllerPreviewRoots(current.compileResult.plan);
-        refreshPreviewMorphBindings();
-        ++audioRevision;
+        publishConfigurationChange();
     }
     performance.record(
             Performance::Stage::SynchronousRefresh,
@@ -219,13 +213,17 @@ bool GraphPresentationModel::acceptSnapshot(
 bool GraphPresentationModel::refreshPreviewMidiNote(
         const NodeGraph& graph,
         uint64_t documentRevision,
-        int midiNote) {
+        int midiNote,
+        const std::vector<String>& changedMorphNodes) {
     const int selectedNote = jlimit(0, 127, midiNote);
     if (current.previewMidiNote == selectedNote) {
         return true;
     }
 
     scheduler.cancelAndWait();
+    if (!changedMorphNodes.empty()) {
+        refreshConfigurations(graph, current.compileResult.plan, changedMorphNodes);
+    }
     current.previewMidiNote = selectedNote;
     hasExplicitPreviewMidiNote = true;
 
@@ -234,7 +232,11 @@ bool GraphPresentationModel::refreshPreviewMidiNote(
     for (const auto& node : graph.getNodes()) {
         roots.push_back(node.id);
     }
-    return refreshPreviewControls(graph, documentRevision, std::move(roots));
+    const bool refreshed = refreshPreviewControls(graph, documentRevision, std::move(roots));
+    if (refreshed && !changedMorphNodes.empty()) {
+        publishConfigurationChange();
+    }
+    return refreshed;
 }
 
 bool GraphPresentationModel::refreshPreviewModWheelValue(
@@ -416,9 +418,7 @@ void GraphPresentationModel::refreshAsync(
                         && (job.change.guidesChanged
                                 || hasImpact(job.change.parameterImpacts,
                                         ParameterImpact::DspConfiguration))) {
-                    controllerPreviewRootNodeIds = controllerPreviewRoots(current.compileResult.plan);
-                    refreshPreviewMorphBindings();
-                    ++audioRevision;
+                    publishConfigurationChange();
                 }
                 if (job.previewRendered) {
                     ++previewRenders;
@@ -439,11 +439,7 @@ bool GraphPresentationModel::executeAsyncProducts(
             || (refresh.scope != PresentationRefreshScope::Downstream
                     && hasImpact(refresh.change.parameterImpacts,
                             ParameterImpact::DspConfiguration))) {
-        const uint64_t startedAt = performance.timestamp();
         refreshConfigurations(*refresh.graph, next.compileResult.plan, refresh.change.nodeIds);
-        performance.record(
-                GraphPresentationPerformanceMetrics::Stage::Configuration,
-                performance.timestamp() - startedAt);
     }
     if (!scheduler.isCurrent(refresh) || !requiresPreview(refresh.change)
             || !next.compileResult.succeeded()) {
@@ -636,6 +632,12 @@ bool GraphPresentationModel::requiresPreview(const GraphChangeSet& change) const
             || hasImpact(change.parameterImpacts, ParameterImpact::Presentation);
 }
 
+void GraphPresentationModel::publishConfigurationChange() {
+    controllerPreviewRootNodeIds = controllerPreviewRoots(current.compileResult.plan);
+    refreshPreviewMorphBindings();
+    ++audioRevision;
+}
+
 void GraphPresentationModel::refreshPreviewMorphBindings() {
     const auto targets = PreviewMorphBinding::fromPlan(current.compileResult.plan);
     keyScaleTargets.clear();
@@ -658,6 +660,7 @@ void GraphPresentationModel::refreshConfigurations(
         const NodeGraph& graph,
         GraphExecutionPlan& plan,
         const std::vector<String>& nodeIds) {
+    const uint64_t startedAt = performance.timestamp();
     plan.outputGain = GraphCompiler::outputGainFor(graph);
     compiler.refreshVoiceContexts(graph, plan);
     for (auto& step : plan.steps) {
@@ -668,6 +671,8 @@ void GraphPresentationModel::refreshConfigurations(
         }
         refreshConfigurationForStep(graph, step);
     }
+    performance.record(GraphPresentationPerformanceMetrics::Stage::Configuration,
+            performance.timestamp() - startedAt);
 }
 
 void GraphPresentationModel::refreshConfigurationForStep(

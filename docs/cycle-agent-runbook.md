@@ -91,6 +91,11 @@ Inspect artifacts in this order:
 3. Raw log: only when the filtered log omits needed detail.
 4. LLDB transcript for breakpoint runs, or a crash report when available.
 
+Run `python3 scripts/test_cycle_v2_spy_refresh.py` for opened/pinned Spy content
+refreshes. It checks one root-note capture/publication, retained images without
+blank paints, node edits and undo/redo, layout/zoom without recapture, and full
+spectral coverage. Pass `--no-build` only after building the exact app target.
+
 ## Direct Live Authoring
 
 Keep one socket open and inspect the current model before editing. Capabilities
@@ -403,7 +408,9 @@ scripts/cycle_automation.py run --product cycle-v2 --clean \
 ```
 
 Compare reports from the same build, preset contents, window size, cache state,
-and power source. `waitForIdle` marks queue progress rather than visibility.
+and power source. `waitForIdle` marks queue progress rather than visibility. Use an explicit
+`waitForIdle` command; legacy wait fields attached to other fixture commands
+are not executed by the coordinator.
 For expanded Trimesh morph gestures, run the live and on-release fixtures
 separately and inspect their operation-count assertions.
 

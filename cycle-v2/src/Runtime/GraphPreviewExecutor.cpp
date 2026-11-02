@@ -4,6 +4,7 @@
 
 #include <Audio/CycleDsp/OscillatorLaneCore.h>
 #include <Util/Arithmetic.h>
+#include <Util/LogRegionMapping.h>
 
 #include "Runtime/GraphPreviewExecutor.h"
 
@@ -40,6 +41,12 @@ size_t GraphPreviewExecutor::periodRowsForMidiNote(int midiNote, double sampleRa
         return 0;
     }
     return (size_t) Arithmetic::getNextPow2((float) (1.0 / angleDelta));
+}
+
+size_t GraphPreviewExecutor::spectrumSourceFrameCountForMidiNote(int midiNote, double sampleRate) {
+    const int harmonics = LogRegionMapping(midiNote, sampleRate).regionSize();
+    return jmax(kMinimumProbeSourceFrames,
+            (size_t) Arithmetic::getNextPow2((float) (2 * harmonics)));
 }
 
 size_t GraphPreviewExecutor::sourceFrameCountForMidiNote(int midiNote, double sampleRate) {

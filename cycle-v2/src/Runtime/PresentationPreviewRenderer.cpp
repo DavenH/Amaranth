@@ -18,6 +18,14 @@ constexpr size_t kCompactPreviewColumnCount = 256;
 constexpr size_t kExpandedProbeColumnCount = 512;
 constexpr size_t kMaximumExpandedProbeRows = 512;
 
+void reduceExpandedProbeRows(GraphPreviewResult::SignalProbePreview& preview,
+        size_t requestedRows, PresetPreviewView view) {
+    if (view != PresetPreviewView::Spectrum || preview.domain != PortDomain::TimeSignal) {
+        GraphPreviewExecutor::reduceProbeRows(preview,
+                std::min(requestedRows, kMaximumExpandedProbeRows));
+    }
+}
+
 void reduceCompactProbeRows(GraphPreviewResult& result) {
     for (auto& probe : result.probes) {
         GraphPreviewExecutor::reduceProbeRows(
@@ -311,6 +319,10 @@ PresentationPreviewRenderer::captureProbePreview(
     if (!address.has_value()) {
         return std::nullopt;
     }
+    if (view == PresetPreviewView::Spectrum) {
+        rasterRowCount = std::max(rasterRowCount,
+                GraphPreviewExecutor::spectrumSourceFrameCountForMidiNote(midiNote));
+    }
     auto preview = captureSelectedProbe(
             plan, *address, rasterRowCount, midiNote, controllerValues, performance, noteOffTime);
     const auto recordTotal = [&] {
@@ -331,9 +343,7 @@ PresentationPreviewRenderer::captureProbePreview(
         preview.waveform = SignalProbeWaveformCapture::capture(
                 plan, *address, voice, preview.releaseDuration, noteOffTime);
     }
-    GraphPreviewExecutor::reduceProbeRows(
-            preview,
-            std::min(rasterRowCount, kMaximumExpandedProbeRows));
+    reduceExpandedProbeRows(preview, rasterRowCount, view);
     recordTotal();
     return preview;
 }
@@ -351,11 +361,19 @@ PresentationPreviewRenderer::captureProbePreviews(
     std::vector<std::optional<GraphPreviewResult::SignalProbePreview>> previews(
             probeIds.size());
     std::vector<CompiledSignalProbe> addresses;
+    std::vector<PresetPreviewView> views;
     std::vector<size_t> destinationIndices;
     for (size_t index = 0; index < probeIds.size(); ++index) {
         const auto address = probeAddressFor(graph, plan, probeIds[index]);
         if (address.has_value()) {
             addresses.push_back(*address);
+            const auto* probe = graph.findSignalProbe(probeIds[index]);
+            const auto view = probe != nullptr ? probe->view : outputView;
+            views.push_back(view);
+            if (view == PresetPreviewView::Spectrum) {
+                rasterRowCount = std::max(rasterRowCount,
+                        GraphPreviewExecutor::spectrumSourceFrameCountForMidiNote(midiNote));
+            }
             destinationIndices.push_back(index);
         }
     }
@@ -382,14 +400,12 @@ PresentationPreviewRenderer::captureProbePreviews(
     for (size_t index = 0; index < addresses.size(); ++index) {
         auto preview = extractor.captureProbe(plan, audio, addresses[index]);
         if (preview.connected) {
-            const auto* probe = graph.findSignalProbe(preview.probeId);
-            const auto view = probe != nullptr ? probe->view : outputView;
+            const auto view = views[index];
             if (view == PresetPreviewView::Waveform && preview.domain == PortDomain::TimeSignal) {
                 preview.waveform = SignalProbeWaveformCapture::capture(
                         plan, addresses[index], voice, preview.releaseDuration, preview.noteOffTime);
             }
-            GraphPreviewExecutor::reduceProbeRows(preview,
-                    std::min(rasterRowCount, kMaximumExpandedProbeRows));
+            reduceExpandedProbeRows(preview, rasterRowCount, view);
             previews[destinationIndices[index]] = std::move(preview);
         }
     }

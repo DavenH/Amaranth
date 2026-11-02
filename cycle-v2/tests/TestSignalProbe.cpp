@@ -12,6 +12,8 @@
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
 #include "Runtime/GraphPresentationModel.h"
 #include "UI/SignalProbeCanvas.h"
+#include "UI/PresetPreviewGenerator.h"
+#include "UI/NodePreviewRenderer.h"
 #include "UI/WorkspaceDockInteractionController.h"
 
 using namespace CycleV2;
@@ -527,5 +529,52 @@ TEST_CASE("Output Spy mode changes refresh preview content without a graph edit"
         REQUIRE(document.graph().getRevision() == graphRevision);
         REQUIRE(presentation.audioPlanRevision() == audioRevision);
         REQUIRE(presentation.compilationCount() == compilations);
+    }
+}
+
+TEST_CASE("Expanded and pinned spectrum Spies preserve enough harmonics to fill the full frequency plot",
+        "[cycle-v2][probe][spectral][refresh-continuity]") {
+    NodeGraph graph;
+    auto source = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "wave", {});
+    source.model = TrimeshNodeModelState::takeOwnership(
+            TrimeshMeshFactory::createDefaultMesh("spectrum-full-range"), 1);
+    graph.addNode(std::move(source));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
+    graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
+    graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
+    const String id = graph.getSignalProbes().front().id;
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(commands.setSignalProbeView(id, PresetPreviewView::Spectrum).succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    for (const int note : { 36, 49 }) {
+        const auto single = presentation.captureProbePreview(document.graph(), id, 512, note);
+        const auto batch = presentation.captureProbePreviews(document.graph(), { id }, 512, note);
+        REQUIRE(single.has_value());
+        REQUIRE(batch.front().has_value());
+        REQUIRE(single->gridRows > 512);
+        REQUIRE(batch.front()->gridRows == single->gridRows);
+        for (const auto* captured : { &*single, &*batch.front() }) {
+            const auto spectrum = PresetPreviewGenerator::forView(*captured, PresetPreviewView::Spectrum);
+            NodePreviewResult result;
+            result.role = PreviewModuleRole::SignalSpy;
+            result.primary = spectrum.values;
+            result.gridColumns = spectrum.gridColumns;
+            result.gridRows = spectrum.gridRows;
+            result.domain = spectrum.domain;
+            result.frequencySampling = spectrum.frequencySampling;
+            result.frequencyMidiNote = spectrum.frequencyMidiNote;
+            // Uniform nonzero magnitudes distinguish uncovered rows from legitimate spectral silence.
+            result.primary.assign(result.primary.size(), 1.f);
+            const auto image = NodePreviewRenderer::createRuntimeHeatmapImage(result, false, 0.f, 200);
+            REQUIRE(image.isValid());
+            for (int y = 0; y < image.getHeight(); ++y) {
+                CAPTURE(note, captured->gridRows, spectrum.gridRows, spectrum.frequencyMidiNote, y);
+                REQUIRE(image.getPixelAt(0, y).getAlpha() == 255);
+            }
+        }
     }
 }

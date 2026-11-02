@@ -38,6 +38,7 @@ private:
     void componentVisibilityChanged() override;
     void componentMovedOrResized(bool, bool) override {}
     void componentPeerChanged() override {}
+    void clearPresentedImage();
     void requestImage();
     void handleAsyncUpdate() override;
     void publish(uint64_t revision, juce::Image image, juce::Image heatField, juce::Image softwareImage,
@@ -46,6 +47,7 @@ private:
     const PitchedSample* sampleIdentity {};
     std::shared_ptr<const std::vector<float>> signalIdentity;
     std::shared_ptr<const Source> source;
+    std::shared_ptr<const Source> imageSource;
     WaveformColourStyles::Style colourStyle { WaveformColourStyles::defaultStyle };
     ZoomRect viewport;
     ZoomRect imageViewport;
@@ -59,6 +61,9 @@ private:
     uint64_t publishedRevision {};
     int buildCount {};
     int sourceBuildCount {};
+    int publicationCount {};
+    int blankPaintCount {};
+    int retainedImagePaintCount {};
     int gpuPaintCount {};
     int gpuHeatPaintCount {};
     double paintMs {};

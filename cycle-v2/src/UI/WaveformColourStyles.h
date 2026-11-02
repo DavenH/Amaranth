@@ -7,6 +7,8 @@ namespace CycleV2::WaveformColourStyles {
 
 enum class Style { BurntAlum, IcyHot, IcyHotRaw, Bullion, Blues, Magenta, Greyscale };
 inline constexpr auto defaultStyle = Style::BurntAlum;
+// Dark backing preserves the translucent fill brightness while subduing the grid below it.
+inline constexpr int fillGridBacking = 2;
 
 struct Entry {
     Style style;

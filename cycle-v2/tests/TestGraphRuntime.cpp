@@ -1390,3 +1390,34 @@ TEST_CASE("Stengah upstream probes remain stable across spectral pan edits",
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
 }
+
+TEST_CASE("Root-note refresh prepares mapped configuration changes in one preview publication",
+        "[cycle-v2][runtime][preview-note][refresh-continuity]") {
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::ModulationSource, "source", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "source", "value", "out", "time", PortDomain::ControlSignal, ConnectionKind::Signal });
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher commands(document);
+    REQUIRE(commands.setNodeParameter("source", "source", "Source", "constant").succeeded());
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    const auto compilations = presentation.compilationCount();
+    auto audioRevision = presentation.audioPlanRevision();
+    for (const auto [note, value] : { std::pair { 60, 0.75f }, std::pair { 36, 0.25f } }) {
+        const auto edit = commands.setNodeParameter("source", "constant", "Constant", String(value));
+        REQUIRE(edit.succeeded());
+        REQUIRE(edit.changed);
+        const auto previews = presentation.previewRenderCount();
+        REQUIRE(presentation.refreshPreviewMidiNote(
+                document.graph(), document.revision(), note, edit.changes.nodeIds));
+        REQUIRE(findNodePreview(presentation.previewResult(), "source").primary.front() == Catch::Approx(value));
+        REQUIRE(presentation.previewRenderCount() == previews + 1);
+        ++audioRevision;
+        REQUIRE(presentation.audioPlanRevision() == audioRevision);
+        REQUIRE(presentation.compilationCount() == compilations);
+        REQUIRE(presentation.refreshPreviewMidiNote(document.graph(), document.revision(), note));
+        REQUIRE(presentation.previewRenderCount() == previews + 1);
+        REQUIRE(presentation.audioPlanRevision() == audioRevision);
+    }
+}

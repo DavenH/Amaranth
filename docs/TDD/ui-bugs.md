@@ -1,5 +1,34 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Selected-capture test assumes an older Baroque Flute probe source
+
+The broader 2026-11-01 Spy refresh check reaches
+TestDefaultOutputProbe.cpp:180, which expects `volumeMultiply`; the current
+Baroque Flute probe targets `globalInput`. Full and selected data equality and
+selected-node count pass before this hard-coded name assertion. This case uses
+the user's currently modified factory preset. GraphAudioExecutor and the selected
+capture/extraction path are unchanged by the refresh fixes. Evidence:
+`.context/spy-refresh-broad-initial-tests.log` (initial broad run).
+
+## Fixed: Root-note Spy refreshes flashed twice and pinned views stayed stale
+
+On 2026-11-01, old/stengah, expanded and pinned probe2 Waveform, root note59→49:
+`.context/spy-refresh-before.json` reports two expanded captures and two source
+builds, with a zero-width displayed image during replacement. The key-scale edit
+queued a delayed refresh after the synchronous note preview; that first preview
+also used the old mapped configurations. The tray capture count stayed1.
+One combined configuration/note refresh now produces one opened capture and
+one pinned refresh. The waveform retains its completed image through replacement
+and invalidates geometry by source identity. Committed sync/async publication
+refreshes pinned views, including node edits and undo/redo. Expanded spectrum
+capture sizes its time grid from the shared harmonic range and retains it until
+FFT, eliminating the unrepresented upper bands. Regression:
+`scripts/test_cycle_v2_spy_refresh.py`, `.context/spy-refresh-accepted.json`.
+
+The new waveform component unit test initially omitted ScopedJuceInitialiser_GUI,
+leaving Desktop/Timer assertions at process shutdown. The harness now owns GUI
+initialization explicitly; the accepted focused run exits cleanly.
+
 ## Fixed: Expanded waveform plot swallowed release-line input
 
 On 2026-11-01, `cycle-v2-agent-spy-popup-controls.json` selected Waveform on

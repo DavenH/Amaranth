@@ -1846,7 +1846,6 @@ bool NodeCanvas::setSpyView(const String& probeId, PresetPreviewView view) {
     GraphChangeSet change;
     change.probesChanged = true;
     refreshCompiledStateAsync(PresentationRefreshScope::Downstream, &change);
-    refreshComparisonAfterCommit();
     notifyOverlayOcclusionChanged();
     requestCanvasRepaint();
     return true;
@@ -2090,6 +2089,7 @@ void NodeCanvas::refreshCompiledState() {
     editorCoordinator.previewResources().setPreviewMidiNote(midiNote);
     globalUnisonPreviewContext.midiNote = midiNote;
     refreshProbeDetail();
+    refreshComparisonAfterCommit();
 }
 
 void NodeCanvas::refreshCompiledStateAsync(
@@ -2108,7 +2108,7 @@ void NodeCanvas::refreshCompiledStateAsync(
             ? commands.transientChanges()
             : document.lastChange();
     editorCoordinator.previewResources().refreshGraph(refreshGraph, refreshChange);
-    auto completion = [safeThis = SafePointer<NodeCanvas>(this)] {
+    auto completion = [safeThis = SafePointer<NodeCanvas>(this), scope] {
         if (safeThis == nullptr) {
             return;
         }
@@ -2128,12 +2128,8 @@ void NodeCanvas::refreshCompiledStateAsync(
         safeThis->openGLContext.triggerRepaint();
         safeThis->refreshProbeDetail();
         safeThis->requestCanvasRepaint();
-        if (safeThis->comparisonRefreshPending
-                && !safeThis->commands.hasTransientEdit()) {
-            safeThis->comparisonRefreshPending = false;
-            if (safeThis->comparisonRefreshCallback) {
-                safeThis->comparisonRefreshCallback();
-            }
+        if (scope == PresentationRefreshScope::Downstream) {
+            safeThis->refreshComparisonAfterCommit();
         }
     };
     if (snapshot != nullptr) {
@@ -2157,7 +2153,7 @@ void NodeCanvas::openProbeDetail(const String& probeId) {
             ? probeCanvasState.defaultOutputView
             : selectedProbe != nullptr ? selectedProbe->view : PresetPreviewView::Time;
     const size_t captureResolution = PresetPreviewGenerator::sourceRowCountForView(
-            resolution, view);
+            resolution, view, midiNote);
     auto preview = presentation.captureProbePreview(
             commands.editingGraph(),
             probeId,
@@ -2273,6 +2269,12 @@ bool NodeCanvas::applyAuthoringResult(const NodeCanvasAuthoringResult& result) {
         requestCanvasRepaint();
     }
     notifyGraphDocumentStateChanged();
+    if (result.succeeded && result.graphChanged
+            && (presentation.requiresCompilation(document.lastChange())
+                    || presentation.requiresPreview(document.lastChange()))) {
+        refreshProbeDetail();
+        refreshComparisonAfterCommit();
+    }
 
     return result.succeeded;
 }
@@ -2491,7 +2493,6 @@ void NodeCanvas::fitDocumentInViewport() {
 var NodeCanvas::exportAutomationState() const {
     var state = automation.exportState(automationPresentationState());
     if (auto* object = state.getDynamicObject()) {
-        object->setProperty("comparisonRefreshPending", comparisonRefreshPending);
         object->setProperty("presentationGraphRevision",
                 (int64) presentation.snapshot().graphRevision);
         object->setProperty("documentGraphRevision", (int64) document.revision());
@@ -2582,7 +2583,6 @@ bool NodeCanvas::undoForAutomation() {
     applyAuthoringResult(result);
     if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
-        refreshComparisonAfterCommit();
     }
     return result.succeeded;
 }
@@ -2593,7 +2593,6 @@ bool NodeCanvas::redoForAutomation() {
     applyAuthoringResult(result);
     if (result.succeeded && !document.lastChange().explanationsChanged) {
         rebindGuideEditor();
-        refreshComparisonAfterCommit();
     }
     return result.succeeded;
 }
@@ -2620,7 +2619,6 @@ void NodeCanvas::refreshAfterAutomationEdit() {
     presentation.refresh(document.graph(), document.revision(), document.lastChange());
     applyAuthoringResult({ true, true, true, GraphEditCode::Connected, {}, { true, true } });
     rebindGuideEditor();
-    refreshComparisonAfterCommit();
 }
 
 bool NodeCanvas::setGuideParameterForAutomation(
@@ -2785,20 +2783,27 @@ bool NodeCanvas::setPreviewMidiNote(int midiNote) {
     if (selectedNote == presentation.previewMidiNote()) {
         return true;
     }
-    if (!persistPreviewMorph(
-                selectedNote,
-                PreviewMorphEditScope::KeyScale).succeeded()) {
+    const auto edit = editPreviewMorph(selectedNote, PreviewMorphEditScope::KeyScale);
+    if (!edit.succeeded()) {
         return false;
+    }
+    if (edit.changed) {
+        editorCoordinator.clearPreviewCache();
+        editorCoordinator.previewResources().refreshGraph(commands.editingGraph(), edit.changes);
+        notifyGraphDocumentStateChanged();
     }
     if (!presentation.refreshPreviewMidiNote(
                 commands.editingGraph(),
                 document.revision(),
-                selectedNote)) {
+                selectedNote,
+                edit.changes.nodeIds)) {
         return false;
     }
     editorCoordinator.previewResources().setPreviewMidiNote(selectedNote);
+    rebindNodeEditor();
     globalUnisonPreviewContext.midiNote = selectedNote;
     refreshProbeDetail();
+    refreshComparisonAfterCommit();
     requestCanvasRepaint();
     return true;
 }
@@ -2844,6 +2849,7 @@ bool NodeCanvas::setPreviewControllerValue(int controller, int value) {
             return false;
         }
         refreshProbeDetail();
+        refreshComparisonAfterCommit();
     }
     requestCanvasRepaint();
     return true;
@@ -2960,24 +2966,6 @@ void NodeCanvas::endPreviewControllerGesture(int controller, int finalValue) {
             session.commit(stream);
         }
     }
-}
-
-GraphEditResult NodeCanvas::persistPreviewMorph(
-        int midiNote,
-        PreviewMorphEditScope scope,
-        int controller,
-        int controllerValue) {
-    const GraphEditResult edit = editPreviewMorph(
-            midiNote, scope, controller, controllerValue);
-    if (!edit.succeeded() || !edit.changed) {
-        return edit;
-    }
-    editorCoordinator.clearPreviewCache();
-    if (graphDocumentStateChangedCallback) {
-        graphDocumentStateChangedCallback();
-    }
-    scheduleCompiledStateRefresh();
-    return edit;
 }
 
 GraphEditResult NodeCanvas::editPreviewMorph(
@@ -3531,27 +3519,13 @@ void NodeCanvas::finishNodeEditorGesture(
         return;
     }
     notifyGraphDocumentStateChanged();
-    const Node* editedNode = graph.findNode(nodeId);
-    if (editedNode != nullptr && editedNode->kind == NodeKind::TrilinearMesh
-            && !document.presentation().comparisonSpyPins.empty()) {
-        if (presentation.prepareProbeCaptureForNode(graph, nodeId)) {
-            comparisonRefreshPending = false;
-            if (comparisonRefreshCallback) {
-                comparisonRefreshCallback();
-            }
-        } else {
-            comparisonRefreshPending = true;
-        }
-    }
     if (localField.isNotEmpty()) {
         presentation.commitLocalEditorState(
                 nodeId,
                 localField,
                 finished.effectiveFingerprint,
                 graphDocument.revision());
-        if (comparisonRefreshPending) {
-            refreshCompiledStateAsync(PresentationRefreshScope::Downstream);
-        }
+        refreshComparisonAfterLocalCommit(nodeId);
         return;
     }
 
@@ -3567,6 +3541,8 @@ void NodeCanvas::finishNodeEditorGesture(
                 PresentationRefreshScope::Downstream,
                 nullptr,
                 finished.finalSnapshot);
+    } else {
+        refreshComparisonAfterLocalCommit(nodeId);
     }
 }
 

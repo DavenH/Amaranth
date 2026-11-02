@@ -37,9 +37,20 @@ void NodeCanvas::requestComparisonRendering() {
 }
 
 void NodeCanvas::refreshComparisonAfterCommit() {
-    if (!document.presentation().comparisonSpyPins.empty() && comparisonRefreshCallback) {
-        comparisonRefreshPending = false;
+    if (!commands.hasTransientEdit()
+            && !document.presentation().comparisonSpyPins.empty() && comparisonRefreshCallback) {
         comparisonRefreshCallback();
+    }
+}
+
+void NodeCanvas::refreshComparisonAfterLocalCommit(const String& nodeId) {
+    if (document.presentation().comparisonSpyPins.empty()) {
+        return;
+    }
+    if (presentation.prepareProbeCaptureForNode(graph, nodeId)) {
+        refreshComparisonAfterCommit();
+    } else {
+        refreshCompiledStateAsync(PresentationRefreshScope::Downstream);
     }
 }
 

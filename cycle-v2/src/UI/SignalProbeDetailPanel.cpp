@@ -47,7 +47,7 @@ SignalProbeDetailPanel::SignalProbeDetailPanel(SignalProbeDetailState& stateToUs
 void SignalProbeDetailPanel::sync(PresetPreviewView view, bool timeSignal) {
     modes.setVisible(timeSignal);
     modes.setSelectedValue(idForPresetPreviewView(view));
-    const bool showWaveform = view == PresetPreviewView::Waveform && state.renderResult.waveform != nullptr;
+    const bool showWaveform = state.renderResult.waveform != nullptr;
     waveform.setVisible(showWaveform);
     zoomAttack.setVisible(showWaveform);
     zoomFull.setVisible(showWaveform);

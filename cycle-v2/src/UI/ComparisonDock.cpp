@@ -501,7 +501,7 @@ void ComparisonDock::updateCards() {
     if (!canvas.comparisonSpyPins().empty()) {
         ++captureCount;
     }
-    const auto previews = canvas.captureComparisonSpies(note);
+    auto previews = canvas.captureComparisonSpies(note);
     const auto& pins = canvas.comparisonSpyPins();
     const auto options = canvas.comparisonSpyOptions();
     for (size_t index = 0; index < pins.size(); ++index) {
@@ -514,14 +514,25 @@ void ComparisonDock::updateCards() {
         card.displayGain = card.id == DefaultOutputProbeResolver::probeId
                 ? 1.f / 3.f : 1.f;
         if (index < previews.size() && previews[index].has_value()) {
-            const auto& preview = *previews[index];
+            auto& preview = *previews[index];
             card.connected = preview.connected;
             card.spectral = preview.domain != PortDomain::TimeSignal;
             if (card.spectral) {
                 card.title += "  /  Spectral";
             }
-            card.surface = preview.values;
             card.waveform = preview.waveform;
+            NodePreviewResult result;
+            result.nodeId = card.id;
+            result.role = PreviewModuleRole::SignalSpy;
+            result.primary = std::move(preview.values);
+            result.waveform = preview.waveform;
+            result.gridColumns = preview.gridColumns;
+            result.gridRows = preview.gridRows;
+            result.domain = preview.domain;
+            result.frequencySampling = preview.frequencySampling;
+            result.frequencyMidiNote = preview.frequencyMidiNote;
+            card.surfaceRevision = nodePreviewResultFingerprint(result);
+            card.surface = std::move(result.primary);
             card.columns = preview.gridColumns;
             card.rows = preview.gridRows;
             card.domain = preview.domain;
@@ -708,6 +719,7 @@ juce::var ComparisonDock::exportAutomationState() const {
         item->setProperty("connected", card.connected);
         item->setProperty("spectral", card.spectral);
         item->setProperty("midiNote", card.midiNote);
+        item->setProperty("contentRevision", juce::String(card.surfaceRevision));
         item->setProperty("hasSurface", !card.surfaceValues().empty());
         if (index < surfaceViews.size() && surfaceViews[index] != nullptr) {
             item->setProperty("surfaceView",

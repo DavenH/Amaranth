@@ -331,7 +331,6 @@ private:
     std::function<void(float)> comparisonRenderCallback;
     std::function<void()> comparisonGlClosingCallback;
     juce::CriticalSection comparisonRenderLock;
-    bool comparisonRefreshPending {};
     void newOpenGLContextCreated() override;
     void renderOpenGL() override;
     void openGLContextClosing() override;
@@ -369,11 +368,6 @@ private:
         KeyScale,
         Controller
     };
-    GraphEditResult persistPreviewMorph(
-            int midiNote,
-            PreviewMorphEditScope scope,
-            int controller = 1,
-            int controllerValue = 0);
     GraphEditResult editPreviewMorph(
             int midiNote,
             PreviewMorphEditScope scope,
@@ -382,6 +376,7 @@ private:
     bool applyAuthoringResult(const NodeCanvasAuthoringResult& result);
     void refreshAfterAutomationEdit();
     void refreshComparisonAfterCommit();
+    void refreshComparisonAfterLocalCommit(const String& nodeId);
     bool finishExplanationEdit(const GraphEditResult& result);
     void updateInformationCards() const;
     std::optional<GroupInformationCardPreview> informationCardPreview() const;

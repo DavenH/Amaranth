@@ -1,5 +1,6 @@
 #include "UI/WaveformHeatRenderer.h"
 #include "UI/CanvasChromePalette.h"
+#include "UI/WaveformColourStyles.h"
 
 #include <algorithm>
 #include <array>
@@ -18,6 +19,7 @@ uniform vec4 coverageScale;
 uniform vec4 heatScale;
 uniform float filled;
 uniform vec3 fillColour;
+uniform float fillGridBacking;
 void main() {
     vec2 position = (pixelPos - plotBounds.xy) / plotBounds.zw;
     vec2 source = viewport.xy + position * viewport.zw;
@@ -31,7 +33,8 @@ void main() {
     float stroke = mix(coverage.a, coverage.r, filled);
     float fill = coverage.a - stroke;
     vec3 colour = texture2D(heatTexture, heatUV).rgb * stroke + fillColour * fill;
-    gl_FragColor = vec4(colour, coverage.a) * inside * pixelAlpha;
+    float alpha = min(1.0, coverage.a + fillGridBacking * fill);
+    gl_FragColor = vec4(colour, alpha) * inside * pixelAlpha;
 }
 )glsl";
 
@@ -116,6 +119,7 @@ bool paintWaveformHeatOpenGL(juce::Graphics& graphics, const juce::Image& covera
         program.setUniform("coverageTexture", 0);
         program.setUniform("heatTexture", 1);
         program.setUniform("filled", filled ? 1.f : 0.f);
+        program.setUniform("fillGridBacking", (float) WaveformColourStyles::fillGridBacking);
         program.setUniform("fillColour", CanvasChromePalette::text.getFloatRed(),
                 CanvasChromePalette::text.getFloatGreen(), CanvasChromePalette::text.getFloatBlue());
         program.setUniform("plotBounds", deviceBounds.getX(), deviceBounds.getY(), deviceBounds.getWidth(), deviceBounds.getHeight());

@@ -80,7 +80,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Graph/NodeDefinition.h` — Node types, ports, defaults, constraints, and synthesis capability metadata.
 - `cycle-v2/src/Runtime/GraphRuntime.h` — Owns compiled runtime state and graph execution lifecycle.
 - `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime audio and cursor capture; GraphPreviewTiming measures tails for shared PreviewTraversal coordinates.
-- `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Runs scoped preview/analysis products without full audio work.
+- `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Scoped preview extraction, full-band spectrum sizing and view-specific row reduction.
 - `cycle-v2/src/Runtime/SignalProbeWaveformCapture.h` — Private continuous Spy auditions through existing audio processors.
 - `cycle-v2/src/Runtime/NodeModuleRegistry.h` — Registration boundary for node model, DSP, preview, and view modules.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
@@ -100,7 +100,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodeCanvasExplanations.cpp` — Preset/node/group explanations, shared editor and attached card orchestration.
 - `cycle-v2/src/UI/SurfaceAppearanceDialog.h`, `cycle-v2/src/UI/WaveformColourStyles.h`, `scripts/test_cycle_v2_surface_appearance.py` — Modal palette selectors, waveform gradient identity, and UI verification.
 - `cycle-v2/src/UI/NodePreviewRenderer.h`, `cycle-v2/src/UI/ComparisonSurfaceView.h`, `cycle-v2/src/UI/SignalProbeDetailPanel.h` — Preview rendering; shared surfaces and Spy mode/zoom controls.
-- `cycle-v2/src/UI/SignalProbeCanvas.h` — Saved Spy views; shared waveform density/path zoom and capture-free note-off dragging.
+- `cycle-v2/src/UI/SignalProbeCanvas.h`, `scripts/test_cycle_v2_spy_refresh.py` — Spy views; refresh-count, tray update and retained-waveform regression checks.
 - `cycle-v2/src/UI/InlinePresetBrowser.h` — Shared tabs; ReferenceAssetBrowser owns audio assets, ReferenceTrayBar owns tray disclosure.
 - `cycle-v2/src/UI/LibraryThumbnailCache.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Async thumbnails and shared indexed density/path waveform views.
 - `cycle-v2/src/UI/WaveformHeatRenderer.h`, `scripts/fixtures/cycle-v2-agent-waveform-zoom-performance.json` — GPU waveform coverage/heat composition and zoom performance workload.
