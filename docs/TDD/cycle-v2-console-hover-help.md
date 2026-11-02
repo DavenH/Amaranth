@@ -60,3 +60,14 @@ The older `cycle-v2-agent-hover-help.json` fixture is stale: it addresses remove
 `magnitudeLayer1Process` and its synthetic-pointer repaint totals differ from
 native timer activity. Its failure is recorded in `ui-bugs.md`; it does not
 establish a regression in the new native control-help checks.
+
+## Design feedback
+
+The user provisionally prefers option A's shallow keyboard, radial MIDI knobs,
+and horizontal transport buttons. This is approval of those visual elements,
+not a prescription for the complete generated design. The earlier mockups
+inherited obsolete UI from the historical reference; do not implement their
+category rail, right browser, graph/node presentation, or extra global controls.
+The supplied current `acidic-2` screenshot is authoritative for the left library,
+canvas, nodes, console and Wave References tray. The refined mockup changes only
+the top performance strip; further implementation remains a separate step.
