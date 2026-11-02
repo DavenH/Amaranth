@@ -132,6 +132,25 @@ String NodeCanvasPresentation::canvasStatusText(
     return hoverText.isNotEmpty() ? hoverText : statusMessage;
 }
 
+String NodeCanvasPresentation::controlHelpText(Component* hovered, const Component& scope) {
+    if (hovered == nullptr || (&scope != hovered && !scope.isParentOf(hovered))
+            || hovered->isCurrentlyBlockedByAnotherModalComponent()) {
+        return {};
+    }
+    for (auto* component = hovered; component != nullptr; component = component->getParentComponent()) {
+        if (auto* client = dynamic_cast<TooltipClient*>(component)) {
+            const String text = client->getTooltip();
+            if (text.isNotEmpty()) {
+                return text;
+            }
+        }
+        if (component == &scope) {
+            break;
+        }
+    }
+    return {};
+}
+
 TextLayout NodeCanvasPresentation::canvasStatusLayout(const String& text, float width) {
     AttributedString attributed;
     attributed.setJustification(Justification::topLeft);

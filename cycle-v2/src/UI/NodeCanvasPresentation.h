@@ -101,6 +101,7 @@ public:
     static String canvasStatusText(
             const String& statusMessage,
             const String& hoverText);
+    static String controlHelpText(Component* hovered, const Component& scope);
     static TextLayout canvasStatusLayout(const String& text, float width);
     static Rectangle<float> globalProcessingIndicatorBounds(
             Rectangle<float> header,

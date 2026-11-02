@@ -1634,6 +1634,16 @@ void NodeCanvas::openGLContextClosing() {
 
 void NodeCanvas::timerCallback() {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Timer);
+    auto* window = getTopLevelComponent();
+    const auto pointer = Desktop::getInstance().getMainMouseSource().getScreenPosition();
+    const String help = NodeCanvasPresentation::controlHelpText(
+            window->isShowing() && Process::isForegroundProcess()
+                    ? window->getComponentAt(window->getLocalPoint(nullptr, pointer)) : nullptr,
+            *window);
+    if (controlHoverText != help) {
+        controlHoverText = help;
+        requestHoverRepaint(HoverRepaint::Status);
+    }
     if (compiledStateRefreshPending
             && (int32) (Time::getMillisecondCounter() - compiledStateRefreshDueMs) >= 0) {
         flushScheduledCompiledStateRefresh();
@@ -1722,8 +1732,9 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             lastMousePosition,
             selectedNodeId,
             editStatusMessage,
-            (pointerInsideCanvas || presetInformation.isMouseOver()) && !pointerOccluded
-                    ? resolvedHoverText : String {},
+            controlHoverText.isNotEmpty() ? controlHoverText
+                    : (pointerInsideCanvas || presetInformation.isMouseOver()) && !pointerOccluded
+                            ? resolvedHoverText : String {},
             std::move(pending),
             snapGuides,
             presentation.revision(),
@@ -2493,6 +2504,8 @@ void NodeCanvas::fitDocumentInViewport() {
 var NodeCanvas::exportAutomationState() const {
     var state = automation.exportState(automationPresentationState());
     if (auto* object = state.getDynamicObject()) {
+        object->setProperty("consoleText", NodeCanvasPresentation::canvasStatusText(
+                editStatusMessage, presentationFrame().hoverText));
         object->setProperty("presentationGraphRevision",
                 (int64) presentation.snapshot().graphRevision);
         object->setProperty("documentGraphRevision", (int64) document.revision());

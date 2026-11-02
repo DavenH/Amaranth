@@ -27,6 +27,7 @@
 #include "UI/EnvelopePurposeSelector.h"
 #include "UI/EffectEnableButton.h"
 #include "UI/EditorChromeLayout.h"
+#include "UI/Editors/PropertySegmentedSelector.h"
 #include "UI/GuideRelationshipPresentation.h"
 #include "UI/GuideCurveShelf.h"
 #include "UI/NodeCanvasScene.h"
@@ -352,6 +353,50 @@ TEST_CASE("Canvas status gives hover help precedence over the last edit",
             "Node added",
             "Time signal from Oscillator to Output.")
             == "Time signal from Oscillator to Output.");
+}
+
+TEST_CASE("Control hover help uses the console across descendants and clears on departure",
+        "[cycle-v2][canvas][status][regression]") {
+    ScopedJuceInitialiser_GUI juce;
+    Component workspace;
+    Component editor;
+    TextButton control;
+    Label child;
+    TextButton otherWindow;
+    workspace.addChildComponent(editor);
+    editor.addChildComponent(control);
+    control.addChildComponent(child);
+    control.setTooltip("Preview modulation wheel");
+    otherWindow.setTooltip("Unrelated window");
+
+    const auto text = [&](Component* target) {
+        return NodeCanvasPresentation::canvasStatusText("Ready",
+                NodeCanvasPresentation::controlHelpText(target, workspace));
+    };
+    REQUIRE(text(&control) == "Preview modulation wheel");
+    REQUIRE(text(&child) == "Preview modulation wheel");
+    child.setTooltip("Modulation: 64 / 127");
+    REQUIRE(text(&child) == "Modulation: 64 / 127");
+    child.setTooltip("Modulation: 96 / 127");
+    REQUIRE(text(&child) == "Modulation: 96 / 127");
+    REQUIRE(text(&editor) == "Ready");
+    REQUIRE(text(&otherWindow) == "Ready");
+    REQUIRE(text(nullptr) == "Ready");
+
+    PropertySegmentedSelector selector({
+            { "A", "a", "option.a", "Select A", {} },
+            { "B", "b", "option.b", "Select B", {} }
+    });
+    editor.addChildComponent(selector);
+    String context = "Current axes: Red";
+    selector.setHoverMessageProvider([&](const String& option) {
+        return context + " / " + option;
+    });
+    REQUIRE(text(selector.findChildWithID("option.b")) == "Current axes: Red / b");
+    context = "Current axes: Blue";
+    REQUIRE(text(selector.findChildWithID("option.b")) == "Current axes: Blue / b");
+    selector.setHoverMessageProvider({});
+    REQUIRE(text(selector.findChildWithID("option.b")) == "Select B");
 }
 
 TEST_CASE("Guide relationship tethers reach every visible unique target behind editors",

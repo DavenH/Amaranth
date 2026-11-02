@@ -1343,3 +1343,32 @@ plot offset, predating the 32 px mode-selector header; that assertion now checks
 76 px. The focused 58-case waveform/presentation selection passes. The same
 three incidental empty-Guide `SignalBuffer.h:123` assertions recur in the broader
 selection; their existing investigation remains in `audio-bugs.md`.
+
+## Resolved: Hover checks encountered stale native component targets
+
+2026-11-02: native movement over the performance MOD wheel reported the correct
+screen coordinates but retained `NodeCanvas` as the component under the pointer.
+Console help was empty or retained the previous control. Console lookup now uses
+JUCE component hit-testing at the current screen position in the active window.
+The same run exposed a stale Trimesh control test fixture: it expected all morph
+rows while omitting `dimensionCount`; that fixture now explicitly selects 3D.
+Evidence: `.context/check_console_hover.py`, `.context/console-hover-tests.log`.
+
+## Resolved: Startup during an in-progress rebuild used inconsistent layouts
+
+2026-11-02: a first automation build launched after a header changed while that
+build was compiling. `MainWindow::updateDocumentPresentation` crashed copying
+`workspace->graphFile()` before socket readiness. Completing an incremental
+rebuild after the header edit resolved startup; the read-only fixture then passed
+all seven commands. Crash: `CycleV2-2026-11-02-121909.ips`; fixture evidence:
+`.context/topbar-current-report.json`.
+
+## P3: Old canvas hover fixture addresses a removed node
+
+2026-11-02: `cycle-v2-agent-hover-help.json` cannot resolve
+`node:magnitudeLayer1Process` in `old/stengah.cyclegraph`. Synthetic pointer moves
+also produced status/hover request totals of 2 instead of 1 while the native
+pointer timer remained active. Evidence: `.context/console-canvas-hover-report.json`.
+Current focused status/editor cases and real-pointer control-hover checks pass.
+Repair the fixture's graph targets and establish one authoritative pointer source
+before relying on its exact synthetic repaint counts.

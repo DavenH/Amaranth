@@ -55,12 +55,11 @@ Trimesh and Envelope share a 36 px morph row on a 44 px vertical rhythm, giving
 their 34 px focus frames equal control padding and 10 px between adjacent
 frames.
 The painted keyboard glyph has a shared 24 by 24 hover target around its 18 by
-13 px visual footprint. Entering that target immediately opens an editor-owned
-callout whose arrow points at the glyph; leaving the target immediately closes
-it. The callout shows focus keys, row navigation, pole selection, 20% Shift
-movement, and Link. The Envelope help omits Yellow because that editor exposes
-only Red and Blue. JUCE's non-modal `BubbleComponent` remains authoritative for
-arrow construction, placement, clipping, and editor-edge avoidance.
+13 px visual footprint. Its tooltip publishes focus keys, row navigation, pole
+selection, 20% Shift movement, and Link in the canvas console. Envelope help
+omits Yellow because that editor exposes only Red and Blue. The former bubble
+and its timer are removed by `cycle-v2-console-hover-help.md`; the glyph,
+accessible description, and keyboard behavior remain.
 
 Cycle 1's other keys were reviewed separately. `A` remains the useful follow-on
 for selection, with its exact select-all/clear-selection context to be designed

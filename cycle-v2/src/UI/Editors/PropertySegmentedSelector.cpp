@@ -38,7 +38,9 @@ public:
     }
 
     String getTooltip() override {
-        return owner.hoverMessageProvider ? String() : TextButton::getTooltip();
+        return owner.hoverMessageProvider
+                ? owner.hoverMessageProvider(owner.optionDefinitions[(size_t) index].value)
+                : TextButton::getTooltip();
     }
 
     void paintButton(Graphics& graphics, bool highlighted, bool down) override {
@@ -125,57 +127,6 @@ PropertySegmentedSelector::~PropertySegmentedSelector() = default;
 void PropertySegmentedSelector::setHoverMessageProvider(
         std::function<String(const String&)> provider) {
     hoverMessageProvider = std::move(provider);
-    if (hoverMessageProvider) {
-        startTimerHz(20);
-    } else {
-        stopTimer();
-        hoverCallout.reset();
-    }
-}
-
-void PropertySegmentedSelector::timerCallback() {
-    const auto pointer = Desktop::getInstance().getMainMouseSource().getScreenPosition();
-    int nextIndex = -1;
-    if (isShowing() && Process::isForegroundProcess()
-            && !ModifierKeys::currentModifiers.isAnyMouseButtonDown()) {
-        for (size_t index = 0; index < buttons.size(); ++index) {
-            if ((int) index != selectedIndex() && buttons[index]->getScreenBounds().toFloat().contains(pointer)) {
-                nextIndex = (int) index;
-                break;
-            }
-        }
-    }
-    const uint32_t now = Time::getMillisecondCounter();
-    if (nextIndex != hoveredIndex) {
-        hoveredIndex = nextIndex;
-        hoverStarted = now;
-        if (hoverCallout != nullptr) {
-            hoverCallout->setVisible(false);
-        }
-    }
-    if (hoveredIndex < 0 || now - hoverStarted < 500 || getParentComponent() == nullptr
-            || (hoverCallout != nullptr && hoverCallout->isVisible())) {
-        return;
-    }
-    const String message = hoverMessageProvider(optionDefinitions[(size_t) hoveredIndex].value);
-    if (message.isEmpty()) {
-        return;
-    }
-    if (hoverCallout == nullptr) {
-        hoverCallout = std::make_unique<BubbleMessageComponent>(0);
-        hoverCallout->setComponentID(getComponentID() + ".hoverCallout");
-        hoverCallout->setAccessible(false);
-        hoverCallout->setInterceptsMouseClicks(false, false);
-        hoverCallout->setAllowedPlacement(BubbleComponent::below);
-        hoverCallout->setColour(BubbleComponent::backgroundColourId, CanvasChromePalette::dockSurface);
-        hoverCallout->setColour(BubbleComponent::outlineColourId, CanvasChromePalette::strongBorder);
-    }
-    getParentComponent()->addChildComponent(*hoverCallout);
-    hoverCallout->setDescription(message);
-    AttributedString text;
-    text.append(message, Font(FontOptions(11.f)), CanvasChromePalette::text);
-    hoverCallout->showAt(buttons[(size_t) hoveredIndex].get(), text, 0, true, false);
-    hoverCallout->toFront(false);
 }
 
 void PropertySegmentedSelector::setSelectedValue(
@@ -229,12 +180,6 @@ void PropertySegmentedSelector::select(
         return;
     }
     const String nextValue = optionDefinitions[(size_t) index].value;
-    if (value != nextValue) {
-        hoveredIndex = -1;
-        if (hoverCallout != nullptr) {
-            hoverCallout->setVisible(false);
-        }
-    }
     value = nextValue;
     for (size_t buttonIndex = 0; buttonIndex < buttons.size(); ++buttonIndex) {
         buttons[buttonIndex]->setToggleState(

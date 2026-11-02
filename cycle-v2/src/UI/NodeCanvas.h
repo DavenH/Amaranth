@@ -248,7 +248,6 @@ private:
     };
 
     OpenGLContext openGLContext;
-    TooltipWindow tooltipHost { this, 500 };
     PresetExplanationButton presetInformation;
     Component::SafePointer<ExplanationEditor> explanationEditor;
     ExplanationTarget explanationEditorTarget;
@@ -298,6 +297,7 @@ private:
     Rectangle<int> lastPopupMenuTargetScreenArea;
     MouseCursor addToSelectionCursor;
     String resolvedHoverText;
+    String controlHoverText;
     String hoveredQuickCreatePortId;
     bool pointerInsideCanvas {};
     bool canvasOpenGlAttached {};
