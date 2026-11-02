@@ -2,34 +2,31 @@
 
 ## Cycle V2 Spy waveform reuse review
 
-Review date: 2026-11-02. These are implementation findings, not completed
-extractions. Existing canvas coordination plans remain applicable.
+Status: addressed 2026-11-02. The three findings from the Spy review now share
+existing runtime and waveform owners instead of adding parallel algorithms.
 
-- `PresentationPreviewRenderer::renderProbeWaveforms`, `captureProbePreview`
-  and `captureProbePreviews` independently call the continuous capture owner.
-  A compact, expanded and pinned view with identical audition inputs can
-  therefore repeat the same capture. The pinned path batches raster captures
-  but runs a separate complete realtime graph traversal for each continuous
-  waveform. Keep capture ownership in the runtime; reuse immutable results for
-  matching plan/content, address, note, controllers and release timing, and
-  collect compatible probe outputs in one audition. Delete the repeated
-  executions, not just the call-site plumbing. Verify execution counts and
-  sample equality, including different reference pitches and note-off times.
-- `ComparisonDock::updateCards` computes Spy content fingerprints but restricts
-  its unchanged-view guard to reference samples. Fresh equal-content captures
-  still reset Spy grids or rebuild waveform normalization, crossings and heat.
-  Extend the existing reuse decision to Spies, including mode, dimensions,
-  domain, pitch and display gain. Verify equal captures retain source/geometry
-  build counts while real edits and view changes still publish.
-- `NodePreviewRenderer::paintWaveform` keys its final bitmap by dimensions and
-  palette; each miss calls `signalWaveformHeatmap`, which recopies/normalizes
-  samples, indexes crossings and rebuilds the fixed full-source density field.
-  `ReferenceWaveformView::Source` already separates this preparation from
-  viewport geometry and palette lookup. Extract that preparation/cache behind
-  a waveform owner shared by compact and interactive views; retain per-view
-  geometry and single-worker ownership of mutable caches. Delete duplicate
-  normalization/index preparation. Verify resize/graph zoom retain source and
-  density build counts, and palette changes rebuild only colour lookup.
+- `SignalProbeWaveformCapture` retains at most sixteen immutable auditions per
+  prepared snapshot. Compact, detail and tray paths share matching source,
+  pitch, controller and release inputs. Compatible missing probes use one
+  executor audition with indexed observer routing. New preview/configuration
+  work and targeted local capture preparation replace the cache. The three
+  direct capture paths and separate per-probe batch auditions are deleted.
+- `ComparisonDock` extends its existing unchanged-reference decision to Spies,
+  including all surface inputs. Equal captures retain the view's source,
+  density and geometry; changed content and presentation still update.
+- `WaveformPreviewSource` in `ReferenceWaveformPreview` owns normalization,
+  crossing indexing and lazy density/colour preparation for compact and
+  interactive views. Each instance has one rendering owner/thread. Compact
+  sprites retain separate coverage and colour caches: resize rebuilds coverage,
+  palette changes recolour it. Duplicate compact source preparation is deleted.
+
+Proof: compatible multiple probes execute once; expanded and pinned requests
+reuse compact sample identities; separate auditions match samples exactly.
+Pitch/controller/release and configuration changes invalidate. Compact resize
+and palette changes preserve density/index preparation, and palette changes
+preserve coverage. The 27-command `cycle-v2-agent-spy-waveform-reuse.json` fixture
+keeps tray source/heat/geometry counts fixed over equal captures. Acceptance and
+size evidence are in `cycle-v2-spy-waveform.md`.
 
 ## Cycle V2 performance keyboard phrase transport
 

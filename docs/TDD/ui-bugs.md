@@ -1330,3 +1330,16 @@ mixed signal through prepared output views, which the waveform observer did not
 read. Capture now uses that buffer when newly produced outputs are absent; the
 continuous-capture test covers nonzero direct and global samples. The focused
 actual-app regression is `cycle-v2-agent-global-input-waveform.json`.
+
+## Spy reuse verification: existing broader-test failures
+
+2026-11-02: the broader Spy/presentation selection reproduces the previously
+recorded comparison morph-capture failure (`TestSignalProbe.cpp:405`), scratch
+spectral-cable deletion failure (`TestNodeCanvasAuthoring.cpp:422`) and Spy editor
+centring assertion (`TestNodeCanvasArchitecture.cpp:177`). Evidence:
+`.context/spy-reuse-broad-final.log` (111/114 cases pass). The initial fourth
+failure was an outdated 44 px detail
+plot offset, predating the 32 px mode-selector header; that assertion now checks
+76 px. The focused 58-case waveform/presentation selection passes. The same
+three incidental empty-Guide `SignalBuffer.h:123` assertions recur in the broader
+selection; their existing investigation remains in `audio-bugs.md`.

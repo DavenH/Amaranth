@@ -598,12 +598,20 @@ void ComparisonDock::updateCards() {
         };
         const auto oldCard = std::find_if(previousCards.begin(), previousCards.end(),
                 [&](const Card& candidate) { return candidate.id == card.id; });
-        const bool sampleUnchanged = viewWasVisible && card.sample
+        const bool contentUnchanged = viewWasVisible
                 && oldCard != previousCards.end()
+                && oldCard->sample == card.sample
                 && oldCard->sampleIdentity == card.sampleIdentity
                 && oldCard->spectral == card.spectral
+                && (oldCard->waveform != nullptr) == (card.waveform != nullptr)
+                && oldCard->domain == card.domain
+                && oldCard->columns == card.columns && oldCard->rows == card.rows
+                && oldCard->midiNote == card.midiNote
+                && oldCard->displayGain == card.displayGain
+                && oldCard->sampleRate == card.sampleRate
+                && oldCard->maximumRows == card.maximumRows
                 && oldCard->surfaceRevision == card.surfaceRevision;
-        if (!sampleUnchanged) {
+        if (!contentUnchanged) {
             if (card.sample) {
                 view->setGrid(card.surfaceValues(), card.columns, card.rows,
                         card.domain, card.midiNote, card.displayGain, false, card.sampleRate,

@@ -698,11 +698,22 @@ bool NodePreviewRenderer::paintWaveform(Graphics& graphics, const NodePreviewRen
     const int width = jmax(1, roundToInt(content.getWidth() * scale));
     const int height = jmax(2, roundToInt(content.getHeight() * scale));
     auto& cached = resources.cachedSprite(request.node.id);
+    if (cached.waveformIdentity != request.runtimeResult->waveform) {
+        cached.waveformIdentity = request.runtimeResult->waveform;
+        cached.waveformSource = std::make_shared<WaveformPreviewSource>(Buffer<float>(
+                const_cast<float*>(cached.waveformIdentity->data()), (int) cached.waveformIdentity->size()));
+        cached.waveformGeometry = {};
+    }
     const String signature = "waveform:" + String(WaveformColourStyles::id(WaveformColourStyles::current()))
             + ":" + runtimeSignature(*request.runtimeResult)
             + ":" + String(width) + ":" + String(height);
     if (!cached.runtimeHeatmap.isValid() || cached.runtimeHeatmapSignature != signature) {
-        cached.runtimeHeatmap = signalWaveformHeatmap(*request.runtimeResult->waveform, width, height);
+        if (cached.waveformGeometry.getWidth() != width || cached.waveformGeometry.getHeight() != height) {
+            cached.waveformGeometry = signalWaveformCoverage(*cached.waveformSource, width, height);
+        }
+        cached.runtimeHeatmap = cached.waveformSource->silent ? cached.waveformGeometry
+                : recolourSignalWaveform(cached.waveformGeometry,
+                        cached.waveformSource->coloursFor(WaveformColourStyles::current()), ZoomRect());
         cached.runtimeHeatmapSignature = signature;
     }
     return drawHeatmapImage(graphics, request.area, cached.runtimeHeatmap);

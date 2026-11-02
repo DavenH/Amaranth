@@ -13,6 +13,17 @@ namespace CycleV2 {
 
 namespace {
 
+constexpr int kHeatColumns = 768;
+constexpr int kHeatRows = 384;
+
+float normalizeWaveform(Buffer<float> samples) {
+    const float peak = samples.empty() ? 0.f : juce::jmax(samples.max(), -samples.min());
+    if (peak > 0.f) {
+        samples.mul(1.f / peak);
+    }
+    return peak;
+}
+
 void normalizeDensity(std::vector<float>& density) {
     Buffer<float> values(density.data(), (int) density.size());
     values.add(1.f).ln();
@@ -113,10 +124,7 @@ juce::AudioBuffer<float> referenceWaveformPreview(const StereoBuffer& audio) {
     if (audio.numChannels > 1) {
         mono.add(audio.right);
     }
-    const float peak = juce::jmax(mono.max(), -mono.min());
-    if (peak > 0.f) {
-        mono.mul(1.f / peak);
-    }
+    normalizeWaveform(mono);
     return result;
 }
 
@@ -198,26 +206,60 @@ juce::Image referenceWaveformHeatmap(Buffer<float> mono, int width, int height,
     return image;
 }
 
-juce::Image signalWaveformHeatmap(const std::vector<float>& mono, int width, int height) {
-    std::vector<float> normalized = mono;
-    Buffer<float> samples(normalized.data(), (int) normalized.size());
-    if (!samples.empty()) {
-        const float peak = juce::jmax(samples.max(), -samples.min());
-        if (peak > 0.f) {
-            samples.mul(1.f / peak);
-        }
+WaveformPreviewSource::WaveformPreviewSource(Buffer<float> samples) :
+        mono(1, samples.size()) {
+    Buffer<float> normalized(mono, 0);
+    samples.copyTo(normalized);
+    silent = normalizeWaveform(normalized) == 0.f;
+    zeroCrossings = PeakCounter::findZeroCrossings(normalized, 0);
+}
+
+WaveformPreviewSource::WaveformPreviewSource(const StereoBuffer& audio) :
+        mono(referenceWaveformPreview(audio))
+    ,   palette(WaveformPalette::Monochrome) {
+    Buffer<float> samples(mono, 0);
+    silent = samples.empty() || (samples.max() == 0.f && samples.min() == 0.f);
+    zeroCrossings = PeakCounter::findZeroCrossings(samples, 0);
+}
+
+const juce::Image& WaveformPreviewSource::coloursFor(WaveformColourStyles::Style style) const {
+    if (density.empty()) {
+        density = signalWaveformHeatDensity(Buffer<float>(
+                const_cast<float*>(mono.getReadPointer(0)), mono.getNumSamples()));
+        ++heatBuilds;
     }
-    if (samples.empty() || (samples.max() == 0.f && samples.min() == 0.f)) {
+    if (!heatField.isValid() || heatStyle != style) {
+        heatField = signalWaveformHeatField(density, style);
+        heatStyle = style;
+        ++colourBuilds;
+    }
+    return heatField;
+}
+
+juce::Image signalWaveformHeatmap(const std::vector<float>& mono, int width, int height) {
+    const WaveformPreviewSource source(Buffer<float>(const_cast<float*>(mono.data()), (int) mono.size()));
+    return signalWaveformHeatmap(source, width, height);
+}
+
+juce::Image signalWaveformHeatmap(const WaveformPreviewSource& source, int width, int height,
+        WaveformColourStyles::Style style) {
+    const auto geometry = signalWaveformCoverage(source, width, height);
+    return source.silent || !geometry.isValid() ? geometry
+            : recolourSignalWaveform(geometry, source.coloursFor(style), ZoomRect());
+}
+
+juce::Image signalWaveformCoverage(const WaveformPreviewSource& source, int width, int height) {
+    Buffer<float> samples(const_cast<float*>(source.mono.getReadPointer(0)), source.mono.getNumSamples());
+    if (source.silent) {
         return referenceWaveformHeatmap(samples, width, height);
     }
-    const auto resolution = referenceWaveformResolution(
-            PeakCounter::findZeroCrossings(samples, 0), 0, samples.size(), width);
-    return renderSignalWaveform(samples, width, height, ZoomRect(), signalWaveformHeatField(samples),
-            resolution.useLine);
+    const auto resolution = referenceWaveformResolution(source.zeroCrossings, 0, samples.size(), width);
+    ++source.geometryBuilds;
+    return signalWaveformCoverage(samples, width, height, ZoomRect(), resolution.useLine);
 }
 
 std::vector<float> signalWaveformHeatDensity(Buffer<float> mono) {
-    auto density = referenceWaveformDensity(mono, 768, 384);
+    auto density = referenceWaveformDensity(mono, kHeatColumns, kHeatRows);
     if (!density.empty()) {
         normalizeDensity(density);
     }
@@ -229,8 +271,8 @@ juce::Image signalWaveformHeatField(Buffer<float> mono, WaveformColourStyles::St
 }
 
 juce::Image signalWaveformHeatField(const std::vector<float>& density, WaveformColourStyles::Style style) {
-    constexpr int columns = 768;
-    constexpr int rows = 384;
+    constexpr int columns = kHeatColumns;
+    constexpr int rows = kHeatRows;
     if (density.size() != (size_t) columns * rows) {
         return {};
     }

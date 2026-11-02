@@ -492,7 +492,7 @@ TEST_CASE("Signal probe pitch periods and detail panel layout stay stable",
     REQUIRE(content.contains(detail));
     REQUIRE(detail.getWidth() > 700.f);
     REQUIRE(detail.getHeight() > 400.f);
-    REQUIRE(plot.getY() == detail.getY() + 44.f);
+    REQUIRE(plot.getY() == detail.getY() + 76.f);
     REQUIRE(plot.getBottom() == detail.getBottom() - 14.f);
     REQUIRE_FALSE(SignalProbeDetailView::dismissesOnClick(
             detail, detail.getCentre(), 1));

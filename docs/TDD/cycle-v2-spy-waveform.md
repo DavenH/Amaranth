@@ -2,10 +2,67 @@
 
 ## Status
 
-Complete: black waveform/time-slice plots, shared panel grids, GPU heat
+Complete: the three reuse findings recorded in `refactors.md` are implemented.
+Black waveform/time-slice plots, shared panel grids, GPU heat
 composition, earlier constant fill, popup presentation selector and inline zoom
 controls, single root-note refresh, retained images, committed tray updates and
 full-band spectra are implemented and verified.
+
+## Reuse cleanup (2026-11-02)
+
+- Runtime: give each prepared presentation snapshot its own continuous audition
+  cache. Copies retain that cache until new preview/configuration work replaces
+  it. Keys include source address, pitch, controllers and sample-resolved release
+  timing. Compact, detail and tray requests share immutable results only within
+  that prepared snapshot. Compatible missing outputs use one private executor
+  audition and the existing observer, DSP and note lifecycle. Bound retained
+  entries; serialize cache access without adding work to the audio thread.
+  Delete the three independent capture loops and per-probe batch executions.
+- Tray: extend the existing unchanged-reference guard to equal Spy content and
+  all presentation inputs. Preserve camera state and asynchronous image handover;
+  changed content, pitch, mode or gain must still update. Delete unconditional
+  Spy `setGrid`/`setWaveform` calls on equal content.
+- Visualization: extract the source normalization, crossing index and lazy
+  density/colour preparation from `ReferenceWaveformView::Source` into a shared
+  waveform owner. Compact sprites and interactive workers retain separate cache
+  instances and geometry; each mutable preparation cache keeps one owner/thread.
+  Dimension changes rebuild only coverage; palette changes rebuild only colour.
+  Delete the compact helper's duplicate preparation and share heat dimensions.
+
+Acceptance: compare continuous samples with independent auditions; assert one
+execution for compatible multiple probes and identity reuse across compact,
+expanded and tray requests. Changed configuration, notes, controllers and release
+timing must invalidate correctly. Assert stable source/density counts through
+compact resize and palette changes, and stable tray preparation on equal refresh.
+Run focused runtime/rendering tests, the root-refresh and waveform UI workflows,
+the exact app build, code-map check and architecture audit. Keep existing zoom,
+retained-image and gradient behavior.
+
+Reuse verification is complete. `.context/spy-reuse-accepted-build.log` records
+successful exact app/test builds without warnings. The focused 58-case selection
+passes 141,753 assertions (`.context/spy-reuse-accepted-tests.log`). A broader
+114-case selection passes 111 cases and retains only the three previously
+recorded failures (`.context/spy-reuse-broad-final.log`, `ui-bugs.md`).
+
+The new 27-command reuse workflow passes: two fresh equal tray captures retain
+source=1, heat=1 and geometry=2; changing Time→Waveform advances source to2.
+Evidence: `.context/spy-reuse-ui-final.json`. The root-refresh workflow passes53
+commands (`.context/spy-reuse-refresh-final.json`), and Live/On Release commits
+pass36 (`.context/spy-reuse-commit-final.json`). Existing waveform navigation
+passes85 (`.context/spy-reuse-waveform-ui.json`). The rendered expanded plot was
+inspected in `.context/spy-reuse-verified.png`. Code-map, architecture and diff
+checks pass.
+
+Size/responsibility review: SignalProbeWaveformCapture86→169 owns only private
+capture grouping, bounded result retention and indexed observer collection;
+DSP and note execution remain in GraphAudioExecutor. PresentationPreviewRenderer
+417→429 supplies capture facts and fans shared results back to previews. It no
+longer executes separate continuous auditions for each consumer. ReferenceWaveformView
+350→307 deletes its private Source preparation, now shared with compact previews
+through ReferenceWaveformPreview359→401. NodePreviewRenderer1026→1037 owns sprite
+cache lifetime, while ComparisonDock877→885 reuses its existing unchanged-view
+decision. No domain algorithm moves into these large orchestration files, and
+NodeCanvas is unchanged. Existing canvas extraction plans remain applicable.
 
 ## Contract and ownership
 

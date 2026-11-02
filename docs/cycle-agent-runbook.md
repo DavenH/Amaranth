@@ -96,6 +96,11 @@ refreshes. It checks one root-note capture/publication, retained images without
 blank paints, node edits and undo/redo, layout/zoom without recapture, and full
 spectral coverage. Pass `--no-build` only after building the exact app target.
 
+Run `scripts/fixtures/cycle-v2-agent-spy-waveform-reuse.json` through the coordinator
+for unchanged tray captures. Re-selecting the same reference captures fresh data
+while retaining the Spy's source, heat and geometry counts; changing presentation
+still updates the view.
+
 ## Direct Live Authoring
 
 Keep one socket open and inspect the current model before editing. Capabilities

@@ -24,21 +24,19 @@ public:
             GraphAudioExecutor::CancellationCheck cancellationCheck = {});
     std::optional<GraphPreviewResult::SignalProbePreview> captureProbePreview(
             const NodeGraph& graph,
-            const GraphExecutionPlan& plan,
+            const GraphPresentationSnapshot& snapshot,
             const String& probeId,
             size_t rasterRowCount,
             int midiNote,
-            const std::array<int, 128>& controllerValues,
             GraphPresentationPerformanceMetrics& performance,
             double noteOffTime = 1.,
             PresetPreviewView view = PresetPreviewView::Time) const;
     std::vector<std::optional<GraphPreviewResult::SignalProbePreview>> captureProbePreviews(
             const NodeGraph& graph,
-            const GraphExecutionPlan& plan,
+            const GraphPresentationSnapshot& snapshot,
             const std::vector<String>& probeIds,
             size_t rasterRowCount,
             int midiNote,
-            const std::array<int, 128>& controllerValues,
             GraphPresentationPerformanceMetrics& performance,
             PresetPreviewView outputView = PresetPreviewView::Time) const;
 
@@ -58,7 +56,7 @@ private:
             GraphPresentationPerformanceMetrics& performance);
 
     static void renderProbeWaveforms(
-            const NodeGraph& graph, GraphPresentationSnapshot& snapshot, const AudioVoiceContext& voice);
+            const NodeGraph& graph, GraphPresentationSnapshot& snapshot);
 
     GraphAudioExecutor audioExecutor;
 };

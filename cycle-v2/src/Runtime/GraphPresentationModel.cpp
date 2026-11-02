@@ -552,11 +552,10 @@ GraphPresentationModel::captureProbePreview(
             ? current.outputSpyView : probe != nullptr ? probe->view : PresetPreviewView::Time;
     return previewRenderer.captureProbePreview(
             graph,
-            current.compileResult.plan,
+            current,
             probeId,
             rasterRowCount,
             midiNote,
-            current.previewControllerValues,
             performance,
             noteOffTime,
             view);
@@ -573,8 +572,8 @@ GraphPresentationModel::captureProbePreviews(
                 probeIds.size());
     }
     return previewRenderer.captureProbePreviews(
-            graph, current.compileResult.plan, probeIds, rasterRowCount,
-            midiNote, current.previewControllerValues, performance, current.outputSpyView);
+            graph, current, probeIds, rasterRowCount,
+            midiNote, performance, current.outputSpyView);
 }
 
 double GraphPresentationModel::probeNoteOffTime(const String& probeId) const {
@@ -616,6 +615,7 @@ bool GraphPresentationModel::prepareProbeCaptureForNode(
     step.parameters = node->parameters;
     step.configuration.value = std::move(configuration);
     ++step.configuration.revision;
+    current.waveformCaptures = std::make_shared<SignalProbeWaveformCapture>();
     return true;
 }
 

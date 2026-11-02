@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <cmath>
-#include <Algo/PeakCounter.h>
 #include <Audio/PitchedSample.h>
 
 #include "UI/CanvasChromePalette.h"
@@ -10,35 +9,6 @@
 #include "UI/WaveformHeatRenderer.h"
 
 namespace CycleV2 {
-
-struct ReferenceWaveformView::Source {
-    juce::AudioBuffer<float> mono;
-    std::vector<int> zeroCrossings;
-    WaveformPalette palette { WaveformPalette::Monochrome };
-    bool silent {};
-    // Only this view's single worker accesses the cache; diagnostics reads the atomic count.
-    mutable std::vector<float> density;
-    mutable juce::Image heatField;
-    mutable WaveformColourStyles::Style heatStyle { WaveformColourStyles::defaultStyle };
-    mutable std::atomic<int> colourBuilds {};
-    mutable std::atomic<int> geometryBuilds {};
-    mutable std::atomic<int> heatBuilds {};
-
-    const juce::Image& coloursFor(WaveformColourStyles::Style style) const {
-        if (density.empty()) {
-            density = signalWaveformHeatDensity(Buffer<float>(
-                    const_cast<float*>(mono.getReadPointer(0)), mono.getNumSamples()));
-            ++heatBuilds;
-        }
-        if (!heatField.isValid() || heatStyle != style) {
-            heatField = signalWaveformHeatField(density, style);
-            heatStyle = style;
-            ++colourBuilds;
-        }
-        return heatField;
-    }
-
-};
 
 class ReferenceWaveformView::RenderJob final : public juce::ThreadPoolJob {
 public:
@@ -109,7 +79,7 @@ public:
 
 private:
     juce::Component::SafePointer<ReferenceWaveformView> owner;
-    std::shared_ptr<const Source> source;
+    std::shared_ptr<const WaveformPreviewSource> source;
     juce::Image cachedGeometry;
     bool prepareSoftware {};
     WaveformColourStyles::Style colourStyle;
@@ -141,10 +111,7 @@ void ReferenceWaveformView::setSample(const PitchedSample* sample) {
     signalIdentity.reset();
     source.reset();
     if (sample != nullptr) {
-        auto prepared = std::make_shared<Source>();
-        prepared->mono = referenceWaveformPreview(sample->audio);
-        prepared->zeroCrossings = PeakCounter::findZeroCrossings(Buffer<float>(prepared->mono, 0), 0);
-        source = std::move(prepared);
+        source = std::make_shared<WaveformPreviewSource>(sample->audio);
         ++sourceBuildCount;
     }
     if (source == nullptr) {
@@ -163,18 +130,8 @@ void ReferenceWaveformView::setSignal(std::shared_ptr<const std::vector<float>> 
     sampleIdentity = nullptr;
     source.reset();
     if (signalIdentity != nullptr && !signalIdentity->empty()) {
-        auto prepared = std::make_shared<Source>();
-        prepared->mono.setSize(1, (int) signalIdentity->size());
-        Buffer<float> mono(prepared->mono, 0);
-        Buffer<float>(const_cast<float*>(signalIdentity->data()), mono.size()).copyTo(mono);
-        const float peak = juce::jmax(mono.max(), -mono.min());
-        if (peak > 0.f) {
-            mono.mul(1.f / peak);
-        }
-        prepared->zeroCrossings = PeakCounter::findZeroCrossings(mono, 0);
-        prepared->silent = peak == 0.f;
-        prepared->palette = WaveformPalette::CrossingHeat;
-        source = std::move(prepared);
+        source = std::make_shared<WaveformPreviewSource>(Buffer<float>(
+                const_cast<float*>(signalIdentity->data()), (int) signalIdentity->size()));
         ++sourceBuildCount;
     }
     if (source == nullptr) {

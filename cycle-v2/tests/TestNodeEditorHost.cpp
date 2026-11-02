@@ -57,6 +57,7 @@
 #include "UI/NodeEditorHost.h"
 #include "UI/NodePreviewRenderer.h"
 #include "UI/NodePreviewResources.h"
+#include "UI/ReferenceWaveformPreview.h"
 
 #include <Audio/CycleDsp/CycleDelay.h>
 #include <Audio/CycleDsp/EffectParameterMapping.h>
@@ -6690,4 +6691,75 @@ TEST_CASE("Both mesh editors publish one undoable gesture for each visible cube 
             REQUIRE_FALSE(document.canUndo());
         }
     }
+}
+
+TEST_CASE("Compact Spy resize and palette changes reuse source analysis",
+        "[cycle-v2][waveform][reuse][preview]") {
+    ScopedJuceInitialiser_GUI gui;
+    Component canvas;
+    NodeGraph graph;
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "spy", {}));
+    GraphDocument document(std::move(graph));
+    GraphCommandDispatcher graphCommands(document);
+    NullPresentation presentation;
+    NullResources editorResources;
+    NodeEditorCommandService commands(canvas, document, graphCommands, presentation, editorResources);
+    NodePreviewResources resources(commands);
+    NodePreviewRenderer renderer(resources);
+    auto samples = std::make_shared<std::vector<float>>(4096);
+    for (size_t index = 0; index < samples->size(); ++index) {
+        (*samples)[index] = (float) ((int) (index % 32) - 16) / 32.f;
+    }
+    NodePreviewResult preview;
+    preview.nodeId = "spy";
+    preview.role = PreviewModuleRole::SignalSpy;
+    preview.waveform = samples;
+    const auto savedStyle = WaveformColourStyles::current();
+    struct RestoreStyle {
+        WaveformColourStyles::Style style;
+        ~RestoreStyle() { WaveformColourStyles::setCurrent(style); }
+    } restore { savedStyle };
+    WaveformColourStyles::setCurrent(WaveformColourStyles::Style::BurntAlum);
+    const auto paint = [&](int width, int height) {
+        Image image(Image::ARGB, width, height, true);
+        Graphics graphics(image);
+        renderer.paint(graphics, { *document.graph().findNode("spy"), &preview,
+                { 0.f, 0.f, (float) width, (float) height },
+                TrimeshRenderProfile::fromDomain(PortDomain::TimeSignal), 1.f });
+        return image;
+    };
+    paint(120, 72);
+    const auto source = resources.cachedSprite("spy").waveformSource;
+    REQUIRE(source != nullptr);
+    REQUIRE(source->heatBuilds == 1);
+    REQUIRE(source->geometryBuilds == 1);
+    paint(120, 72);
+    REQUIRE(source->geometryBuilds == 1);
+    paint(240, 144);
+    REQUIRE(resources.cachedSprite("spy").waveformSource == source);
+    REQUIRE(source->heatBuilds == 1);
+    REQUIRE(source->geometryBuilds == 2);
+    REQUIRE(source->colourBuilds == 1);
+    WaveformColourStyles::setCurrent(WaveformColourStyles::Style::Blues);
+    paint(240, 144);
+    REQUIRE(source->heatBuilds == 1);
+    REQUIRE(source->colourBuilds == 2);
+    REQUIRE(source->geometryBuilds == 2);
+    const auto content = NodePreviewRenderer::heatmapBounds({ 0.f, 0.f, 240.f, 144.f });
+    const auto independent = signalWaveformHeatmap(*samples,
+            roundToInt(content.getWidth()), roundToInt(content.getHeight()));
+    REQUIRE(independent.isValid());
+    const auto actual = resources.cachedSprite("spy").runtimeHeatmap;
+    REQUIRE(actual.getBounds() == independent.getBounds());
+    bool equal = true;
+    for (int y = 0; y < actual.getHeight(); ++y) {
+        for (int x = 0; x < actual.getWidth(); ++x) {
+            equal = equal && actual.getPixelAt(x, y) == independent.getPixelAt(x, y);
+        }
+    }
+    REQUIRE(equal);
+    preview.waveform = std::make_shared<const std::vector<float>>(4096, 0.f);
+    paint(240, 144);
+    REQUIRE(resources.cachedSprite("spy").waveformSource != source);
+    REQUIRE(resources.cachedSprite("spy").waveformSource->silent);
 }

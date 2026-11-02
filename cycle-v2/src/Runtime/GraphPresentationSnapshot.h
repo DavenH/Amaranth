@@ -7,6 +7,7 @@
 #include "Graph/GraphCompiler.h"
 #include "Runtime/GraphPreviewExecutor.h"
 #include "Runtime/GraphRuntime.h"
+#include "Runtime/SignalProbeWaveformCapture.h"
 
 namespace CycleV2 {
 
@@ -20,6 +21,8 @@ struct GraphPresentationSnapshot {
     GraphCompileResult compileResult;
     RuntimeProcessTrace runtimeTrace;
     GraphPreviewResult previewResult;
+    std::shared_ptr<SignalProbeWaveformCapture> waveformCaptures {
+            std::make_shared<SignalProbeWaveformCapture>() };
     std::map<String, double> probeNoteOffTimes;
     std::shared_ptr<const GraphPresentationFacts> facts;
 };

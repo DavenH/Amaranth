@@ -1,0 +1,32 @@
+{
+  "commands": [
+    {"command": "openGraph", "path": "../../cycle-v2/content/presets/old/stengah.cyclegraph"},
+    {"command": "setSpyView", "probeId": "probe2", "view": "waveform"},
+    {"command": "selectReference", "referenceId": "factory:sax-growl"},
+    {"command": "pinComparisonSpy", "probeId": "probe2"},
+    {"command": "waitForIdle", "idleDelayMs": 1000},
+    {"command": "assertState", "path": "comparison.cards.1.surfaceView.waveform.ready", "equals": true},
+    {"command": "assertState", "path": "comparison.cards.1.surfaceView.waveform.sourceBuilds", "equals": 1},
+    {"command": "assertState", "path": "comparison.cards.1.surfaceView.waveform.heatBuilds", "equals": 1},
+    {"command": "snapshotState"},
+    {"command": "selectReference", "referenceId": "factory:sax-growl"},
+    {"command": "selectReference", "referenceId": "factory:sax-growl"},
+    {"command": "waitForIdle", "idleDelayMs": 800},
+    {"command": "assertState", "path": "comparison.cards.1.surfaceView.waveform.sourceBuilds", "equals": 1},
+    {"command": "assertState", "path": "comparison.cards.1.surfaceView.waveform.heatBuilds", "equals": 1},
+    {"command": "snapshotState"},
+    {"command": "setSpyView", "probeId": "probe2", "view": "time"},
+    {"command": "waitForIdle", "idleDelayMs": 800},
+    {"command": "assertState", "path": "comparison.cards.1.spectral", "equals": false},
+    {"command": "setSpyView", "probeId": "probe2", "view": "waveform"},
+    {"command": "waitForIdle", "idleDelayMs": 800},
+    {"command": "assertState", "path": "comparison.cards.1.surfaceView.waveform.ready", "equals": true},
+    {"command": "assertState", "path": "comparison.cards.1.surfaceView.waveform.sourceBuilds", "equals": 2},
+    {"command": "snapshotState"},
+    {"command": "pointer", "event": "doubleClick", "targetId": "spy:probe2"},
+    {"command": "waitForIdle", "idleDelayMs": 800},
+    {"command": "assertState", "path": "probeWaveform.waveform.ready", "equals": true},
+    {"command": "screenshot", "area": "canvas", "path": "../../.context/spy-reuse-verified.png"}
+  ],
+  "quit": true
+}

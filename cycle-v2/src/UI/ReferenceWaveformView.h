@@ -14,6 +14,7 @@ class PitchedSample;
 namespace CycleV2 {
 
 struct ReferenceWaveformResolution;
+struct WaveformPreviewSource;
 
 class ReferenceWaveformView final : public juce::Component,
                                     private juce::AsyncUpdater,
@@ -33,7 +34,6 @@ public:
     std::function<void(juce::Graphics&)> onOverlay;
 
 private:
-    struct Source;
     class RenderJob;
     void componentVisibilityChanged() override;
     void componentMovedOrResized(bool, bool) override {}
@@ -46,8 +46,8 @@ private:
 
     const PitchedSample* sampleIdentity {};
     std::shared_ptr<const std::vector<float>> signalIdentity;
-    std::shared_ptr<const Source> source;
-    std::shared_ptr<const Source> imageSource;
+    std::shared_ptr<const WaveformPreviewSource> source;
+    std::shared_ptr<const WaveformPreviewSource> imageSource;
     WaveformColourStyles::Style colourStyle { WaveformColourStyles::defaultStyle };
     ZoomRect viewport;
     ZoomRect imageViewport;
