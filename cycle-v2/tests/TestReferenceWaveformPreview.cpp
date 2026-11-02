@@ -377,7 +377,7 @@ TEST_CASE("Filled waveform detail requires resolved oscillations at the same log
     REQUIRE_FALSE(referenceWaveformResolution(crossings, 0, 600, 1024).useFill);
 }
 
-TEST_CASE("Filled waveform colour stays uniform across heat palettes while its edge retains heat",
+TEST_CASE("Filled waveform and its edge stay neutral across heat palettes",
         "[cycle-v2][waveform][palette][composition][fill]") {
     for (const float amplitude : { -0.5f, 0.5f }) {
         float samples[] { amplitude, amplitude, amplitude };
@@ -391,8 +391,8 @@ TEST_CASE("Filled waveform colour stays uniform across heat palettes while its e
         const auto blue = recolourSignalWaveform(coverage, heat, ZoomRect(), true);
         const int edge = amplitude > 0.f ? 32 : 96;
         const int interior = amplitude > 0.f ? 48 : 80;
-        REQUIRE(red.getPixelAt(64, edge) == juce::Colours::red);
-        REQUIRE(blue.getPixelAt(64, edge) == juce::Colours::blue);
+        REQUIRE(red.getPixelAt(64, edge) == CanvasChromePalette::text);
+        REQUIRE(blue.getPixelAt(64, edge) == CanvasChromePalette::text);
         for (int x : { 16, 64, 112 }) {
             const auto fill = red.getPixelAt(x, interior);
             REQUIRE(fill == blue.getPixelAt(x, interior));

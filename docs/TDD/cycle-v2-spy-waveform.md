@@ -75,7 +75,10 @@ Surface Appearance configurator owns palette selection; see
 `cycle-v2-surface-appearance.md`. Bilinear colour sampling smooths bucket
 boundaries without broadening or filling the fine waveform. The full-source
 normalization and colour field remain fixed through resizing, zooming, scrolling
-and the path transition. Silence remains empty. Compact and expanded
+and the path transition. At the fill threshold, the wider edge also switches
+to the same neutral colour as the fill; heat colours return when zooming out
+past that threshold. GPU and software composition use the existing filled flag.
+Silence remains empty. Compact and expanded
 presentations share this encoding. Saved presets retain the selected
 view; legacy frequencyView booleans retain their old meaning.
 
@@ -102,6 +105,16 @@ required graph processing; pointer motion and repaint perform no audio capture.
 Deletion targets: replace two-state Spy view policy with one three-state enum,
 retain legacy JSON only at the codec boundary, and reuse the reference passage
 counter rather than introducing another density algorithm.
+
+Neutral filled-detail stroke verification (2026-11-02): exact app/test builds
+pass, and 25 waveform/gradient cases pass 136,143 assertions. The existing filled
+composition test now requires a neutral edge for both polarities across palettes;
+unfilled coverage tests retain their density colours. The 18-command native GL
+fixture confirms filled=true at w≈0.05 with one source/heat preparation. Inspected
+`.context/spy-neutral-stroke-native.png`; evidence is in
+`.context/spy-neutral-stroke-tests.log` and `.context/spy-neutral-stroke-ui.json`.
+GPU/software composition share the existing fill threshold; no new render state
+or cache invalidation is introduced.
 
 ## Acceptance
 

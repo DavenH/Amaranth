@@ -32,7 +32,8 @@ void main() {
     vec4 coverage = texture2D(coverageTexture, maskUV);
     float stroke = mix(coverage.a, coverage.r, filled);
     float fill = coverage.a - stroke;
-    vec3 colour = texture2D(heatTexture, heatUV).rgb * stroke + fillColour * fill;
+    vec3 strokeColour = mix(texture2D(heatTexture, heatUV).rgb, fillColour, filled);
+    vec3 colour = strokeColour * stroke + fillColour * fill;
     float alpha = min(1.0, coverage.a + fillGridBacking * fill);
     gl_FragColor = vec4(colour, alpha) * inside * pixelAlpha;
 }

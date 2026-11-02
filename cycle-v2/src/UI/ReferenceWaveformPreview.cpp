@@ -53,9 +53,27 @@ HeatPosition heatPosition(float unit, int size) {
     return { index, (unsigned int) juce::roundToInt((position - index) * 256.f) };
 }
 
-void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRect& viewport, bool constantFill) {
+void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRect& viewport, bool filled) {
     const int width = image.getWidth();
     const int height = image.getHeight();
+    juce::Image::BitmapData pixels(image, juce::Image::BitmapData::readWrite);
+    if (filled) {
+        const auto neutral = CanvasChromePalette::text.getPixelARGB();
+        for (int y = 0; y < height; ++y) {
+            auto* row = reinterpret_cast<juce::PixelARGB*>(pixels.getLinePointer(y));
+            for (int x = 0; x < width; ++x) {
+                const int alpha = row[x].getAlpha();
+                const int fill = alpha - row[x].getRed();
+                auto colour = neutral;
+                colour.multiplyAlpha(alpha);
+                colour.setARGB((juce::uint8) juce::jmin(255,
+                                alpha + WaveformColourStyles::fillGridBacking * fill),
+                        colour.getRed(), colour.getGreen(), colour.getBlue());
+                row[x] = colour;
+            }
+        }
+        return;
+    }
     std::vector<HeatPosition> columns((size_t) width);
     for (int x = 0; x < width; ++x) {
         columns[(size_t) x] = heatPosition(viewport.x + viewport.w * x / juce::jmax(1, width - 1),
@@ -64,8 +82,6 @@ void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRe
     std::vector<juce::PixelARGB> heatRow((size_t) heat.getWidth());
     const auto* columnLookup = columns.data();
     auto* blendedRow = heatRow.data();
-    const auto fillColour = CanvasChromePalette::text.getPixelARGB();
-    juce::Image::BitmapData pixels(image, juce::Image::BitmapData::readWrite);
     juce::Image::BitmapData colours(heat, juce::Image::BitmapData::readOnly);
     for (int y = 0; y < height; ++y) {
         const auto position = heatPosition(viewport.y + viewport.h * y / (height - 1), heat.getHeight());
@@ -82,17 +98,7 @@ void paintWaveformHeat(juce::Image& image, const juce::Image& heat, const ZoomRe
                 const auto column = columnLookup[x];
                 auto colour = blendedRow[column.index];
                 colour.tween(blendedRow[column.index + 1], column.fraction);
-                if (constantFill) {
-                    const int strokeAlpha = row[x].getRed();
-                    auto fill = fillColour;
-                    fill.multiplyAlpha(alpha - strokeAlpha);
-                    colour.multiplyAlpha(strokeAlpha);
-                    colour.setARGB((juce::uint8) juce::jmin(255,
-                                    alpha + WaveformColourStyles::fillGridBacking * (alpha - strokeAlpha)),
-                            (juce::uint8) (colour.getRed() + fill.getRed()),
-                            (juce::uint8) (colour.getGreen() + fill.getGreen()),
-                            (juce::uint8) (colour.getBlue() + fill.getBlue()));
-                } else if (alpha < 255) {
+                if (alpha < 255) {
                     colour.multiplyAlpha(alpha);
                 }
                 row[x] = colour;
@@ -305,9 +311,9 @@ void paintWaveformImage(juce::Graphics& graphics, const juce::Image& image,
 }
 
 juce::Image recolourSignalWaveform(const juce::Image& geometry, const juce::Image& heatField,
-        const ZoomRect& viewport, bool constantFill) {
+        const ZoomRect& viewport, bool filled) {
     auto image = geometry.createCopy();
-    paintWaveformHeat(image, heatField, viewport, constantFill);
+    paintWaveformHeat(image, heatField, viewport, filled);
     return image;
 }
 

@@ -66,7 +66,7 @@ juce::Image signalWaveformHeatField(const std::vector<float>& normalizedDensity,
 juce::Image signalWaveformHeatField(Buffer<float> normalizedMono,
         WaveformColourStyles::Style style = WaveformColourStyles::current());
 juce::Image recolourSignalWaveform(const juce::Image& geometry, const juce::Image& heatField,
-        const ZoomRect& viewport, bool constantFill = false);
+        const ZoomRect& viewport, bool filled = false);
 void paintWaveformImage(juce::Graphics& graphics, const juce::Image& image,
         const ZoomRect& coverageViewport, const ZoomRect& viewport, juce::Rectangle<float> bounds);
 juce::Image signalWaveformCoverage(Buffer<float> visibleMono, int width, int height,
