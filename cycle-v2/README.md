@@ -118,8 +118,8 @@ voice over the shared plot. Ripples follow held and release time on the saved
 preview axis; legato reuses its voice marker and stealing replaces the oldest
 voice. Each marker peaks at the exact playback position with a symmetric
 `exp(-abs(distance) / width)` falloff. It enriches the existing colours while
-preserving their HSL hue and lightness, with a soft saturation limit. Neutral
-pixels stay neutral. Coincident ripples share their saturation change rather than
+preserving their HSL hue and lightness. Desaturated shoulders frame the rich
+centre so it also reads on already saturated palettes. Neutral pixels stay neutral. Coincident ripples share their saturation change rather than
 accumulating. `--cursor ripple` is the default; use `--cursor none` to export the
 plot without ripples while retaining audio.
 

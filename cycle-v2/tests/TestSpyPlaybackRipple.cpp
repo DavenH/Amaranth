@@ -22,9 +22,11 @@ TEST_CASE("Saturation ripple enriches existing colours with symmetric exponentia
         CHECK(peak.getSaturationHSL() >= image.getPixelAt(499, 1).getSaturationHSL());
         CHECK(image.getPixelAt(499, 1) == image.getPixelAt(501, 1));
         const auto tail = image.getPixelAt(518, 1);
-        const float tailGain = 1.f + 2.f * std::exp(-1.f);
+        const float tailWeight = std::exp(-1.f);
+        const float tailGain = 1.f + 2.f * tailWeight;
+        const float shoulders = 1.f - 3.8f * tailWeight * (1.f - tailWeight);
         CHECK(tail.getSaturationHSL() == Catch::Approx(saturation * tailGain
-                / (1.f + saturation * (tailGain - 1.f))).margin(0.01));
+                / (1.f + saturation * (tailGain - 1.f)) * shoulders).margin(0.01));
         CHECK(peak.getSaturationHSL() > tail.getSaturationHSL());
         CHECK(image.getPixelAt(482, 1) == tail);
         CHECK(image.getPixelAt(391, 1) == colour);
@@ -32,13 +34,17 @@ TEST_CASE("Saturation ripple enriches existing colours with symmetric exponentia
         for (int x = 392; x <= 608; ++x) {
             CHECK(image.getPixelAt(x, 1).getLightness()
                     == Catch::Approx(colour.getLightness()).margin(1. / 255.));
-            CHECK(image.getPixelAt(x, 1).getHue()
-                    == Catch::Approx(colour.getHue()).margin(0.004));
+            const auto actual = image.getPixelAt(x, 1);
+            const auto expected = juce::Colour::fromHSL(colour.getHue(),
+                    actual.getSaturationHSL(), colour.getLightness(), 1.f);
+            CHECK(std::abs((int) actual.getRed() - expected.getRed()) <= 1);
+            CHECK(std::abs((int) actual.getGreen() - expected.getGreen()) <= 1);
+            CHECK(std::abs((int) actual.getBlue() - expected.getBlue()) <= 1);
         }
     }
 }
 
-TEST_CASE("Saturation modifier leaves neutral and already fully saturated content unchanged",
+TEST_CASE("Saturation contrast stays visible on saturated colours while leaving neutrals unchanged",
         "[cycle-v2][spy-movie][spy-export]") {
     juce::Image image(juce::Image::RGB, 401, 256, true);
     for (int y = 0; y < 256; ++y) {
@@ -55,6 +61,9 @@ TEST_CASE("Saturation modifier leaves neutral and already fully saturated conten
         image.clear(image.getBounds(), colour);
         SpyPlaybackRipple::apply(image, { 0.25f });
         CHECK(image.getPixelAt(100, 100) == colour);
+        CHECK(image.getPixelAt(95, 100).getSaturationHSL() < 0.1f);
+        CHECK(image.getPixelAt(105, 100) == image.getPixelAt(95, 100));
+        CHECK(image.getPixelAt(0, 100) == colour);
     }
 }
 

@@ -35,7 +35,8 @@ struct Channels {
         const float gain = 1.f + 2.f * weight;
         colours.copyTo(divisors);
         divisors.mul(gain - 1.f).add(1.f);
-        colours.mul(gain).div(divisors);
+        const float shoulders = 1.f - 3.8f * weight * (1.f - weight);
+        colours.mul(gain).div(divisors).mul(shoulders);
     }
 
     void write(juce::Image::BitmapData& pixels, int x) const {

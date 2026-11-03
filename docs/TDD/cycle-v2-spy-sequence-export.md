@@ -1,6 +1,6 @@
 # Automated Spy sequence export
 
-Status: Complete — palette-preserving saturation cursor (2026-11-03).
+Status: Complete — cursor visibility on saturated palettes (2026-11-03).
 
 ## Contract and ownership
 
@@ -318,3 +318,50 @@ Saturation verification:
   Preset and pattern retain their source hashes. Production preview and movie
   frame 75 inspected; isolated export log has no assertion/crash. Machine proof:
   `verification.json` beside the movie. Factory presets and user edits untouched.
+
+
+## Cursor visibility on saturated palettes
+
+The Basic Bass Variation export contains voice snapshots and playback positions,
+but the pure saturation gain has little headroom on Icy Hot (Raw). Its short
+notes spend held time at the left of the full preview and release at the far
+right. Preserve these truthful coordinates; do not stretch short note playback
+to fake a full traversal.
+
+Add saturation contrast within the existing ripple: multiply the bounded
+saturation gain by `1 - 3.8*w*(1-w)`. The cusp keeps its enriched colour, while
+shoulders at half influence retain 5% saturation. This gives fully saturated
+pixels a readable surround; hue and HSL lightness stay fixed. At zero influence
+the original palette is unchanged, and neutral/black/white remain unchanged.
+Keep bounded maximum overlap; no extra clocks, screen overlays or audio changes.
+
+Require regression coverage proving that fully saturated red/blue/yellow have
+visible symmetric shoulders, plus actual-pattern frame comparisons against
+cursor-disabled and prior-export frames. Inspect held and released positions,
+rerender the associated-pattern movie and verify its original timing/audio.
+
+
+Visibility verification:
+
+- Regression now requires visible symmetric shoulders on fully saturated
+  red/blue/yellow; the old saturation-only kernel fails this case. Near-neutral
+  hue preservation is tested as RGB reconstruction within one byte, since hue
+  angle is ill-conditioned at very low chroma. Lightness stays within byte
+  quantization; black/white/neutrals, local support and max overlap still pass.
+- Exact app/test builds use `--parallel 10`; production renderer remains one
+  focused 84-line image operation. Audio, model and coordinate owners unchanged.
+- Native frame triplets (cursor disabled / old gain / new contrast), at frames
+  5, 20 and 40 of the actual pattern, show 2.27x, 2.94x and 2.91x stronger mean
+  absolute RGB modulation. These cover held and released markers at their real
+  left/right-edge positions. Inspected frame 5 visually. Evidence:
+  `.context/cursor-visibility-strong/pixel-comparison.json` and adjacent PNGs.
+
+- Final replacement movie: `.context/bright-lead-3-saturation-contrast-1080p/sequence.mp4`.
+  Same Bright Lead 3, Icy Hot (Raw), linked four-second Basic Bass Variation
+  and one-second tail: 150 frames at 1920x1080/30 fps, exact five-second H.264/
+  AAC streams, unchanged sources and actual voice positions. Independent WAV
+  is byte-identical to the previous export. `verification.json` beside the
+  movie records pattern identity, source hashes, timing, voices and audio.
+  Focused checks pass 22 cases / 20,060 assertions; exact targets built with
+  `--parallel 10`. Code-map, architecture and diff checks pass; no app assertion
+  or crash in the isolated run.
