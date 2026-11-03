@@ -198,7 +198,7 @@ def arguments(argv=None):
     parser.add_argument("--height", type=int, default=720)
     parser.add_argument("--note", type=int,
                         help="Fixed key-scale/preview note; melody pitches stay authored (default: first pattern note)")
-    parser.add_argument("--cursor", choices=["material-glint", "none"], default="material-glint")
+    parser.add_argument("--cursor", choices=["ripple", "none"], default="ripple")
     parser.add_argument("--tail-seconds", type=float, default=0,
                         help="Extra audio/video time after the pattern (default: 0)")
     parser.add_argument("--gradient", help="Built-in gradient ID or display name (default: preset style)")

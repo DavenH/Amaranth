@@ -23,7 +23,7 @@
 #include "Runtime/RealtimeGraphRenderer.h"
 #include "UI/PerformanceKeyboard.h"
 #include "UI/SpyFrameRenderer.h"
-#include "UI/SpyPlaybackGlint.h"
+#include "UI/SpyPlaybackRipple.h"
 #include "UI/SignalProbeDetailView.h"
 #include "App/Automation/SpyFrameAutomation.h"
 
@@ -467,9 +467,9 @@ TEST_CASE("Spy export uses expanded capture and built-in materials without docum
             REQUIRE(lit.image.isValid());
             CHECK(lit.contentRevision == actual.contentRevision);
             CHECK(lit.playbackPositions.size() == 2);
-            auto expectedGlints = actual.image.createCopy();
-            SpyPlaybackGlint::apply(expectedGlints, lit.playbackPositions);
-            CHECK(equalPixels(lit.image, expectedGlints));
+            auto expectedRipples = actual.image.createCopy();
+            SpyPlaybackRipple::apply(expectedRipples, lit.playbackPositions);
+            CHECK(equalPixels(lit.image, expectedRipples));
             request.playback.count = 0;
         }
         request.gradient.reset();

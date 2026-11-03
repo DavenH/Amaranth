@@ -113,11 +113,14 @@ filtering and shading. No saved preset or gradient setting changes.
 
 Frames show the full expanded preview at each controller state, using the
 player's existing 5 ms controller schedule. Pattern notes play through the
-production offline synth, with one local material glint per active voice over
-the shared plot. Glints follow held and release time on the saved preview axis;
-legato reuses its voice marker and stealing replaces the oldest voice. Coincident
-glints share their lighting rather than accumulating. Use `--cursor none` to
-export the plot without glints while retaining audio.
+production offline synth, with one local colour/brightness ripple per active
+voice over the shared plot. Ripples follow held and release time on the saved
+preview axis; legato reuses its voice marker and stealing replaces the oldest
+voice. Each marker peaks at the exact playback position with a symmetric
+`exp(-abs(distance) / width)` falloff; its cool brightness cue stays visible over
+both flat and textured areas. Coincident ripples share their lighting rather than
+accumulating. `--cursor ripple` is the default; use `--cursor none` to export the
+plot without ripples while retaining audio.
 
 There are `ceil((durationSeconds + tailSeconds) * fps)` opaque PNGs at `index / fps`,
 starting at zero and excluding the duration endpoint. `--tail-seconds 1` adds a
@@ -138,7 +141,7 @@ or interruptions preserve the PNG sequence and are recorded in the manifest.
 
 The output directory must be new. It contains `frame-000000.png` onward,
 source snapshots and hashes, a `manifest.json` with resolved settings and frame
-records (including actual voice identities, pitches, ages and glint positions),
+records (including actual voice identities, pitches, ages and ripple positions),
 and a flushed `frames.jsonl` journal. Failures and interruptions retain
 finished PNGs and identify the failed frame in the manifest. The journal also
 preserves completed records if the process is forcibly terminated.

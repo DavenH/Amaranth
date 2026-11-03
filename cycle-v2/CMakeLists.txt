@@ -311,7 +311,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorModelCommands.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SpyPlaybackGlint.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SpyPlaybackRipple.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SpyFrameRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailPanel.cpp"

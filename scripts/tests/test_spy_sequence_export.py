@@ -42,7 +42,7 @@ class SpySequenceExportTest(unittest.TestCase):
         preset.write_text("{}")
         pattern.write_text(json.dumps({"version": 1, "sequence": {"durationSeconds": 1}}))
         args = argparse.Namespace(output_dir=root / "frames", preset=preset, pattern=pattern,
-                                  spy="probe1", fps=4, width=160, height=96, note=48, gradient="Bullion", mp4=mp4, mp4_bitrate=8, cursor="material-glint", tail_seconds=0)
+                                  spy="probe1", fps=4, width=160, height=96, note=48, gradient="Bullion", mp4=mp4, mp4_bitrate=8, cursor="ripple", tail_seconds=0)
         commands = []
 
         def send(command):
@@ -80,7 +80,7 @@ class SpySequenceExportTest(unittest.TestCase):
             self.assertTrue(all(item["gradient"] == "Bullion" and item["midiNote"] == 48 for item in render))
 
     def test_melody_captures_authored_pitches_with_fixed_reference_and_holds_tail_controllers(self):
-        for override, cursor in [(None, "material-glint"), (48, "none")]:
+        for override, cursor in [(None, "ripple"), (48, "none")]:
             with self.subTest(override=override), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 preset, pattern = root / "test.cyclegraph", root / "test.cyclepattern"
@@ -145,6 +145,7 @@ class SpySequenceExportTest(unittest.TestCase):
 
     def test_listing_needs_no_export_arguments_and_cli_rejects_invalid_settings(self):
         self.assertTrue(arguments(["--list-gradients"]).list_gradients)
+        self.assertEqual(arguments(["--list-gradients"]).cursor, "ripple")
         for settings in [["--fps", "nan"], ["--fps", "0"], ["--width", "0"], ["--note", "128"],
                          ["--mp4-bitrate", "nan"], ["--mp4-bitrate", "0"],
                          ["--tail-seconds", "-1"], ["--tail-seconds", "inf"]]:
@@ -191,6 +192,7 @@ class SpySequenceExportTest(unittest.TestCase):
             self.assertIn("--mp4", worker[worker.index("--"):])
             self.assertEqual(worker[worker.index("--mp4-bitrate") + 1], "12.0")
             self.assertEqual(worker[worker.index("--gradient") + 1], "Bullion")
+            self.assertEqual(worker[worker.index("--cursor") + 1], "ripple")
 
     def test_failed_encoder_cleans_partial_video(self):
         with tempfile.TemporaryDirectory() as directory:

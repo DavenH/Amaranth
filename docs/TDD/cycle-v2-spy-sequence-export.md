@@ -1,12 +1,12 @@
 # Automated Spy sequence export
 
-Status: Complete — melody audio and polyphonic material glints (2026-11-03).
+Status: Complete — precise exponential playback ripple (2026-11-03).
 
 ## Contract and ownership
 
 Export opaque, plot-only Cyclogram PNGs at `index / fps < pattern duration`.
 The preview reference note and saved Spy release position stay fixed while
-pattern MIDI controllers advance and actual sounding voices carry local glints.
+pattern MIDI controllers advance and actual sounding voices carry local ripples.
 This is an offline presentation workflow. Defaults: default-output, 30 fps,
 1280x720, first pattern note (preset note for controller-only patterns) and preset
 time-surface style. Explicit named styles include Bullion.
@@ -36,7 +36,7 @@ Automation adapters only decode requests and write PNGs.
 
 ## Melody movie extension
 
-One shared controller-driven Cyclogram carries one material glint per actual
+One shared controller-driven Cyclogram carries one exponential colour/brightness ripple per actual
 active synth voice. Pattern MIDI retains its authored audible pitches; the
 key-scale control note is fixed for all voices and for the visualization:
 explicit `--note`, otherwise the first scheduled note-on. Controller-only exports
@@ -52,16 +52,16 @@ to observe a marker. Release retirement follows the existing blockwise engine. D
 a voice allocator, envelope state machine or DSP in Python.
 
 PreviewTraversal owns mapping normalized held/release age to the shared Spy
-axis, including saved note-off and release span. A focused SpyPlaybackGlint image
-renderer owns the approved ridge lighting, combining overlapping influence with
-a bounded maximum. Use Buffer/VecOps for image reductions and transforms; pixel
+axis, including saved note-off and release span. A focused SpyPlaybackRipple
+image renderer owns precise exponential colour/brightness modulation, combining
+overlapping influence with a bounded maximum. Use Buffer/VecOps for image reductions and transforms; pixel
 loops only unpack/pack image channels. No global colour changes or new image
-algorithm in the script. Retire glints when the actual voice retires; global FX
+algorithm in the script. Retire ripples when the actual voice retires; global FX
 may remain audible afterward.
 
 The host exports `audio.wav` automatically for patterns with notes, records
 voice snapshots per frame, and muxes existing audio into `--mp4` as AAC at
-320 kb/s. `--cursor none` disables glints; default is material-glint. Optional
+320 kb/s. `--cursor none` disables ripples; default is ripple. Optional
 `--tail-seconds` extends the existing pattern duration; default zero preserves
 current frame counts. Hold final CC values in the tail. Align WAV sample length
 to the complete video frame duration and preserve it as an independent artifact.
@@ -207,3 +207,60 @@ Glint influence scales with eight bounded voices and image columns, and pixel
 work uses vector operations on only the enclosing affected image span. No
 telemetry allocations, model mutation, new document publication or duplicated
 preview/material algorithms are introduced.
+
+
+## Precise exponential ripple refinement
+
+The ridge-dependent material glint is too hard to track. Replace its lighting
+algorithm and SpyPlaybackGlint boundary with SpyPlaybackRipple; retain the same
+actual-voice snapshots and PreviewTraversal coordinates. No new playback clocks,
+voice simulation, capture path or DSP behavior. The script now defaults to
+`--cursor ripple`; `none` still disables the overlay.
+
+Use a cool-coloured brightness modulation with weight
+`exp(-abs(x - position) / decayWidth)`, decay width 0.6% of plot width (minimum one pixel) and a
+six-width cutoff (0.25% influence). The cusp is exactly at normalized position
+on the inclusive pixel axis [0, width - 1], including both endpoints. Apply
+lighting independent of local image detail, preserving texture through the
+peak; combine coincident voices with maximum influence. Compute exponential
+weights and channel transforms with Buffer operations. The new image operation
+removes the old ridge gradients, luminance capture and highlight recipe.
+
+Acceptance: symmetric exponential falloff and unique brightness maximum at the
+cursor, visible on featureless dark/grey/bright plots, unchanged pixels outside
+the local band, bounded overlap, production material/document invariants, and
+a one-note modulation movie with aligned audio. Retain 1080p/30 fps and the
+8 Mb/s video target. Prepare a separate Honerism-3 example copy with an eight-
+second voice duration, hold one note through that traversal, then include its
+release. Do not alter the factory preset or existing user edits.
+
+
+Refinement verification:
+
+- Exact app/test targets build with `--parallel 10`. The focused Spy/movie,
+  controller, material and scheduler filter passes 21 cases / 18,840 assertions.
+  It checks exponential falloff against `exp(-1)`, symmetric cusps on uniform
+  black/grey/white plots, coincident/multiple voices, inclusive endpoint peaks,
+  width-one images, and unchanged pixels beyond six decay widths. Existing
+  production materials, fixed reference note, capture identity and document/
+  history invariants continue to pass. Log: `.context/spy-ripple-cpp-tests.log`.
+- All ten sequence/audio/MP4 Python tests pass, including `--cursor ripple`
+  default and worker forwarding. Log: `.context/spy-ripple-python-tests.log`.
+- Production Bullion previews at 1280x720 and two playback positions show a
+  crisp cool peak with exponential shoulders over the same signal capture.
+  Evidence: `.context/ripple-preview-0.3.png` and `ripple-preview-0.6.png`.
+- Responsibility/deletion review: replace the 118-line glint renderer with a
+  77-line ripple renderer. Remove ridge/luminance/gradient scratch and use only
+  three column buffers plus bounded one-dimensional weights. SpyFrameRenderer
+  remains 79 lines; audio/runtime code and actual-voice observation are unchanged.
+  Code map, architecture audit and diff checks pass.
+
+- One-note movie completes: `.context/one-note-ripple-1080p/sequence.mp4`,
+  300 frames at 1920x1080/30 fps, one MIDI 60 voice, CC1 0..127..0, fixed
+  reference note 60. WAV and H.264/AAC streams are exactly ten seconds; WAV
+  remains independent at 48 kHz/stereo/24-bit. Cursor traverses 0.00172..0.99772
+  monotonically with maximum frame step 0.00345, including the release section.
+  The separate preset copy changes only voice duration to eight seconds; the
+  factory preset retains its original hash. Production frames 150 and 265
+  inspected at export resolution. Machine evidence: `verification.json` beside
+  the movie. Audio peak 0.136, RMS 0.0482. No isolated-app assertion or crash.

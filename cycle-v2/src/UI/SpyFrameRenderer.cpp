@@ -5,7 +5,7 @@
 #include "Graph/DefaultOutputProbeResolver.h"
 #include "UI/SignalProbeDetailView.h"
 #include "UI/CanvasChromePalette.h"
-#include "UI/SpyPlaybackGlint.h"
+#include "UI/SpyPlaybackRipple.h"
 #include "Runtime/PreviewTraversal.h"
 
 namespace CycleV2 {
@@ -68,7 +68,7 @@ SpyFrameResult SpyFrameRenderer::render(
                 voice.ageSeconds / voice.durationSeconds, voice.released,
                 voice.releaseAgeSeconds / voice.durationSeconds));
     }
-    SpyPlaybackGlint::apply(result.image, result.playbackPositions);
+    SpyPlaybackRipple::apply(result.image, result.playbackPositions);
     result.midiNote = detail.midiNote;
     result.noteOffTime = detail.noteOffTime;
     result.contentRevision = detail.renderResult.contentRevision;

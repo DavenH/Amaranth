@@ -458,7 +458,7 @@ it includes resolved note, gradient, release time, content revision and dimensio
 Optional `playbackVoices` contains at most eight snapshots with `ageSeconds`,
 `releaseAgeSeconds`, positive `durationSeconds` and boolean `released`. The shared
 preview traversal resolves them into returned `playbackPositions`, then applies
-material glints after rendering the shared plot.
+exponential colour/brightness ripples after rendering the shared plot.
 Image dimensions are 1..16384, bounded to 64 megapixels. The command forces a
 Cyclogram capture without changing saved Spy mode, note-off position or style.
 
@@ -470,7 +470,7 @@ voice IDs, pitches, held/release ages, duration and release state. Observation
 runs inside the existing MIDI event pass without subdividing DSP blocks.
 `voiceDurationSeconds: 0` preserves preset duration; `keyScaleNote` fixes mapped
 key scale independently of actual note pitch. Both options are transient.
-`--mp4` muxes the WAV if present; `--cursor none` retains audio without glints.
+`--mp4` muxes the WAV if present; `--cursor none` retains audio without ripples.
 
 
 ## UI Video

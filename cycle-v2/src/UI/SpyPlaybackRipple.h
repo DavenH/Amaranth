@@ -5,7 +5,7 @@
 
 namespace CycleV2 {
 
-class SpyPlaybackGlint {
+class SpyPlaybackRipple {
 public:
     static void apply(juce::Image& image, const std::vector<float>& positions);
 };
