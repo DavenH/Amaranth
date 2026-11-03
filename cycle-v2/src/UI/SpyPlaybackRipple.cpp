@@ -10,32 +10,38 @@ namespace CycleV2 {
 namespace {
 
 struct Channels {
-    explicit Channels(int height) : red(height), green(height), blue(height) {}
-    std::vector<float> red;
-    std::vector<float> green;
-    std::vector<float> blue;
+    explicit Channels(int height) :
+            hue(height)
+        ,   saturation(height)
+        ,   lightness(height)
+        ,   denominator(height) {}
+
+    std::vector<float> hue;
+    std::vector<float> saturation;
+    std::vector<float> lightness;
+    std::vector<float> denominator;
 
     void read(const juce::Image::BitmapData& pixels, int x) {
-        for (int y = 0; y < (int) red.size(); ++y) {
-            const auto colour = pixels.getPixelColour(x, y);
-            red[(size_t) y] = colour.getRed();
-            green[(size_t) y] = colour.getGreen();
-            blue[(size_t) y] = colour.getBlue();
+        for (int y = 0; y < (int) hue.size(); ++y) {
+            pixels.getPixelColour(x, y).getHSL(hue[(size_t) y],
+                    saturation[(size_t) y], lightness[(size_t) y]);
         }
     }
 
-    void illuminate(float weight) {
-        const int height = (int) red.size();
-        const float amount = 0.78f * weight;
-        Buffer<float>(red.data(), height).mul(1.f - amount).add(150.f * amount);
-        Buffer<float>(green.data(), height).mul(1.f - amount).add(232.f * amount);
-        Buffer<float>(blue.data(), height).mul(1.f - amount).add(255.f * amount);
+    void saturate(float weight) {
+        const int height = (int) hue.size();
+        Buffer<float> colours(saturation.data(), height);
+        Buffer<float> divisors(denominator.data(), height);
+        const float gain = 1.f + 2.f * weight;
+        colours.copyTo(divisors);
+        divisors.mul(gain - 1.f).add(1.f);
+        colours.mul(gain).div(divisors);
     }
 
     void write(juce::Image::BitmapData& pixels, int x) const {
-        for (int y = 0; y < (int) red.size(); ++y) {
-            pixels.setPixelColour(x, y, juce::Colour((juce::uint8) red[(size_t) y],
-                    (juce::uint8) green[(size_t) y], (juce::uint8) blue[(size_t) y]));
+        for (int y = 0; y < (int) hue.size(); ++y) {
+            pixels.setPixelColour(x, y, juce::Colour::fromHSL(hue[(size_t) y],
+                    saturation[(size_t) y], lightness[(size_t) y], 1.f));
         }
     }
 };
@@ -43,7 +49,7 @@ struct Channels {
 std::vector<float> columnWeights(int width, const std::vector<float>& positions) {
     std::vector<float> weights((size_t) width);
     std::vector<float> scratch((size_t) width);
-    const float decay = juce::jmax(1.f, (width - 1) * 0.006f);
+    const float decay = juce::jmax(1.f, (width - 1) * 0.018f);
     for (const float position : positions) {
         const float centre = juce::jlimit(0.f, 1.f, position) * (width - 1);
         const int first = juce::jmax(0, (int) std::ceil(centre - decay * 6.f));
@@ -68,7 +74,7 @@ void SpyPlaybackRipple::apply(juce::Image& image, const std::vector<float>& posi
     for (int x = 0; x < image.getWidth(); ++x) {
         if (weights[(size_t) x] > 0.f) {
             channels.read(pixels, x);
-            channels.illuminate(weights[(size_t) x]);
+            channels.saturate(weights[(size_t) x]);
             channels.write(pixels, x);
         }
     }

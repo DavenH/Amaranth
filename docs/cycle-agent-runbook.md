@@ -458,7 +458,7 @@ it includes resolved note, gradient, release time, content revision and dimensio
 Optional `playbackVoices` contains at most eight snapshots with `ageSeconds`,
 `releaseAgeSeconds`, positive `durationSeconds` and boolean `released`. The shared
 preview traversal resolves them into returned `playbackPositions`, then applies
-exponential colour/brightness ripples after rendering the shared plot.
+exponential saturation modifiers after rendering the shared plot.
 Image dimensions are 1..16384, bounded to 64 megapixels. The command forces a
 Cyclogram capture without changing saved Spy mode, note-off position or style.
 

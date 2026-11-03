@@ -1,6 +1,6 @@
 # Automated Spy sequence export
 
-Status: Complete — precise exponential playback ripple (2026-11-03).
+Status: Complete — palette-preserving saturation cursor (2026-11-03).
 
 ## Contract and ownership
 
@@ -36,7 +36,7 @@ Automation adapters only decode requests and write PNGs.
 
 ## Melody movie extension
 
-One shared controller-driven Cyclogram carries one exponential colour/brightness ripple per actual
+One shared controller-driven Cyclogram carries one exponential saturation ripple per actual
 active synth voice. Pattern MIDI retains its authored audible pitches; the
 key-scale control note is fixed for all voices and for the visualization:
 explicit `--note`, otherwise the first scheduled note-on. Controller-only exports
@@ -53,7 +53,7 @@ a voice allocator, envelope state machine or DSP in Python.
 
 PreviewTraversal owns mapping normalized held/release age to the shared Spy
 axis, including saved note-off and release span. A focused SpyPlaybackRipple
-image renderer owns precise exponential colour/brightness modulation, combining
+image renderer owns precise exponential saturation modulation, combining
 overlapping influence with a bounded maximum. Use Buffer/VecOps for image reductions and transforms; pixel
 loops only unpack/pack image channels. No global colour changes or new image
 algorithm in the script. Retire ripples when the actual voice retires; global FX
@@ -264,3 +264,57 @@ Refinement verification:
   factory preset retains its original hash. Production frames 150 and 265
   inspected at export resolution. Machine evidence: `verification.json` beside
   the movie. Audio peak 0.136, RMS 0.0482. No isolated-app assertion or crash.
+
+
+## Palette-preserving saturation cursor
+
+Replace the constant-colour brightness blend with a saturation modifier. Keep
+Icy Hot (Raw) unchanged and remove hue adjustment from the cursor. Reuse the
+1.8%-width exponential decay, six-width cutoff, max combination for multiple
+voices, and existing actual-voice/preview traversal.
+
+SpyPlaybackRipple owns image modification. JUCE Colour::getHSL/fromHSL own
+colour encoding/decoding; no custom HSL conversion. Buffer operations enrich
+saturation with gain `g = 1 + 2 * weight`, `S' = S*g / (1 + S*(g-1))`.
+This soft limit leaves S=0 and S=1 fixed and preserves each pixel's hue and
+lightness. HSL conversion stays in image unpack/pack loops because the vector
+facilities have no colour codec. Remove the fixed RGB tint/additive light floor;
+no hue rotation or purple paint. Audio/model/presentation and scheduling stay
+with their existing owners.
+
+Acceptance: preserve hue/lightness within byte quantization, enrich saturation
+without clipping or colouring neutrals, retain exact black/white/fully saturated
+pixels, follow symmetric exponential strength and endpoint peaks, and retain
+bounded overlap and local support. Build/test exact targets, inspect a real
+Bright Lead 3 / Icy Hot (Raw) export using its associated Basic Bass Variation
+pattern (ID user-deebaceeb9da4aa88a03ea98e4584c69), verify source hashes, voice
+pitches/CCs, audio/video alignment and preset-pattern identity. Add one second
+for the release tail without changing the four-second authored pattern.
+
+
+Saturation verification:
+
+- Exact CycleV2 and CycleV2_tests targets build with `--parallel 10`.
+- Focused exports/movie/material/controller/scheduler selection passes 22 cases
+  and 18,315 assertions. Tests prove exponential saturation strength, fixed hue
+  and HSL lightness, neutral and fully saturated fixed points, local support,
+  endpoint/width-one handling, bounded voice overlap, and unchanged capture/
+  document/history/publication behavior. `.context/spy-saturation-cpp-tests.log`.
+- Production 1280x720 Bright Lead 3 / Icy Hot (Raw) still inspected for unchanged
+  palette with a saturation-only cue. `.context/bright-lead-saturation-preview.png`.
+- Responsibility review: SpyPlaybackRipple grows 77 -> 83 lines. Reuse JUCE's
+  colour codec in unpack/pack; one extra column buffer enables vector saturation
+  shaping. Remove all fixed RGB tint constants. No custom colour conversion,
+  model mutation, audio changes or new scheduling/voice logic. Code-map,
+  architecture audit and diff checks pass.
+
+- Final associated-pattern movie: `.context/bright-lead-3-icy-hot-raw-saturation-1080p/sequence.mp4`.
+  Bright Lead 3's saved patternId matches the source pattern ID and file; Basic
+  Bass Variation retains all ten notes, six pitches (24, 31, 36, 39, 43, 46), CC1
+  0..127, and its four-second duration. Add one release second: 150 consecutive
+  1920x1080 PNGs at 30 fps, with 134 distinct frames and up to three voices.
+  Key-scale reference remains the first note, 36. WAV and H.264/AAC streams
+  are exactly five seconds; WAV is 48 kHz/stereo/24-bit. Peak 0.276, RMS 0.0518.
+  Preset and pattern retain their source hashes. Production preview and movie
+  frame 75 inspected; isolated export log has no assertion/crash. Machine proof:
+  `verification.json` beside the movie. Factory presets and user edits untouched.

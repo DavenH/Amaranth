@@ -113,12 +113,13 @@ filtering and shading. No saved preset or gradient setting changes.
 
 Frames show the full expanded preview at each controller state, using the
 player's existing 5 ms controller schedule. Pattern notes play through the
-production offline synth, with one local colour/brightness ripple per active
+production offline synth, with one local saturation ripple per active
 voice over the shared plot. Ripples follow held and release time on the saved
 preview axis; legato reuses its voice marker and stealing replaces the oldest
 voice. Each marker peaks at the exact playback position with a symmetric
-`exp(-abs(distance) / width)` falloff; its cool brightness cue stays visible over
-both flat and textured areas. Coincident ripples share their lighting rather than
+`exp(-abs(distance) / width)` falloff. It enriches the existing colours while
+preserving their HSL hue and lightness, with a soft saturation limit. Neutral
+pixels stay neutral. Coincident ripples share their saturation change rather than
 accumulating. `--cursor ripple` is the default; use `--cursor none` to export the
 plot without ripples while retaining audio.
 
