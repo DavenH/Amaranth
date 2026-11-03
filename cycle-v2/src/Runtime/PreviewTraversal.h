@@ -30,6 +30,15 @@ public:
     float noteOffPosition() const {
         return (float) releaseColumn / (float) (voiceIntervals + tailIntervals);
     }
+    float playbackPosition(double age, bool released, double releaseAge) const {
+        const double total = (double) (voiceIntervals + tailIntervals);
+        const double held = std::clamp(age, 0., (double) releaseColumn / voiceIntervals);
+        if (released && releaseDuration > 0. && tailIntervals > 0) {
+            return (float) std::clamp(((double) releaseColumn
+                    + releaseAge / releaseDuration * tailIntervals) / total, 0., 1.);
+        }
+        return (float) (held * voiceIntervals / total);
+    }
     bool beginsRelease(size_t column) const {
         return column == releaseColumn
                 && (releaseColumn < voiceIntervals || (releaseDuration > 0. && tailIntervals > 0));

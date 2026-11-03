@@ -5,6 +5,8 @@
 #include "Graph/DefaultOutputProbeResolver.h"
 #include "UI/SignalProbeDetailView.h"
 #include "UI/CanvasChromePalette.h"
+#include "UI/SpyPlaybackGlint.h"
+#include "Runtime/PreviewTraversal.h"
 
 namespace CycleV2 {
 
@@ -53,10 +55,20 @@ SpyFrameResult SpyFrameRenderer::render(
         return result;
     }
     result.image = Image(Image::RGB, request.width, request.height, true);
-    Graphics graphics(result.image);
-    graphics.fillAll(CanvasChromePalette::insetBackground);
-    graphics.setImageResamplingQuality(Graphics::highResamplingQuality);
-    graphics.drawImage(plot, result.image.getBounds().toFloat());
+    {
+        Graphics graphics(result.image);
+        graphics.fillAll(CanvasChromePalette::insetBackground);
+        graphics.setImageResamplingQuality(Graphics::highResamplingQuality);
+        graphics.drawImage(plot, result.image.getBounds().toFloat());
+    }
+    const PreviewTraversal traversal(detail.renderResult.gridColumns, detail.releaseDuration, detail.noteOffTime);
+    for (size_t index = 0; index < request.playback.count; ++index) {
+        const auto& voice = request.playback.voices[index];
+        result.playbackPositions.push_back(traversal.playbackPosition(
+                voice.ageSeconds / voice.durationSeconds, voice.released,
+                voice.releaseAgeSeconds / voice.durationSeconds));
+    }
+    SpyPlaybackGlint::apply(result.image, result.playbackPositions);
     result.midiNote = detail.midiNote;
     result.noteOffTime = detail.noteOffTime;
     result.contentRevision = detail.renderResult.contentRevision;

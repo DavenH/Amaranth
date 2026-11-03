@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include <UI/Panels/TimeSurfaceStyles.h>
 
 #include "App/Automation/SpyFrameAutomation.h"
@@ -16,6 +18,41 @@ bool readInteger(const var& value, int minimum, int maximum, int& result) {
         return false;
     }
     result = (int) number;
+    return true;
+}
+
+bool readPlayback(const var& value, VoicePlaybackFrame& frame, String& error) {
+    if (value.isVoid()) {
+        return true;
+    }
+    const auto* voices = value.getArray();
+    if (voices == nullptr || voices->size() > (int) frame.voices.size()) {
+        error = "playbackVoices must contain at most eight voice snapshots";
+        return false;
+    }
+    for (const auto& voice : *voices) {
+        VoicePlaybackPosition parsed;
+        const std::pair<const char*, double*> fields[] {
+                { "ageSeconds", &parsed.ageSeconds },
+                { "releaseAgeSeconds", &parsed.releaseAgeSeconds },
+                { "durationSeconds", &parsed.durationSeconds }
+        };
+        for (const auto& field : fields) {
+            const var number = voice[field.first];
+            if ((!number.isInt() && !number.isInt64() && !number.isDouble())
+                    || !std::isfinite((double) number) || (double) number < 0.) {
+                error = "Playback ages and duration must be finite nonnegative numbers";
+                return false;
+            }
+            *field.second = (double) number;
+        }
+        if (parsed.durationSeconds <= 0. || !voice["released"].isBool()) {
+            error = "Playback duration must be positive and released must be boolean";
+            return false;
+        }
+        parsed.released = (bool) voice["released"];
+        frame.voices[frame.count++] = parsed;
+    }
     return true;
 }
 
@@ -94,6 +131,9 @@ std::optional<SpyFrameRequest> SpyFrameAutomation::readRequest(const var& comman
             return std::nullopt;
         }
     }
+    if (!readPlayback(command["playbackVoices"], request.playback, error)) {
+        return std::nullopt;
+    }
     error.clear();
     return request;
 }
@@ -127,6 +167,11 @@ var SpyFrameAutomation::writeFrame(const SpyFrameResult& frame, const File& dest
     data->setProperty("gradient", TimeSurfaceStyles::id(frame.gradient));
     data->setProperty("noteOffTime", frame.noteOffTime);
     data->setProperty("contentRevision", String(frame.contentRevision));
+    Array<var> positions;
+    for (float position : frame.playbackPositions) {
+        positions.add(position);
+    }
+    data->setProperty("playbackPositions", positions);
     return AutomationProtocol::okResult("renderSpyFrame", var(data.release()));
 }
 

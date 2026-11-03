@@ -582,3 +582,71 @@ TEST_CASE("Strictly ported subbass fixture renders through the realtime path",
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
 #endif
 }
+
+TEST_CASE("Offline movie snapshots follow native sample voice allocation without changing PCM",
+        "[cycle-v2][offline-audio][spy-movie]") {
+    auto graph = TestSupport::authoredTrimeshGraph(0);
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addEdge({ "mesh", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    const auto& plan = compiled.plan;
+    auto request = renderRequest(256, 60);
+    request.sampleCount = 96000;
+    request.voiceDurationSeconds = 0.f;
+    request.keyScaleNoteOverride = 60;
+    request.hasRandomSeed = true;
+    request.randomSeed = 1729;
+    request.events = {
+            { 37, MidiMessage::noteOn(1, 60, (uint8) 96) },
+            { 12029, MidiMessage::noteOn(1, 67, (uint8) 80) },
+            { 24037, MidiMessage::noteOff(1, 60) },
+            { 36073, MidiMessage::noteOff(1, 67) }
+    };
+    const auto plain = OfflineGraphAudioRenderer::render(plan, 1, request);
+    REQUIRE(plain.succeeded);
+    request.playbackSamples = { 0, 37, 1000, 12029, 24038, 36074, 95999 };
+    const auto captured = OfflineGraphAudioRenderer::render(plan, 1, request);
+    REQUIRE(captured.succeeded);
+    REQUIRE(captured.playbackFrames.size() == request.playbackSamples.size());
+    CHECK(captured.playbackFrames[0].count == 0);
+    REQUIRE(captured.playbackFrames[1].count == 1);
+    CHECK(captured.playbackFrames[1].voices[0].ageSeconds == Catch::Approx(0.));
+    CHECK(captured.playbackFrames[2].voices[0].ageSeconds == Catch::Approx(963. / 48000.));
+    REQUIRE(captured.playbackFrames[3].count == 2);
+    CHECK(captured.playbackFrames[3].voices[0].midiNote == 60);
+    CHECK(captured.playbackFrames[3].voices[1].midiNote == 67);
+    CHECK(captured.playbackFrames[3].voices[0].voiceId != captured.playbackFrames[3].voices[1].voiceId);
+    CHECK(captured.playbackFrames[3].voices[1].ageSeconds == Catch::Approx(0.));
+    CHECK(captured.playbackFrames.back().count == 0);
+    for (int channel = 0; channel < 2; ++channel) {
+        CHECK(Buffer<float>(const_cast<float*>(plain.channels[(size_t) channel].data()), 96000)
+                .normDiffL2({ const_cast<float*>(captured.channels[(size_t) channel].data()), 96000 }) < 1.e-5f);
+    }
+    request.events = {
+            { 37, MidiMessage::noteOn(1, 60, (uint8) 90) },
+            { 500, MidiMessage::noteOn(1, 60, (uint8) 80) },
+            { 1000, MidiMessage::noteOff(1, 60) },
+            { 2000, MidiMessage::noteOff(1, 60) }
+    };
+    request.playbackSamples = { 37, 500, 1000, 1024, 2048 };
+    const auto repeated = OfflineGraphAudioRenderer::render(plan, 1, request);
+    REQUIRE(repeated.succeeded);
+    REQUIRE(repeated.playbackFrames[1].count == 2);
+    const auto oldest = repeated.playbackFrames[1].voices[0].voiceId;
+    const auto newest = repeated.playbackFrames[1].voices[1].voiceId;
+    REQUIRE(repeated.playbackFrames[2].count == 2);
+    CHECK(repeated.playbackFrames[2].voices[0].voiceId == oldest);
+    CHECK(repeated.playbackFrames[2].voices[0].released);
+    CHECK_FALSE(repeated.playbackFrames[2].voices[1].released);
+    REQUIRE(repeated.playbackFrames[3].count == 1);
+    CHECK(repeated.playbackFrames[3].voices[0].voiceId == newest);
+    CHECK(repeated.playbackFrames[4].count == 0);
+    request.playbackSamples = { request.sampleCount };
+    CHECK_FALSE(OfflineGraphAudioRenderer::render(plan, 1, request).succeeded);
+    request.playbackSamples = { 500, 37 };
+    CHECK_FALSE(OfflineGraphAudioRenderer::render(plan, 1, request).succeeded);
+    request.playbackSamples = { 37 };
+    request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
+    CHECK_FALSE(OfflineGraphAudioRenderer::render(plan, 1, request).succeeded);
+}

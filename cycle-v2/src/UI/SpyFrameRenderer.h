@@ -7,6 +7,7 @@
 
 #include "Graph/PresetPresentation.h"
 #include "Runtime/GraphPresentationModel.h"
+#include "Runtime/VoicePlayback.h"
 
 namespace CycleV2 {
 
@@ -15,6 +16,7 @@ struct SpyFrameRequest {
     std::array<int, 128> controllers {};
     std::optional<int> midiNote;
     std::optional<ScalarSurfaceTimeStyle> gradient;
+    VoicePlaybackFrame playback;
     int width { 1280 };
     int height { 720 };
 };
@@ -25,6 +27,7 @@ struct SpyFrameResult {
     ScalarSurfaceTimeStyle gradient {};
     double noteOffTime {};
     uint64_t contentRevision {};
+    std::vector<float> playbackPositions;
 };
 
 class SpyFrameRenderer {

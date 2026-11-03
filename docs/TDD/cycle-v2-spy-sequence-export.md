@@ -1,14 +1,15 @@
 # Automated Spy sequence export
 
-Status: Implemented (2026-11-02).
+Status: Complete — melody audio and polyphonic material glints (2026-11-03).
 
 ## Contract and ownership
 
 Export opaque, plot-only Cyclogram PNGs at `index / fps < pattern duration`.
-The preview note and saved Spy release position stay fixed; only pattern MIDI
-controllers advance. This is a new offline presentation workflow, not live
-performance recording. Defaults: default-output, 30 fps, 1280x720, preset note
-and preset time-surface style. Explicit named styles include Bullion.
+The preview reference note and saved Spy release position stay fixed while
+pattern MIDI controllers advance and actual sounding voices carry local glints.
+This is an offline presentation workflow. Defaults: default-output, 30 fps,
+1280x720, first pattern note (preset note for controller-only patterns) and preset
+time-surface style. Explicit named styles include Bullion.
 
 Python owns frame iteration, source snapshots, manifests and failure reporting.
 Optional `--mp4` runs installed ffmpeg after all PNGs finish, creating
@@ -33,6 +34,45 @@ render-profile override selects the material without changing global selection
 or preset metadata; normalization and material cache identity use that override.
 Automation adapters only decode requests and write PNGs.
 
+## Melody movie extension
+
+One shared controller-driven Cyclogram carries one material glint per actual
+active synth voice. Pattern MIDI retains its authored audible pitches; the
+key-scale control note is fixed for all voices and for the visualization:
+explicit `--note`, otherwise the first scheduled note-on. Controller-only exports
+retain their existing preset-note default and remain silent.
+
+Reuse OfflineGraphAudioRenderer/captureAudio for PCM, voice allocation, release,
+legato and stealing. Add bounded voice-age/release-age snapshots on its native
+sample timeline at the requested video samples. RealtimeGraphRenderer owns event
+clocks and fixed control-note override; it never allocates for telemetry. Offline
+capture owns retained frame storage. Observe requested samples inside the
+existing MIDI event pass and at the block end; never subdivide DSP blocks just
+to observe a marker. Release retirement follows the existing blockwise engine. Do not reconstruct
+a voice allocator, envelope state machine or DSP in Python.
+
+PreviewTraversal owns mapping normalized held/release age to the shared Spy
+axis, including saved note-off and release span. A focused SpyPlaybackGlint image
+renderer owns the approved ridge lighting, combining overlapping influence with
+a bounded maximum. Use Buffer/VecOps for image reductions and transforms; pixel
+loops only unpack/pack image channels. No global colour changes or new image
+algorithm in the script. Retire glints when the actual voice retires; global FX
+may remain audible afterward.
+
+The host exports `audio.wav` automatically for patterns with notes, records
+voice snapshots per frame, and muxes existing audio into `--mp4` as AAC at
+320 kb/s. `--cursor none` disables glints; default is material-glint. Optional
+`--tail-seconds` extends the existing pattern duration; default zero preserves
+current frame counts. Hold final CC values in the tail. Align WAV sample length
+to the complete video frame duration and preserve it as an independent artifact.
+
+Acceptance: prove fixed key-scale with different oscillator pitches; native
+sample-aligned notes/CCs, overlapping/repeated notes, retirement/stealing/legato;
+identical PCM with and without marker observation;
+bounded glint overlap and unchanged pixels outside cursor bands; WAV and MP4
+stream alignment; existing controller-only exports; and render and inspect a short
+polyphonic melody movie and validate its non-silent audio streams. Preserve exact preset state and document history.
+
 ## Boundaries and deletion targets
 
 No duplicated scheduler interpolation, DSP, normalization or recipe algorithms.
@@ -41,7 +81,8 @@ copy, serialization, compilation, document/history edit, or audio-plan publicati
 per frame. Controller refresh scales with changed roots and required downstream
 products, independently of unrelated graph content. Image rendering scales with
 the requested plot and existing bounded recipe filtering. No realtime allocations.
-No new UI controls, live capture, audio output or other Spy modes.
+No new UI controls, live capture or other Spy modes. Audio uses the established
+offline renderer; no alternative synthesizer or voice-state simulation.
 
 NodeCanvas and GraphPresentationModel are pre-existing large orchestration roots;
 the former becomes smaller through capture extraction, and the latter retains
@@ -58,6 +99,10 @@ controller invalidation ownership. New export policy belongs to focused services
 - [x] Two real app sweeps have identical corresponding PNGs and changing content.
 - [x] Focused tests, exact-target build, code-map and architecture checks pass.
 - [x] Optional ffmpeg MP4 preserves frames, rate/count, and handles odd sizes/failures.
+- [x] Melody audio retains actual pitches with fixed key scale and per-voice glints.
+- [x] Voice observation preserves PCM; repeated notes, legato and stealing use the synth lifecycle.
+- [x] Local glints preserve captured signal data and bound overlapping illumination.
+- [x] A real ten-second polyphonic movie includes aligned stereo audio and unchanged sources.
 
 ## Evidence
 
@@ -107,3 +152,58 @@ SignalProbeDetailView.cpp 265 -> 301 owns expanded capture/result preparation
 alongside its existing detail state. New SpyFrameRenderer (67 lines) owns plot
 composition; SpyFrameAutomation (133 lines) owns decoding/catalog/PNG transport.
 No duplicated DSP, interpolation, material evaluation or normalization remains.
+
+
+## Melody extension verification (2026-11-03)
+
+- Exact CycleV2 and CycleV2_tests targets build with `--parallel 10`.
+- Focused export/control/material/scheduler/movie filter passes 20 cases and
+  18,574 assertions. Voice observations leave PCM unchanged, distinguish
+  repeated same-pitch notes, follow legato identity, and expose actual eight-voice
+  stealing/retirement. Fixed key scale remains independent of oscillator and
+  legato pitches. Glint tests prove local influence and bounded overlap;
+  production style/capture tests retain identical underlying content revision.
+  Evidence: `.context/spy-melody-focused-tests.log`.
+- Host tests pass 30 cases: ten sequence/audio/MP4 tests plus twenty coordinator
+  and session cases. A fractional-rate ffmpeg regression catches early audio
+  truncation: constrain encoding by full video duration, rather than stopping
+  all muxing when the final video frame is encoded.
+- Broad `[modulation],[realtime]` plus focused exports: 102/114 cases pass.
+  The twelve failures are missing factory fixtures, empty demo/spectral signal
+  and telemetry expectations, and bundled modulation routes. These categories
+  and cases are already recorded in `audio-bugs.md` (2026-10-24 runtime cursor
+  verification and realtime fixtures) and `ui-bugs.md` (modulation bundles).
+  They are outside this export slice. Evidence: `.context/spy-melody-cpp-tests.log`.
+
+- Final ten-second Honerism-3/Bullion melody: 300 consecutive 1920x1080 PNGs at
+  30 fps, 274 distinct images, seven played pitches and up to three simultaneous
+  glints. Reference/key-scale note stays MIDI 60. Video measures 7.71 Mb/s against
+  the 8 Mb/s target; AAC is 320 kb/s target. Both streams are exactly 10 seconds.
+  Independent WAV is 48 kHz, stereo, 24-bit, 480,000 samples; peak 0.146,
+  RMS 0.0505. Source preset/pattern match their original hashes. Production-size
+  frames 75 and 220 inspected for local ridge lighting and shared geometry.
+  Artifact: `.context/spy-polyphonic-melody-final-1080p/sequence.mp4`.
+  Machine verification: `verification.json` beside the movie. No app assertions
+  or crash appeared in the isolated export log. Code map, architecture and diff
+  checks pass.
+- Two isolated 1.5-second polyphonic exports produce byte-identical matching
+  PNGs and WAV files while frames change across the automation. Evidence:
+  `.context/spy-melody-repeatability.json` and `.context/spy-melody-repeat-a/b`.
+
+
+Responsibility review: RealtimeGraphRenderer.cpp grows 779 -> 822 lines. It
+retains prepared-graph/voice lifecycle, MIDI dispatch, voice mixing and metrics;
+new bounded observation runs within that existing event pass and delegates no
+rendering or export policy into the engine. Its collaborators remain
+VoiceNoteState, MidiControlState, GraphAudioExecutor and playback exchanges.
+A broader extraction of event scheduling/mixing remains separate; moving the
+observation out would duplicate the actual allocator. OfflineGraphAudioRenderer
+227 -> 251 lines owns offline storage and passes caller-owned observation spans;
+there is no second allocator or DSP path. AudioProcessTypes.h 290 -> 291 retains
+its typed signal/event/control contract. OfflineAudioCaptureAutomation 407 -> 456
+lines adds literal validation/encoding only. SpyFrameRenderer 67 -> 79 remains
+composition; SpyPlaybackGlint (118 lines) owns one image lighting operation.
+Glint influence scales with eight bounded voices and image columns, and pixel
+work uses vector operations on only the enclosing affected image span. No
+telemetry allocations, model mutation, new document publication or duplicated
+preview/material algorithms are introduced.

@@ -23,6 +23,7 @@
 #include "Runtime/RealtimeGraphRenderer.h"
 #include "UI/PerformanceKeyboard.h"
 #include "UI/SpyFrameRenderer.h"
+#include "UI/SpyPlaybackGlint.h"
 #include "UI/SignalProbeDetailView.h"
 #include "App/Automation/SpyFrameAutomation.h"
 
@@ -459,6 +460,17 @@ TEST_CASE("Spy export uses expanded capture and built-in materials without docum
             }
             const auto repeated = SpyFrameRenderer::render(document.graph(), presentation, metadata, request, error);
             CHECK(equalPixels(actual.image, repeated.image));
+            request.playback.count = 2;
+            request.playback.voices[0] = { 1, 60, 0.2, 0., 1., false };
+            request.playback.voices[1] = { 2, 67, 0.5, 0., 1., false };
+            const auto lit = SpyFrameRenderer::render(document.graph(), presentation, metadata, request, error);
+            REQUIRE(lit.image.isValid());
+            CHECK(lit.contentRevision == actual.contentRevision);
+            CHECK(lit.playbackPositions.size() == 2);
+            auto expectedGlints = actual.image.createCopy();
+            SpyPlaybackGlint::apply(expectedGlints, lit.playbackPositions);
+            CHECK(equalPixels(lit.image, expectedGlints));
+            request.playback.count = 0;
         }
         request.gradient.reset();
     }
@@ -541,4 +553,26 @@ TEST_CASE("Spy frame protocol lists gradients and rejects malformed requests and
     graph.removeNode("fft");
     REQUIRE(presentation.refresh(graph, graph.getRevision()));
     CHECK_FALSE(SpyFrameRenderer::render(graph, presentation, {}, request, error).image.isValid());
+}
+
+TEST_CASE("Spy frame protocol validates bounded playback ages",
+        "[cycle-v2][spy-movie][automation]") {
+    String error;
+    auto command = spyRequest("bullion");
+    var voice = JSON::parse(R"({"ageSeconds":0.2,"releaseAgeSeconds":0,"durationSeconds":1,"released":false})");
+    auto* object = command.getDynamicObject();
+    object->setProperty("playbackVoices", Array<var> { voice });
+    REQUIRE(SpyFrameAutomation::readRequest(command, error).has_value());
+    for (const double invalid : { -1., 0. }) {
+        voice.getDynamicObject()->setProperty("durationSeconds", invalid);
+        CHECK_FALSE(SpyFrameAutomation::readRequest(command, error).has_value());
+    }
+    voice.getDynamicObject()->setProperty("durationSeconds", 1.);
+    voice.getDynamicObject()->setProperty("ageSeconds", -0.1);
+    CHECK_FALSE(SpyFrameAutomation::readRequest(command, error).has_value());
+    voice.getDynamicObject()->setProperty("ageSeconds", 0.1);
+    Array<var> excessive;
+    excessive.insertMultiple(0, voice, 9);
+    object->setProperty("playbackVoices", excessive);
+    CHECK_FALSE(SpyFrameAutomation::readRequest(command, error).has_value());
 }

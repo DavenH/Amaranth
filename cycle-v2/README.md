@@ -103,29 +103,43 @@ python3 scripts/export_cycle_v2_spy_sequence.py --list-gradients
 
 The script builds and launches an isolated app instance, then closes it. Pass
 `--no-build` after building the exact CycleV2 target. Choose an authored Spy with
-`--spy <id>`; the default is `default-output`. `--note <0..127>` overrides the
-fixed preset preview note. Gradient IDs and display names are case-insensitive;
+`--spy <id>`; the default is `default-output`. `--note <0..127>` fixes the
+key-scale morph and preview reference note. Otherwise, the first pattern note
+sets that reference; controller-only patterns use the preset preview note.
+Melody pitches remain as authored. Gradient IDs and display names are case-insensitive;
 omitting `--gradient` uses the preset's saved time-surface style. All catalog
 entries, including experimental and legacy materials, retain their existing
 filtering and shading. No saved preset or gradient setting changes.
 
 Frames show the full expanded preview at each controller state, using the
-player's existing 5 ms controller schedule. Pattern notes do not advance voices.
-There are `ceil(durationSeconds * fps)` opaque, plot-only PNGs at `index / fps`,
-starting at zero and excluding the duration endpoint. Rendering may take longer
-than playback without dropping frames. Patterns must contain controller
-automation and fit the existing schedule export capacity.
+player's existing 5 ms controller schedule. Pattern notes play through the
+production offline synth, with one local material glint per active voice over
+the shared plot. Glints follow held and release time on the saved preview axis;
+legato reuses its voice marker and stealing replaces the oldest voice. Coincident
+glints share their lighting rather than accumulating. Use `--cursor none` to
+export the plot without glints while retaining audio.
+
+There are `ceil((durationSeconds + tailSeconds) * fps)` opaque PNGs at `index / fps`,
+starting at zero and excluding the duration endpoint. `--tail-seconds 1` adds a
+second for release tails, holding the final controller values (default: zero).
+Rendering may take longer than playback without dropping frames. Patterns must
+contain notes or controller automation and fit the existing schedule capacity.
+Patterns containing notes also export `audio.wav`: deterministic 48 kHz stereo,
+24-bit synth output, aligned to the video's full frame duration. Audio exports
+are limited to 120 seconds including the tail.
 
 Add `--mp4` to encode the completed frames into `sequence.mp4` with ffmpeg
 (assumed installed). It uses H.264 at a target 8 Mb/s, the slow encoding preset,
-yuv420p, and the export frame rate and resolution; the PNGs remain available.
+yuv420p, and the export frame rate and resolution. When `audio.wav` is present,
+ffmpeg includes it as AAC at 320 kb/s; the original WAV and PNGs remain available.
 Use `--mp4-bitrate 12` to choose another target in megabits per second. Odd dimensions get one black padding pixel on the
 right/bottom as needed for H.264. Video publication is atomic; encoding failures
 or interruptions preserve the PNG sequence and are recorded in the manifest.
 
 The output directory must be new. It contains `frame-000000.png` onward,
 source snapshots and hashes, a `manifest.json` with resolved settings and frame
-records, and a flushed `frames.jsonl` journal. Failures and interruptions retain
+records (including actual voice identities, pitches, ages and glint positions),
+and a flushed `frames.jsonl` journal. Failures and interruptions retain
 finished PNGs and identify the failed frame in the manifest. The journal also
 preserves completed records if the process is forcibly terminated.
 

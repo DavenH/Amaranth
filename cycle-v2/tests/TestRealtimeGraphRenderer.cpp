@@ -1593,3 +1593,40 @@ TEST_CASE("Polyphonic mesh cursors persist between oscillator frame renders",
     renderer.setPreparedGraph(nullptr);
     REQUIRE(renderer.playbackCursors().read().count == 0);
 }
+
+TEST_CASE("Movie voice telemetry preserves legato identity and bounds stolen polyphony",
+        "[cycle-v2][realtime][spy-movie]") {
+    LegatoRender legato;
+    legato.renderer.setKeyScaleNoteOverride(60);
+    legato.send(MidiMessage::noteOn(1, 60, (uint8) 90), 0);
+    legato.process();
+    const auto first = legato.renderer.voicePlaybackFrame(1. + 255. / 48000.);
+    REQUIRE(first.count == 1);
+    legato.send(MidiMessage::noteOn(1, 67, (uint8) 90), 300);
+    legato.process(256);
+    const auto second = legato.renderer.voicePlaybackFrame(1. + 511. / 48000.);
+    REQUIRE(second.count == 1);
+    CHECK(second.voices[0].voiceId == first.voices[0].voiceId);
+    CHECK(second.voices[0].midiNote == 67);
+    CHECK(second.voices[0].ageSeconds > first.voices[0].ageSeconds);
+
+    auto graph = legatoGraph();
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "voice", "noteMode", "Note Mode", "polyphonic").succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, { 256, 48000. });
+    RealtimeGraphRenderer renderer;
+    renderer.setPreparedGraph(prepared.get());
+    RealtimeMidiEventQueue queue;
+    for (int note = 60; note < 70; ++note) {
+        REQUIRE(queue.enqueue(MidiMessage::noteOn(1, note, (uint8) 90), MidiEventSource::Hardware, 0.));
+    }
+    AudioBuffer<float> output(2, 256);
+    renderer.process(queue, output.getArrayOfWritePointers(), 2, 256, 48000., 0.);
+    const auto voices = renderer.voicePlaybackFrame(0.);
+    REQUIRE(voices.count == RealtimeGraphRenderer::voiceCount);
+    CHECK(std::none_of(voices.voices.begin(), voices.voices.begin() + voices.count,
+            [](const auto& voice) { return voice.midiNote < 62; }));
+    renderer.resetVoices(false);
+    CHECK(renderer.voicePlaybackFrame(0.).count == 0);
+}

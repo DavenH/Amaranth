@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export deterministic, plot-only Cyclogram PNGs using a preview pattern's controllers."""
+"""Export automated Cyclogram PNGs, synth audio, and optional melody movies."""
 
 import argparse
 from datetime import datetime, timezone
@@ -32,9 +32,10 @@ def source_snapshot(path, destination):
             "sha256": hashlib.sha256(content).hexdigest()}
 
 
-def frame_states(schedule, fps):
+def frame_states(schedule, fps, duration_seconds=None):
     """Consume the app's scheduled events; never interpolate controller curves here."""
-    duration = Fraction(str(schedule["durationMs"])) / 1000
+    duration = (Fraction(str(schedule["durationMs"])) / 1000 if duration_seconds is None
+                else Fraction(str(duration_seconds)))
     rate = Fraction(str(fps))
     if duration <= 0 or rate <= 0:
         raise ValueError("Pattern duration and frame rate must be positive")
@@ -53,12 +54,17 @@ def frame_states(schedule, fps):
 
 def encode_mp4(output, fps, frame_count, bitrate_mbps=8):
     temporary = output / "sequence.partial.mp4"
+    audio = output / "audio.wav"
     command = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-n",
                "-framerate", str(Fraction(str(fps))), "-start_number", "0",
-               "-i", str(output / "frame-%06d.png"), "-frames:v", str(frame_count),
+               "-i", str(output / "frame-%06d.png")]
+    if audio.is_file():
+        command.extend(["-i", str(audio), "-map", "0:v:0", "-map", "1:a:0",
+                        "-c:a", "aac", "-b:a", "320k"])
+    command.extend(["-t", str(float(Fraction(frame_count) / Fraction(str(fps)))),
                "-c:v", "libx264", "-b:v", str(round(bitrate_mbps * 1_000_000)), "-preset", "slow",
                "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2", "-pix_fmt", "yuv420p",
-               "-movflags", "+faststart", str(temporary)]
+               "-movflags", "+faststart", str(temporary)])
     try:
         subprocess.run(command, check=True, stdout=subprocess.DEVNULL,
                        stderr=subprocess.PIPE, text=True)
@@ -67,6 +73,29 @@ def encode_mp4(output, fps, frame_count, bitrate_mbps=8):
         raise RuntimeError(f"ffmpeg encoding failed: {error.stderr.strip()}") from error
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def capture_pattern_audio(output, schedule, frame_count, fps, reference_note, cursor, send):
+    sample_rate = 48000
+    rate = Fraction(str(fps))
+    sample_count = round(Fraction(frame_count * sample_rate) / rate)
+    duration_ms = 1000 * sample_count / sample_rate
+    if duration_ms > 120000:
+        raise ValueError("Pattern plus tail exceeds the 120-second offline audio limit")
+    samples = [round(Fraction(index * sample_rate) / rate) for index in range(frame_count)]
+    request = {"command": "captureAudio", "path": str(output / "audio.wav"),
+               "sampleRate": sample_rate, "channels": 2, "blockSize": 512,
+               "voiceDurationSeconds": 0, "keyScaleNote": reference_note,
+               "randomSeed": 1729, "durationMs": duration_ms,
+               "events": [event for event in schedule["events"] if event["timeMs"] < duration_ms]}
+    if cursor != "none":
+        request["playbackSamples"] = samples
+    print("Rendering synth audio and voice playback snapshots", flush=True)
+    capture = send(request)
+    playback = capture.pop("playbackFrames", [])
+    if cursor != "none" and ([frame["sample"] for frame in playback] != samples):
+        raise RuntimeError("Audio capture did not return all requested playback samples")
+    return {**capture, "path": "audio.wav", "status": "complete"}, playback
 
 
 def export_sequence(args, send):
@@ -91,21 +120,36 @@ def export_sequence(args, send):
         if not isinstance(pattern, dict) or pattern.get("version") != 1:
             raise ValueError("Expected a version 1 .cyclepattern document")
         schedule = send({"command": "exportPatternSchedule", "sequence": pattern.get("sequence")})
-        if not any(event["type"] == "controller" for event in schedule["events"]):
-            raise ValueError("The pattern has no controller automation")
-        manifest["durationSeconds"] = schedule["durationMs"] / 1000
+        notes = [event for event in schedule["events"] if event["type"] == "noteOn"]
+        if not notes and not any(event["type"] == "controller" for event in schedule["events"]):
+            raise ValueError("The pattern has no notes or controller automation")
+        reference_note = args.note if args.note is not None else (notes[0]["note"] if notes else None)
+        duration = Fraction(str(schedule["durationMs"])) / 1000 + Fraction(str(args.tail_seconds))
+        states = list(frame_states(schedule, args.fps, duration))
+        manifest["durationSeconds"] = float(duration)
+        manifest["cursor"] = args.cursor
+        manifest["keyScaleNote"] = reference_note
+        manifest["tailSeconds"] = args.tail_seconds
         manifest["scheduler"] = schedule["scheduler"]
         send({"command": "openGraph", "path": str(output / "source-preset.cyclegraph"),
               "includeSnapshot": False})
+        playback = []
+        if notes:
+            manifest["audio"], playback = capture_pattern_audio(
+                    output, schedule, len(states), args.fps, reference_note, args.cursor, send)
+            write_manifest(output, manifest)
         with (output / "frames.jsonl").open("w", encoding="utf-8") as journal:
-            for index, timestamp, values in frame_states(schedule, args.fps):
+            for index, timestamp, values in states:
                 failed_frame = index
                 filename = f"frame-{index:06d}.png"
                 payload = {"command": "renderSpyFrame", "probeId": args.spy,
                            "controllers": values, "width": args.width, "height": args.height,
                            "path": str(output / filename)}
-                if args.note is not None:
-                    payload["midiNote"] = args.note
+                if reference_note is not None:
+                    payload["midiNote"] = reference_note
+                voices = playback[index]["voices"] if playback else []
+                if voices:
+                    payload["playbackVoices"] = voices
                 if args.gradient is not None:
                     payload["gradient"] = args.gradient
                 rendered = send(payload)
@@ -113,7 +157,8 @@ def export_sequence(args, send):
                 manifest["midiNote"] = rendered["midiNote"]
                 manifest["noteOffTime"] = rendered["noteOffTime"]
                 frame = {"index": index, "timeSeconds": timestamp, "path": filename,
-                         "controllers": values, "contentRevision": rendered["contentRevision"]}
+                         "controllers": values, "contentRevision": rendered["contentRevision"],
+                         "voices": voices, "playbackPositions": rendered.get("playbackPositions", [])}
                 journal.write(json.dumps(frame, allow_nan=False) + "\n")
                 journal.flush()
                 manifest["frames"].append(frame)
@@ -151,7 +196,11 @@ def arguments(argv=None):
     parser.add_argument("--fps", type=float, default=30, help="Frames per second (default: 30)")
     parser.add_argument("--width", type=int, default=1280)
     parser.add_argument("--height", type=int, default=720)
-    parser.add_argument("--note", type=int, help="Fixed MIDI note (default: preset preview note)")
+    parser.add_argument("--note", type=int,
+                        help="Fixed key-scale/preview note; melody pitches stay authored (default: first pattern note)")
+    parser.add_argument("--cursor", choices=["material-glint", "none"], default="material-glint")
+    parser.add_argument("--tail-seconds", type=float, default=0,
+                        help="Extra audio/video time after the pattern (default: 0)")
     parser.add_argument("--gradient", help="Built-in gradient ID or display name (default: preset style)")
     parser.add_argument("--mp4", action="store_true", help="Also encode sequence.mp4 with ffmpeg (H.264); keep PNGs")
     parser.add_argument("--mp4-bitrate", type=float, default=8, metavar="MBPS",
@@ -169,6 +218,8 @@ def arguments(argv=None):
         parser.error("Image dimensions must be in [1, 16384] and at most 64 megapixels")
     if args.note is not None and not 0 <= args.note <= 127:
         parser.error("--note must be in [0, 127]")
+    if not math.isfinite(args.tail_seconds) or args.tail_seconds < 0:
+        parser.error("--tail-seconds must be finite and nonnegative")
     if not args.spy:
         parser.error("--spy must be nonempty")
     if not args.list_gradients:
@@ -197,7 +248,8 @@ def main(argv=None):
         else:
             worker.extend(["--preset", str(args.preset), "--pattern", str(args.pattern),
                            "--output-dir", str(args.output_dir), "--spy", args.spy,
-                           "--fps", str(args.fps), "--width", str(args.width), "--height", str(args.height)])
+                           "--fps", str(args.fps), "--width", str(args.width), "--height", str(args.height),
+                           "--cursor", args.cursor, "--tail-seconds", str(args.tail_seconds)])
             if args.note is not None:
                 worker.extend(["--note", str(args.note)])
             if args.gradient is not None:
