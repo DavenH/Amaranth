@@ -1,5 +1,14 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Broad modulation bundle fixtures fail before transport startup
+
+The 2026-11-04 initial-controller broad run fails in TestNodeCanvasAuthoring.cpp
+(720, 764, 832), TestModulationSource.cpp (579), and
+TestInteractionComplexityParity.cpp (451), while connecting modulation bundles.
+These cases do not start MIDI transport and their graph/port production paths
+are unchanged by the timestamp fix. Evidence: .context/initial-mod-tests.log.
+Focused transport, pattern scheduling, seek and MIDI-control checks pass.
+
 ## P3: Broader editor tests fail in existing Trimesh Guide/vertex fixtures
 
 The 2026-11-04 MIDI authoring broad check (`[editor],[editor-audition],[keyboard]`)

@@ -579,9 +579,18 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     const double scheduleOrigin = playbackStartedAtMilliseconds / 1000.0;
     playing = true;
     playButton.setButtonText("STOP");
-    sendModWheelValue();
+    const auto seedController = [&](int controller) {
+        return eventSink.enqueueMidiMessageAt(
+                MidiMessage::controllerEvent(1, controller, controllerValue(controller)),
+                MidiEventSource::PerformanceKeyboard, nowMilliseconds / 1000.0);
+    };
+    bool seeded = seedController(1);
     for (const auto& wheel : extraWheels) {
-        sendControllerValue(wheel->controller(), controllerValue(wheel->controller()));
+        seeded = seedController(wheel->controller()) && seeded;
+    }
+    if (!seeded) {
+        stopPlayback();
+        return false;
     }
     if (!scheduleControlEventsUntil(startPosition + automationLookaheadSeconds, scheduleOrigin)) {
         stopPlayback();

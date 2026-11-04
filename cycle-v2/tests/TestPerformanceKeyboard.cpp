@@ -273,8 +273,15 @@ TEST_CASE("Every automation lane sets its first value before the first note",
     phrase.controls.push_back({ 73, 40, 0.25 });
     phrase.controls.push_back({ 73, 120, 1.0 });
     panel.setSequence(phrase);
+    panel.setMappedControllers({1, 73});
 
     REQUIRE(panel.startPlayback(1000.0));
+    // A wall-clock seed sent after this origin would overwrite the score's
+    // initial CC after note-on, potentially until the next changed CC value.
+    REQUIRE(sink.sources[0] == MidiEventSource::PerformanceKeyboard);
+    REQUIRE(sink.sources[1] == MidiEventSource::PerformanceKeyboard);
+    REQUIRE(sink.timestamps[0] == 1.0);
+    REQUIRE(sink.timestamps[1] == 1.0);
     const auto firstNote = std::find_if(sink.messages.begin(), sink.messages.end(),
             [](const MidiMessage& message) { return message.isNoteOn(); });
     REQUIRE(firstNote != sink.messages.end());
