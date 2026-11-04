@@ -1343,3 +1343,26 @@ plot offset, predating the 32 px mode-selector header; that assertion now checks
 76 px. The focused 58-case waveform/presentation selection passes. The same
 three incidental empty-Guide `SignalBuffer.h:123` assertions recur in the broader
 selection; their existing investigation remains in `audio-bugs.md`.
+
+
+## Intermittent isolated Spy export dispatch rejection
+
+2026-11-03: Bright Lead 7 / Icy Hot (Raw), linked user pattern
+`user-491e097a01694be28b5e650838472c2d`, 1080p/30 fps export stopped after 83
+completed frames. Request 87 returned `Could not dispatch Cycle V2 session
+request`; this is the MessageManager::callAsync false branch in
+CycleV2AutomationSessionTransport.cpp. No new CycleV2 crash report or assertion
+was found. Completed PNGs/audio and the failed-frame manifest are retained in
+`.context/bright-lead-7-icy-hot-raw-1080p`; scoped runner evidence is
+`.context/cycle-automation/cycle-v2/f5b456b0e405`. A separate Stengah export
+continues through the same API. Cause not established; retry in an isolated
+release instance before attributing this to render data or performance.
+
+
+Release retry result: isolated run `67e7bd389d04` completed the full 150-frame
+Bright Lead 7 sequence, including the previously failed frame 83, in about
+50 seconds. Its run record confirms the standalone-release bundle. Matching
+preset-pattern identity, dimensions, frame times, WAV length and MP4 audio/video
+durations pass in `.context/bright-lead-7-release-1080p/verification.json`.
+The original dispatch failure remains intermittent and unexplained; no transport
+code was changed based on this single occurrence.
