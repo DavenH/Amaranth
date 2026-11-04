@@ -36,7 +36,7 @@ class SpySequenceExportTest(unittest.TestCase):
         self.assertEqual(len(list(frame_states({"durationMs": 1001, "events": []}, 30))), 31)
         self.assertEqual(len(list(frame_states({"durationMs": 1000, "events": []}, 29.97))), 30)
 
-    def run_export(self, root, failure=None, mp4=False):
+    def run_export(self, root, failure=None, mp4=False, revision="42"):
         preset = root / "test.cyclegraph"
         pattern = root / "test.cyclepattern"
         preset.write_text("{}")
@@ -52,7 +52,7 @@ class SpySequenceExportTest(unittest.TestCase):
                     {"type": "controller", "timeMs": 0, "controller": 1, "value": 12},
                     {"type": "controller", "timeMs": 500, "controller": 1, "value": 99}]}
             if command["command"] == "openGraph":
-                return {}
+                return {"documentRevision": revision} if revision is not None else {}
             if failure is not None and len(list(args.output_dir.glob("frame-*.png"))) == 2:
                 raise failure
             Path(command["path"]).write_bytes(b"png")
@@ -77,7 +77,17 @@ class SpySequenceExportTest(unittest.TestCase):
                              (root / "test.cyclegraph").read_bytes())
             render = [item for item in commands if item["command"] == "renderSpyFrame"]
             self.assertEqual([item["controllers"][1] for item in render], [12, 12, 99, 99])
+            self.assertTrue(all(item["expectedDocumentRevision"] == "42" for item in render))
+            self.assertEqual(manifest["documentRevision"], "42")
             self.assertTrue(all(item["gradient"] == "Bullion" and item["midiNote"] == 48 for item in render))
+
+    def test_export_refuses_an_app_without_document_consistency_checks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result, manifest, commands = self.run_export(Path(directory), revision=None)
+            self.assertEqual(result, 1)
+            self.assertEqual(manifest["completedFrames"], 0)
+            self.assertIn("rebuild the app", manifest["error"])
+            self.assertFalse(any(command["command"] == "renderSpyFrame" for command in commands))
 
     def test_melody_captures_authored_pitches_with_fixed_reference_and_holds_tail_controllers(self):
         for override, cursor in [(None, "ripple"), (48, "none")]:
@@ -104,7 +114,7 @@ class SpySequenceExportTest(unittest.TestCase):
                     if command["command"] == "exportPatternSchedule":
                         return {"durationMs": 1000, "scheduler": "PatternControlScheduler", "events": events}
                     if command["command"] == "openGraph":
-                        return {}
+                        return {"documentRevision": "42"}
                     if command["command"] == "captureAudio":
                         Path(command["path"]).write_bytes(b"wav")
                         return {"path": command["path"], "sampleRate": 48000,

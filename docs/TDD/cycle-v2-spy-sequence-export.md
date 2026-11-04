@@ -1,6 +1,6 @@
 # Automated Spy sequence export
 
-Status: Complete — cursor visibility on saturated palettes (2026-11-03).
+Status: Complete — clean export document isolation (2026-11-04).
 
 ## Contract and ownership
 
@@ -365,3 +365,50 @@ Visibility verification:
   Focused checks pass 22 cases / 20,060 assertions; exact targets built with
   `--parallel 10`. Code-map, architecture and diff checks pass; no app assertion
   or crash in the isolated run.
+
+
+## Clean export document isolation
+
+A scoped process/socket prevents cross-process routing but its window remains
+editable. The Mysterie-2 montage may have resulted from user interaction with
+that window; previous verification proved source snapshots and media validity,
+not that the live document stayed fixed. Preserve the montage artifact.
+
+`openGraph` without a snapshot returns the monotonic GraphDocument revision.
+The exporter records it and supplies expectedDocumentRevision on every frame.
+The automation adapter compares the existing constant-time document revision
+before refresh/capture/write and rejects changes. No graph serialization or
+additional per-frame request; no model/audio/history mutation. The clean
+rerender also hides only its owned PID using NSRunningApplication.hide.
+
+Verify normal export, a deliberate preset switch between frames (must reject
+before PNG write), and a hidden-window Mysterie-2 rerender with linked pattern,
+same gradient/audio settings, source snapshots and intact montage output.
+
+
+Isolation verification:
+
+- Real release app test loads Mysterie-2, writes one guarded frame, then loads
+  Bright Lead 3 and retries the old revision. The command rejects it with
+  `Export document changed` and no target PNG is written. Evidence:
+  `.context/mysterie-guard-proof.json` and `.context/mysterie-guard-test.log`.
+- Eleven Python export tests pass, including refusal of apps without revision
+  support and propagation/manifest retention of the
+  openGraph revision; C++ export/movie/controller selection passes 17 cases /
+  19,844 assertions. Exact release app and tests targets build with `--parallel 10`.
+- The clean renderer's exact owned PID is hidden before loading its source.
+  Native NSRunningApplication.hide is retried during startup until isHidden is
+  confirmed; no process-wide window commands target the user's working app.
+- Responsibility review: CycleV2Automation.cpp 1147 -> 1157 lines adds literal
+  openGraph response metadata and constant-time frame precondition checks only.
+  GraphDocument remains the revision owner; no snapshot/serialization, second
+  graph owner, frame-level file load or audio-plan publication is added.
+
+- Hidden, guarded clean movie: `.context/mysterie-2-clean-1080p/sequence.mp4`,
+  390 frames at 1080p/30 fps, exact 13-second H.264/AAC streams and the same
+  linked pattern/style/note settings. All frames record and pass revision 2.
+  WAV bytes match the original montage exactly. First nine PNGs match, then
+  381 differ; original montage movie and original ZIP remain intact. The gallery
+  now lists both versions. Evidence: `verification.json` and
+  `isolation-verification.json` beside the clean movie. Code-map, architecture
+  and whitespace checks pass.

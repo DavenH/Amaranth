@@ -140,6 +140,9 @@ Use `--mp4-bitrate 12` to choose another target in megabits per second. Odd dime
 right/bottom as needed for H.264. Video publication is atomic; encoding failures
 or interruptions preserve the PNG sequence and are recorded in the manifest.
 
+The exporter checks the loaded document revision before each frame and aborts
+if that document changes, preserving finished frames instead of mixing presets.
+
 The output directory must be new. It contains `frame-000000.png` onward,
 source snapshots and hashes, a `manifest.json` with resolved settings and frame
 records (including actual voice identities, pitches, ages and ripple positions),

@@ -1366,3 +1366,18 @@ preset-pattern identity, dimensions, frame times, WAV length and MP4 audio/video
 durations pass in `.context/bright-lead-7-release-1080p/verification.json`.
 The original dispatch failure remains intermittent and unexplained; no transport
 code was changed based on this single occurrence.
+
+
+## Resolved: editable export window could mix presets into a Spy movie
+
+2026-11-04: Mysterie-2's batch movie visually switched among presets while its
+source snapshots and media checks remained valid. A hidden-window rerender from
+identical snapshots matched the first nine frames, then differed for 381 of 390;
+WAV bytes matched exactly. This supports the user's report of interacting with
+the editable render instance, though the old export had no revision journal.
+
+Export now pins the monotonic document revision returned by openGraph and checks
+it on each renderSpyFrame before capture/write. A real preset-switch test rejects
+the changed document without writing a PNG (`.context/mysterie-guard-proof.json`).
+The clean copy `.context/mysterie-2-clean-1080p/sequence.mp4` ran with its owned
+PID hidden and revision 2 checked throughout. The original montage is preserved.

@@ -461,6 +461,9 @@ preview traversal resolves them into returned `playbackPositions`, then applies
 exponential saturation modifiers after rendering the shared plot.
 Image dimensions are 1..16384, bounded to 64 megapixels. The command forces a
 Cyclogram capture without changing saved Spy mode, note-off position or style.
+`openGraph` with `includeSnapshot: false` returns `documentRevision`; sequence
+exports pass it as `expectedDocumentRevision` on each frame. A document change
+rejects the frame before capture/write, avoiding mixed-preset sequences.
 
 The sequence script captures note patterns as `audio.wav` and requests native
 sample voice snapshots through `captureAudio.playbackSamples`. These are sorted

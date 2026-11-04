@@ -131,8 +131,12 @@ def export_sequence(args, send):
         manifest["keyScaleNote"] = reference_note
         manifest["tailSeconds"] = args.tail_seconds
         manifest["scheduler"] = schedule["scheduler"]
-        send({"command": "openGraph", "path": str(output / "source-preset.cyclegraph"),
-              "includeSnapshot": False})
+        opened = send({"command": "openGraph", "path": str(output / "source-preset.cyclegraph"),
+                       "includeSnapshot": False})
+        document_revision = opened.get("documentRevision")
+        if document_revision is None:
+            raise RuntimeError("The app did not return an export document revision; rebuild the app")
+        manifest["documentRevision"] = document_revision
         playback = []
         if notes:
             manifest["audio"], playback = capture_pattern_audio(
@@ -144,7 +148,8 @@ def export_sequence(args, send):
                 filename = f"frame-{index:06d}.png"
                 payload = {"command": "renderSpyFrame", "probeId": args.spy,
                            "controllers": values, "width": args.width, "height": args.height,
-                           "path": str(output / filename)}
+                           "path": str(output / filename),
+                           "expectedDocumentRevision": document_revision}
                 if reference_note is not None:
                     payload["midiNote"] = reference_note
                 voices = playback[index]["voices"] if playback else []
@@ -158,6 +163,7 @@ def export_sequence(args, send):
                 manifest["noteOffTime"] = rendered["noteOffTime"]
                 frame = {"index": index, "timeSeconds": timestamp, "path": filename,
                          "controllers": values, "contentRevision": rendered["contentRevision"],
+                         "documentRevision": document_revision,
                          "voices": voices, "playbackPositions": rendered.get("playbackPositions", [])}
                 journal.write(json.dumps(frame, allow_nan=False) + "\n")
                 journal.flush()
