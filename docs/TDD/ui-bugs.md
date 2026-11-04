@@ -1,5 +1,14 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Broader editor tests fail in existing Trimesh Guide/vertex fixtures
+
+The 2026-11-04 MIDI authoring broad check (`[editor],[editor-audition],[keyboard]`)
+fails in TestNodeEditorHost.cpp:4128, 4157 and 4316: the vertex edit cannot begin,
+Guide gain assignment fails, and the Guide attachment menu cannot open. These
+fail before MIDI interaction and exercise unchanged Trimesh/Guide ownership.
+Evidence: `.context/midi-focused-tests.log`. The focused MIDI authoring and
+source-isolated audio reset checks are separate from these fixtures.
+
 ## P3: Selected-capture test assumes an older Baroque Flute probe source
 
 The broader 2026-11-01 Spy refresh check reaches

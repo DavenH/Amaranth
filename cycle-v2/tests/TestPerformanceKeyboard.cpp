@@ -7,6 +7,7 @@
 #include "Runtime/RealtimeGraphRenderer.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/PerformanceKeyboard.h"
+#include "UI/PresetMidiEditor.h"
 
 using namespace CycleV2;
 
@@ -756,4 +757,66 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     REQUIRE_FALSE(compact.legend.intersects(compact.keyboard));
     REQUIRE(compactContent.contains(compact.keyboard));
     REQUIRE(compactContent.contains(compact.status));
+}
+
+TEST_CASE("Centred MIDI dialog hard-stops only editor audition on pitch changes",
+        "[cycle-v2][keyboard][sequence][editor-audition]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    Component host;
+    host.setBounds(100, 100, 1400, 1000);
+    PerformanceKeyboardPanel panel(state, sink);
+    host.addAndMakeVisible(panel);
+    panel.setBounds(0, 800, 1400, 180);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    panel.showSequenceEditor(phrase, {});
+    DialogWindow* dialog = nullptr;
+    for (int index = 0; index < Desktop::getInstance().getNumComponents(); ++index) {
+        auto* candidate = Desktop::getInstance().getComponent(index);
+        if (candidate->getName() == "PresetMidiEditor.Dialog") {
+            dialog = dynamic_cast<DialogWindow*>(candidate);
+        }
+    }
+    REQUIRE(dialog != nullptr);
+    auto* editor = dynamic_cast<PresetMidiEditor*>(dialog->getContentComponent());
+    REQUIRE(editor != nullptr);
+    REQUIRE(editor->getWidth() >= 900);
+    REQUIRE(editor->getHeight() >= 640);
+    const auto grid = editor->noteGrid();
+    const float y = grid.getY() + grid.getHeight() * 11.5f / 24.f;
+    const float nextY = y - grid.getHeight() / 24.f;
+    const float x = grid.getX() + grid.getWidth() * 0.25f;
+    sink.messages.clear();
+    sink.sources.clear();
+    editor->mouseDown(keyboardMouseEvent(*editor, {x, y}, ModifierKeys::leftButtonModifier));
+    editor->mouseDrag(keyboardMouseEvent(*editor, {x, nextY}, ModifierKeys::leftButtonModifier));
+    editor->mouseUp(keyboardMouseEvent(*editor, {x, nextY}, ModifierKeys::leftButtonModifier));
+    REQUIRE(sink.messages.size() == 6);
+    REQUIRE(sink.messages[0].isAllSoundOff());
+    REQUIRE(sink.messages[1].isNoteOn());
+    REQUIRE(sink.messages[1].getNoteNumber() == 60);
+    REQUIRE(sink.messages[2].isNoteOff());
+    REQUIRE(sink.messages[3].isAllSoundOff());
+    REQUIRE(sink.messages[4].isNoteOn());
+    REQUIRE(sink.messages[4].getNoteNumber() == 61);
+    REQUIRE(sink.messages[5].isNoteOff());
+    for (const auto source : sink.sources) {
+        REQUIRE(source == MidiEventSource::EditorAudition);
+    }
+    editor->mouseDown(keyboardMouseEvent(*editor, {x, nextY}, ModifierKeys::leftButtonModifier));
+    REQUIRE(sink.messages.back().isNoteOn());
+    REQUIRE(editor->findParentComponentOfClass<DialogWindow>() == dialog);
+    REQUIRE(dialog->isCurrentlyModal(false));
+    Component::SafePointer<DialogWindow> closingDialog(dialog);
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::escapeKey)));
+    MessageManager::getInstance()->runDispatchLoopUntil(20);
+    REQUIRE(sink.messages.back().isNoteOff());
+    REQUIRE(sink.messages.back().getNoteNumber() == 61);
+    if (closingDialog != nullptr) {
+        REQUIRE_FALSE(closingDialog->isVisible());
+        REQUIRE_FALSE(closingDialog->isCurrentlyModal(false));
+        closingDialog.deleteAndZero();
+    }
 }

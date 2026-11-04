@@ -282,8 +282,10 @@ TEST_CASE("The enlarged piano roll paints a shared playback cursor",
     const int cursorX = roundToInt(xAt(editor, 1.0, 4.0));
     const Colour cursor = image.getPixelAt(cursorX,
             roundToInt(editor.noteGrid().getY() + 20.f));
-    REQUIRE(cursor.getGreen() > 150);
-    REQUIRE(cursor.getRed() < 100);
+    playbackTime.reset();
+    const Image withoutCursor = editor.createComponentSnapshot(editor.getLocalBounds());
+    REQUIRE(cursor.getBrightness() > withoutCursor.getPixelAt(cursorX,
+            roundToInt(editor.noteGrid().getY() + 20.f)).getBrightness() + 0.3f);
     const auto grid = editor.noteGrid();
     const int stripeX = roundToInt(grid.getX() + 24.f);
     const float row = grid.getHeight() / 24.f;
@@ -319,4 +321,171 @@ TEST_CASE("Roll length is editable independently of the final note",
     REQUIRE(publications == 1);
     REQUIRE(changed.durationSeconds == 6.0);
     REQUIRE(changed.notes[0].durationSeconds == 0.5);
+}
+
+TEST_CASE("Shift arrows transpose the whole phrase without altering expression",
+        "[cycle-v2][preset][sequence][editor]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes = {{60, 80, 0.0, 0.5}, {64, 110, 1.0, 0.75}};
+    phrase.controls = {{1, 73, 0.25}};
+    PresetMidiSequence changed;
+    int publications = 0;
+    PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+        changed = std::move(next);
+        ++publications;
+    });
+    REQUIRE(editor.keyPressed(KeyPress(KeyPress::upKey, ModifierKeys::shiftModifier, 0)));
+    REQUIRE(publications == 1);
+    REQUIRE(changed.notes[0].pitch == 61);
+    REQUIRE(changed.notes[1].pitch == 65);
+    REQUIRE(changed.notes[1].velocity == 110);
+    REQUIRE(changed.notes[1].startSeconds == 1.0);
+    REQUIRE(changed.notes[1].durationSeconds == 0.75);
+    REQUIRE(changed.durationSeconds == 4.0);
+    REQUIRE(changed.controls[0].value == 73);
+    REQUIRE(changed.controls[0].timeSeconds == 0.25);
+    editor.keyPressed(KeyPress(KeyPress::downKey, ModifierKeys::shiftModifier, 0));
+    REQUIRE(publications == 2);
+    REQUIRE(changed.notes[0].pitch == 60);
+    REQUIRE(changed.notes[1].pitch == 64);
+
+    phrase.notes[0].pitch = 0;
+    phrase.notes[1].pitch = 127;
+    PresetMidiEditor bounded(phrase, [&](PresetMidiSequence) { ++publications; });
+    bounded.keyPressed(KeyPress(KeyPress::upKey, ModifierKeys::shiftModifier, 0));
+    bounded.keyPressed(KeyPress(KeyPress::downKey, ModifierKeys::shiftModifier, 0));
+    REQUIRE(publications == 2);
+}
+
+TEST_CASE("Creating and dragging moves a fixed length note and hands off audition",
+        "[cycle-v2][preset][sequence][editor]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    PresetMidiSequence changed;
+    int publications = 0;
+    std::vector<std::pair<int, bool>> audition;
+    PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+        changed = std::move(next);
+        ++publications;
+    }, {}, [&](int pitch, int, bool on) { audition.emplace_back(pitch, on); });
+    const float y = pitch60Y(editor);
+    const float nextY = y - editor.noteGrid().getHeight() / 24.f;
+    editor.mouseDown(pointer(editor, {xAt(editor, 0.5, 4.0), y}));
+    editor.mouseDrag(pointer(editor, {xAt(editor, 0.75, 4.0), nextY}));
+    REQUIRE(publications == 0);
+    editor.mouseUp(pointer(editor, {xAt(editor, 0.75, 4.0), nextY}));
+    REQUIRE(publications == 1);
+    REQUIRE(changed.notes.size() == 1);
+    REQUIRE(changed.notes[0].pitch == 61);
+    REQUIRE(changed.notes[0].startSeconds == 0.75);
+    REQUIRE(changed.notes[0].durationSeconds == 0.125);
+    const std::vector<std::pair<int, bool>> expected {{60, true}, {60, false}, {61, true}, {61, false}};
+    REQUIRE(audition == expected);
+}
+
+TEST_CASE("Notes extend the phrase while the drag projection remains fixed",
+        "[cycle-v2][preset][sequence][editor]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes = {{60, 90, 3.5, 0.5}};
+    PresetMidiSequence changed;
+    int publications = 0;
+    PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+        changed = std::move(next);
+        ++publications;
+    });
+    const auto map = editor.miniMap();
+    editor.mouseDown(pointer(editor, {map.getRight() - 1.f, map.getCentreY()}));
+    editor.mouseUp(pointer(editor, {map.getRight() - 1.f, map.getCentreY()}));
+    const auto grid = editor.noteGrid();
+    const float y = pitch60Y(editor);
+    const float x = grid.getX() + grid.getWidth() * 0.8125f;
+    editor.mouseDown(pointer(editor, {x, y}));
+    editor.mouseDrag(pointer(editor, {x + grid.getWidth() * 0.25f, y}));
+    editor.mouseDrag(pointer(editor, {x + grid.getWidth() * 0.5f, y}));
+    REQUIRE(publications == 0);
+    editor.mouseUp(pointer(editor, {x + grid.getWidth() * 0.5f, y}));
+    REQUIRE(publications == 1);
+    REQUIRE(changed.notes[0].startSeconds == 4.5);
+    REQUIRE(changed.notes[0].durationSeconds == 0.5);
+    REQUIRE(changed.durationSeconds == 5.0);
+}
+
+TEST_CASE("Snap pill permits continuous note movement and short resizing",
+        "[cycle-v2][preset][sequence][editor]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes = {{60, 90, 0.5, 0.5}};
+    PresetMidiSequence changed;
+    PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) { changed = std::move(next); });
+    ToggleButton* snap = nullptr;
+    for (auto* child : editor.getChildren()) {
+        if (child->getName() == "PresetMidiEditor.Snap") {
+            snap = dynamic_cast<ToggleButton*>(child);
+        }
+    }
+    REQUIRE(snap != nullptr);
+    REQUIRE(snap->getToggleState());
+    snap->setToggleState(false, dontSendNotification);
+    const float y = pitch60Y(editor);
+    const float x = xAt(editor, 0.625, 4.0);
+    const float delta = editor.noteGrid().getWidth() * 0.037f / 2.f;
+    editor.mouseDown(pointer(editor, {x, y}));
+    editor.mouseDrag(pointer(editor, {x + delta, y}));
+    editor.mouseUp(pointer(editor, {x + delta, y}));
+    REQUIRE(std::abs(changed.notes[0].startSeconds - 0.537) < 0.00001);
+    const float grip = xAt(editor, 1.037, 4.0) - 3.f;
+    editor.mouseDown(pointer(editor, {grip, y}));
+    editor.mouseDrag(pointer(editor, {grip - editor.noteGrid().getWidth(), y}));
+    editor.mouseUp(pointer(editor, {grip - editor.noteGrid().getWidth(), y}));
+    REQUIRE(changed.notes[0].durationSeconds == 0.01);
+    const auto lane = editor.controlGrid();
+    editor.mouseDown(pointer(editor, {xAt(editor, 0.513, 4.0), lane.getCentreY()}));
+    editor.mouseUp(pointer(editor, {xAt(editor, 0.513, 4.0), lane.getCentreY()}));
+    REQUIRE(std::abs(changed.controls[0].timeSeconds - 0.513) < 0.00001);
+}
+
+TEST_CASE("Created and resized notes grow the pattern beyond its previous endpoint",
+        "[cycle-v2][preset][sequence][editor]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    PresetMidiSequence changed;
+    int publications = 0;
+    SECTION("Create a note at the old endpoint") {
+        PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+            changed = std::move(next);
+            ++publications;
+        });
+        const auto map = editor.miniMap();
+        editor.mouseDown(pointer(editor, {map.getRight() - 1.f, map.getCentreY()}));
+        editor.mouseUp(pointer(editor, {map.getRight() - 1.f, map.getCentreY()}));
+        const auto grid = editor.noteGrid();
+        editor.mouseDown(pointer(editor, {grid.getRight() - 1.f, grid.getCentreY()}));
+        editor.mouseUp(pointer(editor, {grid.getRight() - 1.f, grid.getCentreY()}));
+        REQUIRE(changed.notes[0].startSeconds == 4.0);
+        REQUIRE(changed.durationSeconds == 4.125);
+    }
+    SECTION("Resize a note past the old endpoint") {
+        phrase.notes = {{60, 90, 1.0, 0.5}};
+        PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+            changed = std::move(next);
+            ++publications;
+        });
+        const float x = xAt(editor, 1.5, 4.0) - 3.f;
+        const float y = pitch60Y(editor);
+        const float delta = editor.noteGrid().getWidth() * 1.5f;
+        editor.mouseDown(pointer(editor, {x, y}));
+        editor.mouseDrag(pointer(editor, {x + delta, y}));
+        editor.mouseUp(pointer(editor, {x + delta, y}));
+        REQUIRE(changed.notes[0].startSeconds == 1.0);
+        REQUIRE(changed.notes[0].durationSeconds == 3.5);
+        REQUIRE(changed.durationSeconds == 4.5);
+    }
+    REQUIRE(publications == 1);
 }

@@ -527,9 +527,12 @@ void PerformanceKeyboardPanel::auditionSequenceNote(
     if (noteOn) {
         stopPlayback();
         releaseEditorAudition();
+        eventSink.enqueueMidiMessage(MidiMessage::allSoundOff(1), MidiEventSource::EditorAudition);
         editorAuditionPitch = pitch;
         setPreviewNote(pitch);
-        keyboardState.noteOn(1, pitch, (float) velocity / 127.f);
+        eventSink.enqueueMidiMessage(MidiMessage::noteOn(1, pitch, (uint8) velocity),
+                MidiEventSource::EditorAudition);
+        keyboard.mirrorSequenceNote(pitch, (float) velocity / 127.f, true);
     } else if (editorAuditionPitch == pitch) {
         releaseEditorAudition();
     }
@@ -537,7 +540,9 @@ void PerformanceKeyboardPanel::auditionSequenceNote(
 
 void PerformanceKeyboardPanel::releaseEditorAudition() {
     if (editorAuditionPitch >= 0) {
-        keyboardState.noteOff(1, editorAuditionPitch, 0.f);
+        keyboard.mirrorSequenceNote(editorAuditionPitch, 0.f, false);
+        eventSink.enqueueMidiMessage(MidiMessage::noteOff(1, editorAuditionPitch),
+                MidiEventSource::EditorAudition);
         editorAuditionPitch = -1;
     }
 }
@@ -853,8 +858,26 @@ void PerformanceKeyboardPanel::showSequenceEditor(
             },
             mappedControllers);
     auto* editorContent = editor.get();
-    CallOutBox::launchAsynchronously(
-            std::move(editor), editButton.getScreenBounds(), nullptr);
+    auto* parent = getTopLevelComponent();
+    const auto* display = Desktop::getInstance().getDisplays().getDisplayForRect(parent->getScreenBounds());
+    if (display != nullptr) {
+        editor->setSize(jmin(editor->getWidth(), display->userArea.getWidth() - 64),
+                jmin(editor->getHeight(), display->userArea.getHeight() - 100));
+    }
+    DialogWindow::LaunchOptions options;
+    options.content.setOwned(editor.release());
+    options.dialogTitle = "MIDI Pattern";
+    options.dialogBackgroundColour = CanvasChromePalette::dockSurface;
+    options.componentToCentreAround = parent;
+    options.useNativeTitleBar = true;
+    options.resizable = true;
+    options.escapeKeyTriggersCloseButton = true;
+    auto* dialog = options.launchAsync();
+    dialog->setName("PresetMidiEditor.Dialog");
+    dialog->setResizeLimits(jmin(900, editorContent->getWidth()),
+            jmin(640, editorContent->getHeight()),
+            display != nullptr ? display->userArea.getWidth() : 1920,
+            display != nullptr ? display->userArea.getHeight() : 1200);
     editorContent->grabKeyboardFocus();
 }
 

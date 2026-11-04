@@ -42,6 +42,10 @@ public:
     bool keyPressed(const juce::KeyPress& key) override;
 
 private:
+    class SnapToggle final : public juce::ToggleButton {
+        void paintButton(juce::Graphics&, bool highlighted, bool down) override;
+    };
+
     void timerCallback() override;
 
     void paintNoteGrid(juce::Graphics& graphics) const;
@@ -65,6 +69,9 @@ private:
     int velocityNoteAt(float x) const;
     void navigateMiniMap(juce::Point<float> point);
     void updateDurationRange();
+    void extendDurationTo(double endTime);
+    double minimumNoteDuration() const;
+    bool transposeNotes(int semitones);
     void audition(int pitch, int velocity);
     void releaseAudition();
     void configureControllers(std::vector<int> mappedControllers);
@@ -78,6 +85,7 @@ private:
     AuditionCallback onAudition;
     PlaybackTimeCallback playbackTime;
     juce::TextButton clearButton { "Clear" };
+    SnapToggle snapButton;
     std::vector<int> controllers;
     juce::Label durationLabel;
     juce::Slider durationSlider;
@@ -90,6 +98,7 @@ private:
     int auditionPitch { -1 };
     int timeOffsetSteps {};
     double minimumDurationSeconds { 0.01 };
+    double viewportDurationSeconds { 2.0 };
     double durationBeforeDrag {};
     float horizontalWheelRemainder {};
     float verticalWheelRemainder {};

@@ -169,6 +169,7 @@ size_t RealtimeMidiEventQueue::sourceIndex(MidiEventSource source) {
         case MidiEventSource::PerformanceKeyboard: return 0u;
         case MidiEventSource::Hardware: return 1u;
         case MidiEventSource::PatternPlayback: return 2u;
+        case MidiEventSource::EditorAudition: return 3u;
     }
     return 0u;
 }

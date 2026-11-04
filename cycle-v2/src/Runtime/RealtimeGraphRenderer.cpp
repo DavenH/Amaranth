@@ -285,14 +285,11 @@ RealtimeGraphRenderer::consumeEvents(
         double callbackStartSeconds,
         VoicePlaybackCapture* playback) {
     MidiSchedulingOperationCounts counts;
-    if (queue.consumeRecoveryRequest(MidiEventSource::PerformanceKeyboard)) {
-        releaseSource(MidiEventSource::PerformanceKeyboard, 0);
-    }
-    if (queue.consumeRecoveryRequest(MidiEventSource::Hardware)) {
-        releaseSource(MidiEventSource::Hardware, 0);
-    }
-    if (queue.consumeRecoveryRequest(MidiEventSource::PatternPlayback)) {
-        releaseSource(MidiEventSource::PatternPlayback, 0);
+    for (size_t index = 0; index < RealtimeMidiEventQueue::sourceCount; ++index) {
+        const auto source = (MidiEventSource) index;
+        if (queue.consumeRecoveryRequest(source)) {
+            releaseSource(source, 0);
+        }
     }
 
     const uint32_t currentPatternGeneration = queue.generation(

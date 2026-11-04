@@ -165,7 +165,7 @@ private:
     PreparedGraph* preparedGraph {};
     CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
     std::array<Voice, voiceCount> voices;
-    std::array<std::array<std::array<uint16_t, 128>, 16>, 3> pendingStolenNoteOffs {};
+    std::array<std::array<std::array<uint16_t, 128>, 16>, RealtimeMidiEventQueue::sourceCount> pendingStolenNoteOffs {};
     MidiControlState midiControls;
     std::array<RealtimeMidiEvent, maximumScheduledEvents> scheduledEvents;
     size_t scheduledEventCount {};

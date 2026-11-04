@@ -26,6 +26,19 @@ bool isBlackKey(int pitch) {
 
 }
 
+void PresetMidiEditor::SnapToggle::paintButton(Graphics& graphics, bool highlighted, bool down) {
+    const auto area = getLocalBounds().toFloat().reduced(0.75f);
+    const bool enabled = getToggleState();
+    const auto accent = CanvasChromePalette::focus;
+    graphics.setColour(enabled ? accent.withAlpha(down ? 0.3f : 0.16f)
+            : CanvasChromePalette::restingControlSurface.brighter(highlighted ? 0.08f : 0.f));
+    graphics.fillRoundedRectangle(area, area.getHeight() * 0.5f);
+    graphics.setColour(enabled ? accent : CanvasChromePalette::mutedText);
+    graphics.drawRoundedRectangle(area, area.getHeight() * 0.5f, 1.f);
+    graphics.setFont(FontOptions(11.f, Font::bold));
+    graphics.drawText(enabled ? "SNAP  ON" : "SNAP  OFF", getLocalBounds(), Justification::centred);
+}
+
 Rectangle<float> PresetMidiEditor::miniMap() const {
     return { 62.f, 40.f, (float) getWidth() - 80.f, 42.f };
 }
@@ -71,7 +84,7 @@ int PresetMidiEditor::velocityAt(float y) const {
 }
 
 double PresetMidiEditor::visibleDuration() const {
-    return jmax(0.25, sequence.durationSeconds * 0.5);
+    return viewportDurationSeconds;
 }
 
 double PresetMidiEditor::gridStep() const {
@@ -89,15 +102,16 @@ int PresetMidiEditor::maximumTimeOffsetSteps() const {
 
 double PresetMidiEditor::timeAt(float x) const {
     const double time = rawTimeAt(x);
-    return jlimit(0.0, sequence.durationSeconds,
-            std::round(time / gridStep()) * gridStep());
+    return snapButton.getToggleState()
+            ? jlimit(0.0, PresetMidiSequence::maximumDurationSeconds,
+                    std::round(time / gridStep()) * gridStep()) : time;
 }
 
 double PresetMidiEditor::rawTimeAt(float x) const {
     const auto grid = noteGrid();
-    const float proportion = jlimit(0.f, 1.f,
-            (x - grid.getX()) / grid.getWidth());
-    return timeOffset() + proportion * visibleDuration();
+    const float proportion = (x - grid.getX()) / grid.getWidth();
+    return jlimit(0.0, PresetMidiSequence::maximumDurationSeconds,
+            timeOffset() + proportion * visibleDuration());
 }
 
 float PresetMidiEditor::xForTime(double time) const {
@@ -119,13 +133,13 @@ void PresetMidiEditor::paint(Graphics& graphics) {
         graphics.setColour(CanvasChromePalette::focus);
         graphics.setFont(FontOptions(12.f, Font::bold));
         graphics.drawText(resizingNote ? "RESIZE NOTE" : "MOVE NOTE",
-                258, 9, 150, 22, Justification::centredLeft);
+                258, 9, jmax(0, snapButton.getX() - 270), 22, Justification::centredLeft);
     } else if (activeVelocity >= 0) {
         graphics.setColour(CanvasChromePalette::focus);
         graphics.setFont(FontOptions(12.f, Font::bold));
         graphics.drawText("VELOCITY "
                         + String(sequence.notes[(size_t) activeVelocity].velocity),
-                258, 9, 150, 22, Justification::centredLeft);
+                258, 9, jmax(0, snapButton.getX() - 270), 22, Justification::centredLeft);
     } else if (selectedNote >= 0 && selectedNote < (int) sequence.notes.size()) {
         const auto& note = sequence.notes[(size_t) selectedNote];
         graphics.setColour(CanvasChromePalette::mutedText);
@@ -134,7 +148,7 @@ void PresetMidiEditor::paint(Graphics& graphics) {
                         + "  V" + String(note.velocity)
                         + "  " + String(note.startSeconds, 2)
                         + "s  LEN " + String(note.durationSeconds, 2) + "s",
-                258, 9, 295, 22, Justification::centredLeft);
+                258, 9, jmax(0, snapButton.getX() - 270), 22, Justification::centredLeft);
     }
     paintMiniMap(graphics);
     graphics.setColour(CanvasChromePalette::mutedText);
@@ -153,7 +167,7 @@ void PresetMidiEditor::paint(Graphics& graphics) {
     paintPlaybackCursor(graphics);
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(FontOptions(11.f));
-    graphics.drawText("Drag velocity bars (Shift: fine)  |  Right-click/Delete: remove  |  Scroll or overview: pan  |  Space: play",
+    graphics.drawText("Drag velocity bars (Shift: fine)  |  Right-click/Delete: remove  |  Scroll or overview: pan  |  Shift-Up/Down: transpose  |  Space: play",
             62, getHeight() - 23, getWidth() - 82, 17,
             Justification::centredLeft);
 }

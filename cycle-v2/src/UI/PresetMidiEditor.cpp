@@ -22,9 +22,23 @@ PresetMidiEditor::PresetMidiEditor(
     ,   onAudition(std::move(auditionCallback))
     ,   playbackTime(std::move(playbackTimeCallback)) {
     setName("PresetMidiEditor");
-    setSize(840, 640);
+    setSize(1120, 820);
+    viewportDurationSeconds = jmax(0.25, sequence.durationSeconds * 0.5);
     setWantsKeyboardFocus(true);
     addAndMakeVisible(clearButton);
+    addAndMakeVisible(snapButton);
+    snapButton.setName("PresetMidiEditor.Snap");
+    snapButton.setToggleState(true, dontSendNotification);
+    snapButton.setClickingTogglesState(true);
+    snapButton.setWantsKeyboardFocus(false);
+    snapButton.setMouseClickGrabsKeyboardFocus(false);
+    snapButton.setTooltip("Snap note and controller timing to the grid");
+    snapButton.onClick = [this] {
+        if (isShowing()) {
+            grabKeyboardFocus();
+        }
+        repaint();
+    };
     addAndMakeVisible(durationLabel);
     addAndMakeVisible(durationSlider);
     durationSlider.setName("PresetMidiEditor.Length");
@@ -60,6 +74,7 @@ PresetMidiEditor::PresetMidiEditor(
         sequence.durationSeconds = jmax(
                 minimumDurationSeconds, durationSlider.getValue());
         durationSlider.setValue(sequence.durationSeconds, dontSendNotification);
+        viewportDurationSeconds = jmax(0.25, sequence.durationSeconds * 0.5);
         timeOffsetSteps = jmin(timeOffsetSteps, maximumTimeOffsetSteps());
         if (draggingDuration) {
             repaint();
@@ -96,6 +111,7 @@ PresetMidiEditor::~PresetMidiEditor() {
 
 void PresetMidiEditor::resized() {
     clearButton.setBounds(getWidth() - 82, 8, 64, 24);
+    snapButton.setBounds(getWidth() - 390, 8, 84, 26);
     durationLabel.setBounds(getWidth() - 293, 9, 52, 22);
     durationSlider.setBounds(getWidth() - 240, 8, 148, 24);
 }
@@ -111,7 +127,7 @@ void PresetMidiEditor::configureControllers(std::vector<int> mappedControllers) 
     std::sort(controllers.begin(), controllers.end());
     controllers.erase(std::unique(controllers.begin(), controllers.end()),
             controllers.end());
-    setSize(840, 640 + 104 * ((int) controllers.size() - 1));
+    setSize(1120, 820 + 104 * ((int) controllers.size() - 1));
 }
 
 void PresetMidiEditor::timerCallback() {
@@ -160,6 +176,33 @@ void PresetMidiEditor::updateDurationRange() {
     durationSlider.setRange(0.01,
             PresetMidiSequence::maximumDurationSeconds, 0.01);
     durationSlider.setValue(sequence.durationSeconds, dontSendNotification);
+}
+
+void PresetMidiEditor::extendDurationTo(double endTime) {
+    sequence.durationSeconds = jmax(sequence.durationSeconds,
+            jmin(PresetMidiSequence::maximumDurationSeconds, endTime));
+    durationSlider.setValue(sequence.durationSeconds, dontSendNotification);
+}
+
+double PresetMidiEditor::minimumNoteDuration() const {
+    return snapButton.getToggleState() ? gridStep() : 0.01;
+}
+
+bool PresetMidiEditor::transposeNotes(int semitones) {
+    if (sequence.notes.empty()) {
+        return true;
+    }
+    if (std::any_of(sequence.notes.begin(), sequence.notes.end(), [semitones](const auto& note) {
+            return note.pitch + semitones < 0 || note.pitch + semitones > 127;
+        })) {
+        return true;
+    }
+    releaseAudition();
+    for (auto& note : sequence.notes) {
+        note.pitch += semitones;
+    }
+    publish();
+    return true;
 }
 
 int PresetMidiEditor::noteAt(Point<float> point) const {
@@ -236,6 +279,9 @@ void PresetMidiEditor::mouseMove(const MouseEvent& event) {
 }
 
 void PresetMidiEditor::mouseDown(const MouseEvent& event) {
+    if (isShowing()) {
+        grabKeyboardFocus();
+    }
     activeNote = -1;
     activeVelocity = -1;
     activeControl = -1;
@@ -321,16 +367,16 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
     if (event.mods.isRightButtonDown()) {
         return;
     }
-    const double step = jmin(gridStep(), sequence.durationSeconds);
+    const double step = gridStep();
     const double start = jmin(timeAt(event.position.x),
-            sequence.durationSeconds - step);
-    sequence.notes.push_back({ pitch, 100, start,
-            jmin(step, sequence.durationSeconds - start) });
+            PresetMidiSequence::maximumDurationSeconds - step);
+    sequence.notes.push_back({ pitch, 100, start, step });
+    extendDurationTo(start + step);
     activeNote = (int) sequence.notes.size() - 1;
     selectedNote = activeNote;
     originalNote = sequence.notes.back();
     gestureStart = event.position;
-    resizingNote = true;
+    resizingNote = false;
     pendingChange = true;
     audition(pitch, sequence.notes.back().velocity);
     repaint();
@@ -367,20 +413,21 @@ void PresetMidiEditor::mouseDrag(const MouseEvent& event) {
     }
     auto& note = sequence.notes[(size_t) activeNote];
     if (resizingNote) {
-        note.durationSeconds = jlimit(jmin(gridStep(),
-                        sequence.durationSeconds - note.startSeconds),
-                sequence.durationSeconds - note.startSeconds,
+        note.durationSeconds = jlimit(jmin(minimumNoteDuration(),
+                        PresetMidiSequence::maximumDurationSeconds - note.startSeconds),
+                PresetMidiSequence::maximumDurationSeconds - note.startSeconds,
                 originalNote.durationSeconds
                         + timeAt(event.position.x) - timeAt(gestureStart.x));
     } else {
         note.pitch = jlimit(0, 127, originalNote.pitch
                 + pitchAt(event.position.y) - pitchAt(gestureStart.y));
         note.startSeconds = jlimit(0.0,
-                sequence.durationSeconds - originalNote.durationSeconds,
+                PresetMidiSequence::maximumDurationSeconds - originalNote.durationSeconds,
                 originalNote.startSeconds
                         + timeAt(event.position.x) - timeAt(gestureStart.x));
         audition(note.pitch, note.velocity);
     }
+    extendDurationTo(note.startSeconds + note.durationSeconds);
     pendingChange = true;
     repaint();
 }
@@ -432,6 +479,11 @@ void PresetMidiEditor::editControl(Point<float> point, int controller) {
 }
 
 bool PresetMidiEditor::keyPressed(const KeyPress& key) {
+    if (key.getModifiers().isShiftDown() && !key.getModifiers().isCommandDown()
+            && !key.getModifiers().isCtrlDown() && !key.getModifiers().isAltDown()
+            && (key.getKeyCode() == KeyPress::upKey || key.getKeyCode() == KeyPress::downKey)) {
+        return transposeNotes(key.getKeyCode() == KeyPress::upKey ? 1 : -1);
+    }
     if (key == KeyPress::spaceKey) {
         if (onTogglePlayback) {
             onTogglePlayback();
@@ -464,8 +516,9 @@ bool PresetMidiEditor::keyPressed(const KeyPress& key) {
         return true;
     }
     if (key == KeyPress::escapeKey) {
-        if (auto* callout = findParentComponentOfClass<CallOutBox>()) {
-            callout->dismiss();
+        releaseAudition();
+        if (auto* dialog = findParentComponentOfClass<DialogWindow>()) {
+            dialog->setVisible(false);
         }
         return true;
     }
