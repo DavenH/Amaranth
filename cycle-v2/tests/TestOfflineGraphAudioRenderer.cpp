@@ -650,3 +650,36 @@ TEST_CASE("Offline movie snapshots follow native sample voice allocation without
     request.ratePolicy = OfflineGraphAudioRatePolicy::LegacyInternal44100;
     CHECK_FALSE(OfflineGraphAudioRenderer::render(plan, 1, request).succeeded);
 }
+
+TEST_CASE("Initial score controllers reach the first note without a preroll",
+        "[cycle-v2][offline-audio][initial-controller]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const auto loaded = GraphSerializer().loadJsonString(File(String(CYCLE_V2_SOURCE_DIR))
+            .getChildFile("content/presets/bright-lead-7.cyclegraph").loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    const auto compiled = GraphCompiler().compile(loaded.graph);
+    REQUIRE(compiled.succeeded());
+    OfflineGraphAudioRequest request;
+    request.sampleCount = 4096;
+    request.voiceDurationSeconds = 0.f;
+    request.hasRandomSeed = true;
+    request.randomSeed = 1729;
+    request.events = {{0, MidiMessage::controllerEvent(1, 1, 107)},
+                      {0, MidiMessage::controllerEvent(1, 73, 51)},
+                      {512, MidiMessage::noteOn(1, 60, (uint8) 100)}};
+    const auto preloaded = OfflineGraphAudioRenderer::render(compiled.plan, 1, request);
+    REQUIRE(preloaded.succeeded);
+    request.events[0].sampleOffset = 512;
+    request.events[1].sampleOffset = 512;
+    const auto simultaneous = OfflineGraphAudioRenderer::render(compiled.plan, 1, request);
+    REQUIRE(simultaneous.succeeded);
+    for (int channel = 0; channel < 2; ++channel) {
+        REQUIRE(simultaneous.channels[channel] == preloaded.channels[channel]);
+    }
+    request.events[0].message = MidiMessage::controllerEvent(1, 1, 0);
+    request.events[1].message = MidiMessage::controllerEvent(1, 73, 0);
+    const auto zero = OfflineGraphAudioRenderer::render(compiled.plan, 1, request);
+    REQUIRE(zero.succeeded);
+    REQUIRE(zero.channels[0] != simultaneous.channels[0]);
+#endif
+}

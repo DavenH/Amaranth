@@ -33,3 +33,10 @@ MIDI interpolation nor rendering changes. Broader unrelated graph bundle fixture
 failures are recorded in ui-bugs.md. Export inputs are frozen per job and checked
 against their linked pattern; the first score CC is already correctly ordered in
 the offline exporter, so no render-only timing workaround was added.
+
+
+Offline first-note proof: the actual Bright Lead7 graph produces bit-identical
+stereo audio when CC1/73 arrive in the note-on block versus a block earlier.
+Setting those CCs to zero changes the audio, confirming the test exercises real
+modulation. Final focused run:39 cases /882 assertions pass. This covers both
+live startup scheduling and the movie export's shared offline audio renderer.
