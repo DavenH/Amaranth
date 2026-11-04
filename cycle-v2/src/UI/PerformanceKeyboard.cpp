@@ -460,6 +460,7 @@ void PerformanceKeyboardPanel::setSequence(std::optional<PresetMidiSequence> nex
     stopPlayback();
     stopRecording();
     releaseEditorAudition();
+    usePatternDuration = false;
     sequence = std::move(nextSequence);
     rebuildPlaybackEvents();
     if (sequence.has_value() && !sequence->notes.empty()) {
@@ -525,7 +526,7 @@ bool PerformanceKeyboardPanel::hasSequenceNotes() const {
 void PerformanceKeyboardPanel::auditionSequenceNote(
         int pitch, int velocity, bool noteOn) {
     if (noteOn) {
-        stopPlayback();
+        stopPlayback(false);
         releaseEditorAudition();
         eventSink.enqueueMidiMessage(MidiMessage::allSoundOff(1), MidiEventSource::EditorAudition);
         editorAuditionPitch = pitch;
@@ -547,40 +548,46 @@ void PerformanceKeyboardPanel::releaseEditorAudition() {
     }
 }
 
-void PerformanceKeyboardPanel::rebuildPlaybackEvents() {
+void PerformanceKeyboardPanel::rebuildPlaybackEvents(double startSeconds) {
     playbackEvents.clear();
     controlSchedulers.clear();
     if (!sequence.has_value()) {
         return;
     }
-    auto prepared = PatternPlaybackSchedule::prepare(*sequence);
+    auto prepared = PatternPlaybackSchedule::prepare(*sequence, startSeconds);
     playbackEvents = std::move(prepared.notes);
     controlSchedulers = std::move(prepared.controls);
 }
 
+double PerformanceKeyboardPanel::playbackLength() const {
+    return sequence.has_value() && (hasSequenceNotes() || usePatternDuration)
+            ? sequence->durationSeconds : (double) playbackDuration;
+}
+
 bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
+    const double startPosition = playbackPosition < playbackLength() ? playbackPosition : 0.0;
     releaseEditorAudition();
-    stopPlayback();
+    stopPlayback(false);
     stopRecording();
     nextPlaybackEvent = 0;
-    rebuildPlaybackEvents();
+    rebuildPlaybackEvents(startPosition);
     activePlaybackNoteCounts.fill(0);
     playbackNote = selectedPreviewNote;
-    progress = 0.f;
-    playbackStartedAtMilliseconds = nowMilliseconds;
+    playbackPosition = startPosition;
+    progress = (float) (startPosition / playbackLength());
+    playbackStartedAtMilliseconds = nowMilliseconds - startPosition * 1000.0;
+    const double scheduleOrigin = playbackStartedAtMilliseconds / 1000.0;
     playing = true;
     playButton.setButtonText("STOP");
     sendModWheelValue();
     for (const auto& wheel : extraWheels) {
         sendControllerValue(wheel->controller(), controllerValue(wheel->controller()));
     }
-    if (!scheduleControlEventsUntil(automationLookaheadSeconds,
-            nowMilliseconds / 1000.0)) {
+    if (!scheduleControlEventsUntil(startPosition + automationLookaheadSeconds, scheduleOrigin)) {
         stopPlayback();
         return false;
     }
-    if (hasSequenceNotes()
-            && !scheduleSequenceEvents(nowMilliseconds / 1000.0)) {
+    if (hasSequenceNotes() && !scheduleSequenceEvents(scheduleOrigin)) {
         stopPlayback();
         return false;
     }
@@ -588,16 +595,29 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
         keyboardState.noteOn(1, playbackNote, 0.8f);
     }
     if (sequence.has_value()) {
-        dispatchSequenceEvents(0.0);
+        dispatchSequenceEvents(startPosition);
     }
     startTimerHz(60);
     repaint();
     return true;
 }
 
+void PerformanceKeyboardPanel::seekPlayback(double seconds, double nowMilliseconds) {
+    const bool resume = playing;
+    stopPlayback(false);
+    usePatternDuration = sequence.has_value();
+    playbackPosition = jlimit(0.0, playbackLength(), seconds);
+    progress = jlimit(0.f, 1.f, (float) (playbackPosition / playbackLength()));
+    if (resume && playbackPosition < playbackLength()) {
+        startPlayback(nowMilliseconds);
+    }
+    repaint();
+}
+
 void PerformanceKeyboardPanel::togglePlayback() {
     if (playing) {
-        stopPlayback();
+        updatePlayback(Time::getMillisecondCounterHiRes());
+        stopPlayback(false);
         return;
     }
     startPlayback(Time::getMillisecondCounterHiRes());
@@ -622,6 +642,7 @@ void PerformanceKeyboardPanel::stopPlayback(bool resetProgress) {
     playButton.setButtonText("PLAY");
     if (resetProgress) {
         progress = 0.f;
+        playbackPosition = 0.0;
     }
     repaint();
 }
@@ -642,11 +663,8 @@ void PerformanceKeyboardPanel::updatePlayback(double nowMilliseconds) {
             return;
         }
     }
-    progress = jlimit(
-            0.f,
-            1.f,
-            (float) (elapsedSeconds / (hasSequenceNotes()
-                    ? sequence->durationSeconds : (double) playbackDuration)));
+    playbackPosition = jmin(playbackLength(), elapsedSeconds);
+    progress = (float) (playbackPosition / playbackLength());
     if (progress >= 1.f) {
         stopPlayback(false);
     }
@@ -832,9 +850,13 @@ void PerformanceKeyboardPanel::showSequenceEditor(
                 if (safeThis == nullptr) {
                     return;
                 }
+                const double position = safeThis->playbackPosition;
                 safeThis->setSequence(edited);
                 if (onEdit) {
                     onEdit(std::move(edited));
+                }
+                if (safeThis != nullptr) {
+                    safeThis->seekPlayback(position, Time::getMillisecondCounterHiRes());
                 }
             },
             [safeThis] {
@@ -851,12 +873,14 @@ void PerformanceKeyboardPanel::showSequenceEditor(
                 if (safeThis == nullptr || !safeThis->playing) {
                     return std::nullopt;
                 }
-                const double duration = safeThis->hasSequenceNotes()
-                        ? safeThis->sequence->durationSeconds
-                        : (double) safeThis->playbackDuration;
-                return duration * safeThis->progress;
+                return safeThis->playbackPosition;
             },
-            mappedControllers);
+            mappedControllers,
+            [safeThis](double seconds) {
+                if (safeThis != nullptr) {
+                    safeThis->seekPlayback(seconds, Time::getMillisecondCounterHiRes());
+                }
+            }, playbackPosition);
     auto* editorContent = editor.get();
     auto* parent = getTopLevelComponent();
     const auto* display = Desktop::getInstance().getDisplays().getDisplayForRect(parent->getScreenBounds());

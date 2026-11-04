@@ -480,3 +480,22 @@ TEST_CASE("Waveform colours round trip as presentation metadata without audio or
     REQUIRE(loaded.succeeded());
     REQUIRE(loaded.presentation.waveformColourStyle == "bullion");
 }
+
+TEST_CASE("Sequence grid tempo defaults for legacy patterns and validates saved BPM",
+        "[cycle-v2][preset][sequence][tempo][serialization]") {
+    const auto legacy = PresetPresentationCodec::readSequenceJSON(JSON::parse(R"({"durationSeconds":4})"));
+    REQUIRE(legacy.has_value());
+    REQUIRE(legacy->tempoBpm == 120.0);
+    PresetMidiSequence phrase = *legacy;
+    phrase.tempoBpm = 137.5;
+    const auto encoded = PresetPresentationCodec::writeSequenceJSON(phrase);
+    const auto restored = PresetPresentationCodec::readSequenceJSON(encoded);
+    REQUIRE(restored.has_value());
+    REQUIRE(restored->tempoBpm == 137.5);
+    for (const var& invalid : {var(0), var(301), var("120"), var(true),
+            var(std::numeric_limits<double>::infinity())}) {
+        auto malformed = encoded.clone();
+        malformed.getDynamicObject()->setProperty("tempoBpm", invalid);
+        REQUIRE_FALSE(PresetPresentationCodec::readSequenceJSON(malformed).has_value());
+    }
+}

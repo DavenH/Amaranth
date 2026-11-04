@@ -1,0 +1,26 @@
+{
+  "commands": [
+    {"command": "openGraph", "path": "../../cycle-v2/content/presets/sitar-pad.cyclegraph"},
+    {"command": "pointer", "targetId": "workspace.sidebar.patterns", "event": "click"},
+    {"command": "pointer", "targetId": "workspace.sidebar.pattern.factory-basic-keys", "event": "click"},
+    {"command": "pointer", "targetId": "PerformanceKeyboard.EditSequence", "event": "click"},
+    {"command": "snapshotState"},
+    {"command": "pointer", "area": "presetMidiEditor", "event": "down", "x": 322, "y": 98},
+    {"command": "pointer", "area": "presetMidiEditor", "event": "drag", "x": 452, "y": 98},
+    {"command": "pointer", "area": "presetMidiEditor", "event": "up", "x": 452, "y": 98},
+    {"command": "assertState", "path": "performance.previewPlaying", "equals": false},
+    {"command": "snapshotState"},
+    {"command": "key", "area": "presetMidiEditor", "key": "space"},
+    {"command": "assertState", "path": "performance.previewPlaying", "equals": true},
+    {"command": "pointer", "area": "presetMidiEditor", "event": "down", "x": 583, "y": 60},
+    {"command": "pointer", "area": "presetMidiEditor", "event": "drag", "x": 683, "y": 75},
+    {"command": "pointer", "area": "presetMidiEditor", "event": "up", "x": 683, "y": 75},
+    {"command": "assertState", "path": "performance.previewPlaying", "equals": true},
+    {"command": "snapshotState"},
+    {"command": "key", "area": "presetMidiEditor", "key": "space"},
+    {"command": "assertState", "path": "performance.previewPlaying", "equals": false},
+    {"command": "snapshotState"},
+    {"command": "key", "area": "presetMidiEditor", "key": "escape"}
+  ],
+  "quit": true
+}

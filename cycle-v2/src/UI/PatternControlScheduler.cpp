@@ -1,6 +1,7 @@
 #include "UI/PatternControlScheduler.h"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace CycleV2 {
@@ -16,8 +17,15 @@ void PatternControlScheduler::reset(
             });
     controller = nextController;
     durationSeconds = nextDurationSeconds;
-    nextStep = 0;
-    segment = 0;
+    seekTo(0.0);
+}
+
+void PatternControlScheduler::seekTo(double elapsedSeconds) {
+    nextTimeSeconds = juce::jlimit(0.0, durationSeconds, elapsedSeconds);
+    nextStep = (size_t) std::floor(nextTimeSeconds / stepSeconds) + 1;
+    const auto next = std::upper_bound(points.begin(), points.end(), nextTimeSeconds,
+            [](double time, const PresetMidiControl& point) { return time < point.timeSeconds; });
+    segment = next == points.begin() ? 0 : (size_t) std::distance(points.begin(), next) - 1;
     lastValue = -1;
 }
 
@@ -29,8 +37,8 @@ bool PatternControlScheduler::scheduleUntil(
         return true;
     }
     const double horizon = juce::jmin(elapsedSeconds, durationSeconds);
-    while ((double) nextStep * stepSeconds <= horizon) {
-        const double time = (double) nextStep * stepSeconds;
+    while (nextTimeSeconds <= horizon) {
+        const double time = nextTimeSeconds;
         while (segment + 1 < points.size()
                 && points[segment + 1].timeSeconds <= time) {
             ++segment;
@@ -57,7 +65,7 @@ bool PatternControlScheduler::scheduleUntil(
             }
             lastValue = value;
         }
-        ++nextStep;
+        nextTimeSeconds = (double) nextStep++ * stepSeconds;
     }
     return true;
 }

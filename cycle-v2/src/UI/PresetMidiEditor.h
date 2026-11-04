@@ -15,13 +15,15 @@ class PresetMidiEditor final :
 public:
     using ChangeCallback = std::function<void(PresetMidiSequence)>;
     using AuditionCallback = std::function<void(int, int, bool)>;
+    using SeekCallback = std::function<void(double)>;
     using PlaybackTimeCallback = std::function<std::optional<double>()>;
 
     PresetMidiEditor(PresetMidiSequence phrase, ChangeCallback callback,
             std::function<void()> togglePlayback = {},
             AuditionCallback audition = {},
             PlaybackTimeCallback playbackTime = {},
-            std::vector<int> mappedControllers = {});
+            std::vector<int> mappedControllers = {},
+            SeekCallback seek = {}, double initialPlaybackPosition = 0.0);
     ~PresetMidiEditor() override;
 
     juce::Rectangle<float> noteGrid() const;
@@ -29,6 +31,7 @@ public:
     juce::Rectangle<float> controlGrid() const;
     juce::Rectangle<float> controlGrid(int controller) const;
     juce::Rectangle<float> miniMap() const;
+    juce::Rectangle<float> playbackRuler() const;
     const std::vector<int>& controllerLanes() const { return controllers; }
 
     void paint(juce::Graphics& graphics) override;
@@ -67,7 +70,9 @@ private:
     juce::Range<int> overviewPitches() const;
     int noteAt(juce::Point<float> point) const;
     int velocityNoteAt(float x) const;
-    void navigateMiniMap(juce::Point<float> point);
+    void scrubPlayback(juce::Point<float> point);
+    void revealPlaybackCursor(double seconds);
+    double cursorPosition() const;
     void updateDurationRange();
     void extendDurationTo(double endTime);
     double minimumNoteDuration() const;
@@ -84,9 +89,12 @@ private:
     std::function<void()> onTogglePlayback;
     AuditionCallback onAudition;
     PlaybackTimeCallback playbackTime;
+    SeekCallback onSeek;
     juce::TextButton clearButton { "Clear" };
     SnapToggle snapButton;
     std::vector<int> controllers;
+    juce::Label tempoLabel;
+    juce::Slider tempoSlider;
     juce::Label durationLabel;
     juce::Slider durationSlider;
     int lowestPitch { 48 };
@@ -98,13 +106,15 @@ private:
     int auditionPitch { -1 };
     int timeOffsetSteps {};
     double minimumDurationSeconds { 0.01 };
-    double viewportDurationSeconds { 2.0 };
+    double cursorSeconds {};
     double durationBeforeDrag {};
     float horizontalWheelRemainder {};
     float verticalWheelRemainder {};
     juce::Point<float> gestureStart;
     PresetMidiNote originalNote;
-    bool draggingMiniMap {};
+    std::optional<PresetMidiNote> lastEditedNote;
+    bool draggingPlayback {};
+    bool draggingOverview {};
     bool resizingNote {};
     bool draggingDuration {};
     bool velocitySelected {};

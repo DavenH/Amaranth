@@ -40,10 +40,14 @@ struct PresetMidiControl {
 struct PresetMidiSequence {
     static constexpr size_t maximumEventsPerLane = 512;
     static constexpr double maximumDurationSeconds = 120.0;
+    static constexpr double minimumTempoBpm = 20.0;
+    static constexpr double maximumTempoBpm = 300.0;
 
     double durationSeconds { 4.0 };
     std::vector<PresetMidiNote> notes;
     std::vector<PresetMidiControl> controls;
+
+    double tempoBpm { 120.0 };
 
     bool empty() const { return notes.empty() && controls.empty(); }
 };

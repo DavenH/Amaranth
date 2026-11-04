@@ -15,15 +15,17 @@ PresetMidiEditor::PresetMidiEditor(
         std::function<void()> togglePlayback,
         AuditionCallback auditionCallback,
         PlaybackTimeCallback playbackTimeCallback,
-        std::vector<int> mappedControllers) :
+        std::vector<int> mappedControllers,
+        SeekCallback seek, double initialPlaybackPosition) :
         sequence(std::move(phrase))
     ,   onChange(std::move(callback))
     ,   onTogglePlayback(std::move(togglePlayback))
     ,   onAudition(std::move(auditionCallback))
-    ,   playbackTime(std::move(playbackTimeCallback)) {
+    ,   playbackTime(std::move(playbackTimeCallback))
+    ,   onSeek(std::move(seek))
+    ,   cursorSeconds(jlimit(0.0, sequence.durationSeconds, initialPlaybackPosition)) {
     setName("PresetMidiEditor");
     setSize(1120, 820);
-    viewportDurationSeconds = jmax(0.25, sequence.durationSeconds * 0.5);
     setWantsKeyboardFocus(true);
     addAndMakeVisible(clearButton);
     addAndMakeVisible(snapButton);
@@ -38,6 +40,23 @@ PresetMidiEditor::PresetMidiEditor(
             grabKeyboardFocus();
         }
         repaint();
+    };
+    addAndMakeVisible(tempoLabel);
+    addAndMakeVisible(tempoSlider);
+    tempoLabel.setText("BPM", dontSendNotification);
+    tempoLabel.setColour(Label::textColourId, CanvasChromePalette::mutedText);
+    tempoLabel.setFont(FontOptions(10.f, Font::bold));
+    tempoSlider.setName("PresetMidiEditor.Tempo");
+    tempoSlider.setLookAndFeel(&propertyControlLookAndFeel());
+    tempoSlider.setSliderStyle(Slider::IncDecButtons);
+    tempoSlider.setTextBoxStyle(Slider::TextBoxLeft, false, 56, 22);
+    tempoSlider.setRange(PresetMidiSequence::minimumTempoBpm, PresetMidiSequence::maximumTempoBpm, 0.1);
+    tempoSlider.setValue(sequence.tempoBpm, dontSendNotification);
+    tempoSlider.setTooltip("Grid tempo; existing note and automation times stay unchanged");
+    tempoSlider.onValueChange = [this] {
+        sequence.tempoBpm = tempoSlider.getValue();
+        timeOffsetSteps = jmin(timeOffsetSteps, maximumTimeOffsetSteps());
+        publish();
     };
     addAndMakeVisible(durationLabel);
     addAndMakeVisible(durationSlider);
@@ -74,7 +93,7 @@ PresetMidiEditor::PresetMidiEditor(
         sequence.durationSeconds = jmax(
                 minimumDurationSeconds, durationSlider.getValue());
         durationSlider.setValue(sequence.durationSeconds, dontSendNotification);
-        viewportDurationSeconds = jmax(0.25, sequence.durationSeconds * 0.5);
+        cursorSeconds = jmin(cursorSeconds, sequence.durationSeconds);
         timeOffsetSteps = jmin(timeOffsetSteps, maximumTimeOffsetSteps());
         if (draggingDuration) {
             repaint();
@@ -99,6 +118,7 @@ PresetMidiEditor::PresetMidiEditor(
         }
         lowestPitch = jlimit(0, 104, (lowest + highest - 23) / 2);
     }
+    revealPlaybackCursor(cursorSeconds);
     if (playbackTime) {
         startTimerHz(30);
     }
@@ -106,11 +126,14 @@ PresetMidiEditor::PresetMidiEditor(
 
 PresetMidiEditor::~PresetMidiEditor() {
     durationSlider.setLookAndFeel(nullptr);
+    tempoSlider.setLookAndFeel(nullptr);
     releaseAudition();
 }
 
 void PresetMidiEditor::resized() {
     clearButton.setBounds(getWidth() - 82, 8, 64, 24);
+    tempoLabel.setBounds(173, 9, 34, 22);
+    tempoSlider.setBounds(207, 8, 100, 24);
     snapButton.setBounds(getWidth() - 390, 8, 84, 26);
     durationLabel.setBounds(getWidth() - 293, 9, 52, 22);
     durationSlider.setBounds(getWidth() - 240, 8, 148, 24);
@@ -133,16 +156,27 @@ void PresetMidiEditor::configureControllers(std::vector<int> mappedControllers) 
 void PresetMidiEditor::timerCallback() {
     const auto position = playbackTime ? playbackTime() : std::optional<double> {};
     if (position.has_value()) {
-        if (*position >= timeOffset() + visibleDuration()
-                && timeOffsetSteps < maximumTimeOffsetSteps()) {
-            timeOffsetSteps = jlimit(0, maximumTimeOffsetSteps(),
-                    (int) (*position / gridStep()) - 12);
+        cursorSeconds = jlimit(0.0, sequence.durationSeconds, *position);
+        if (!draggingPlayback) {
+            revealPlaybackCursor(cursorSeconds);
         }
         repaint();
     } else if (wasPlaybackActive) {
         repaint();
     }
     wasPlaybackActive = position.has_value();
+}
+
+double PresetMidiEditor::cursorPosition() const {
+    const auto position = playbackTime ? playbackTime() : std::optional<double> {};
+    return jlimit(0.0, sequence.durationSeconds, position.value_or(cursorSeconds));
+}
+
+void PresetMidiEditor::revealPlaybackCursor(double seconds) {
+    if (seconds < timeOffset() || seconds >= timeOffset() + visibleDuration()) {
+        timeOffsetSteps = jlimit(0, maximumTimeOffsetSteps(),
+                (int) (seconds / gridStep()) - 8);
+    }
 }
 
 void PresetMidiEditor::audition(int pitch, int velocity) {
@@ -236,27 +270,25 @@ int PresetMidiEditor::velocityNoteAt(float x) const {
     return closest;
 }
 
-void PresetMidiEditor::navigateMiniMap(Point<float> point) {
+void PresetMidiEditor::scrubPlayback(Point<float> point) {
     const auto map = miniMap();
-    const auto pitches = overviewPitches();
-    const float x = jlimit(0.f, 1.f,
-            (point.x - map.getX()) / map.getWidth());
-    const float y = jlimit(0.f, 1.f,
-            (point.y - map.getY()) / map.getHeight());
-    const double centreTime = sequence.durationSeconds * x;
-    timeOffsetSteps = jlimit(0, maximumTimeOffsetSteps(),
-            roundToInt((centreTime - visibleDuration() * 0.5) / gridStep()));
-    const int centrePitch = roundToInt(pitches.getEnd()
-            - pitches.getLength() * y);
-    lowestPitch = jlimit(0, 104, centrePitch - 12);
-    horizontalWheelRemainder = 0.f;
-    verticalWheelRemainder = 0.f;
+    const double seconds = draggingOverview
+            ? sequence.durationSeconds * jlimit(0.0, 1.0,
+                    (double) (point.x - map.getX()) / map.getWidth())
+            : rawTimeAt(point.x);
+    cursorSeconds = jlimit(0.0, sequence.durationSeconds, seconds);
+    if (onSeek) {
+        onSeek(cursorSeconds);
+    }
+    if (draggingOverview) {
+        revealPlaybackCursor(cursorSeconds);
+    }
     repaint();
 }
 
 void PresetMidiEditor::mouseMove(const MouseEvent& event) {
-    if (miniMap().contains(event.position)) {
-        setMouseCursor(MouseCursor::DraggingHandCursor);
+    if (miniMap().contains(event.position) || playbackRuler().contains(event.position)) {
+        setMouseCursor(MouseCursor::LeftRightResizeCursor);
         return;
     }
     if (velocityGrid().contains(event.position)
@@ -285,11 +317,14 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
     activeNote = -1;
     activeVelocity = -1;
     activeControl = -1;
-    draggingMiniMap = false;
+    draggingPlayback = false;
     pendingChange = false;
-    if (miniMap().contains(event.position)) {
-        draggingMiniMap = true;
-        navigateMiniMap(event.position);
+    if (!event.mods.isRightButtonDown()
+            && (miniMap().contains(event.position) || playbackRuler().contains(event.position))) {
+        releaseAudition();
+        draggingPlayback = true;
+        draggingOverview = miniMap().contains(event.position);
+        scrubPlayback(event.position);
         return;
     }
     if (velocityGrid().contains(event.position)) {
@@ -367,11 +402,12 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
     if (event.mods.isRightButtonDown()) {
         return;
     }
-    const double step = gridStep();
+    const double duration = lastEditedNote.has_value() ? lastEditedNote->durationSeconds : gridStep();
+    const int velocity = lastEditedNote.has_value() ? lastEditedNote->velocity : 100;
     const double start = jmin(timeAt(event.position.x),
-            PresetMidiSequence::maximumDurationSeconds - step);
-    sequence.notes.push_back({ pitch, 100, start, step });
-    extendDurationTo(start + step);
+            PresetMidiSequence::maximumDurationSeconds - duration);
+    sequence.notes.push_back({ pitch, velocity, start, duration });
+    extendDurationTo(start + duration);
     activeNote = (int) sequence.notes.size() - 1;
     selectedNote = activeNote;
     originalNote = sequence.notes.back();
@@ -383,8 +419,8 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
 }
 
 void PresetMidiEditor::mouseDrag(const MouseEvent& event) {
-    if (draggingMiniMap) {
-        navigateMiniMap(event.position);
+    if (draggingPlayback) {
+        scrubPlayback(event.position);
         return;
     }
     if (activeVelocity >= 0) {
@@ -433,11 +469,15 @@ void PresetMidiEditor::mouseDrag(const MouseEvent& event) {
 }
 
 void PresetMidiEditor::mouseUp(const MouseEvent&) {
+    const int edited = activeVelocity >= 0 ? activeVelocity : activeNote;
+    if (edited >= 0 && edited < (int) sequence.notes.size()) {
+        lastEditedNote = sequence.notes[(size_t) edited];
+    }
     releaseAudition();
     activeNote = -1;
     activeVelocity = -1;
     activeControl = -1;
-    draggingMiniMap = false;
+    draggingPlayback = false;
     if (pendingChange) {
         pendingChange = false;
         publish();
@@ -485,6 +525,7 @@ bool PresetMidiEditor::keyPressed(const KeyPress& key) {
         return transposeNotes(key.getKeyCode() == KeyPress::upKey ? 1 : -1);
     }
     if (key == KeyPress::spaceKey) {
+        cursorSeconds = cursorPosition();
         if (onTogglePlayback) {
             onTogglePlayback();
         }
@@ -512,6 +553,7 @@ bool PresetMidiEditor::keyPressed(const KeyPress& key) {
         auto& velocity = sequence.notes[(size_t) selectedNote].velocity;
         velocity = jlimit(1, 127,
                 velocity + (key == KeyPress::upKey ? 1 : -1));
+        lastEditedNote = sequence.notes[(size_t) selectedNote];
         publish();
         return true;
     }
@@ -557,6 +599,7 @@ void PresetMidiEditor::mouseWheelMove(
 
 void PresetMidiEditor::publish() {
     updateDurationRange();
+    cursorSeconds = cursorPosition();
     repaint();
     if (onChange) {
         onChange(sequence);
