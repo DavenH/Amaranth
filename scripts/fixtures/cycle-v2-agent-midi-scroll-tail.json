@@ -1,0 +1,22 @@
+{
+  "commands": [
+    {"command": "openGraph", "path": "../../cycle-v2/resources/default.cyclegraph"},
+    {"command": "setPresetSequence", "sequence": {
+      "durationSeconds": 4.0,
+      "tempoBpm": 120.0,
+      "notes": [{"pitch": 60, "velocity": 100, "startSeconds": 2.5, "durationSeconds": 0.5}],
+      "controls": []
+    }},
+    {"command": "pointer", "targetId": "PerformanceKeyboard.EditSequence", "event": "click"},
+    {"command": "exportGraph", "path": "../../.context/midi-scroll-tail-before.cyclegraph"},
+    {"command": "screenshot", "area": "presetMidiEditor", "path": "../../.context/midi-scroll-tail-before.png"},
+    {"command": "pointer", "area": "presetMidiEditor", "event": "wheel", "x": 500, "y": 300, "deltaX": -1000, "deltaY": 0},
+    {"command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 1},
+    {"command": "assertState", "path": "performance.previewSequenceControlCount", "equals": 0},
+    {"command": "assertState", "path": "performance.previewPlaying", "equals": false},
+    {"command": "exportGraph", "path": "../../.context/midi-scroll-tail-after.cyclegraph"},
+    {"command": "screenshot", "area": "presetMidiEditor", "path": "../../.context/midi-scroll-tail-after.png"},
+    {"command": "key", "area": "presetMidiEditor", "key": "escape"}
+  ],
+  "quit": true
+}

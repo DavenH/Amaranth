@@ -174,7 +174,7 @@ double PresetMidiEditor::cursorPosition() const {
 
 void PresetMidiEditor::revealPlaybackCursor(double seconds) {
     if (seconds < timeOffset() || seconds >= timeOffset() + visibleDuration()) {
-        timeOffsetSteps = jlimit(0, maximumTimeOffsetSteps(),
+        timeOffsetSteps = jlimit(0, timeOffsetLimit(sequence.durationSeconds),
                 (int) (seconds / gridStep()) - 8);
     }
 }
@@ -198,21 +198,24 @@ void PresetMidiEditor::releaseAudition() {
 }
 
 void PresetMidiEditor::updateDurationRange() {
-    double lastEvent = 0.01;
+    double lastEvent = 0.0;
     for (const auto& note : sequence.notes) {
         lastEvent = jmax(lastEvent, note.startSeconds + note.durationSeconds);
     }
     for (const auto& control : sequence.controls) {
         lastEvent = jmax(lastEvent, control.timeSeconds);
     }
-    minimumDurationSeconds = lastEvent;
-    sequence.durationSeconds = jmax(sequence.durationSeconds, lastEvent);
+    contentEndSeconds = lastEvent;
+    minimumDurationSeconds = jmax(0.01, lastEvent);
+    sequence.durationSeconds = jmax(sequence.durationSeconds, minimumDurationSeconds);
     durationSlider.setRange(0.01,
             PresetMidiSequence::maximumDurationSeconds, 0.01);
     durationSlider.setValue(sequence.durationSeconds, dontSendNotification);
 }
 
 void PresetMidiEditor::extendDurationTo(double endTime) {
+    contentEndSeconds = jmax(contentEndSeconds,
+            jmin(PresetMidiSequence::maximumDurationSeconds, endTime));
     sequence.durationSeconds = jmax(sequence.durationSeconds,
             jmin(PresetMidiSequence::maximumDurationSeconds, endTime));
     durationSlider.setValue(sequence.durationSeconds, dontSendNotification);

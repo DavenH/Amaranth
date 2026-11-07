@@ -83,3 +83,34 @@ Verification
 - Sizes: editor566->609, view399->388, panel1024->1048, note scheduler45->50,
   controller scheduler65->73. Deletion targets are complete: no overview viewport
   rectangle/navigation or duration-derived beat/snap mapping remains.
+
+## Two-measure authoring buffer (2026-11-07)
+
+Add two measures of empty horizontal scroll range after the last note end or
+controller event at the current saved tempo. Keep longer explicit saved timelines
+reachable and preserve the existing duration cap. Scrolling is ephemeral; only
+authored events extend saved duration through the existing gesture/commit path.
+
+Reuse the content scan already performed by updateDurationRange, cache its actual
+endpoint, and update that bound in O(1) during extension gestures. Wheel updates
+stay O(1), independent of note count and unrelated graph content. Keep playback
+cursor framing within the authored timeline so overview/ruler seek behavior does
+not change merely because free scroll now has extra space. Test at multiple
+tempos, after new content, with later automation, empty data and the duration cap.
+This interaction change is separate from the proposed visual editor redesign.
+
+Completed: exact Debug/Release apps and tests build. Focused authoring, keyboard
+and scheduler tests pass 1,151 assertions in 56 cases. Added cases cover 60/120/240
+BPM, repeated extension with refreshed padding, automation after notes, empty
+patterns, one publication per gesture and the 120-second cap. Existing overview
+seek and authoring projection tests retain their behavior. The editor is 612
+lines, its view 394, and header 127; policy stays in the existing editor owners.
+
+The 12-command cycle-v2-agent-midi-scroll-tail.json app fixture passes. Its last
+note ends at 3 seconds, and the scrolled ruler reaches 7 seconds at 120 BPM;
+before/after exports are byte-identical. Software captures of this JUCE 2D
+editor were inspected. Evidence: .context/midi-scroll-tail-tests.log,
+.context/midi-scroll-tail-native.log, .context/midi-scroll-tail-after.png and
+.context/midi-scroll-tail-before/after.cyclegraph. Code-map, architecture audit,
+production style/diff and whitespace checks pass; no new incidental crashes or
+runtime assertions were observed.

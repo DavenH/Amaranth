@@ -100,8 +100,14 @@ double PresetMidiEditor::timeOffset() const {
 }
 
 int PresetMidiEditor::maximumTimeOffsetSteps() const {
+    const double end = jmin(PresetMidiSequence::maximumDurationSeconds,
+            jmax(sequence.durationSeconds, contentEndSeconds + visibleDuration() * 2.0));
+    return timeOffsetLimit(end);
+}
+
+int PresetMidiEditor::timeOffsetLimit(double endSeconds) const {
     return jmax(0, (int) std::ceil(
-            (sequence.durationSeconds - visibleDuration()) / gridStep()));
+            (endSeconds - visibleDuration()) / gridStep()));
 }
 
 double PresetMidiEditor::timeAt(float x) const {

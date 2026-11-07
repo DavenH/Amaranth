@@ -66,6 +66,7 @@ private:
     double gridStep() const;
     double timeOffset() const;
     int maximumTimeOffsetSteps() const;
+    int timeOffsetLimit(double endSeconds) const;
     int velocityAt(float y) const;
     juce::Range<int> overviewPitches() const;
     int noteAt(juce::Point<float> point) const;
@@ -106,6 +107,7 @@ private:
     int auditionPitch { -1 };
     int timeOffsetSteps {};
     double minimumDurationSeconds { 0.01 };
+    double contentEndSeconds {};
     double cursorSeconds {};
     double durationBeforeDrag {};
     float horizontalWheelRemainder {};

@@ -630,3 +630,83 @@ TEST_CASE("New notes inherit the last touched note length and edited velocity",
     REQUIRE(changed.notes.back().pitch == 62);
     REQUIRE(changed.notes.back().startSeconds == 1.375);
 }
+
+TEST_CASE("Piano roll keeps two tempo-aware measures available beyond authored content",
+        "[cycle-v2][preset][sequence][editor][scroll-tail]") {
+    ScopedJuceInitialiser_GUI gui;
+    for (const double bpm : { 60.0, 120.0, 240.0 }) {
+        PresetMidiSequence phrase;
+        phrase.tempoBpm = bpm;
+        phrase.durationSeconds = 4.0;
+        phrase.notes.push_back({ 60, 100, 2.5, 0.5 });
+        PresetMidiSequence changed;
+        int publications = 0;
+        PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+            changed = std::move(next);
+            ++publications;
+        });
+        const auto grid = editor.noteGrid();
+        const Point<float> emptyRow(grid.getX() + 0.01f, grid.getY() + grid.getHeight() / 48.f);
+        MouseWheelDetails wheel {};
+        wheel.deltaX = -1000.f;
+        editor.mouseWheelMove(pointer(editor, emptyRow), wheel);
+        REQUIRE(publications == 0);
+        editor.mouseDown(pointer(editor, emptyRow));
+        REQUIRE(publications == 0);
+        editor.mouseUp(pointer(editor, emptyRow));
+        REQUIRE(publications == 1);
+        REQUIRE(changed.notes.size() == 2);
+        const double measure = 240.0 / bpm;
+        REQUIRE(std::abs(changed.notes.back().startSeconds - (3.0 + measure)) < 0.00001);
+        REQUIRE(std::abs(changed.durationSeconds - (3.0 + measure + 15.0 / bpm)) < 0.00001);
+
+        editor.mouseWheelMove(pointer(editor, emptyRow), wheel);
+        REQUIRE(publications == 1);
+        editor.mouseDown(pointer(editor, emptyRow));
+        editor.mouseUp(pointer(editor, emptyRow));
+        REQUIRE(publications == 2);
+        REQUIRE(std::abs(changed.notes.back().startSeconds - (3.0 + 2.0 * measure + 15.0 / bpm)) < 0.00001);
+    }
+}
+
+TEST_CASE("Piano-roll scroll space respects automation tails empty patterns and duration cap",
+        "[cycle-v2][preset][sequence][editor][scroll-tail]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes.push_back({ 60, 100, 2.5, 0.5 });
+    double expectedStart = 12.0;
+    SECTION("Automation after the final note remains reachable with two measures beyond it") {
+        phrase.controls.push_back({ 1, 80, 10.0 });
+    }
+    SECTION("Empty patterns have two blank measures without a floating-point extra grid step") {
+        phrase.notes.clear();
+        phrase.durationSeconds = 0.01;
+        expectedStart = 2.0;
+    }
+    SECTION("Scrolling cannot author beyond the existing duration cap") {
+        phrase.durationSeconds = PresetMidiSequence::maximumDurationSeconds;
+        phrase.notes[0].startSeconds = phrase.durationSeconds - 0.5;
+        expectedStart = phrase.durationSeconds - 0.125;
+    }
+    PresetMidiSequence changed;
+    int publications = 0;
+    PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+        changed = std::move(next);
+        ++publications;
+    });
+    const auto grid = editor.noteGrid();
+    Point<float> point(grid.getX() + 0.01f, grid.getY() + grid.getHeight() / 48.f);
+    if (phrase.durationSeconds == PresetMidiSequence::maximumDurationSeconds) {
+        point.x = grid.getRight() - 0.01f;
+    }
+    MouseWheelDetails wheel {};
+    wheel.deltaX = -1000.f;
+    editor.mouseWheelMove(pointer(editor, point), wheel);
+    REQUIRE(publications == 0);
+    editor.mouseDown(pointer(editor, point));
+    editor.mouseUp(pointer(editor, point));
+    REQUIRE(publications == 1);
+    REQUIRE(std::abs(changed.notes.back().startSeconds - expectedStart) < 0.00001);
+    REQUIRE(changed.durationSeconds <= PresetMidiSequence::maximumDurationSeconds);
+}
