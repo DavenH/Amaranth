@@ -125,3 +125,44 @@ Native captures were reviewed with the frame removed and clean key edges.
 Code-map, architecture audit, production diff/style and whitespace checks pass.
 Evidence: `.context/keyboard-refinement-before.log`,
 `.context/keyboard-refinement-tests.log`, and `.context/keyboard-refinement/`.
+
+## Mainline integration
+
+Merge origin/master (#202) while retaining the three-octave performance bar.
+Incoming MIDI authoring, continuous playhead seeking and timestamp-ordered CC
+seeds stay with their existing editor/transport/scheduler owners. Keep toggle
+state for the new Play icon instead of restoring the old STOP text.
+
+Use the incoming RealtimeGraphRenderer voicePlaybackFrame as the authoritative
+voice clock for both Spy exports and the performance preview. Remove the two
+redundant accumulated waveform clocks; translate shared age/release timestamps
+to the existing normalized waveform positions only when publishing cursor data.
+Rename the small waveform-position carrier to avoid colliding with the incoming
+voice telemetry type. No realtime allocation or additional DSP rendering.
+Tests retain both branches' voice telemetry/retirement cases and compare the
+waveform positions with the common clock. RealtimeGraphRenderer is 827 lines:
+event/voice lifecycle, realtime mixing and bounded telemetry remain cohesive;
+the merge adds no new clock or scheduler owner. The panel stays at 643 lines
+and its header 286, retaining the extracted key/chrome responsibilities.
+
+The branch had 14 tracked patterns; mainline adds 25 saved patterns. Bright Lead8
+already referenced user-491e097a01694be28b5e650838472c2d before this UI work, but
+the file was absent until #202. None of this branch's toolbar commits modified
+the pattern files. After merging, all 223 preset links resolve against 39 pattern
+files. Local uncommitted Bright Lead8/Itch edits are backed up before merging and
+will be restored without replacing upstream preset changes.
+
+Verification: exact Debug/Release apps and tests build. The focused MIDI,
+pattern, authoring, cursor and Spy-movie selection passes 23,888 assertions in
+82 cases. The incoming playhead fixture passes all 22 commands after filtering
+Keys to keep its factory row visible in the larger library. The native waveform
+check passes terminal-key input, CC gesture deferral, polyphony, cache stability,
+edit/undo and resizing with the shared voice clock. Its process lookup now uses
+the coordinator's exact scoped PID/socket record. The broader 137-case run has
+seven failures, all reproduced with the unmodified upstream renderer and recorded
+in audio-bugs.md. Source restoration was hash-verified and the merged test binary
+rebuilt before the passing focused run.
+
+Code-map, architecture size review, production style/diff and whitespace checks
+pass. Evidence is in `.context/merge-mainline/`, including pattern-history and
+reference audits, focused/baseline logs and waveform native results.

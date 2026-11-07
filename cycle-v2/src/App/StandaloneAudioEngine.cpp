@@ -73,6 +73,7 @@ void StandaloneAudioEngine::stop() {
     releaseMidiSource(MidiEventSource::PerformanceKeyboard);
     releaseMidiSource(MidiEventSource::Hardware);
     releaseMidiSource(MidiEventSource::PatternPlayback);
+    releaseMidiSource(MidiEventSource::EditorAudition);
     deviceManager.removeMidiInputDeviceCallback({}, this);
     deviceManager.removeAudioCallback(this);
     if (deviceProperties != nullptr) {

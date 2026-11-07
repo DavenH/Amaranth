@@ -118,6 +118,26 @@ void RealtimeGraphRenderer::setPreparedGraph(PreparedGraph* graph) {
             std::memory_order_release);
 }
 
+VoicePlaybackFrame RealtimeGraphRenderer::voicePlaybackFrame(double timeSeconds) const {
+    VoicePlaybackFrame frame;
+    if (preparedGraph == nullptr) {
+        return frame;
+    }
+    const double duration = voiceDurationSecondsFor(preparedGraph->plan,
+            voiceDurationOverrideSeconds.load(std::memory_order_acquire));
+    for (const auto& voice : voices) {
+        if (voice.active) {
+            frame.voices[frame.count++] = {
+                    voice.startOrder, voice.noteNumber,
+                    jmax(0., timeSeconds - voice.startedAtSeconds),
+                    voice.released ? jmax(0., timeSeconds - voice.releasedAtSeconds) : 0.,
+                    duration, voice.released
+            };
+        }
+    }
+    return frame;
+}
+
 void RealtimeGraphRenderer::setVoiceDurationSeconds(float durationSeconds) {
     voiceDurationOverrideSeconds.store(
             jmax(durationSeconds, 0.001f),
@@ -131,7 +151,8 @@ uint64_t RealtimeGraphRenderer::process(
         int frameCount,
         double sampleRate,
         double callbackStartSeconds,
-        AudioPerformanceMetrics::RealtimeSample* performanceSample) {
+        AudioPerformanceMetrics::RealtimeSample* performanceSample,
+        VoicePlaybackCapture* playback) {
     const uint64_t callback = callbackCounter.fetch_add(
             1,
             std::memory_order_relaxed) + 1;
@@ -176,6 +197,7 @@ uint64_t RealtimeGraphRenderer::process(
                 performanceSample,
                 AudioPerformanceMetrics::Stage::BlockSetup);
         currentSampleRate = sampleRate;
+        currentBlockStartSeconds = callbackStartSeconds;
         beginBlock();
     }
 
@@ -187,7 +209,8 @@ uint64_t RealtimeGraphRenderer::process(
                 events,
                 frameCount,
                 sampleRate,
-                callbackStartSeconds);
+                callbackStartSeconds,
+                playback);
         if (performanceSample != nullptr) {
             performanceSample->dequeuedMidiEventCount = counts.dequeuedEvents;
             performanceSample->sortedMidiItemCount = counts.sortedItems;
@@ -204,6 +227,7 @@ uint64_t RealtimeGraphRenderer::process(
             frameCount,
             sampleRate,
             performanceSample);
+    capturePlaybackBefore(playback, (size_t) frameCount);
 
     {
         AudioPerformanceMetrics::ScopedRealtimeStage stage(
@@ -226,8 +250,6 @@ void RealtimeGraphRenderer::resetVoices(bool resetControls) {
         voice.active = false;
         voice.released = false;
         voice.normalizedTime = 0.f;
-        voice.elapsedVoiceTime = 0.f;
-        voice.releaseVoiceTime = -1.f;
     }
     scheduledEventCount = 0;
     pendingStolenNoteOffs = {};
@@ -260,16 +282,14 @@ RealtimeGraphRenderer::consumeEvents(
         RealtimeMidiEventQueue& queue,
         int frameCount,
         double sampleRate,
-        double callbackStartSeconds) {
+        double callbackStartSeconds,
+        VoicePlaybackCapture* playback) {
     MidiSchedulingOperationCounts counts;
-    if (queue.consumeRecoveryRequest(MidiEventSource::PerformanceKeyboard)) {
-        releaseSource(MidiEventSource::PerformanceKeyboard, 0);
-    }
-    if (queue.consumeRecoveryRequest(MidiEventSource::Hardware)) {
-        releaseSource(MidiEventSource::Hardware, 0);
-    }
-    if (queue.consumeRecoveryRequest(MidiEventSource::PatternPlayback)) {
-        releaseSource(MidiEventSource::PatternPlayback, 0);
+    for (size_t index = 0; index < RealtimeMidiEventQueue::sourceCount; ++index) {
+        const auto source = (MidiEventSource) index;
+        if (queue.consumeRecoveryRequest(source)) {
+            releaseSource(source, 0);
+        }
     }
 
     const uint32_t currentPatternGeneration = queue.generation(
@@ -320,6 +340,7 @@ RealtimeGraphRenderer::consumeEvents(
                 0,
                 frameCount - 1,
                 roundToInt(relativeSamples));
+        capturePlaybackBefore(playback, sampleOffset);
         if (queue.isCurrent(scheduled)) {
             applyEvent(scheduled, sampleOffset);
         }
@@ -334,7 +355,21 @@ RealtimeGraphRenderer::consumeEvents(
                 scheduledEvents.begin());
         scheduledEventCount -= consumedCount;
     }
+    capturePlaybackBefore(playback, (size_t) frameCount - 1);
     return counts;
+}
+
+void RealtimeGraphRenderer::capturePlaybackBefore(VoicePlaybackCapture* playback, size_t sampleOffset) {
+    if (playback == nullptr) {
+        return;
+    }
+    while (playback->next < playback->count
+            && playback->samples[playback->next] - playback->sampleOrigin < sampleOffset) {
+        const auto offset = playback->samples[playback->next] - playback->sampleOrigin;
+        playback->frames[playback->next] = voicePlaybackFrame(
+                currentBlockStartSeconds + offset / currentSampleRate);
+        ++playback->next;
+    }
 }
 
 void RealtimeGraphRenderer::applyEvent(
@@ -403,6 +438,7 @@ void RealtimeGraphRenderer::applyEvent(
                         sampleOffset,
                         oldestMatchingVoice->context.voiceIndex
                 });
+                oldestMatchingVoice->releasedAtSeconds = currentBlockStartSeconds + sampleOffset / currentSampleRate;
                 oldestMatchingVoice->released = true;
             }
             return;
@@ -448,6 +484,7 @@ void RealtimeGraphRenderer::releaseSource(
                 sampleOffset,
                 voice.context.voiceIndex
         });
+        voice.releasedAtSeconds = currentBlockStartSeconds + sampleOffset / currentSampleRate;
         voice.released = true;
         voice.notes.reset();
     }
@@ -474,6 +511,7 @@ void RealtimeGraphRenderer::resetSource(
                 sampleOffset,
                 voice.context.voiceIndex
         });
+        voice.releasedAtSeconds = currentBlockStartSeconds + sampleOffset / currentSampleRate;
         voice.released = true;
         voice.notes.reset();
     }
@@ -529,8 +567,8 @@ RealtimeGraphRenderer::Voice& RealtimeGraphRenderer::allocateVoice(
     }
     selected->velocity = (float) event.data2 / 127.f;
     selected->normalizedTime = 0.f;
-    selected->elapsedVoiceTime = 0.f;
-    selected->releaseVoiceTime = -1.f;
+    selected->startedAtSeconds = currentBlockStartSeconds + sampleOffset / currentSampleRate;
+    selected->releasedAtSeconds = 0.;
     selected->playbackCursor = {};
     selected->active = true;
     selected->released = false;
@@ -603,10 +641,8 @@ void RealtimeGraphRenderer::renderVoices(
             if (!voice.active) {
                 continue;
             }
-            voice.context.controls.noteNumber = jlimit(
-                    0,
-                    127,
-                    voice.blockStartNote + controlNoteOffset);
+            voice.context.controls.noteNumber = jlimit(0, 127, voice.blockStartNote + controlNoteOffset);
+            voice.context.controls.keyScaleNote = keyScaleNoteOverride;
             voice.context.oscillatorNoteNumber = preparedGraph->monophonicLegato
                     ? voice.oscillatorNoteNumber : voice.noteNumber;
             if (preparedGraph->monophonicLegato) {
@@ -637,10 +673,6 @@ void RealtimeGraphRenderer::renderVoices(
                     measuredOperations);
 
             voice.context.playbackCursor = nullptr;
-            if (voice.released && voice.releaseVoiceTime < 0.f) {
-                voice.releaseVoiceTime = voice.elapsedVoiceTime;
-            }
-            voice.elapsedVoiceTime += (float) (timeIncrement * (double) frameCount);
             voice.normalizedTime = jmin(
                     1.f,
                     voice.normalizedTime
@@ -650,14 +682,20 @@ void RealtimeGraphRenderer::renderVoices(
                 voice.active = false;
             }
             if (voice.active) {
-                cursorFrame.timeline[cursorFrame.timelineCount++] = {
-                        voice.elapsedVoiceTime, voice.releaseVoiceTime };
                 if (cursor.hasMorph || cursor.hasEnvelopeTime) {
                     cursorFrame.voices[cursorFrame.count++] = cursor;
                 }
                 ++activeCount;
             }
         }
+    }
+    const auto playback = voicePlaybackFrame(currentBlockStartSeconds + frameCount / sampleRate);
+    for (size_t index = 0; index < playback.count; ++index) {
+        const auto& voice = playback.voices[index];
+        cursorFrame.timeline[cursorFrame.timelineCount++] = {
+                (float) (voice.ageSeconds / voice.durationSeconds),
+                voice.released ? (float) ((voice.ageSeconds - voice.releaseAgeSeconds) / voice.durationSeconds) : -1.f
+        };
     }
     cursorExchange.publish(cursorFrame);
     if (performanceSample != nullptr) {

@@ -26,7 +26,8 @@ PreviewControlContext previewContextForVoice(
     PreviewControlContext context;
     context.voiceTime = voice.controls.normalizedVoiceTime;
     context.velocity = voice.controls.velocity;
-    context.noteNumber = voice.controls.noteNumber + noteOffset;
+    context.noteNumber = (voice.controls.keyScaleNote >= 0
+            ? voice.controls.keyScaleNote : voice.controls.noteNumber) + noteOffset;
     context.lowestNote = voice.controls.lowestNote;
     context.highestNote = voice.controls.highestNote;
     context.channelPressure = voice.controls.channelPressure;
@@ -230,7 +231,8 @@ void ModulationSource::renderAudioBlock(
         return;
     }
 
-    if (configuration.mode == ModulationSourceMode::KeyScale && !voice.noteRetargets.empty()) {
+    if (configuration.mode == ModulationSourceMode::KeyScale
+            && voice.controls.keyScaleNote < 0 && !voice.noteRetargets.empty()) {
         size_t offset {};
         for (const auto& event : voice.noteRetargets) {
             const size_t eventOffset = jmin(event.sampleOffset, (size_t) values.size());

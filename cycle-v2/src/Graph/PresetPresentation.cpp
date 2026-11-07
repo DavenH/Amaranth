@@ -37,6 +37,14 @@ std::optional<PresetMidiSequence> readSequence(const juce::var& value) {
     const double duration = *durationValue;
     PresetMidiSequence sequence;
     sequence.durationSeconds = duration;
+    if (object->hasProperty("tempoBpm")) {
+        const auto tempo = sequenceNumber(object->getProperty("tempoBpm"),
+                PresetMidiSequence::minimumTempoBpm, PresetMidiSequence::maximumTempoBpm);
+        if (!tempo.has_value()) {
+            return std::nullopt;
+        }
+        sequence.tempoBpm = *tempo;
+    }
     const juce::var notesValue = object->getProperty("notes");
     if (object->hasProperty("notes") && !notesValue.isArray()) {
         return std::nullopt;
@@ -89,6 +97,7 @@ std::optional<PresetMidiSequence> readSequence(const juce::var& value) {
 juce::var writeSequence(const PresetMidiSequence& sequence) {
     auto result = std::make_unique<juce::DynamicObject>();
     result->setProperty("durationSeconds", sequence.durationSeconds);
+    result->setProperty("tempoBpm", sequence.tempoBpm);
     juce::Array<juce::var> notes;
     for (const auto& note : sequence.notes) {
         auto item = std::make_unique<juce::DynamicObject>();

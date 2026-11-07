@@ -26,8 +26,25 @@ bool isBlackKey(int pitch) {
 
 }
 
+void PresetMidiEditor::SnapToggle::paintButton(Graphics& graphics, bool highlighted, bool down) {
+    const auto area = getLocalBounds().toFloat().reduced(0.75f);
+    const bool enabled = getToggleState();
+    const auto accent = CanvasChromePalette::focus;
+    graphics.setColour(enabled ? accent.withAlpha(down ? 0.3f : 0.16f)
+            : CanvasChromePalette::restingControlSurface.brighter(highlighted ? 0.08f : 0.f));
+    graphics.fillRoundedRectangle(area, area.getHeight() * 0.5f);
+    graphics.setColour(enabled ? accent : CanvasChromePalette::mutedText);
+    graphics.drawRoundedRectangle(area, area.getHeight() * 0.5f, 1.f);
+    graphics.setFont(FontOptions(11.f, Font::bold));
+    graphics.drawText(enabled ? "SNAP  ON" : "SNAP  OFF", getLocalBounds(), Justification::centred);
+}
+
 Rectangle<float> PresetMidiEditor::miniMap() const {
     return { 62.f, 40.f, (float) getWidth() - 80.f, 42.f };
+}
+
+Rectangle<float> PresetMidiEditor::playbackRuler() const {
+    return { noteGrid().getX(), 88.f, noteGrid().getWidth(), 24.f };
 }
 
 Rectangle<float> PresetMidiEditor::noteGrid() const {
@@ -71,11 +88,11 @@ int PresetMidiEditor::velocityAt(float y) const {
 }
 
 double PresetMidiEditor::visibleDuration() const {
-    return jmax(0.25, sequence.durationSeconds * 0.5);
+    return gridStep() * 16.0;
 }
 
 double PresetMidiEditor::gridStep() const {
-    return visibleDuration() / 16.0;
+    return 60.0 / sequence.tempoBpm / 4.0;
 }
 
 double PresetMidiEditor::timeOffset() const {
@@ -89,15 +106,16 @@ int PresetMidiEditor::maximumTimeOffsetSteps() const {
 
 double PresetMidiEditor::timeAt(float x) const {
     const double time = rawTimeAt(x);
-    return jlimit(0.0, sequence.durationSeconds,
-            std::round(time / gridStep()) * gridStep());
+    return snapButton.getToggleState()
+            ? jlimit(0.0, PresetMidiSequence::maximumDurationSeconds,
+                    std::round(time / gridStep()) * gridStep()) : time;
 }
 
 double PresetMidiEditor::rawTimeAt(float x) const {
     const auto grid = noteGrid();
-    const float proportion = jlimit(0.f, 1.f,
-            (x - grid.getX()) / grid.getWidth());
-    return timeOffset() + proportion * visibleDuration();
+    const float proportion = (x - grid.getX()) / grid.getWidth();
+    return jlimit(0.0, PresetMidiSequence::maximumDurationSeconds,
+            timeOffset() + proportion * visibleDuration());
 }
 
 float PresetMidiEditor::xForTime(double time) const {
@@ -113,19 +131,19 @@ void PresetMidiEditor::paint(Graphics& graphics) {
     graphics.fillAll(CanvasChromePalette::dockSurface);
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(FontOptions(15.f, Font::bold));
-    graphics.drawText("PRESET PHRASE", 16, 8, 220, 24,
+    graphics.drawText("PRESET PHRASE", 16, 8, 150, 24,
             Justification::centredLeft);
     if (activeNote >= 0) {
         graphics.setColour(CanvasChromePalette::focus);
         graphics.setFont(FontOptions(12.f, Font::bold));
         graphics.drawText(resizingNote ? "RESIZE NOTE" : "MOVE NOTE",
-                258, 9, 150, 22, Justification::centredLeft);
+                324, 9, jmax(0, snapButton.getX() - 336), 22, Justification::centredLeft);
     } else if (activeVelocity >= 0) {
         graphics.setColour(CanvasChromePalette::focus);
         graphics.setFont(FontOptions(12.f, Font::bold));
         graphics.drawText("VELOCITY "
                         + String(sequence.notes[(size_t) activeVelocity].velocity),
-                258, 9, 150, 22, Justification::centredLeft);
+                324, 9, jmax(0, snapButton.getX() - 336), 22, Justification::centredLeft);
     } else if (selectedNote >= 0 && selectedNote < (int) sequence.notes.size()) {
         const auto& note = sequence.notes[(size_t) selectedNote];
         graphics.setColour(CanvasChromePalette::mutedText);
@@ -134,17 +152,20 @@ void PresetMidiEditor::paint(Graphics& graphics) {
                         + "  V" + String(note.velocity)
                         + "  " + String(note.startSeconds, 2)
                         + "s  LEN " + String(note.durationSeconds, 2) + "s",
-                258, 9, 295, 22, Justification::centredLeft);
+                324, 9, jmax(0, snapButton.getX() - 336), 22, Justification::centredLeft);
     }
     paintMiniMap(graphics);
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(FontOptions(10.f));
-    for (int marker = 0; marker <= 4; ++marker) {
-        const double seconds = timeOffset() + visibleDuration() * marker / 4.0;
-        const int x = roundToInt(xForTime(seconds));
-        graphics.drawText(String(seconds, 2) + "s",
-                x - (marker == 4 ? 34 : 12), 91, 48, 16,
-                Justification::centredLeft);
+    for (int step = 0; step <= 16; ++step) {
+        const int absoluteStep = timeOffsetSteps + step;
+        if (absoluteStep % 4 != 0) {
+            continue;
+        }
+        const int beat = absoluteStep / 4;
+        const int x = roundToInt(xForTime(absoluteStep * gridStep()));
+        graphics.drawText(String(beat / 4 + 1) + "." + String(beat % 4 + 1),
+                x - (step == 16 ? 30 : 8), 91, 40, 16, Justification::centredLeft);
     }
     paintNoteGrid(graphics);
     paintNotes(graphics);
@@ -153,7 +174,7 @@ void PresetMidiEditor::paint(Graphics& graphics) {
     paintPlaybackCursor(graphics);
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(FontOptions(11.f));
-    graphics.drawText("Drag velocity bars (Shift: fine)  |  Right-click/Delete: remove  |  Scroll or overview: pan  |  Space: play",
+    graphics.drawText("Velocity: drag (Shift: fine)  |  Delete: remove  |  Scroll: pan  |  Ruler/overview: seek  |  Shift-Up/Down: transpose  |  Space: play",
             62, getHeight() - 23, getWidth() - 82, 17,
             Justification::centredLeft);
 }
@@ -167,19 +188,6 @@ void PresetMidiEditor::paintMiniMap(Graphics& graphics) const {
             map.withTrimmedBottom(9.f), pitches);
     MidiPatternMiniMap::paintControls(graphics, sequence,
             map.withTrimmedTop(map.getHeight() - 9.f), controllers.front());
-    const float left = map.getX() + map.getWidth()
-            * (float) (timeOffset() / sequence.durationSeconds);
-    const float width = map.getWidth()
-            * (float) (visibleDuration() / sequence.durationSeconds);
-    const float top = map.getBottom() - map.getHeight()
-            * (float) (lowestPitch + 24 - pitches.getStart())
-            / (float) pitches.getLength();
-    const float height = map.getHeight() * 24.f / (float) pitches.getLength();
-    const Rectangle<float> viewport(left, top, width, height);
-    graphics.setColour(CanvasChromePalette::minimapViewport.withAlpha(0.12f));
-    graphics.fillRoundedRectangle(viewport, 2.f);
-    graphics.setColour(CanvasChromePalette::minimapViewport.withAlpha(0.85f));
-    graphics.drawRoundedRectangle(viewport, 2.f, 1.2f);
 }
 
 void PresetMidiEditor::paintNoteGrid(Graphics& graphics) const {
@@ -211,7 +219,8 @@ void PresetMidiEditor::paintNoteGrid(Graphics& graphics) const {
     for (int step = 0; step <= 16; ++step) {
         const float x = xForTime(timeOffset() + step * gridStep());
         graphics.setColour(Colours::white.withAlpha(
-                (timeOffsetSteps + step) % 4 == 0 ? 0.24f : 0.09f));
+                (timeOffsetSteps + step) % 16 == 0 ? 0.32f
+                        : ((timeOffsetSteps + step) % 4 == 0 ? 0.24f : 0.09f)));
         graphics.drawVerticalLine(roundToInt(x), grid.getY(), grid.getBottom());
     }
 }
@@ -359,14 +368,8 @@ void PresetMidiEditor::paintModulationLane(Graphics& graphics, int controller) c
 }
 
 void PresetMidiEditor::paintPlaybackCursor(Graphics& graphics) const {
-    if (!playbackTime) {
-        return;
-    }
-    const auto position = playbackTime();
-    if (!position.has_value()) {
-        return;
-    }
-    const float x = xForTime(*position);
+    const double position = cursorPosition();
+    const float x = xForTime(position);
     if (x >= noteGrid().getX() && x <= noteGrid().getRight()) {
         graphics.setColour(CanvasChromePalette::navigationAccent.withAlpha(0.92f));
         graphics.drawVerticalLine(roundToInt(x),
@@ -376,7 +379,7 @@ void PresetMidiEditor::paintPlaybackCursor(Graphics& graphics) const {
         graphics.fillPath(marker);
     }
     const float mapX = miniMap().getX() + miniMap().getWidth()
-            * (float) (*position / sequence.durationSeconds);
+            * (float) (position / sequence.durationSeconds);
     graphics.setColour(CanvasChromePalette::navigationAccent);
     graphics.drawVerticalLine(roundToInt(mapX),
             miniMap().getY(), miniMap().getBottom());

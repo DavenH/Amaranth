@@ -42,6 +42,10 @@ public:
             uint64_t documentRevision,
             int controller,
             int value);
+    bool refreshPreviewControllerValues(
+            const NodeGraph& graph,
+            uint64_t documentRevision,
+            const std::array<int, 128>& values);
     void stagePreviewModWheelValue(int value);
     void stagePreviewControllerValue(int controller, int value);
     GraphChangeSet modWheelPreviewChange(GraphChangeSet change) const;
@@ -121,7 +125,8 @@ public:
             const String& probeId,
             size_t rasterRowCount,
             int midiNote,
-            double noteOffTime = 1.);
+            double noteOffTime = 1.,
+            std::optional<PresetPreviewView> viewOverride = std::nullopt);
     std::vector<std::optional<GraphPreviewResult::SignalProbePreview>> captureProbePreviews(
             const NodeGraph& graph,
             const std::vector<String>& probeIds,

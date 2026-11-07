@@ -8,6 +8,7 @@
 
 #include "Graph/GraphCompiler.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
+#include "Runtime/VoicePlayback.h"
 
 namespace CycleDsp {
 class SpectralStageCaptureSink;
@@ -33,6 +34,8 @@ struct OfflineGraphAudioRequest {
     float voiceDurationSeconds { 7.f };
     float outputGain { 0.125f };
     int controlNoteOffset {};
+    int keyScaleNoteOverride { -1 };
+    std::vector<size_t> playbackSamples;
     int64_t randomSeed {};
     bool hasRandomSeed {};
     OfflineGraphAudioRatePolicy ratePolicy { OfflineGraphAudioRatePolicy::Native };
@@ -46,6 +49,7 @@ struct OfflineGraphAudioResult {
     juce::String error;
     size_t droppedMidiEvents {};
     std::array<std::vector<float>, 2> channels;
+    std::vector<VoicePlaybackFrame> playbackFrames;
 };
 
 class OfflineGraphAudioRenderer {

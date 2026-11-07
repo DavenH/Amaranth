@@ -29,7 +29,8 @@ target incrementally, launches through NSWorkspace, validates the returned PID,
 and reuses that workspace's healthy session. That session may also be in use by
 the user. Use `--clean` for automated fixtures while the user is working in the
 app: it creates an isolated run PID and socket and leaves the persistent session
-intact. Use only the socket returned by that run; do not reuse a socket from an
+intact. `exec --clean` uses the same isolated lifecycle and closes its owned
+instance after the worker exits, including on failure. Use only the socket returned by that run; do not reuse a socket from an
 earlier artifact. `--no-build` opts out of freshness
 building. Default reports and screenshots live under
 `.context/cycle-automation/<product>/<run-id>/`.
@@ -440,6 +441,40 @@ The fixture must inspect the area before a report-based crop. Accessibility
 and Screen Recording permissions belong to macOS privacy controls; an
 AppleScript or LaunchServices error alone does not identify a missing privacy
 permission.
+
+## Spy image sequences
+
+Use `scripts/export_cycle_v2_spy_sequence.py` for deterministic, plot-only
+Cyclogram sequences driven by a `.cyclepattern` controller schedule. See
+`cycle-v2/README.md` for arguments and artifact layout. It uses isolated
+`exec --clean` and needs no native input or screen-capture permission.
+
+`listSpyGradients` returns the shared time-style catalog (`id`, `label`, `group`).
+`renderSpyFrame` takes `probeId` (default `default-output`), `controllers` (all
+128 integer values in 0..127), optional `midiNote` and `gradient` (catalog ID or
+case-insensitive display name), `width`, `height`, and a new PNG `path`.
+The response arrives after synchronous refresh, expanded capture, and PNG write;
+it includes resolved note, gradient, release time, content revision and dimensions.
+Optional `playbackVoices` contains at most eight snapshots with `ageSeconds`,
+`releaseAgeSeconds`, positive `durationSeconds` and boolean `released`. The shared
+preview traversal resolves them into returned `playbackPositions`, then applies
+exponential saturation modifiers after rendering the shared plot.
+Image dimensions are 1..16384, bounded to 64 megapixels. The command forces a
+Cyclogram capture without changing saved Spy mode, note-off position or style.
+`openGraph` with `includeSnapshot: false` returns `documentRevision`; sequence
+exports pass it as `expectedDocumentRevision` on each frame. A document change
+rejects the frame before capture/write, avoiding mixed-preset sequences.
+
+The sequence script captures note patterns as `audio.wav` and requests native
+sample voice snapshots through `captureAudio.playbackSamples`. These are sorted
+absolute sample indices, in range, and supported only with native rate policy.
+The response contains `playbackFrames` with the requested sample and actual
+voice IDs, pitches, held/release ages, duration and release state. Observation
+runs inside the existing MIDI event pass without subdividing DSP blocks.
+`voiceDurationSeconds: 0` preserves preset duration; `keyScaleNote` fixes mapped
+key scale independently of actual note pitch. Both options are transient.
+`--mp4` muxes the WAV if present; `--cursor none` retains audio without ripples.
+
 
 ## UI Video
 

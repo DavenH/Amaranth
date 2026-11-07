@@ -11,7 +11,8 @@ namespace CycleV2 {
 enum class MidiEventSource : uint8_t {
     PerformanceKeyboard,
     Hardware,
-    PatternPlayback
+    PatternPlayback,
+    EditorAudition
 };
 
 struct RealtimeMidiEvent {
@@ -57,6 +58,7 @@ public:
 class RealtimeMidiEventQueue {
 public:
     static constexpr size_t capacity = 2048;
+    static constexpr size_t sourceCount = 4;
 
     RealtimeMidiEventQueue();
 
@@ -86,8 +88,8 @@ private:
     static size_t sourceIndex(MidiEventSource source);
 
     std::array<Slot, capacity> slots;
-    std::array<std::atomic<bool>, 3> recoveryRequested {};
-    std::array<std::atomic<uint32_t>, 3> sourceGenerations {};
+    std::array<std::atomic<bool>, sourceCount> recoveryRequested {};
+    std::array<std::atomic<uint32_t>, sourceCount> sourceGenerations {};
     std::atomic<size_t> enqueuePosition {};
     std::atomic<size_t> dequeuePosition {};
     std::atomic<size_t> droppedEvents {};

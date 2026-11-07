@@ -85,12 +85,13 @@ def check(output):
         assert large['performance']['waveform']['sourceBuilds'] == restored['performance']['waveform']['sourceBuilds']
 
         from test_cycle_v2_native_edit_smoke import NativeEditSmoke
-        from cycle_automation_support.lifecycle import owned_record
-        from cycle_automation_support.identity import workspace
-        from cycle_automation_support.profiles import PRODUCTS
+        from cycle_automation_support.registry import registry
         native = NativeEditSmoke()
         native.app_pid = int(os.environ['CYCLE_APP_PID'])
-        native.record = owned_record(PRODUCTS['cycle-v2'], workspace()[2])
+        with registry() as records:
+            native.record = next((record for record in records['instances'].values()
+                    if record['pid'] == native.app_pid
+                    and record['socket'] == os.environ['CYCLE_AGENT_SESSION']), None)
         native.focus_app()
         targets = send(command='inspectPointerTargets')['targets']
         origin = next(t for t in targets if t['id'] == 'comparisonWorkspace')['screenBounds']

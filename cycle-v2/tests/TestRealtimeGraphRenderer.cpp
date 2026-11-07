@@ -1115,6 +1115,36 @@ TEST_CASE("Stopping a pattern resets its sounding voice without releasing the ma
     REQUIRE(renderer.diagnostics(queue).peak > 0.f);
 }
 
+TEST_CASE("Editor audition hard reset preserves manual and hardware voices",
+        "[cycle-v2][audio-device][realtime][midi][sequence][editor-audition]") {
+    const auto compiled = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    REQUIRE(compiled.succeeded());
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
+    RealtimeGraphRenderer renderer;
+    RealtimeMidiEventQueue queue;
+    renderer.setPreparedGraph(prepared.get());
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 60, (uint8) 100),
+            MidiEventSource::EditorAudition, 1.0));
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 64, (uint8) 100),
+            MidiEventSource::PerformanceKeyboard, 1.0));
+
+    REQUIRE(queue.enqueue(MidiMessage::noteOn(1, 67, (uint8) 100),
+            MidiEventSource::Hardware, 1.0));
+
+    AudioBuffer<float> output(2, 256);
+    float* channels[] { output.getWritePointer(0), output.getWritePointer(1) };
+    renderer.process(queue, channels, 2, 256, 44100.0, 1.0);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 3);
+
+    REQUIRE(queue.enqueue(MidiMessage::allSoundOff(1),
+            MidiEventSource::EditorAudition, 1.01));
+    renderer.process(queue, channels, 2, 256, 44100.0, 1.01);
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 2);
+    REQUIRE(renderer.diagnostics(queue).peak > 0.f);
+}
+
 TEST_CASE("Fully released spectral notes repeat on the same voice instance",
         "[cycle-v2][audio-device][realtime][midi][spectral-frame][repeat-note]") {
   #if defined(CYCLE_V2_SOURCE_DIR)
@@ -1607,6 +1637,8 @@ TEST_CASE("Voice waveform timelines release and retire independently of editor s
     REQUIRE(frame.count == 0);
     REQUIRE(frame.timelineCount == 1);
     const float start = frame.timeline[0].time;
+    const auto firstVoice = render.renderer.voicePlaybackFrame(1. + 256. / 48000.).voices[0];
+    REQUIRE(start == Catch::Approx(firstVoice.ageSeconds / firstVoice.durationSeconds));
     render.process(256);
     frame = render.renderer.playbackCursors().read();
     REQUIRE(frame.timeline[0].time > start);
@@ -1615,6 +1647,10 @@ TEST_CASE("Voice waveform timelines release and retire independently of editor s
     frame = render.renderer.playbackCursors().read();
     REQUIRE(frame.timelineCount == 1);
     REQUIRE(frame.timeline[0].releaseTime >= start);
+    const auto releasedVoice = render.renderer.voicePlaybackFrame(1. + 768. / 48000.).voices[0];
+    REQUIRE(frame.timeline[0].time == Catch::Approx(releasedVoice.ageSeconds / releasedVoice.durationSeconds));
+    REQUIRE(frame.timeline[0].releaseTime == Catch::Approx(
+            (releasedVoice.ageSeconds - releasedVoice.releaseAgeSeconds) / releasedVoice.durationSeconds));
     const float release = frame.timeline[0].releaseTime;
     for (int block = 3; block < 1500 && frame.timelineCount > 0; ++block) {
         render.process(block * 256);
@@ -1626,4 +1662,41 @@ TEST_CASE("Voice waveform timelines release and retire independently of editor s
     REQUIRE(frame.timelineCount == 0);
     render.renderer.resetVoices(false);
     REQUIRE(render.renderer.playbackCursors().read().timelineCount == 0);
+}
+
+TEST_CASE("Movie voice telemetry preserves legato identity and bounds stolen polyphony",
+        "[cycle-v2][realtime][spy-movie]") {
+    LegatoRender legato;
+    legato.renderer.setKeyScaleNoteOverride(60);
+    legato.send(MidiMessage::noteOn(1, 60, (uint8) 90), 0);
+    legato.process();
+    const auto first = legato.renderer.voicePlaybackFrame(1. + 255. / 48000.);
+    REQUIRE(first.count == 1);
+    legato.send(MidiMessage::noteOn(1, 67, (uint8) 90), 300);
+    legato.process(256);
+    const auto second = legato.renderer.voicePlaybackFrame(1. + 511. / 48000.);
+    REQUIRE(second.count == 1);
+    CHECK(second.voices[0].voiceId == first.voices[0].voiceId);
+    CHECK(second.voices[0].midiNote == 67);
+    CHECK(second.voices[0].ageSeconds > first.voices[0].ageSeconds);
+
+    auto graph = legatoGraph();
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, "voice", "noteMode", "Note Mode", "polyphonic").succeeded());
+    const auto compiled = GraphCompiler().compile(graph);
+    REQUIRE(compiled.succeeded());
+    auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, { 256, 48000. });
+    RealtimeGraphRenderer renderer;
+    renderer.setPreparedGraph(prepared.get());
+    RealtimeMidiEventQueue queue;
+    for (int note = 60; note < 70; ++note) {
+        REQUIRE(queue.enqueue(MidiMessage::noteOn(1, note, (uint8) 90), MidiEventSource::Hardware, 0.));
+    }
+    AudioBuffer<float> output(2, 256);
+    renderer.process(queue, output.getArrayOfWritePointers(), 2, 256, 48000., 0.);
+    const auto voices = renderer.voicePlaybackFrame(0.);
+    REQUIRE(voices.count == RealtimeGraphRenderer::voiceCount);
+    CHECK(std::none_of(voices.voices.begin(), voices.voices.begin() + voices.count,
+            [](const auto& voice) { return voice.midiNote < 62; }));
+    renderer.resetVoices(false);
+    CHECK(renderer.voicePlaybackFrame(0.).count == 0);
 }

@@ -441,18 +441,18 @@
                 "purpose": "scratch",
                 "logarithmic": false,
                 "declick": false,
-                "red": 0.5,
-                "blue": 0.5,
+                "red": 0.0,
+                "blue": 0.082,
                 "level": 1.0
             },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 2,
+                "revision": 19,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 2,
+                    "revision": 19,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -483,14 +483,14 @@
                                 { "time": 1.0, "phase": 0.7514207, "amp": 0.28576565, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 21 },
                                 { "time": 1.0, "phase": 0.7497595, "amp": 0.6847293, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 22 },
                                 { "time": 1.0, "phase": 0.7514207, "amp": 0.28576565, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 23 },
-                                { "time": 0.0, "phase": 0.0076228343, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 0.701556, "id": 24 },
-                                { "time": 0.0, "phase": 0.0023544729, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.701556, "id": 25 },
-                                { "time": 0.0, "phase": 0.0076228343, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.701556, "id": 26 },
-                                { "time": 0.0, "phase": 0.0023544729, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.701556, "id": 27 },
-                                { "time": 1.0, "phase": 0.0076228343, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 0.701556, "id": 28 },
-                                { "time": 1.0, "phase": 0.0023544729, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 0.701556, "id": 29 },
-                                { "time": 1.0, "phase": 0.0076228343, "amp": 1.0, "key": 1.0, "mod": 0.0, "weight": 0.701556, "id": 30 },
-                                { "time": 1.0, "phase": 0.0023544729, "amp": 1.0, "key": 1.0, "mod": 1.0, "weight": 0.701556, "id": 31 },
+                                { "time": 0.0, "phase": 0.00069395825, "amp": 0.07859075, "key": 0.0, "mod": 0.0, "weight": 0.701556, "id": 24 },
+                                { "time": 0.0, "phase": 0.0, "amp": 0.9620596, "key": 0.0, "mod": 1.0, "weight": 0.701556, "id": 25 },
+                                { "time": 0.0, "phase": 0.00069395825, "amp": 0.07859075, "key": 1.0, "mod": 0.0, "weight": 0.701556, "id": 26 },
+                                { "time": 0.0, "phase": 0.0, "amp": 0.9620596, "key": 1.0, "mod": 1.0, "weight": 0.701556, "id": 27 },
+                                { "time": 1.0, "phase": 0.00069395825, "amp": 0.07859075, "key": 0.0, "mod": 0.0, "weight": 0.701556, "id": 28 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.9620596, "key": 0.0, "mod": 1.0, "weight": 0.701556, "id": 29 },
+                                { "time": 1.0, "phase": 0.00069395825, "amp": 0.07859075, "key": 1.0, "mod": 0.0, "weight": 0.701556, "id": 30 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.9620596, "key": 1.0, "mod": 1.0, "weight": 0.701556, "id": 31 },
                                 { "time": 0.0, "phase": 0.87404364, "amp": 0.63130766, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 32 },
                                 { "time": 0.0, "phase": 0.87656826, "amp": 0.17534909, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 33 },
                                 { "time": 0.0, "phase": 0.87404364, "amp": 0.63130766, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 34 },
@@ -571,12 +571,13 @@
                         "sustainIndices": [ 1 ]
                     },
                     "logarithmic": false,
-                    "red": 0.5,
-                    "blue": 0.5,
+                    "red": 0.0,
+                    "blue": 0.082,
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8 ],
                     "nextCubeIdentity": 9
                 }
-            }
+            },
+            "editor": { "selectedCubeId": 4 }
         },
         {
             "id": "scratchEnvelope2",
@@ -597,11 +598,11 @@
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 2,
+                "revision": 5,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 2,
+                    "revision": 5,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -648,14 +649,14 @@
                                 { "time": 1.0, "phase": 1.0145522, "amp": 0.30569947, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 37 },
                                 { "time": 1.0, "phase": 1.0312953, "amp": 0.3108808, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 38 },
                                 { "time": 1.0, "phase": 1.0145522, "amp": 0.30569947, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 39 },
-                                { "time": 0.0, "phase": 0.0, "amp": 0.761658, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 40 },
-                                { "time": 0.0, "phase": 0.0, "amp": 0.761658, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 41 },
-                                { "time": 0.0, "phase": 0.0, "amp": 0.2080974, "key": 0.33222592, "mod": 0.0, "weight": 1.0, "id": 42 },
-                                { "time": 0.0, "phase": 0.0, "amp": 0.2080974, "key": 0.33222592, "mod": 1.0, "weight": 1.0, "id": 43 },
-                                { "time": 1.0, "phase": 0.0, "amp": 0.761658, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 44 },
-                                { "time": 1.0, "phase": 0.0, "amp": 0.761658, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 45 },
-                                { "time": 1.0, "phase": 0.0, "amp": 0.2080974, "key": 0.33222592, "mod": 0.0, "weight": 1.0, "id": 46 },
-                                { "time": 1.0, "phase": 0.0, "amp": 0.2080974, "key": 0.33222592, "mod": 1.0, "weight": 1.0, "id": 47 },
+                                { "time": 0.0, "phase": 0.0009783735, "amp": 0.032660663, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 40 },
+                                { "time": 0.0, "phase": 0.0009783735, "amp": 0.032660663, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 41 },
+                                { "time": 0.0, "phase": 0.0009783735, "amp": 0.0, "key": 0.33222592, "mod": 0.0, "weight": 1.0, "id": 42 },
+                                { "time": 0.0, "phase": 0.0009783735, "amp": 0.0, "key": 0.33222592, "mod": 1.0, "weight": 1.0, "id": 43 },
+                                { "time": 1.0, "phase": 0.0009783735, "amp": 0.032660663, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 44 },
+                                { "time": 1.0, "phase": 0.0009783735, "amp": 0.032660663, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 45 },
+                                { "time": 1.0, "phase": 0.0009783735, "amp": 0.0, "key": 0.33222592, "mod": 0.0, "weight": 1.0, "id": 46 },
+                                { "time": 1.0, "phase": 0.0009783735, "amp": 0.0, "key": 0.33222592, "mod": 1.0, "weight": 1.0, "id": 47 },
                                 { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 48 },
                                 { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 49 },
                                 { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 50 },
@@ -708,7 +709,8 @@
                     "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ],
                     "nextCubeIdentity": 8
                 }
-            }
+            },
+            "editor": { "selectedCubeId": 6 }
         },
         {
             "id": "volumeMultiply",
@@ -826,7 +828,6 @@
         },
         "patternId": "user-491e097a01694be28b5e650838472c2d",
         "outputSpyX": 713.77191,
-        "outputSpyY": 1283.24072,
-        "outputSpyView": "waveform"
+        "outputSpyY": 1283.24072
     }
 }

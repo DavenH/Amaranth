@@ -155,6 +155,29 @@ bool parseRequest(
             -127,
             127,
             (int) doubleProperty(command, "controlNoteOffset", 0.0));
+    const var controlNote = property(command, "keyScaleNote");
+    if (!controlNote.isVoid()) {
+        if ((!controlNote.isInt() && !controlNote.isInt64()) || (int64) controlNote < 0 || (int64) controlNote > 127) {
+            error = "keyScaleNote must be an integer in [0, 127]";
+            return false;
+        }
+        request.keyScaleNoteOverride = (int) controlNote;
+    }
+    const var playbackSamples = property(command, "playbackSamples");
+    if (!playbackSamples.isVoid()) {
+        const auto* samples = playbackSamples.getArray();
+        if (samples == nullptr) {
+            error = "playbackSamples must be an array of nonnegative sample indices";
+            return false;
+        }
+        for (const auto& sample : *samples) {
+            if ((!sample.isInt() && !sample.isInt64()) || (int64) sample < 0) {
+                error = "playbackSamples must contain nonnegative integer sample indices";
+                return false;
+            }
+            request.playbackSamples.push_back((size_t) (int64) sample);
+        }
+    }
     const var randomSeed = property(command, "randomSeed");
     if (!randomSeed.isVoid()) {
         request.randomSeed = static_cast<int64>(randomSeed);
@@ -169,7 +192,7 @@ bool parseRequest(
         error = "Unsupported offline audio rate policy: " + ratePolicy;
         return false;
     }
-    const double durationMs = jlimit(1.0, 60000.0, doubleProperty(command, "durationMs", 1000.0));
+    const double durationMs = jlimit(1.0, 120000.0, doubleProperty(command, "durationMs", 1000.0));
 
     if (request.sampleRate <= 0.0) {
         error = "Sample rate must be positive";
@@ -180,6 +203,30 @@ bool parseRequest(
             std::round(durationMs * request.sampleRate / 1000.0));
     request.sampleCount = static_cast<size_t>(sampleCount < 1 ? 1 : sampleCount);
     return parseSchedule(command, request, error);
+}
+
+var encodePlaybackFrames(const OfflineGraphAudioResult& capture, const OfflineGraphAudioRequest& request) {
+    Array<var> frames;
+    for (size_t index = 0; index < capture.playbackFrames.size(); ++index) {
+        Array<var> voices;
+        const auto& frame = capture.playbackFrames[index];
+        for (size_t voiceIndex = 0; voiceIndex < frame.count; ++voiceIndex) {
+            const auto& voice = frame.voices[voiceIndex];
+            auto value = std::make_unique<DynamicObject>();
+            value->setProperty("voiceId", String(voice.voiceId));
+            value->setProperty("midiNote", voice.midiNote);
+            value->setProperty("ageSeconds", voice.ageSeconds);
+            value->setProperty("releaseAgeSeconds", voice.releaseAgeSeconds);
+            value->setProperty("durationSeconds", voice.durationSeconds);
+            value->setProperty("released", voice.released);
+            voices.add(var(value.release()));
+        }
+        auto value = std::make_unique<DynamicObject>();
+        value->setProperty("sample", (int64) request.playbackSamples[index]);
+        value->setProperty("voices", voices);
+        frames.add(var(value.release()));
+    }
+    return frames;
 }
 
 var captureMetrics(
@@ -400,6 +447,8 @@ bool OfflineAudioCaptureAutomation::capture(
             request.ratePolicy == OfflineGraphAudioRatePolicy::LegacyInternal44100
                     ? "legacyInternal44100"
                     : "native");
+    object->setProperty("keyScaleNote", request.keyScaleNoteOverride);
+    object->setProperty("playbackFrames", encodePlaybackFrames(capture, request));
     object->setProperty("renderer", "realtimeGraphRenderer");
     return true;
 }

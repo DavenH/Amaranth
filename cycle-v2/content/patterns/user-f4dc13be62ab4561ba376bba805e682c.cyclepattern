@@ -1,0 +1,1 @@
+{"version": 1, "id": "user-f4dc13be62ab4561ba376bba805e682c", "name": "Basic Sustained Variation Variation", "tag": "Sustained", "tags": ["Sustained", "Ambient"], "sequence": {"durationSeconds": 12.0, "notes": [{"pitch": 26, "velocity": 80, "startSeconds": 0.0, "durationSeconds": 11.875}], "controls": [{"controller": 1, "value": 0, "timeSeconds": 0.0}]}}

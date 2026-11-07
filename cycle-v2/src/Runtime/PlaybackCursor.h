@@ -22,7 +22,7 @@ struct PlaybackCursorCapture {
     }
 };
 
-struct VoicePlaybackPosition {
+struct WaveformPlaybackPosition {
     float time {};
     float releaseTime { -1.f };
 };
@@ -33,7 +33,7 @@ struct PlaybackCursorFrame {
     uint64_t graphRevision {};
     std::array<PlaybackCursorCapture, capacity> voices;
     size_t count {};
-    std::array<VoicePlaybackPosition, capacity> timeline;
+    std::array<WaveformPlaybackPosition, capacity> timeline;
     size_t timelineCount {};
 };
 

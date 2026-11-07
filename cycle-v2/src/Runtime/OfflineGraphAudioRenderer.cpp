@@ -22,14 +22,20 @@ juce::String validateRequest(const OfflineGraphAudioRequest& request) {
     if (request.channelCount < 1 || request.channelCount > 2) {
         return "Channel count must be one or two";
     }
-    if (request.voiceDurationSeconds <= 0.f) {
-        return "Voice duration must be positive";
+    if (request.voiceDurationSeconds < 0.f) {
+        return "Voice duration must be nonnegative (zero uses the preset)";
     }
     if (request.sampleCount == 0) {
         return "Sample count must be positive";
     }
     if (request.events.size() > RealtimeMidiEventQueue::capacity) {
         return "MIDI event count exceeds the realtime queue capacity";
+    }
+    if (!request.playbackSamples.empty()
+            && (request.ratePolicy != OfflineGraphAudioRatePolicy::Native
+                    || !std::is_sorted(request.playbackSamples.begin(), request.playbackSamples.end())
+                    || request.playbackSamples.back() >= request.sampleCount)) {
+        return "Playback samples must be sorted, in range, and use native rendering";
     }
     for (const auto& event : request.events) {
         if (event.sampleOffset > request.sampleCount) {
@@ -125,10 +131,13 @@ OfflineGraphAudioResult OfflineGraphAudioRenderer::render(
     RealtimeGraphRenderer renderer;
     renderer.setPreparedGraph(prepared.get());
     renderer.setSpectralStageCapture(request.spectralStageCapture);
-    renderer.setVoiceDurationSeconds(request.voiceDurationSeconds);
+    if (request.voiceDurationSeconds > 0.f) {
+        renderer.setVoiceDurationSeconds(request.voiceDurationSeconds);
+    }
     renderer.setVolumeEnvelopeClockSampleRate(request.sampleRate);
     renderer.setOutputGain(request.outputGain);
     renderer.setControlNoteOffset(request.controlNoteOffset);
+    renderer.setKeyScaleNoteOverride(request.keyScaleNoteOverride);
     if (request.hasRandomSeed) {
         renderer.setRandomSeedForTesting(request.randomSeed);
     }
@@ -163,10 +172,11 @@ OfflineGraphAudioResult OfflineGraphAudioRenderer::render(
                 });
     }
 
-    for (size_t start = 0; start < request.sampleCount; start += request.blockSize) {
-        const int frameCount = (int) std::min(
-                (size_t) request.blockSize,
-                request.sampleCount - start);
+    size_t playbackIndex {};
+    result.playbackFrames.resize(request.playbackSamples.size());
+    for (size_t start = 0; start < request.sampleCount;) {
+        const size_t end = std::min(start + (size_t) request.blockSize, request.sampleCount);
+        const int frameCount = (int) (end - start);
         if (convertsOutputRate) {
             const int renderFrameCount = rateAdapter.convertBlockSize(frameCount);
             if (!enqueueBlockEvents(
@@ -200,13 +210,26 @@ OfflineGraphAudioResult OfflineGraphAudioRenderer::render(
             }
             internalStart += (size_t) renderFrameCount;
         } else {
+            const size_t firstPlayback = playbackIndex;
+            while (playbackIndex < request.playbackSamples.size()
+                    && request.playbackSamples[playbackIndex] < end) {
+                ++playbackIndex;
+            }
+            VoicePlaybackCapture playback;
+            if (playbackIndex > firstPlayback) {
+                playback = { request.playbackSamples.data() + firstPlayback,
+                        result.playbackFrames.data() + firstPlayback,
+                        playbackIndex - firstPlayback, start };
+            }
             renderer.process(
                     queue,
                     blockChannels.data(),
                     request.channelCount,
                     frameCount,
                     request.sampleRate,
-                    (double) start / request.sampleRate);
+                    (double) start / request.sampleRate,
+                    nullptr,
+                    playback.count > 0 ? &playback : nullptr);
         }
         for (int channel = 0; channel < request.channelCount; ++channel) {
             Buffer<float>(blocks[(size_t) channel].data(), frameCount).copyTo({
@@ -214,6 +237,7 @@ OfflineGraphAudioResult OfflineGraphAudioRenderer::render(
                     frameCount
             });
         }
+        start = end;
     }
 
     result.droppedMidiEvents = queue.droppedEventCount();

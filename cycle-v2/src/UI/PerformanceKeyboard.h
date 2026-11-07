@@ -134,6 +134,7 @@ public:
     const std::vector<int>& mappedControllerNumbers() const { return mappedControllers; }
     int previewNote() const { return selectedPreviewNote; }
     float playbackProgress() const { return progress; }
+    double playbackPositionSeconds() const { return playbackPosition; }
     float playbackDurationSeconds() const { return playbackDuration; }
     bool isPlaying() const { return playing; }
     bool isRecording() const { return recording; }
@@ -165,6 +166,7 @@ public:
     }
     void setPlaybackDurationSeconds(float seconds);
     bool startPlayback(double nowMilliseconds);
+    void seekPlayback(double seconds, double nowMilliseconds);
     void togglePlayback();
     void stopPlayback(bool resetProgress = true);
     void updatePlayback(double nowMilliseconds);
@@ -229,18 +231,21 @@ private:
     void releaseEditorAudition();
     void dispatchSequenceEvents(double elapsedSeconds);
     bool scheduleSequenceEvents(double startSeconds);
-    void rebuildPlaybackEvents();
+    void rebuildPlaybackEvents(double startSeconds = 0.0);
+    double playbackLength() const;
     bool scheduleControlEventsUntil(double elapsedSeconds, double startSeconds);
     bool hasSequenceNotes() const;
 
     bool playing {};
     bool recording {};
+    bool usePatternDuration {};
     int selectedPreviewNote { 48 };
     int playbackNote { -1 };
     int editorAuditionPitch { -1 };
     float playbackDuration { 1.f };
     float progress {};
     double playbackStartedAtMilliseconds {};
+    double playbackPosition {};
     double recordingStartedAtSeconds {};
     size_t nextPlaybackEvent {};
     std::array<double, 128> recordedNoteStarts {};
