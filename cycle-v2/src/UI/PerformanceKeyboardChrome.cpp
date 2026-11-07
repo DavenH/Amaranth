@@ -51,17 +51,11 @@ void PerformanceKeyboardPanel::paint(Graphics& graphics) {
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(FontOptions(10.f));
     graphics.drawText("MIDI pattern", actions.withY(3.f).withHeight(12.f), Justification::centred);
-    const auto track = progressBounds();
-    graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.22f));
-    graphics.fillRect(track);
-    if (progress > 0.f) {
-        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.7f));
-        graphics.fillRect(track.withWidth(track.getWidth() * progress));
-    }
+
 }
 
 void PerformanceKeyboardPanel::resized() {
-    auto content = getLocalBounds().reduced(18, 6);
+    auto content = getLocalBounds().reduced(18, 3);
     auto actions = content.removeFromLeft(104);
     const int actionY = jmax(16, (getHeight() - 28) / 2 + 5);
     playButton.setBounds(actions.getX(), actionY, 28, 28);
@@ -78,6 +72,9 @@ void PerformanceKeyboardPanel::resized() {
     octaveUp.setBounds(content.removeFromLeft(28));
     content.removeFromLeft(12);
     controllerViewport.setBounds(content.removeFromLeft(dialSpace).withY(2).withHeight(getHeight() - 4));
+    content.removeFromLeft(18);
+    waveform.setBounds(content.withY(3).withHeight(getHeight() - 6));
+    waveform.setVisible(content.getWidth() >= 120);
     controllerStrip.setSize(dialCount * 44, controllerViewport.getHeight() - 3);
     modWheel.setBounds(0, 0, 44, controllerStrip.getHeight());
     for (size_t index = 0; index < extraWheels.size(); ++index) {

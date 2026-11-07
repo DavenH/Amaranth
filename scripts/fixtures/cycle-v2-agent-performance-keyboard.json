@@ -45,7 +45,7 @@
     {
       "command": "assertState",
       "path": "performance.octaveButtonHeight",
-      "equals": 44
+      "equals": 50
     },
     {
       "command": "assertState",

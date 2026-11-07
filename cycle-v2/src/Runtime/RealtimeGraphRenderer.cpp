@@ -226,6 +226,8 @@ void RealtimeGraphRenderer::resetVoices(bool resetControls) {
         voice.active = false;
         voice.released = false;
         voice.normalizedTime = 0.f;
+        voice.elapsedVoiceTime = 0.f;
+        voice.releaseVoiceTime = -1.f;
     }
     scheduledEventCount = 0;
     pendingStolenNoteOffs = {};
@@ -527,6 +529,8 @@ RealtimeGraphRenderer::Voice& RealtimeGraphRenderer::allocateVoice(
     }
     selected->velocity = (float) event.data2 / 127.f;
     selected->normalizedTime = 0.f;
+    selected->elapsedVoiceTime = 0.f;
+    selected->releaseVoiceTime = -1.f;
     selected->playbackCursor = {};
     selected->active = true;
     selected->released = false;
@@ -633,6 +637,10 @@ void RealtimeGraphRenderer::renderVoices(
                     measuredOperations);
 
             voice.context.playbackCursor = nullptr;
+            if (voice.released && voice.releaseVoiceTime < 0.f) {
+                voice.releaseVoiceTime = voice.elapsedVoiceTime;
+            }
+            voice.elapsedVoiceTime += (float) (timeIncrement * (double) frameCount);
             voice.normalizedTime = jmin(
                     1.f,
                     voice.normalizedTime
@@ -642,6 +650,8 @@ void RealtimeGraphRenderer::renderVoices(
                 voice.active = false;
             }
             if (voice.active) {
+                cursorFrame.timeline[cursorFrame.timelineCount++] = {
+                        voice.elapsedVoiceTime, voice.releaseVoiceTime };
                 if (cursor.hasMorph || cursor.hasEnvelopeTime) {
                     cursorFrame.voices[cursorFrame.count++] = cursor;
                 }

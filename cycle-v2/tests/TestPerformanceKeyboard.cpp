@@ -461,12 +461,10 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
         REQUIRE(panel.octaveDownBounds().getRight() < first.getX());
         REQUIRE(panel.octaveUpBounds().getX() > last.getRight());
         REQUIRE(panel.modWheelBounds().getX() > panel.octaveUpBounds().getRight());
-        REQUIRE(first.getY() == 6.f);
-        REQUIRE(first.getBottom() == panel.getHeight() - 6.f);
+        REQUIRE(first.getY() == 3.f);
+        REQUIRE(first.getBottom() == panel.getHeight() - 3.f);
         REQUIRE(panel.noteBounds(panel.baseNote() + 1).getWidth() < first.getWidth());
         REQUIRE(panel.noteBounds(panel.baseNote() + 1).getHeight() < first.getHeight());
-        REQUIRE(panel.progressBounds().getCentreX()
-                == Catch::Approx((first.getX() + last.getRight()) * 0.5f).margin(0.5f));
         REQUIRE(panel.getLocalBounds().toFloat().contains(last));
         REQUIRE(panel.getLocalBounds().toFloat().contains(panel.modWheelBounds()));
     };

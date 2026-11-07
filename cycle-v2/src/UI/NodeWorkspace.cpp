@@ -741,6 +741,7 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("heldNote", keyboard.heldNote());
     object->setProperty("heldVelocity", keyboard.heldVelocity());
     object->setProperty("modWheelValue", keyboard.modWheelValue());
+    object->setProperty("waveform", keyboard.waveformPreview().diagnostics());
     for (const int controller : keyboard.mappedControllerNumbers()) {
         object->setProperty("cc" + String(controller) + "Value",
                 keyboard.controllerValue(controller));
@@ -941,8 +942,13 @@ void NodeWorkspace::timerCallback() {
     drainRecordedMidi();
     const auto status = audioEngine.status();
     updateOutputMeter(status);
-    canvas.setPlaybackCursors(status.deviceReady
-            ? audioEngine.playbackCursors(canvas.playbackCursorNodeId()) : PlaybackCursorFrame {});
+    const auto cursors = status.deviceReady
+            ? audioEngine.playbackCursors(canvas.playbackCursorNodeId()) : PlaybackCursorFrame {};
+    canvas.setPlaybackCursors(cursors);
+    keyboard.waveformPreview().setPlaybackCursors(cursors);
+    if (const auto* source = canvas.performanceWaveformSource()) {
+        keyboard.waveformPreview().setSource(*source);
+    }
     audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     if (previousDeviceReady && !status.deviceReady) {
         keyboard.releaseAllNotes();

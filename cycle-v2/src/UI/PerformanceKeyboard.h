@@ -11,6 +11,7 @@
 #include "Graph/PresetPresentation.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
 #include "UI/PatternPlaybackSchedule.h"
+#include "UI/PerformanceWaveformPreview.h"
 
 namespace CycleV2 {
 
@@ -48,7 +49,12 @@ protected:
             bool isOver,
             Colour lineColour,
             Colour textColour) override;
+    void drawBlackNote(int midiNoteNumber, Graphics& graphics, Rectangle<float> area,
+            bool isDown, bool isOver, Colour fill) override;
+
 private:
+    void paintKeyTexture(Graphics& graphics, Rectangle<float> area, int note, bool black);
+    Image keyTexture;
     class StateListener final : public MidiKeyboardState::Listener {
     public:
         explicit StateListener(PerformanceKeyboard& owner) : owner(owner) {}
@@ -109,7 +115,8 @@ public:
     Rectangle<float> octaveUpBounds() const;
     Rectangle<float> modWheelBounds() const;
     Rectangle<float> controllerBounds(int controller) const;
-    Rectangle<float> progressBounds() const;
+    PerformanceWaveformPreview& waveformPreview() { return waveform; }
+    const PerformanceWaveformPreview& waveformPreview() const { return waveform; }
     Rectangle<float> editBounds() const { return editButton.getBounds().toFloat(); }
     Rectangle<float> recordBounds() const { return recordButton.getBounds().toFloat(); }
     Rectangle<float> playBounds() const { return playButton.getBounds().toFloat(); }
@@ -251,6 +258,7 @@ private:
     MidiKeyboardState& keyboardState;
     MidiEventSink& eventSink;
     PerformanceKeyboard keyboard;
+    PerformanceWaveformPreview waveform;
     OctaveButton octaveDown { false };
     OctaveButton octaveUp { true };
     Component controllerStrip;

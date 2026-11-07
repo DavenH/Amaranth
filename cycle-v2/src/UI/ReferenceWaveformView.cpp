@@ -124,7 +124,7 @@ void ReferenceWaveformView::setSignal(std::shared_ptr<const std::vector<float>> 
     if (signalIdentity == samples && sampleIdentity == nullptr) {
         return;
     }
-    colourStyle = WaveformColourStyles::current();
+    colourStyle = fixedColourStyle.value_or(WaveformColourStyles::current());
     signalIdentity = std::move(samples);
     setTitle("Signal waveform");
     sampleIdentity = nullptr;
@@ -139,6 +139,16 @@ void ReferenceWaveformView::setSignal(std::shared_ptr<const std::vector<float>> 
     }
     requestImage();
     repaint();
+}
+
+void ReferenceWaveformView::setColourStyle(std::optional<WaveformColourStyles::Style> style) {
+    fixedColourStyle = style;
+    const auto next = fixedColourStyle.value_or(WaveformColourStyles::current());
+    if (colourStyle != next) {
+        colourStyle = next;
+        requestImage();
+        repaint();
+    }
 }
 
 void ReferenceWaveformView::setViewport(const ZoomRect& next) {
@@ -212,8 +222,9 @@ void ReferenceWaveformView::paint(juce::Graphics& graphics) {
     if (onBackground) {
         onBackground(graphics);
     }
-    if (signalIdentity != nullptr && colourStyle != WaveformColourStyles::current()) {
-        colourStyle = WaveformColourStyles::current();
+    if (signalIdentity != nullptr
+            && colourStyle != fixedColourStyle.value_or(WaveformColourStyles::current())) {
+        colourStyle = fixedColourStyle.value_or(WaveformColourStyles::current());
         requestImage();
     }
     const float scale = graphics.getInternalContext().getPhysicalPixelScaleFactor();

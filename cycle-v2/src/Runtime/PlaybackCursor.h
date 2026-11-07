@@ -22,12 +22,19 @@ struct PlaybackCursorCapture {
     }
 };
 
+struct VoicePlaybackPosition {
+    float time {};
+    float releaseTime { -1.f };
+};
+
 struct PlaybackCursorFrame {
     static constexpr size_t capacity = 8;
     uint64_t nodeKey {};
     uint64_t graphRevision {};
     std::array<PlaybackCursorCapture, capacity> voices;
     size_t count {};
+    std::array<VoicePlaybackPosition, capacity> timeline;
+    size_t timelineCount {};
 };
 
 // One audio writer, message-thread readers. Atomic fields keep failed reads race-free.
@@ -52,6 +59,9 @@ private:
     std::atomic<uint64_t> publishedNode {};
     std::atomic<uint64_t> revision {};
     std::atomic<size_t> count {};
+    std::atomic<size_t> timelineCount {};
+    std::array<std::atomic<float>, PlaybackCursorFrame::capacity> voiceTimes {};
+    std::array<std::atomic<float>, PlaybackCursorFrame::capacity> releaseTimes {};
     std::array<Voice, PlaybackCursorFrame::capacity> voices;
 };
 

@@ -118,6 +118,8 @@ private:
         int oscillatorNoteNumber { 60 };
         float velocity { 1.f };
         float normalizedTime {};
+        float elapsedVoiceTime {};
+        float releaseVoiceTime { -1.f };
         bool active {};
         bool released {};
         VoiceNoteState notes;

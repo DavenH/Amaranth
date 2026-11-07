@@ -21,6 +21,7 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
     setWantsKeyboardFocus(false);
     setMouseClickGrabsKeyboardFocus(false);
     addAndMakeVisible(keyboard);
+    addAndMakeVisible(waveform);
     addAndMakeVisible(octaveDown);
     addAndMakeVisible(octaveUp);
     addAndMakeVisible(controllerViewport);
@@ -142,16 +143,6 @@ int PerformanceKeyboardPanel::controllerValue(int controller) const {
         }
     }
     return 0;
-}
-
-Rectangle<float> PerformanceKeyboardPanel::progressBounds() const {
-    const Rectangle<float> keys = keyboard.getBounds().toFloat();
-    return {
-            keys.getX(),
-            (float) getHeight() - 4.f,
-            keys.getWidth(),
-            3.f
-    };
 }
 
 void PerformanceKeyboardPanel::setPreviewNote(int midiNote) {
@@ -410,7 +401,6 @@ void PerformanceKeyboardPanel::updatePlayback(double nowMilliseconds) {
     if (progress >= 1.f) {
         stopPlayback(false);
     }
-    repaint(progressBounds().getSmallestIntegerContainer().expanded(2));
 }
 
 void PerformanceKeyboardPanel::dispatchSequenceEvents(double elapsedSeconds) {

@@ -62,6 +62,7 @@ class NodeCanvas :
     ,   private RenderInvalidationTarget {
 public:
     NodeCanvas();
+    const GraphPresentationSnapshot* performanceWaveformSource() const;
     const String& playbackCursorNodeId() { return editorCoordinator.host().nodeId(); }
     void setPlaybackCursors(const PlaybackCursorFrame& frame) {
         editorCoordinator.host().setPlaybackCursors(frame);

@@ -1566,6 +1566,9 @@ TEST_CASE("Polyphonic mesh cursors persist between oscillator frame renders",
         renderer.process(queue, channels, 2, 64, spec.sampleRate, 1. + block * 64. / spec.sampleRate);
         const auto frame = renderer.playbackCursors().read();
         REQUIRE(frame.count == 2);
+        REQUIRE(frame.timelineCount == 2);
+        REQUIRE(frame.timeline[0].time > 0.f);
+        REQUIRE(frame.timeline[0].releaseTime < 0.f);
         for (size_t index = 0; index < frame.count; ++index) {
             REQUIRE(frame.voices[index].hasMorph);
             REQUIRE(frame.voices[index].morph[0] >= previous[index]);
@@ -1577,6 +1580,7 @@ TEST_CASE("Polyphonic mesh cursors persist between oscillator frame renders",
     renderer.playbackCursors().request((uint64_t) String("another-editor").hashCode64());
     renderer.process(queue, channels, 2, 64, spec.sampleRate, 1. + 100. * 64. / spec.sampleRate);
     REQUIRE(renderer.playbackCursors().read().count == 0);
+    REQUIRE(renderer.playbackCursors().read().timelineCount == 2);
     renderer.playbackCursors().request((uint64_t) String("waveMesh").hashCode64());
     for (int block = 101; block < 133; ++block) {
         renderer.process(queue, channels, 2, 64, spec.sampleRate, 1. + block * 64. / spec.sampleRate);
@@ -1592,4 +1596,34 @@ TEST_CASE("Polyphonic mesh cursors persist between oscillator frame renders",
     REQUIRE(restarted.voices[0].morph[0] < previous[0]);
     renderer.setPreparedGraph(nullptr);
     REQUIRE(renderer.playbackCursors().read().count == 0);
+}
+
+TEST_CASE("Voice waveform timelines release and retire independently of editor selection",
+        "[cycle-v2][runtime][performance-waveform][playback-cursor]") {
+    LegatoRender render(false, true);
+    render.send(MidiMessage::noteOn(1, 60, (uint8) 100), 0);
+    render.process();
+    auto frame = render.renderer.playbackCursors().read();
+    REQUIRE(frame.count == 0);
+    REQUIRE(frame.timelineCount == 1);
+    const float start = frame.timeline[0].time;
+    render.process(256);
+    frame = render.renderer.playbackCursors().read();
+    REQUIRE(frame.timeline[0].time > start);
+    render.send(MidiMessage::noteOff(1, 60), 512);
+    render.process(512);
+    frame = render.renderer.playbackCursors().read();
+    REQUIRE(frame.timelineCount == 1);
+    REQUIRE(frame.timeline[0].releaseTime >= start);
+    const float release = frame.timeline[0].releaseTime;
+    for (int block = 3; block < 1500 && frame.timelineCount > 0; ++block) {
+        render.process(block * 256);
+        frame = render.renderer.playbackCursors().read();
+        if (frame.timelineCount > 0) {
+            REQUIRE(frame.timeline[0].releaseTime == release);
+        }
+    }
+    REQUIRE(frame.timelineCount == 0);
+    render.renderer.resetVoices(false);
+    REQUIRE(render.renderer.playbackCursors().read().timelineCount == 0);
 }

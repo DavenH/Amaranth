@@ -273,6 +273,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodePaletteEntryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PerformanceKeyboard.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PerformanceKeyboardKeys.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PerformanceWaveformPreview.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PerformanceKeyboardChrome.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternControlScheduler.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternPlaybackSchedule.cpp"

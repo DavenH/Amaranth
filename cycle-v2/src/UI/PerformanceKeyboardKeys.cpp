@@ -2,6 +2,35 @@
 
 namespace CycleV2 {
 
+namespace {
+
+Image keyGrain() {
+    Image texture(Image::ARGB, 512, 128, true);
+    Random random(0x61a3b7);
+    {
+        Image::BitmapData pixels(texture, Image::BitmapData::writeOnly);
+        for (int y = 0; y < texture.getHeight(); ++y) {
+            for (int x = 0; x < texture.getWidth(); ++x) {
+                const auto tone = random.nextBool() ? Colours::white : Colours::black;
+                pixels.setPixelColour(x, y, tone.withAlpha((juce::uint8) random.nextInt(12)));
+            }
+        }
+    }
+    Graphics graphics(texture);
+    for (int wash = 0; wash < 8; ++wash) {
+        const float x = wash * 67.f - 20.f;
+        const float y = random.nextFloat() * 100.f;
+        const auto tone = wash % 3 == 0 ? Colour(0xffe5d4b8) : Colour(0xff9ab8d6);
+        graphics.setGradientFill(ColourGradient(tone.withAlpha(0.085f), x, y,
+                tone.withAlpha(0.f), x + 70.f, y + 40.f, true));
+        graphics.fillEllipse(x - 70.f, y - 50.f, 140.f, 100.f);
+    }
+    return texture;
+}
+
+}
+
+
 PerformanceKeyboard::PerformanceKeyboard(
         MidiKeyboardState& state,
         MidiEventSink& sink) :
@@ -9,6 +38,7 @@ PerformanceKeyboard::PerformanceKeyboard(
     ,   keyboardState(state)
     ,   eventSink(sink)
     ,   stateListener(*this) {
+    keyTexture = keyGrain();
     setName("PerformanceKeyboard");
     setWantsKeyboardFocus(false);
     setMouseClickGrabsKeyboardFocus(false);
@@ -135,6 +165,7 @@ void PerformanceKeyboard::drawWhiteNote(
             lineColour,
             textColour);
 
+    paintKeyTexture(graphics, area, midiNoteNumber, false);
     const String label = noteLabel(midiNoteNumber);
     if (label.isEmpty()) {
         return;
@@ -146,6 +177,23 @@ void PerformanceKeyboard::drawWhiteNote(
     graphics.setColour(Colours::white.withAlpha(isDown ? 0.92f : 0.72f));
     graphics.setFont(FontOptions(labelHeight * 0.72f, Font::plain));
     graphics.drawText(label, labelBounds, Justification::centred, false);
+}
+
+void PerformanceKeyboard::drawBlackNote(int note, Graphics& graphics, Rectangle<float> area,
+        bool down, bool over, Colour fill) {
+    AmaranthMidiKeyboard::drawBlackNote(note, graphics, area, down, over, fill);
+    paintKeyTexture(graphics, area, note, true);
+}
+
+void PerformanceKeyboard::paintKeyTexture(Graphics& graphics, Rectangle<float> area, int note, bool black) {
+    Graphics::ScopedSaveState save(graphics);
+    const auto interior = area.reduced(1.5f);
+    graphics.reduceClipRegion(interior.toNearestInt());
+    graphics.setOpacity(black ? 0.35f : 0.7f);
+    const int width = jlimit(1, 128, roundToInt(area.getWidth()));
+    const int offset = (note * 97) % (keyTexture.getWidth() - width);
+    graphics.drawImage(keyTexture, interior.getX(), interior.getY(), interior.getWidth(), interior.getHeight(),
+            offset, 0, width, keyTexture.getHeight());
 }
 
 bool PerformanceKeyboard::mouseDownOnKey(

@@ -74,3 +74,9 @@ Code-map, architecture audit, production diff/style review and whitespace checks
 pass. The canvas still exceeds the size review threshold; this slice removes its
 controller-count/frame bookkeeping and only changes utility geometry and fit
 clearance. Broader canvas decomposition remains in `refactors.md`.
+
+## Waveform follow-up
+
+`cycle-v2-performance-waveform.md` replaces the progress stripe with a right-hand
+cached Blues waveform on toolbar grey, uses real polyphonic playback cursors,
+and gives the keys the recovered vertical space plus stable subtle grain.
