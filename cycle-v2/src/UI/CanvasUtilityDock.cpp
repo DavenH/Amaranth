@@ -6,7 +6,7 @@
 namespace CycleV2 {
 
 CanvasUtilityDockLayout CanvasUtilityDock::layout(
-        juce::Rectangle<float> contentBounds, int extraControllerCount) {
+        juce::Rectangle<float> contentBounds) {
     CanvasUtilityDockLayout result;
     if (contentBounds.isEmpty()) {
         return result;
@@ -15,24 +15,10 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(
     const float availableWidth = juce::jmax(0.f, contentBounds.getWidth() - margin * 2.f);
     const float utilityWidth = juce::jmin(preferredMinimapWidth, availableWidth);
     const float right = contentBounds.getRight() - margin;
-    const float keyboardWidth = juce::jmin(
-            preferredKeyboardWidth + 38.f * juce::jmax(0, extraControllerCount),
-            availableWidth);
-    const float centredKeyboardX = contentBounds.getCentreX() - keyboardWidth * 0.5f;
-    result.keyboard = {
-            centredKeyboardX,
-            contentBounds.getY(),
-            keyboardWidth,
-            juce::jmin(preferredKeyboardHeight, contentBounds.getHeight())
-    };
-    const bool sharedTopRow = result.keyboard.getRight() + gap
-            > right - utilityWidth;
-    const float minimapTop = sharedTopRow
-            ? result.keyboard.getBottom() + gap
-            : contentBounds.getY() + margin;
-    const float minimapHeight = sharedTopRow
-            ? juce::jlimit(50.f, 92.f, contentBounds.getHeight() * 0.15f)
-            : 92.f;
+    result.keyboard = contentBounds.withHeight(
+            juce::jmin(preferredKeyboardHeight, contentBounds.getHeight()));
+    const float minimapTop = result.keyboard.getBottom() + margin;
+    const float minimapHeight = 92.f;
     result.minimap = {
             right - utilityWidth,
             minimapTop,
@@ -47,20 +33,15 @@ CanvasUtilityDockLayout CanvasUtilityDock::layout(
     result.legend = {
             legendRight - legendWidth,
             contentBounds.getBottom() - margin - preferredLegendHeight,
-            sharedTopRow ? 0.f : legendWidth,
-            juce::jmin(sharedTopRow ? 0.f : preferredLegendHeight,
+            legendWidth,
+            juce::jmin(preferredLegendHeight,
                     juce::jmax(0.f, contentBounds.getHeight() - margin * 2.f))
     };
 
     const float statusLeft = contentBounds.getX() + margin;
-    const float statusRight = sharedTopRow
-            ? result.minimap.getX() - gap
-            : juce::jmin(result.minimap.getX(), result.keyboard.getX()) - gap;
-    const float statusWidth = juce::jmin(
-            560.f,
-            juce::jmax(0.f, statusRight - statusLeft));
-    const float statusTop = sharedTopRow ? result.keyboard.getBottom() + gap
-            : contentBounds.getY() + margin;
+    const float statusRight = result.minimap.getX() - gap;
+    const float statusWidth = juce::jmin(560.f, juce::jmax(0.f, statusRight - statusLeft));
+    const float statusTop = result.keyboard.getBottom() + margin;
     result.status = {
             statusLeft,
             statusTop,

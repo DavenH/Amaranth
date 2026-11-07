@@ -265,7 +265,7 @@ TEST_CASE("Explanation console preserves paragraphs and wraps at a readable size
     REQUIRE(ExplanationBadge::presetButtonWidth == 28);
     for (const float width : { 500.f, 1200.f }) {
         const Rectangle<float> content(0.f, 0.f, width, 700.f);
-        const auto dock = CanvasUtilityDock::layout(content, 2);
+        const auto dock = CanvasUtilityDock::layout(content);
         REQUIRE(dock.status.getHeight() == CanvasUtilityDock::preferredStatusHeight);
         REQUIRE_FALSE(dock.status.intersects(dock.keyboard));
         REQUIRE_FALSE(dock.status.intersects(dock.minimap));

@@ -65,7 +65,6 @@ struct NodeCanvasPresentationFrame {
     int hoveredEdgeIndex { -1 };
     std::optional<Rectangle<float>> areaSelectionBounds;
     Rectangle<float> utilityBounds;
-    int keyboardExtraControllerCount {};
     const GroupInformationCardPresentation* informationCards {};
     juce::String focusedInformationGroup;
     std::optional<GroupInformationCardPreview> informationCardPreview;

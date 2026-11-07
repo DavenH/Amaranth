@@ -174,33 +174,34 @@ private:
         bool advances;
     };
 
-    class ModWheel final :
-            public Component
-        ,   public SettableTooltipClient {
+    class PatternButton final : public TextButton {
+    public:
+        enum class Action { Play, Record, Edit };
+        explicit PatternButton(Action action);
+        void paintButton(Graphics& graphics, bool hovered, bool down) override;
+
+    private:
+        Action action;
+    };
+
+    class ModWheel final : public Slider {
     public:
         explicit ModWheel(int controllerNumber = 1);
-
-        int value() const { return currentValue; }
+        int value() const { return roundToInt(getValue()); }
         int controller() const { return controllerNumber; }
         void setValue(int value, bool sendNotification);
-
-        void focusGained(FocusChangeType cause) override;
-        void focusLost(FocusChangeType cause) override;
         bool keyPressed(const KeyPress& key) override;
         void mouseDown(const MouseEvent& event) override;
-        void mouseDrag(const MouseEvent& event) override;
-        void mouseUp(const MouseEvent& event) override;
         void paint(Graphics& graphics) override;
-
+        String getTooltip() override;
         std::function<void(int)> onValueChanged;
         std::function<void()> onGestureStarted;
         std::function<void()> onGestureEnded;
 
     private:
-        Rectangle<float> wheelTrack() const;
-        void updateFromPointer(float y);
-
-        int currentValue {};
+        void valueChanged() override;
+        void startedDragging() override;
+        void stoppedDragging() override;
         int controllerNumber { 1 };
     };
 
@@ -252,11 +253,13 @@ private:
     PerformanceKeyboard keyboard;
     OctaveButton octaveDown { false };
     OctaveButton octaveUp { true };
+    Component controllerStrip;
+    Viewport controllerViewport;
     ModWheel modWheel;
     std::vector<std::unique_ptr<ModWheel>> extraWheels;
-    TextButton playButton { "PLAY" };
-    TextButton editButton { "EDIT" };
-    TextButton recordButton { "REC" };
+    PatternButton playButton { PatternButton::Action::Play };
+    PatternButton editButton { PatternButton::Action::Edit };
+    PatternButton recordButton { PatternButton::Action::Record };
 };
 
 }

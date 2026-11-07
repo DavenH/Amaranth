@@ -17,15 +17,14 @@ class CanvasUtilityDock {
 public:
     static constexpr float margin = 18.f;
     static constexpr float gap = 8.f;
-    static constexpr float preferredKeyboardWidth = 539.f;
-    static constexpr float preferredKeyboardHeight = 112.f;
+    static constexpr float preferredKeyboardHeight = 56.f;
     static constexpr float preferredMinimapWidth = 210.f;
     static constexpr float preferredLegendWidth = 390.f;
     static constexpr float preferredLegendHeight = 30.f;
     static constexpr float preferredStatusHeight = 94.f;
 
     static CanvasUtilityDockLayout layout(
-            juce::Rectangle<float> contentBounds, int extraControllerCount = 0);
+            juce::Rectangle<float> contentBounds);
     static void paintSurface(
             juce::Graphics& graphics,
             juce::Rectangle<float> bounds);

@@ -25,7 +25,7 @@ void NodeCanvasPresentation::paintMiniMap(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
     const Rectangle<float> map = CanvasUtilityDock::layout(
-            frame.utilityBounds, frame.keyboardExtraControllerCount).minimap;
+            frame.utilityBounds).minimap;
     graphics.setColour(CanvasChromePalette::minimapBackground);
     graphics.fillRoundedRectangle(map, CanvasChromeMetrics::panelCornerRadius);
 
@@ -90,7 +90,7 @@ void NodeCanvasPresentation::paintLegend(
     };
     constexpr int entryCount = 4;
     const Rectangle<float> legend = CanvasUtilityDock::layout(
-            frame.utilityBounds, frame.keyboardExtraControllerCount).legend;
+            frame.utilityBounds).legend;
     if (legend.isEmpty()) {
         return;
     }
@@ -167,7 +167,7 @@ void NodeCanvasPresentation::paintStatus(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
     const Rectangle<float> status = CanvasUtilityDock::layout(
-            frame.utilityBounds, frame.keyboardExtraControllerCount).status;
+            frame.utilityBounds).status;
     graphics.setColour(CanvasChromePalette::canvasBackground);
     graphics.fillRect(status.expanded(2.f));
     const String text = canvasStatusText(frame.statusMessage, frame.hoverText);

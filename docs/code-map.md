@@ -106,7 +106,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/ReferenceWaveformPreview.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Shared waveform analysis/cache and async indexed density/path views.
 - `scripts/fixtures/cycle-v2-agent-spy-waveform-reuse.json` — Checks unchanged tray analysis and presentation invalidation.
 - `cycle-v2/src/UI/WaveformHeatRenderer.h`, `scripts/fixtures/cycle-v2-agent-waveform-zoom-performance.json` — GPU waveform coverage/heat composition and zoom performance workload.
-- `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Shared note ordering and controller preparation for playback and suite export.
+- `cycle-v2/src/UI/PerformanceKeyboard.cpp`, `cycle-v2/src/UI/PerformanceKeyboardKeys.cpp`, `cycle-v2/src/UI/PerformanceKeyboardChrome.cpp`, `cycle-v2/src/UI/PatternPlaybackSchedule.h` — Pattern transport, recording, MIDI keys and bar chrome; shared schedule preparation for playback and suite export.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
 - `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.
 

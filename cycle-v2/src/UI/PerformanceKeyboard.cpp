@@ -3,219 +3,12 @@
 #include "UI/PerformanceKeyboard.h"
 #include "UI/PresetMidiEditor.h"
 
-#include "UI/CanvasChromeMetrics.h"
-#include "UI/CanvasChromePalette.h"
-#include "UI/CanvasUtilityDock.h"
-#include "UI/WorkspaceDock.h"
-
 namespace CycleV2 {
 
 namespace {
 
 constexpr double automationLookaheadSeconds = 0.5;
 
-}
-
-PerformanceKeyboard::PerformanceKeyboard(
-        MidiKeyboardState& state,
-        MidiEventSink& sink) :
-        AmaranthMidiKeyboard(state, MidiKeyboardComponent::horizontalKeyboard)
-    ,   keyboardState(state)
-    ,   eventSink(sink)
-    ,   stateListener(*this) {
-    setName("PerformanceKeyboard");
-    setWantsKeyboardFocus(false);
-    setMouseClickGrabsKeyboardFocus(false);
-    setScrollButtonsVisible(false);
-    setUseVectorKeys(true);
-    setMidiChannel(1);
-    setVelocity(1.f, true);
-    setAvailableRange(rangeStart, rangeStart + visibleSemitones);
-    setLowestVisibleKey(rangeStart);
-    keyboardState.addListener(&stateListener);
-}
-
-PerformanceKeyboard::~PerformanceKeyboard() {
-    releaseAllNotes();
-    keyboardState.removeListener(&stateListener);
-}
-
-Rectangle<float> PerformanceKeyboard::noteBounds(int noteNumber) const {
-    if (noteNumber < rangeStart || noteNumber > rangeStart + visibleSemitones) {
-        return {};
-    }
-    return getRectangleForKey(noteNumber).getIntersection(getLocalBounds().toFloat());
-}
-
-String PerformanceKeyboard::noteLabel(int noteNumber) const {
-    return noteNumber % 12 == 0
-            ? AmaranthMidiKeyboard::getText(noteNumber)
-            : String {};
-}
-
-void PerformanceKeyboard::shiftOctave(int octaveDelta) {
-    setRangeStart(rangeStart + octaveDelta * 12);
-}
-
-void PerformanceKeyboard::revealNote(int midiNote) {
-    const int selectedNote = jlimit(0, 127, midiNote);
-    int nextStart = rangeStart;
-    while (selectedNote < nextStart) {
-        nextStart = jmax(0, nextStart - 12);
-    }
-    while (selectedNote > nextStart + visibleSemitones) {
-        nextStart = jmin(127 - visibleSemitones, nextStart + 12);
-    }
-    setRangeStart(nextStart);
-}
-
-void PerformanceKeyboard::revealRange(int lowest, int highest) {
-    int bestStart = rangeStart;
-    int bestOverlap = -1;
-    int bestOffset = 128;
-    for (int candidate = 0; candidate <= 103; candidate = candidate == 96 ? 103 : candidate + 12) {
-        const int overlap = jmax(0,
-                jmin(highest, candidate + visibleSemitones)
-                        - jmax(lowest, candidate) + 1);
-        const int centresDelta = lowest + highest - 2 * (candidate + 12);
-        const int offset = centresDelta < 0 ? -centresDelta : centresDelta;
-        if (overlap > bestOverlap || (overlap == bestOverlap && offset < bestOffset)) {
-            bestStart = candidate;
-            bestOverlap = overlap;
-            bestOffset = offset;
-        }
-    }
-    setRangeStart(bestStart);
-}
-
-void PerformanceKeyboard::setRangeStart(int noteNumber) {
-    const int nextStart = jlimit(0, 127 - visibleSemitones, noteNumber);
-    if (nextStart == rangeStart) {
-        return;
-    }
-
-    releaseAllNotes();
-    rangeStart = nextStart;
-    setAvailableRange(rangeStart, rangeStart + visibleSemitones);
-    setLowestVisibleKey(rangeStart);
-    resized();
-    repaint();
-}
-
-void PerformanceKeyboard::releaseAllNotes() {
-    keyboardState.allNotesOff(1);
-    eventSink.releaseMidiSource(MidiEventSource::PerformanceKeyboard);
-    currentHeldNote = -1;
-    currentVelocity = 0.f;
-}
-
-void PerformanceKeyboard::mirrorSequenceNote(
-        int noteNumber, float velocity, bool noteOn) {
-    const ScopedValueSetter<bool> visualOnly(mirroringSequenceNote, true);
-    if (noteOn) {
-        keyboardState.noteOn(1, noteNumber, velocity);
-    } else {
-        keyboardState.noteOff(1, noteNumber, velocity);
-    }
-}
-
-void PerformanceKeyboard::resized() {
-    constexpr int whiteKeyCount = 15;
-    if (getWidth() <= 0) {
-        return;
-    }
-    setKeyWidth((float) getWidth() / (float) whiteKeyCount);
-    AmaranthMidiKeyboard::resized();
-}
-
-void PerformanceKeyboard::drawWhiteNote(
-        int midiNoteNumber,
-        Graphics& graphics,
-        Rectangle<float> area,
-        bool isDown,
-        bool isOver,
-        Colour lineColour,
-        Colour textColour) {
-    AmaranthMidiKeyboard::drawWhiteNote(
-            midiNoteNumber,
-            graphics,
-            area,
-            isDown,
-            isOver,
-            lineColour,
-            textColour);
-
-    const String label = noteLabel(midiNoteNumber);
-    if (label.isEmpty()) {
-        return;
-    }
-    const float labelHeight = jlimit(10.f, 14.f, area.getHeight() * 0.2f);
-    const Rectangle<float> labelBounds = area
-            .removeFromBottom(labelHeight + 3.f)
-            .reduced(2.f, 0.f);
-    graphics.setColour(Colours::white.withAlpha(isDown ? 0.92f : 0.72f));
-    graphics.setFont(FontOptions(labelHeight * 0.72f, Font::plain));
-    graphics.drawText(label, labelBounds, Justification::centred, false);
-}
-
-bool PerformanceKeyboard::mouseDownOnKey(
-        int midiNoteNumber,
-        const MouseEvent& event) {
-    if (event.mods.isRightButtonDown() || event.mods.isPopupMenu()) {
-        if (previewNoteSelected) {
-            previewNoteSelected(midiNoteNumber);
-        }
-        return false;
-    }
-    if (primaryGestureStarted) {
-        primaryGestureStarted();
-    }
-    return true;
-}
-
-void PerformanceKeyboard::StateListener::handleNoteOn(
-        MidiKeyboardState*,
-        int midiChannel,
-        int midiNoteNumber,
-        float velocity) {
-    owner.handleNoteOn(midiChannel, midiNoteNumber, velocity);
-}
-
-void PerformanceKeyboard::StateListener::handleNoteOff(
-        MidiKeyboardState*,
-        int midiChannel,
-        int midiNoteNumber,
-        float velocity) {
-    owner.handleNoteOff(midiChannel, midiNoteNumber, velocity);
-}
-
-void PerformanceKeyboard::handleNoteOn(
-        int midiChannel,
-        int midiNoteNumber,
-        float velocity) {
-    currentHeldNote = midiNoteNumber;
-    currentVelocity = velocity;
-    if (mirroringSequenceNote) {
-        return;
-    }
-    eventSink.enqueueMidiMessage(
-            MidiMessage::noteOn(midiChannel, midiNoteNumber, velocity),
-            MidiEventSource::PerformanceKeyboard);
-}
-
-void PerformanceKeyboard::handleNoteOff(
-        int midiChannel,
-        int midiNoteNumber,
-        float velocity) {
-    if (!mirroringSequenceNote) {
-        eventSink.enqueueMidiMessage(
-                MidiMessage::noteOff(midiChannel, midiNoteNumber, velocity),
-                MidiEventSource::PerformanceKeyboard);
-    }
-    if (currentHeldNote == midiNoteNumber) {
-        currentHeldNote = -1;
-        currentVelocity = 0.f;
-    }
 }
 
 PerformanceKeyboardPanel::PerformanceKeyboardPanel(
@@ -230,7 +23,11 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
     addAndMakeVisible(keyboard);
     addAndMakeVisible(octaveDown);
     addAndMakeVisible(octaveUp);
-    addAndMakeVisible(modWheel);
+    addAndMakeVisible(controllerViewport);
+    controllerViewport.setViewedComponent(&controllerStrip, false);
+    controllerViewport.setScrollBarsShown(false, true, false, true);
+    controllerViewport.setScrollBarThickness(3);
+    controllerStrip.addAndMakeVisible(modWheel);
     addAndMakeVisible(playButton);
     addAndMakeVisible(editButton);
     addAndMakeVisible(recordButton);
@@ -240,15 +37,6 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
     playButton.setTooltip("Play or stop this preset preview phrase");
     editButton.setTooltip("Edit preset preview notes and modulation");
     recordButton.setTooltip("Record MIDI input into this preset preview");
-    for (auto* button : { &playButton, &editButton, &recordButton }) {
-        button->setColour(TextButton::buttonColourId,
-                CanvasChromePalette::restingControlSurface);
-        button->setColour(TextButton::buttonOnColourId,
-                CanvasChromePalette::raisedSurface);
-        button->setColour(TextButton::textColourOffId,
-                CanvasChromePalette::text);
-        button->setMouseCursor(MouseCursor::PointingHandCursor);
-    }
     playButton.onClick = [this] { togglePlayback(); };
     editButton.onClick = [this] { openSequenceEditor(); };
     recordButton.onClick = [this] {
@@ -263,7 +51,7 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
         recordingStartedAtSeconds = Time::getMillisecondCounterHiRes() / 1000.0;
         recordedNoteStarts.fill(-1.0);
         recording = true;
-        recordButton.setButtonText("STOP");
+        recordButton.setToggleState(true, dontSendNotification);
         if (recordingChanged) {
             recordingChanged(true);
         }
@@ -310,30 +98,6 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
     keyboard.setHighlightedNote(selectedPreviewNote);
 }
 
-PerformanceKeyboardPanel::OctaveButton::OctaveButton(bool advancesOctave) :
-        Button      (advancesOctave ? "Next keyboard octave" : "Previous keyboard octave")
-    ,   advances    (advancesOctave) {
-    setName(advances ? "PerformanceKeyboard.OctaveUp" : "PerformanceKeyboard.OctaveDown");
-    setMouseCursor(MouseCursor::PointingHandCursor);
-    setWantsKeyboardFocus(true);
-}
-
-void PerformanceKeyboardPanel::OctaveButton::paintButton(
-        Graphics& graphics,
-        bool highlighted,
-        bool down) {
-    const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.5f);
-    WorkspaceDock::paintIconButton(
-            graphics,
-            bounds,
-            advances ? WorkspaceDockIcon::ChevronRight : WorkspaceDockIcon::ChevronLeft,
-            highlighted || hasKeyboardFocus(true));
-    if (down) {
-        graphics.setColour(Colours::white.withAlpha(0.08f));
-        graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
-    }
-}
-
 Rectangle<float> PerformanceKeyboardPanel::noteBounds(int noteNumber) const {
     return keyboard.noteBounds(noteNumber).translated(
             (float) keyboard.getX(),
@@ -349,7 +113,7 @@ Rectangle<float> PerformanceKeyboardPanel::octaveUpBounds() const {
 }
 
 Rectangle<float> PerformanceKeyboardPanel::modWheelBounds() const {
-    return modWheel.getBounds().toFloat();
+    return getLocalArea(&modWheel, modWheel.getLocalBounds()).toFloat();
 }
 
 Rectangle<float> PerformanceKeyboardPanel::controllerBounds(int controller) const {
@@ -358,7 +122,8 @@ Rectangle<float> PerformanceKeyboardPanel::controllerBounds(int controller) cons
     }
     for (const auto& wheel : extraWheels) {
         if (wheel->controller() == controller) {
-            return wheel->getBounds().toFloat();
+            return getLocalArea(wheel.get(), wheel->getLocalBounds()).toFloat()
+                    .getIntersection(controllerViewport.getBounds().toFloat());
         }
     }
     return {};
@@ -511,7 +276,7 @@ void PerformanceKeyboardPanel::setMappedControllers(std::vector<int> controllers
                 controllerGestureEnded(controller);
             }
         };
-        addAndMakeVisible(*wheel);
+        controllerStrip.addAndMakeVisible(*wheel);
         nextWheels.push_back(std::move(wheel));
     }
     extraWheels = std::move(nextWheels);
@@ -564,7 +329,7 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     progress = 0.f;
     playbackStartedAtMilliseconds = nowMilliseconds;
     playing = true;
-    playButton.setButtonText("STOP");
+    playButton.setToggleState(true, dontSendNotification);
     sendModWheelValue();
     for (const auto& wheel : extraWheels) {
         sendControllerValue(wheel->controller(), controllerValue(wheel->controller()));
@@ -614,7 +379,7 @@ void PerformanceKeyboardPanel::stopPlayback(bool resetProgress) {
     }
     playbackNote = -1;
     playing = false;
-    playButton.setButtonText("PLAY");
+    playButton.setToggleState(false, dontSendNotification);
     if (resetProgress) {
         progress = 0.f;
     }
@@ -744,7 +509,7 @@ void PerformanceKeyboardPanel::stopRecording() {
     }
     sequence->durationSeconds = jmax(sequence->durationSeconds, end + 0.1);
     recording = false;
-    recordButton.setButtonText("REC");
+    recordButton.setToggleState(false, dontSendNotification);
     setSequence(*sequence);
     if (sequenceChanged) {
         sequenceChanged(*sequence);
@@ -756,52 +521,6 @@ void PerformanceKeyboardPanel::releaseAllNotes() {
     stopRecording();
     releaseEditorAudition();
     keyboard.releaseAllNotes();
-}
-
-void PerformanceKeyboardPanel::paint(Graphics& graphics) {
-    const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.75f);
-    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
-    graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::panelCornerRadius);
-    const Rectangle<float> track = progressBounds();
-    const float trackCornerRadius = track.getHeight() * 0.5f;
-    graphics.setColour(CanvasChromePalette::strongBorder.withAlpha(0.22f));
-    graphics.fillRoundedRectangle(track, trackCornerRadius);
-    if (progress > 0.f) {
-        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.58f));
-        graphics.fillRoundedRectangle(
-                track.withWidth(track.getWidth() * progress),
-                trackCornerRadius);
-    }
-}
-
-void PerformanceKeyboardPanel::resized() {
-    const bool compact = getWidth() < roundToInt(CanvasUtilityDock::preferredKeyboardWidth);
-    const int panelInset = compact ? 4 : 6;
-    const int buttonWidth = compact ? 25 : 28;
-    const int controlGap = compact ? 2 : 4;
-    const int wheelGap = compact ? 3 : 6;
-    const int wheelWidth = compact ? 24 : 32;
-    Rectangle<int> content = getLocalBounds().reduced(panelInset);
-    Rectangle<int> actions = content.removeFromRight(compact ? 37 : 44);
-    content.removeFromRight(compact ? 2 : 4);
-    const int actionGap = 3;
-    const int actionHeight = (actions.getHeight() - 2 * actionGap) / 3;
-    playButton.setBounds(actions.removeFromTop(actionHeight));
-    actions.removeFromTop(actionGap);
-    recordButton.setBounds(actions.removeFromTop(actionHeight));
-    actions.removeFromTop(actionGap);
-    editButton.setBounds(actions);
-    modWheel.setBounds(content.removeFromLeft(wheelWidth));
-    content.removeFromLeft(wheelGap);
-    for (auto& wheel : extraWheels) {
-        wheel->setBounds(content.removeFromLeft(wheelWidth));
-        content.removeFromLeft(wheelGap);
-    }
-    octaveDown.setBounds(content.removeFromLeft(buttonWidth));
-    content.removeFromLeft(controlGap);
-    octaveUp.setBounds(content.removeFromRight(buttonWidth));
-    content.removeFromRight(controlGap);
-    keyboard.setBounds(content);
 }
 
 void PerformanceKeyboardPanel::openSequenceEditor() {
@@ -856,132 +575,6 @@ void PerformanceKeyboardPanel::showSequenceEditor(
     CallOutBox::launchAsynchronously(
             std::move(editor), editButton.getScreenBounds(), nullptr);
     editorContent->grabKeyboardFocus();
-}
-
-PerformanceKeyboardPanel::ModWheel::ModWheel(int controller) :
-        controllerNumber(controller) {
-    setName(controller == 1
-            ? "PerformanceKeyboard.ModWheel"
-            : "PerformanceKeyboard.CC" + String(controller));
-    setMouseCursor(MouseCursor::UpDownResizeCursor);
-    setWantsKeyboardFocus(true);
-}
-
-void PerformanceKeyboardPanel::ModWheel::setValue(
-        int value,
-        bool sendNotification) {
-    const int nextValue = jlimit(0, 127, value);
-    if (nextValue == currentValue) {
-        return;
-    }
-    currentValue = nextValue;
-    repaint();
-    if (sendNotification && onValueChanged) {
-        onValueChanged(currentValue);
-    }
-}
-
-bool PerformanceKeyboardPanel::ModWheel::keyPressed(const KeyPress& key) {
-    const int keyCode = key.getKeyCode();
-    if (keyCode != KeyPress::upKey && keyCode != KeyPress::downKey) {
-        return false;
-    }
-    setValue(currentValue + (keyCode == KeyPress::upKey ? 1 : -1), true);
-    return true;
-}
-
-void PerformanceKeyboardPanel::ModWheel::focusGained(FocusChangeType) {
-    repaint();
-}
-
-void PerformanceKeyboardPanel::ModWheel::focusLost(FocusChangeType) {
-    repaint();
-}
-
-void PerformanceKeyboardPanel::ModWheel::mouseDown(const MouseEvent& event) {
-    if (!event.mods.isLeftButtonDown()) {
-        return;
-    }
-    if (onGestureStarted) {
-        onGestureStarted();
-    }
-    if (isShowing()) {
-        grabKeyboardFocus();
-    }
-    updateFromPointer(event.position.y);
-}
-
-void PerformanceKeyboardPanel::ModWheel::mouseDrag(const MouseEvent& event) {
-    if (!event.mods.isLeftButtonDown()) {
-        return;
-    }
-    updateFromPointer(event.position.y);
-}
-
-void PerformanceKeyboardPanel::ModWheel::mouseUp(const MouseEvent&) {
-    if (onGestureEnded) {
-        onGestureEnded();
-    }
-}
-
-void PerformanceKeyboardPanel::ModWheel::paint(Graphics& graphics) {
-    const Rectangle<float> track = wheelTrack();
-    const float proportion = (float) currentValue / 127.f;
-    const float thumbY = jmap(proportion, track.getBottom(), track.getY());
-    const bool focused = hasKeyboardFocus(true);
-
-    graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(0.86f));
-    graphics.fillRoundedRectangle(track, track.getWidth() * 0.5f);
-    graphics.setColour(CanvasChromePalette::focus.withAlpha(0.45f));
-    graphics.fillRoundedRectangle(
-            track.withTop(thumbY),
-            track.getWidth() * 0.5f);
-
-    Rectangle<float> thumb(0.f, 0.f, jmin(18.f, getWidth() - 4.f), 16.f);
-    thumb.setCentre((float) getWidth() * 0.5f, thumbY);
-    const auto colours = CanvasChromePalette::control(
-            focused
-                    ? CanvasChromeControlState::Focused
-                    : CanvasChromeControlState::Resting);
-    graphics.setColour(colours.surface);
-    graphics.fillRoundedRectangle(thumb, CanvasChromeMetrics::controlCornerRadius);
-    graphics.setColour(colours.border);
-    graphics.drawRoundedRectangle(
-            thumb,
-            CanvasChromeMetrics::controlCornerRadius,
-            CanvasChromeMetrics::restingBorderWidth);
-    graphics.setColour(colours.text.withAlpha(0.82f));
-    graphics.drawHorizontalLine(
-            roundToInt(thumb.getCentreY()),
-            thumb.getX() + 4.f,
-            thumb.getRight() - 4.f);
-
-    graphics.setColour(CanvasChromePalette::mutedText);
-    graphics.setFont(FontOptions(9.f, Font::plain));
-    graphics.drawText(
-            controllerNumber == 1 ? "MOD" : "CC" + String(controllerNumber),
-            getLocalBounds().removeFromBottom(13),
-            Justification::centred,
-            false);
-}
-
-Rectangle<float> PerformanceKeyboardPanel::ModWheel::wheelTrack() const {
-    Rectangle<float> track = getLocalBounds().toFloat();
-    track.removeFromTop(9.f);
-    track.removeFromBottom(18.f);
-    return track.withSizeKeepingCentre(6.f, track.getHeight());
-}
-
-void PerformanceKeyboardPanel::ModWheel::updateFromPointer(float y) {
-    const Rectangle<float> track = wheelTrack();
-    if (track.isEmpty()) {
-        return;
-    }
-    const float proportion = 1.f - jlimit(
-            0.f,
-            1.f,
-            (y - track.getY()) / track.getHeight());
-    setValue(roundToInt(proportion * 127.f), true);
 }
 
 void PerformanceKeyboardPanel::timerCallback() {

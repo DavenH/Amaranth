@@ -45,7 +45,8 @@ strip, and an 84 px two-row compact-window layout. Preserve preview Play/Record/
 Edit, octave controls, MOD and graph-mapped CCs. Use radial controls with relative
 dragging, fine adjustment, and numeric values; visual radius must not determine
 drag resolution. The supplied reference governs the shallow two-octave keyboard.
-These layouts are proposals; production keyboard/layout changes await selection.
+The approved dark keyboard and MIDI-pattern controls are implemented in
+`cycle-v2-compact-performance-bar.md` (2026-11-07).
 
 ## Results
 
@@ -70,4 +71,5 @@ inherited obsolete UI from the historical reference; do not implement their
 category rail, right browser, graph/node presentation, or extra global controls.
 The supplied current `acidic-2` screenshot is authoritative for the left library,
 canvas, nodes, console and Wave References tray. The refined mockup changes only
-the top performance strip; further implementation remains a separate step.
+the top performance strip; implementation is recorded in
+`cycle-v2-compact-performance-bar.md`.

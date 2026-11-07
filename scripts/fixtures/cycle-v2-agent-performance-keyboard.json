@@ -18,22 +18,24 @@
     {
       "command": "assertState",
       "path": "performance.screenWidth",
-      "equals": 489
+      "op": "greaterThan",
+      "value": 600
     },
     {
       "command": "assertState",
       "path": "performance.screenHeight",
-      "equals": 135
+      "equals": 56
     },
     {
       "command": "assertState",
       "path": "performance.whiteKeyWidth",
-      "equals": 25
+      "equals": 24
     },
     {
       "command": "assertState",
       "path": "performance.whiteKeyAspect",
-      "equals": 4.0
+      "op": "greaterThan",
+      "value": 1.8
     },
     {
       "command": "assertState",
@@ -43,7 +45,7 @@
     {
       "command": "assertState",
       "path": "performance.octaveButtonHeight",
-      "equals": 100
+      "equals": 44
     },
     {
       "command": "assertState",
@@ -133,8 +135,8 @@
       "command": "captureLiveAudio",
       "durationMs": 500,
       "path": "/private/tmp/cycle-v2-performance-keyboard-live.wav",
-      "peakGreaterThan": 0.00001,
-      "rmsGreaterThan": 0.000001,
+      "peakGreaterThan": 1e-05,
+      "rmsGreaterThan": 1e-06,
       "peakLessThan": 1.0
     },
     {
@@ -157,25 +159,25 @@
       "command": "assertState",
       "path": "performance.peak",
       "op": "greaterThan",
-      "value": 0.00001
+      "value": 1e-05
     },
     {
       "command": "assertState",
       "path": "performance.rms",
       "op": "greaterThan",
-      "value": 0.000001
+      "value": 1e-06
     },
     {
       "command": "assertState",
       "path": "liveOutputMeter.leftAmplitude",
       "op": "greaterThan",
-      "value": 0.00001
+      "value": 1e-05
     },
     {
       "command": "assertState",
       "path": "liveOutputMeter.rightAmplitude",
       "op": "greaterThan",
-      "value": 0.00001
+      "value": 1e-05
     },
     {
       "command": "assertState",
@@ -216,7 +218,7 @@
     },
     {
       "command": "waitForIdle",
-      "delayMs": 8000
+      "idleDelayMs": 8000
     },
     {
       "command": "assertState",

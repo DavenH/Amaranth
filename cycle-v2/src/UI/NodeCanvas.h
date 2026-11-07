@@ -240,7 +240,6 @@ public:
 
 private:
     void synchronizeSurfaceStyles();
-    int extraMidiControllerCount() const;
     enum class HoverRepaint {
         None,
         Status,
