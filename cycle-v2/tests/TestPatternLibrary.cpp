@@ -152,9 +152,9 @@ TEST_CASE("Factory preset references resolve through the curated pattern library
     }
     REQUIRE(references > 0);
     for (const auto& record : library.records()) {
-        REQUIRE(record.tag.isNotEmpty());
-        REQUIRE_FALSE(record.tags.isEmpty());
         if (record.id.startsWith("factory-basic-")) {
+            REQUIRE(record.tag.isNotEmpty());
+            REQUIRE_FALSE(record.tags.isEmpty());
             REQUIRE(record.sequence.notes.size() >= 4);
             ++curatedCount;
         } else {

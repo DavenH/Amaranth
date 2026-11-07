@@ -160,6 +160,7 @@ struct TimedNoteRetarget {
 
 struct AudioVoiceControls {
     int noteNumber { 60 };
+    int keyScaleNote { -1 };
     int lowestNote { Constants::LowestMidiNote };
     int highestNote { Constants::HighestMidiNote };
     float velocity { 1.f };

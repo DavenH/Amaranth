@@ -71,7 +71,7 @@ generate_svg_data(
     libraryCurves libraryPresets libraryPatterns libraryNodes libraryAssets libraryImport libraryAddReference libraryTray
 )
 
-file(GLOB_RECURSE APP_SOURCES
+file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
 )
@@ -311,6 +311,8 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorModelCommands.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeViewModule.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/RenderInvalidationAccumulator.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SpyPlaybackRipple.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SpyFrameRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailView.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbeDetailPanel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SignalProbePreviewTileCache.cpp"
@@ -536,6 +538,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/Automation/CycleV2AutomationSessionTransport.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/Automation/OfflineAudioCaptureAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/Automation/PatternScheduleAutomation.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/Automation/SpyFrameAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/Automation/ImpulseResponseImportAutomation.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/StandaloneAudioEngine.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/Reference/ReferenceSampleAnalysis.cpp"

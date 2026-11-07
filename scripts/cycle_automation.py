@@ -222,6 +222,7 @@ def main():
                     "CYCLE_AGENT_SESSION": record["socket"],
                     "CYCLE_APP_PID": str(record["pid"]),
                     "CYCLE_AUTOMATION_ARTIFACTS": str(artifacts),
+                    "CYCLE_AUTOMATION_SCOPED": "1" if scoped else "0",
                 })
                 command_args = args.command[1:] if args.command[0] == "--" else args.command
                 if args.foreground:
@@ -245,7 +246,9 @@ def main():
             (artifacts / "run.json").write_text(json.dumps(result, indent=2) + "\n")
             return result
 
-        scoped = args.operation == "debug" or (args.operation == "run" and (args.clean or args.startup))
+        scoped = (args.operation == "debug"
+                  or args.operation == "run" and (args.clean or args.startup)
+                  or args.operation == "exec" and args.clean)
         try:
             result = ensure(profile, owner, short_id, args.clean, args.wait, task,
                             scoped, not args.no_build)

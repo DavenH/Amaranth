@@ -340,19 +340,27 @@ ScalarSurfaceMaterial TrimeshSurfaceStyle::surfaceMaterial() const {
                 ? ScalarSurfaceMaterial::bipolarMagnitude()
                 : ScalarSurfaceMaterial::unipolarMagnitude();
     }
-    return ScalarSurfaceMaterial::timeDomain();
+    return timeStyleOverride.has_value()
+            ? ScalarSurfaceMaterial::forTimeStyle(*timeStyleOverride)
+            : ScalarSurfaceMaterial::timeDomain();
 }
 
 int TrimeshSurfaceStyle::materialStyleSignature() const {
     if (domain == PortDomain::TimeSignal) {
         return ScalarSurfaceMaterial::timeSurfaceStyleIndex(
-                ScalarSurfaceMaterial::timeSurfaceStyle());
+                timeStyleOverride.value_or(ScalarSurfaceMaterial::timeSurfaceStyle()));
     }
     if (domain == PortDomain::SpectralMagnitudeSignal
             && scalePolicy == RenderScalePolicy::Bipolar) {
         return ScalarSurfaceMaterial::bipolarMagnitudeStyleIndex();
     }
     return -1;
+}
+
+TrimeshRenderProfile TrimeshRenderProfile::withTimeStyle(ScalarSurfaceTimeStyle style) const {
+    auto result = *this;
+    result.surfaceStyle.timeStyleOverride = style;
+    return result;
 }
 
 TrimeshRenderProfile::TrimeshRenderProfile(NodeRenderSemantic semantic) :

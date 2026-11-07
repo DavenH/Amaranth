@@ -87,6 +87,69 @@ previous resource, size and model. The response includes source rate, retained
 sample count, IR length, actual processing parameters and committed revisions.
 Source samples retain their original rate without output-rate resampling.
 
+## Export Spy PNG sequences
+
+Export a Cyclogram plot while a preview pattern's controller automation advances:
+
+```bash
+python3 scripts/export_cycle_v2_spy_sequence.py \
+    --preset cycle-v2/content/presets/honerism-3.cyclegraph \
+    --pattern cycle-v2/content/patterns/factory-basic-keys.cyclepattern \
+    --gradient bullion --fps 30 --width 1280 --height 720 --mp4 \
+    --output-dir .context/spy-sequence
+
+python3 scripts/export_cycle_v2_spy_sequence.py --list-gradients
+```
+
+The script builds and launches an isolated app instance, then closes it. Pass
+`--no-build` after building the exact CycleV2 target. Choose an authored Spy with
+`--spy <id>`; the default is `default-output`. `--note <0..127>` fixes the
+key-scale morph and preview reference note. Otherwise, the first pattern note
+sets that reference; controller-only patterns use the preset preview note.
+Melody pitches remain as authored. Gradient IDs and display names are case-insensitive;
+omitting `--gradient` uses the preset's saved time-surface style. All catalog
+entries, including experimental and legacy materials, retain their existing
+filtering and shading. No saved preset or gradient setting changes.
+
+Frames show the full expanded preview at each controller state, using the
+player's existing 5 ms controller schedule. Pattern notes play through the
+production offline synth, with one local saturation ripple per active
+voice over the shared plot. Ripples follow held and release time on the saved
+preview axis; legato reuses its voice marker and stealing replaces the oldest
+voice. Each marker peaks at the exact playback position with a symmetric
+`exp(-abs(distance) / width)` falloff. It enriches the existing colours while
+preserving their HSL hue and lightness. Desaturated shoulders frame the rich
+centre so it also reads on already saturated palettes. Neutral pixels stay neutral. Coincident ripples share their saturation change rather than
+accumulating. `--cursor ripple` is the default; use `--cursor none` to export the
+plot without ripples while retaining audio.
+
+There are `ceil((durationSeconds + tailSeconds) * fps)` opaque PNGs at `index / fps`,
+starting at zero and excluding the duration endpoint. `--tail-seconds 1` adds a
+second for release tails, holding the final controller values (default: zero).
+Rendering may take longer than playback without dropping frames. Patterns must
+contain notes or controller automation and fit the existing schedule capacity.
+Patterns containing notes also export `audio.wav`: deterministic 48 kHz stereo,
+24-bit synth output, aligned to the video's full frame duration. Audio exports
+are limited to 120 seconds including the tail.
+
+Add `--mp4` to encode the completed frames into `sequence.mp4` with ffmpeg
+(assumed installed). It uses H.264 at a target 8 Mb/s, the slow encoding preset,
+yuv420p, and the export frame rate and resolution. When `audio.wav` is present,
+ffmpeg includes it as AAC at 320 kb/s; the original WAV and PNGs remain available.
+Use `--mp4-bitrate 12` to choose another target in megabits per second. Odd dimensions get one black padding pixel on the
+right/bottom as needed for H.264. Video publication is atomic; encoding failures
+or interruptions preserve the PNG sequence and are recorded in the manifest.
+
+The exporter checks the loaded document revision before each frame and aborts
+if that document changes, preserving finished frames instead of mixing presets.
+
+The output directory must be new. It contains `frame-000000.png` onward,
+source snapshots and hashes, a `manifest.json` with resolved settings and frame
+records (including actual voice identities, pitches, ages and ripple positions),
+and a flushed `frames.jsonl` journal. Failures and interruptions retain
+finished PNGs and identify the failed frame in the manifest. The journal also
+preserves completed records if the process is forcibly terminated.
+
 ## Synthesis Capability Discovery
 
 `inspectSynthesisCapabilities` returns the registered node types, declared ports,

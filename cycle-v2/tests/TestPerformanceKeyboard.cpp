@@ -7,6 +7,7 @@
 #include "Runtime/RealtimeGraphRenderer.h"
 #include "UI/CanvasUtilityDock.h"
 #include "UI/PerformanceKeyboard.h"
+#include "UI/PresetMidiEditor.h"
 
 using namespace CycleV2;
 
@@ -272,8 +273,15 @@ TEST_CASE("Every automation lane sets its first value before the first note",
     phrase.controls.push_back({ 73, 40, 0.25 });
     phrase.controls.push_back({ 73, 120, 1.0 });
     panel.setSequence(phrase);
+    panel.setMappedControllers({1, 73});
 
     REQUIRE(panel.startPlayback(1000.0));
+    // A wall-clock seed sent after this origin would overwrite the score's
+    // initial CC after note-on, potentially until the next changed CC value.
+    REQUIRE(sink.sources[0] == MidiEventSource::PerformanceKeyboard);
+    REQUIRE(sink.sources[1] == MidiEventSource::PerformanceKeyboard);
+    REQUIRE(sink.timestamps[0] == 1.0);
+    REQUIRE(sink.timestamps[1] == 1.0);
     const auto firstNote = std::find_if(sink.messages.begin(), sink.messages.end(),
             [](const MidiMessage& message) { return message.isNoteOn(); });
     REQUIRE(firstNote != sink.messages.end());
@@ -756,4 +764,162 @@ TEST_CASE("Canvas utilities keep the console clear at the top left",
     REQUIRE_FALSE(compact.legend.intersects(compact.keyboard));
     REQUIRE(compactContent.contains(compact.keyboard));
     REQUIRE(compactContent.contains(compact.status));
+}
+
+TEST_CASE("Centred MIDI dialog hard-stops only editor audition on pitch changes",
+        "[cycle-v2][keyboard][sequence][editor-audition]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    Component host;
+    host.setBounds(100, 100, 1400, 1000);
+    PerformanceKeyboardPanel panel(state, sink);
+    host.addAndMakeVisible(panel);
+    panel.setBounds(0, 800, 1400, 180);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    panel.setSequence(phrase);
+    panel.seekPlayback(0.25, 1000.0);
+    panel.showSequenceEditor(phrase, [&](PresetMidiSequence next) { panel.setSequence(std::move(next)); });
+    DialogWindow* dialog = nullptr;
+    for (int index = 0; index < Desktop::getInstance().getNumComponents(); ++index) {
+        auto* candidate = Desktop::getInstance().getComponent(index);
+        if (candidate->getName() == "PresetMidiEditor.Dialog") {
+            dialog = dynamic_cast<DialogWindow*>(candidate);
+        }
+    }
+    REQUIRE(dialog != nullptr);
+    auto* editor = dynamic_cast<PresetMidiEditor*>(dialog->getContentComponent());
+    REQUIRE(editor != nullptr);
+    REQUIRE(editor->getWidth() >= 900);
+    REQUIRE(editor->getHeight() >= 640);
+    const auto grid = editor->noteGrid();
+    const float y = grid.getY() + grid.getHeight() * 11.5f / 24.f;
+    const float nextY = y - grid.getHeight() / 24.f;
+    const float x = grid.getX() + grid.getWidth() * 0.25f;
+    sink.messages.clear();
+    sink.sources.clear();
+    editor->mouseDown(keyboardMouseEvent(*editor, {x, y}, ModifierKeys::leftButtonModifier));
+    editor->mouseDrag(keyboardMouseEvent(*editor, {x, nextY}, ModifierKeys::leftButtonModifier));
+    editor->mouseUp(keyboardMouseEvent(*editor, {x, nextY}, ModifierKeys::leftButtonModifier));
+    REQUIRE(panel.playbackPositionSeconds() == 0.25);
+    REQUIRE(sink.messages.size() == 6);
+    REQUIRE(sink.messages[0].isAllSoundOff());
+    REQUIRE(sink.messages[1].isNoteOn());
+    REQUIRE(sink.messages[1].getNoteNumber() == 60);
+    REQUIRE(sink.messages[2].isNoteOff());
+    REQUIRE(sink.messages[3].isAllSoundOff());
+    REQUIRE(sink.messages[4].isNoteOn());
+    REQUIRE(sink.messages[4].getNoteNumber() == 61);
+    REQUIRE(sink.messages[5].isNoteOff());
+    for (const auto source : sink.sources) {
+        REQUIRE(source == MidiEventSource::EditorAudition);
+    }
+    editor->mouseDown(keyboardMouseEvent(*editor, {x, nextY}, ModifierKeys::leftButtonModifier));
+    REQUIRE(sink.messages.back().isNoteOn());
+    REQUIRE(editor->findParentComponentOfClass<DialogWindow>() == dialog);
+    REQUIRE(dialog->isCurrentlyModal(false));
+    Component::SafePointer<DialogWindow> closingDialog(dialog);
+    REQUIRE(editor->keyPressed(KeyPress(KeyPress::escapeKey)));
+    MessageManager::getInstance()->runDispatchLoopUntil(20);
+    REQUIRE(sink.messages.back().isNoteOff());
+    REQUIRE(sink.messages.back().getNoteNumber() == 61);
+    if (closingDialog != nullptr) {
+        REQUIRE_FALSE(closingDialog->isVisible());
+        REQUIRE_FALSE(closingDialog->isCurrentlyModal(false));
+        closingDialog.deleteAndZero();
+    }
+}
+
+TEST_CASE("Pattern seeks are silent while stopped and resume overlapping notes at current automation",
+        "[cycle-v2][keyboard][sequence][seek]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes = {{60, 90, 0.0, 1.0}, {64, 100, 0.5, 2.0}, {67, 80, 1.0, 1.0}};
+    phrase.controls = {{1, 0, 0.0}, {1, 100, 2.0}, {73, 120, 0.0}, {73, 20, 2.0}};
+    panel.setSequence(phrase);
+    panel.seekPlayback(1.0, 2000.0);
+    REQUIRE_FALSE(panel.isPlaying());
+    REQUIRE(panel.playbackPositionSeconds() == 1.0);
+    REQUIRE(sink.messages.empty());
+    REQUIRE(panel.startPlayback(3000.0));
+    int noteOns = 0;
+    for (size_t index = 0; index < sink.messages.size(); ++index) {
+        if (sink.sources[index] != MidiEventSource::PatternPlayback) {
+            continue;
+        }
+        REQUIRE(sink.timestamps[index] >= 3.0);
+        const auto& message = sink.messages[index];
+        if (message.isNoteOn()) {
+            REQUIRE(message.getNoteNumber() != 60);
+            REQUIRE(sink.timestamps[index] == 3.0);
+            ++noteOns;
+        }
+    }
+    REQUIRE(noteOns == 2);
+    const auto firstController = std::find_if(sink.messages.begin(), sink.messages.end(),
+            [](const MidiMessage& message) { return message.isController() && message.getControllerValue() == 50; });
+    REQUIRE(firstController != sink.messages.end());
+    REQUIRE(panel.playbackProgress() == Catch::Approx(0.25));
+
+    sink.messages.clear();
+    sink.sources.clear();
+    sink.timestamps.clear();
+    panel.seekPlayback(2.25, 4000.0);
+    REQUIRE(panel.isPlaying());
+    REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
+    REQUIRE(panel.playbackPositionSeconds() == 2.25);
+    noteOns = 0;
+    for (size_t index = 0; index < sink.messages.size(); ++index) {
+        if (sink.messages[index].isNoteOn()) {
+            REQUIRE(sink.messages[index].getNoteNumber() == 64);
+            REQUIRE(sink.timestamps[index] == 4.0);
+            ++noteOns;
+        }
+        if (sink.messages[index].isNoteOff()) {
+            REQUIRE(sink.timestamps[index] == 4.25);
+        }
+    }
+    REQUIRE(noteOns == 1);
+    panel.updatePlayback(4250.0);
+    REQUIRE(panel.playbackPositionSeconds() == 2.5);
+    REQUIRE(panel.heldNote() == -1);
+    panel.stopPlayback(false);
+    REQUIRE(panel.startPlayback(5000.0));
+    REQUIRE(panel.playbackPositionSeconds() == 2.5);
+    panel.seekPlayback(4.0, 6000.0);
+    REQUIRE_FALSE(panel.isPlaying());
+    REQUIRE(panel.playbackPositionSeconds() == 4.0);
+    REQUIRE(panel.startPlayback(7000.0));
+    REQUIRE(panel.playbackPositionSeconds() == 0.0);
+}
+
+TEST_CASE("Explicit seeking uses the full controller-only pattern timeline",
+        "[cycle-v2][keyboard][sequence][seek]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setPreviewNote(55);
+    panel.setPlaybackDurationSeconds(2.f);
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 10.0;
+    phrase.controls = {{1, 20, 0.0}, {1, 100, 10.0}};
+    panel.setSequence(phrase);
+    panel.seekPlayback(7.0, 1000.0);
+    REQUIRE(sink.messages.empty());
+    REQUIRE(panel.playbackProgress() == Catch::Approx(0.7));
+    REQUIRE(panel.startPlayback(2000.0));
+    REQUIRE(panel.playbackPositionSeconds() == 7.0);
+    REQUIRE(panel.heldNote() == 55);
+    panel.updatePlayback(4000.0);
+    REQUIRE(panel.isPlaying());
+    REQUIRE(panel.playbackPositionSeconds() == 9.0);
+    panel.updatePlayback(5000.0);
+    REQUIRE_FALSE(panel.isPlaying());
+    REQUIRE(panel.playbackPositionSeconds() == 10.0);
 }

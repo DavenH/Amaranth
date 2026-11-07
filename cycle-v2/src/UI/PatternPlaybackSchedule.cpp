@@ -6,11 +6,15 @@
 
 namespace CycleV2 {
 
-PatternPlaybackSchedule PatternPlaybackSchedule::prepare(const PresetMidiSequence& sequence) {
+PatternPlaybackSchedule PatternPlaybackSchedule::prepare(
+        const PresetMidiSequence& sequence, double startSeconds) {
     PatternPlaybackSchedule result;
     for (const auto& note : sequence.notes) {
+        if (note.startSeconds + note.durationSeconds <= startSeconds) {
+            continue;
+        }
         result.notes.push_back({
-                note.startSeconds,
+                juce::jmax(startSeconds, note.startSeconds),
                 juce::MidiMessage::noteOn(1, note.pitch, (juce::uint8) note.velocity) });
         result.notes.push_back({
                 note.startSeconds + note.durationSeconds,
@@ -24,6 +28,7 @@ PatternPlaybackSchedule PatternPlaybackSchedule::prepare(const PresetMidiSequenc
     for (auto& lane : controlLanes) {
         PatternControlScheduler scheduler;
         scheduler.reset(std::move(lane.second), lane.first, sequence.durationSeconds);
+        scheduler.seekTo(startSeconds);
         result.controls.push_back(std::move(scheduler));
     }
     std::stable_sort(result.notes.begin(), result.notes.end(), precedes);

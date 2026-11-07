@@ -1,6 +1,7 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 7,
+    "formatVersion": 9,
+    "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
             "id": "voice",
@@ -11,7 +12,10 @@
                 "octave": 0,
                 "voiceLength": 0.442699879,
                 "pitch": 0.0,
+                "noteMode": "polyphonic",
                 "portamento": false,
+                "portamentoSeconds": 0.06,
+                "envelopeModulation": "latched",
                 "pitchIndependentSpectralControl": false,
                 "oversampling": "2x",
                 "controlInterval": "64"
@@ -31,7 +35,16 @@
                 "redConstant": 0.5,
                 "blueSource": "modWheel",
                 "blueController": 1,
-                "blueConstant": 0.5
+                "blueConstant": 0.5,
+                "envelopeYellowSource": "unmapped",
+                "envelopeYellowController": 1,
+                "envelopeYellowConstant": 0.5,
+                "envelopeRedSource": "keyScale",
+                "envelopeRedController": 1,
+                "envelopeRedConstant": 0.5,
+                "envelopeBlueSource": "modWheel",
+                "envelopeBlueController": 1,
+                "envelopeBlueConstant": 0.5
             }
         },
         {
@@ -54,6 +67,7 @@
             "definitionVersion": 1,
             "position": { "x": 978.83734, "y": 886.0 },
             "parameters": {
+                "dimensionCount": 3,
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
@@ -143,6 +157,7 @@
                 "outputs": { "out": "bottom" }
             },
             "parameters": {
+                "dimensionCount": 3,
                 "enabled": false,
                 "gain": 0.5,
                 "range": 0.5,
@@ -251,20 +266,30 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 1902.0, "y": 1084.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": {
+                "dimensionCount": 2,
+                "yellow": 0.0,
+                "enabled": true,
+                "purpose": "volume",
+                "logarithmic": false,
+                "declick": false,
+                "red": 0.5,
+                "blue": 0.5,
+                "level": 1.0
+            },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 2,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
                             "name": "Mesh",
-                            "version": 1,
+                            "version": 2,
                             "vertices": [
                                 { "time": 0.0, "phase": 0.0, "amp": 1.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
                                 { "time": 0.0, "phase": 0.0, "amp": 1.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
@@ -354,7 +379,8 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "cubeIds": [ 1, 2, 3, 4, 5, 6 ]
+                    "cubeIds": [ 1, 2, 3, 4, 5, 6 ],
+                    "nextCubeIdentity": 7
                 }
             }
         },
@@ -363,20 +389,30 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 106.0, "y": 792.87732 },
-            "parameters": { "enabled": true, "purpose": "pitch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": {
+                "dimensionCount": 2,
+                "yellow": 0.0,
+                "enabled": true,
+                "purpose": "pitch",
+                "logarithmic": false,
+                "declick": false,
+                "red": 0.5,
+                "blue": 0.5,
+                "level": 1.0
+            },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 2,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
                             "name": "Mesh",
-                            "version": 1,
+                            "version": 2,
                             "vertices": [
                                 { "time": 0.0, "phase": 0.0, "amp": 0.5, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 0 },
                                 { "time": 0.0, "phase": 0.0, "amp": 0.5, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 1 },
@@ -390,66 +426,66 @@
                                 { "time": 0.0, "phase": 0.09953296, "amp": 0.49336532, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 9 },
                                 { "time": 0.0, "phase": 0.09953296, "amp": 0.49303198, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 10 },
                                 { "time": 0.0, "phase": 0.09953296, "amp": 0.49336532, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 11 },
-                                { "time": 1.0, "phase": 0.098737925, "amp": 0.50166047, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 12 },
-                                { "time": 1.0, "phase": 0.098737925, "amp": 0.5019938, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 13 },
-                                { "time": 1.0, "phase": 0.098737925, "amp": 0.50166047, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 14 },
-                                { "time": 1.0, "phase": 0.098737925, "amp": 0.5019938, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 15 },
+                                { "time": 1.0, "phase": 0.09953296, "amp": 0.49303198, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 12 },
+                                { "time": 1.0, "phase": 0.09953296, "amp": 0.49336532, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 13 },
+                                { "time": 1.0, "phase": 0.09953296, "amp": 0.49303198, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 14 },
+                                { "time": 1.0, "phase": 0.09953296, "amp": 0.49336532, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 15 },
                                 { "time": 0.0, "phase": 0.19242787, "amp": 0.49303198, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 16 },
                                 { "time": 0.0, "phase": 0.19242787, "amp": 0.49336532, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 17 },
                                 { "time": 0.0, "phase": 0.19242787, "amp": 0.49303198, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 18 },
                                 { "time": 0.0, "phase": 0.19242787, "amp": 0.49336532, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 19 },
-                                { "time": 1.0, "phase": 0.21223202, "amp": 0.50166047, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 20 },
-                                { "time": 1.0, "phase": 0.21223202, "amp": 0.5019938, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 21 },
-                                { "time": 1.0, "phase": 0.21223202, "amp": 0.50166047, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 22 },
-                                { "time": 1.0, "phase": 0.21223202, "amp": 0.5019938, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 23 },
+                                { "time": 1.0, "phase": 0.19242787, "amp": 0.49303198, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 20 },
+                                { "time": 1.0, "phase": 0.19242787, "amp": 0.49336532, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 21 },
+                                { "time": 1.0, "phase": 0.19242787, "amp": 0.49303198, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 22 },
+                                { "time": 1.0, "phase": 0.19242787, "amp": 0.49336532, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 23 },
                                 { "time": 0.0, "phase": 0.14789055, "amp": 0.5130036, "key": 0.0, "mod": 0.0, "weight": 0.056368854, "id": 24 },
                                 { "time": 0.0, "phase": 0.14789055, "amp": 0.5133369, "key": 0.0, "mod": 1.0, "weight": 0.056368854, "id": 25 },
                                 { "time": 0.0, "phase": 0.14789055, "amp": 0.5130036, "key": 1.0, "mod": 0.0, "weight": 0.056368854, "id": 26 },
                                 { "time": 0.0, "phase": 0.14789055, "amp": 0.5133369, "key": 1.0, "mod": 1.0, "weight": 0.056368854, "id": 27 },
-                                { "time": 1.0, "phase": 0.15786469, "amp": 0.506771, "key": 0.0, "mod": 0.0, "weight": 0.056368854, "id": 28 },
-                                { "time": 1.0, "phase": 0.15786469, "amp": 0.5071044, "key": 0.0, "mod": 1.0, "weight": 0.056368854, "id": 29 },
-                                { "time": 1.0, "phase": 0.15786469, "amp": 0.506771, "key": 1.0, "mod": 0.0, "weight": 0.056368854, "id": 30 },
-                                { "time": 1.0, "phase": 0.15786469, "amp": 0.5071044, "key": 1.0, "mod": 1.0, "weight": 0.056368854, "id": 31 },
+                                { "time": 1.0, "phase": 0.14789055, "amp": 0.5130036, "key": 0.0, "mod": 0.0, "weight": 0.056368854, "id": 28 },
+                                { "time": 1.0, "phase": 0.14789055, "amp": 0.5133369, "key": 0.0, "mod": 1.0, "weight": 0.056368854, "id": 29 },
+                                { "time": 1.0, "phase": 0.14789055, "amp": 0.5130036, "key": 1.0, "mod": 0.0, "weight": 0.056368854, "id": 30 },
+                                { "time": 1.0, "phase": 0.14789055, "amp": 0.5133369, "key": 1.0, "mod": 1.0, "weight": 0.056368854, "id": 31 },
                                 { "time": 0.0, "phase": 0.084979326, "amp": 0.49403578, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 32 },
                                 { "time": 0.0, "phase": 0.084979326, "amp": 0.49436912, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 33 },
                                 { "time": 0.0, "phase": 0.084979326, "amp": 0.49403578, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 34 },
                                 { "time": 0.0, "phase": 0.084979326, "amp": 0.49436912, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 35 },
-                                { "time": 1.0, "phase": 0.041271925, "amp": 0.49304134, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 36 },
-                                { "time": 1.0, "phase": 0.041271925, "amp": 0.49337468, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 37 },
-                                { "time": 1.0, "phase": 0.041271925, "amp": 0.49304134, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 38 },
-                                { "time": 1.0, "phase": 0.041271925, "amp": 0.49337468, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 39 },
+                                { "time": 1.0, "phase": 0.084979326, "amp": 0.49403578, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 36 },
+                                { "time": 1.0, "phase": 0.084979326, "amp": 0.49436912, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 37 },
+                                { "time": 1.0, "phase": 0.084979326, "amp": 0.49403578, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 38 },
+                                { "time": 1.0, "phase": 0.084979326, "amp": 0.49436912, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 39 },
                                 { "time": 0.0, "phase": 0.053535923, "amp": 0.5026746, "key": 0.0, "mod": 0.0, "weight": 0.01013304, "id": 40 },
                                 { "time": 0.0, "phase": 0.053535923, "amp": 0.5030079, "key": 0.0, "mod": 1.0, "weight": 0.01013304, "id": 41 },
                                 { "time": 0.0, "phase": 0.053535923, "amp": 0.5026746, "key": 1.0, "mod": 0.0, "weight": 0.01013304, "id": 42 },
                                 { "time": 0.0, "phase": 0.053535923, "amp": 0.5030079, "key": 1.0, "mod": 1.0, "weight": 0.01013304, "id": 43 },
-                                { "time": 1.0, "phase": 0.028089203, "amp": 0.5033362, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 44 },
-                                { "time": 1.0, "phase": 0.028089203, "amp": 0.5036695, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 45 },
-                                { "time": 1.0, "phase": 0.028089203, "amp": 0.5033362, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 46 },
-                                { "time": 1.0, "phase": 0.028089203, "amp": 0.5036695, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 47 },
+                                { "time": 1.0, "phase": 0.053535923, "amp": 0.5026746, "key": 0.0, "mod": 0.0, "weight": 0.01013304, "id": 44 },
+                                { "time": 1.0, "phase": 0.053535923, "amp": 0.5030079, "key": 0.0, "mod": 1.0, "weight": 0.01013304, "id": 45 },
+                                { "time": 1.0, "phase": 0.053535923, "amp": 0.5026746, "key": 1.0, "mod": 0.0, "weight": 0.01013304, "id": 46 },
+                                { "time": 1.0, "phase": 0.053535923, "amp": 0.5030079, "key": 1.0, "mod": 1.0, "weight": 0.01013304, "id": 47 },
                                 { "time": 0.0, "phase": 0.016293947, "amp": 0.4992353, "key": 0.0, "mod": 0.0, "weight": 0.1873829, "id": 48 },
                                 { "time": 0.0, "phase": 0.016293947, "amp": 0.49956864, "key": 0.0, "mod": 1.0, "weight": 0.1873829, "id": 49 },
                                 { "time": 0.0, "phase": 0.016293947, "amp": 0.4992353, "key": 1.0, "mod": 0.0, "weight": 0.1873829, "id": 50 },
                                 { "time": 0.0, "phase": 0.016293947, "amp": 0.49956864, "key": 1.0, "mod": 1.0, "weight": 0.1873829, "id": 51 },
-                                { "time": 1.0, "phase": 0.004422959, "amp": 0.4987999, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 52 },
-                                { "time": 1.0, "phase": 0.004422959, "amp": 0.49913323, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 53 },
-                                { "time": 1.0, "phase": 0.004422959, "amp": 0.4987999, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 54 },
-                                { "time": 1.0, "phase": 0.004422959, "amp": 0.49913323, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 55 },
+                                { "time": 1.0, "phase": 0.016293947, "amp": 0.4992353, "key": 0.0, "mod": 0.0, "weight": 0.1873829, "id": 52 },
+                                { "time": 1.0, "phase": 0.016293947, "amp": 0.49956864, "key": 0.0, "mod": 1.0, "weight": 0.1873829, "id": 53 },
+                                { "time": 1.0, "phase": 0.016293947, "amp": 0.4992353, "key": 1.0, "mod": 0.0, "weight": 0.1873829, "id": 54 },
+                                { "time": 1.0, "phase": 0.016293947, "amp": 0.49956864, "key": 1.0, "mod": 1.0, "weight": 0.1873829, "id": 55 },
                                 { "time": 0.0, "phase": 0.11624861, "amp": 0.49343583, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 56 },
                                 { "time": 0.0, "phase": 0.11624861, "amp": 0.49376917, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 57 },
                                 { "time": 0.0, "phase": 0.11624861, "amp": 0.49343583, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 58 },
                                 { "time": 0.0, "phase": 0.11624861, "amp": 0.49376917, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 59 },
-                                { "time": 1.0, "phase": 0.11842023, "amp": 0.49343583, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 60 },
-                                { "time": 1.0, "phase": 0.11842023, "amp": 0.49376917, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 61 },
-                                { "time": 1.0, "phase": 0.11842023, "amp": 0.49343583, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 62 },
-                                { "time": 1.0, "phase": 0.11842023, "amp": 0.49376917, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 63 },
+                                { "time": 1.0, "phase": 0.11624861, "amp": 0.49343583, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 60 },
+                                { "time": 1.0, "phase": 0.11624861, "amp": 0.49376917, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 61 },
+                                { "time": 1.0, "phase": 0.11624861, "amp": 0.49343583, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 62 },
+                                { "time": 1.0, "phase": 0.11624861, "amp": 0.49376917, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 63 },
                                 { "time": 0.0, "phase": 0.1773231, "amp": 0.49365836, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 64 },
                                 { "time": 0.0, "phase": 0.1773231, "amp": 0.4939917, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 65 },
                                 { "time": 0.0, "phase": 0.1773231, "amp": 0.49365836, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 66 },
                                 { "time": 0.0, "phase": 0.1773231, "amp": 0.4939917, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 67 },
-                                { "time": 1.0, "phase": 0.19379309, "amp": 0.49365836, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 68 },
-                                { "time": 1.0, "phase": 0.19379309, "amp": 0.4939917, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 69 },
-                                { "time": 1.0, "phase": 0.19379309, "amp": 0.49365836, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 70 },
-                                { "time": 1.0, "phase": 0.19379309, "amp": 0.4939917, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 71 }
+                                { "time": 1.0, "phase": 0.1773231, "amp": 0.49365836, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 68 },
+                                { "time": 1.0, "phase": 0.1773231, "amp": 0.4939917, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 69 },
+                                { "time": 1.0, "phase": 0.1773231, "amp": 0.49365836, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 70 },
+                                { "time": 1.0, "phase": 0.1773231, "amp": 0.4939917, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 71 }
                             ],
                             "cubes": [
                                 {
@@ -505,7 +541,8 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
+                    "cubeIds": [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
+                    "nextCubeIdentity": 10
                 }
             }
         },
@@ -687,6 +724,7 @@
         },
         "patternId": "user-a7840bbdeae44c648d5175e7f355bc6b",
         "outputSpyX": 281.46936,
-        "outputSpyY": 1575.85059
+        "outputSpyY": 1575.85059,
+        "outputSpyView": "time"
     }
 }

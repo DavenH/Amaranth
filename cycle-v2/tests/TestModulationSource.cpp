@@ -696,3 +696,27 @@ TEST_CASE("Legato key scale follows timed retargets without changing velocity or
     voice.noteRetargets = { { 0, 72 } };
     REQUIRE(renderAudio(*configuration("keyScale"), voice, 8) == std::vector<float>(8, .6f));
 }
+
+TEST_CASE("Movie reference note fixes key scale across pitched and legato notes",
+        "[cycle-v2][modulation-source][spy-movie]") {
+    const auto keyScale = configuration("keyScale");
+    for (const int played : { 48, 72 }) {
+        AudioVoiceContext voice;
+        voice.controls.noteNumber = played;
+        voice.controls.keyScaleNote = 60;
+        voice.controls.lowestNote = 0;
+        voice.controls.highestNote = 127;
+        voice.oscillatorNoteNumber = played;
+        voice.noteRetargets = { { 3, 67 }, { 7, 76 } };
+        const auto values = renderAudio(*keyScale, voice, 12);
+        REQUIRE(values.size() == 12);
+        for (const float value : values) {
+            CHECK(value == Catch::Approx(60.f / 127.f));
+        }
+        CHECK(voice.oscillatorNoteNumber == played);
+        voice.controls.keyScaleNote = -1;
+        const auto normal = renderAudio(*keyScale, voice, 12);
+        CHECK(normal.front() == Catch::Approx((float) played / 127.f));
+        CHECK(normal.back() == Catch::Approx(76.f / 127.f));
+    }
+}

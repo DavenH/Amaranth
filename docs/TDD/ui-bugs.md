@@ -1,5 +1,23 @@
 # Cycle V2 UI Bug Notes
 
+## P3: Broad modulation bundle fixtures fail before transport startup
+
+The 2026-11-04 initial-controller broad run fails in TestNodeCanvasAuthoring.cpp
+(720, 764, 832), TestModulationSource.cpp (579), and
+TestInteractionComplexityParity.cpp (451), while connecting modulation bundles.
+These cases do not start MIDI transport and their graph/port production paths
+are unchanged by the timestamp fix. Evidence: .context/initial-mod-tests.log.
+Focused transport, pattern scheduling, seek and MIDI-control checks pass.
+
+## P3: Broader editor tests fail in existing Trimesh Guide/vertex fixtures
+
+The 2026-11-04 MIDI authoring broad check (`[editor],[editor-audition],[keyboard]`)
+fails in TestNodeEditorHost.cpp:4128, 4157 and 4316: the vertex edit cannot begin,
+Guide gain assignment fails, and the Guide attachment menu cannot open. These
+fail before MIDI interaction and exercise unchanged Trimesh/Guide ownership.
+Evidence: `.context/midi-focused-tests.log`. The focused MIDI authoring and
+source-isolated audio reset checks are separate from these fixtures.
+
 ## P3: Selected-capture test assumes an older Baroque Flute probe source
 
 The broader 2026-11-01 Spy refresh check reaches
@@ -1343,3 +1361,41 @@ plot offset, predating the 32 px mode-selector header; that assertion now checks
 76 px. The focused 58-case waveform/presentation selection passes. The same
 three incidental empty-Guide `SignalBuffer.h:123` assertions recur in the broader
 selection; their existing investigation remains in `audio-bugs.md`.
+
+
+## Intermittent isolated Spy export dispatch rejection
+
+2026-11-03: Bright Lead 7 / Icy Hot (Raw), linked user pattern
+`user-491e097a01694be28b5e650838472c2d`, 1080p/30 fps export stopped after 83
+completed frames. Request 87 returned `Could not dispatch Cycle V2 session
+request`; this is the MessageManager::callAsync false branch in
+CycleV2AutomationSessionTransport.cpp. No new CycleV2 crash report or assertion
+was found. Completed PNGs/audio and the failed-frame manifest are retained in
+`.context/bright-lead-7-icy-hot-raw-1080p`; scoped runner evidence is
+`.context/cycle-automation/cycle-v2/f5b456b0e405`. A separate Stengah export
+continues through the same API. Cause not established; retry in an isolated
+release instance before attributing this to render data or performance.
+
+
+Release retry result: isolated run `67e7bd389d04` completed the full 150-frame
+Bright Lead 7 sequence, including the previously failed frame 83, in about
+50 seconds. Its run record confirms the standalone-release bundle. Matching
+preset-pattern identity, dimensions, frame times, WAV length and MP4 audio/video
+durations pass in `.context/bright-lead-7-release-1080p/verification.json`.
+The original dispatch failure remains intermittent and unexplained; no transport
+code was changed based on this single occurrence.
+
+
+## Resolved: editable export window could mix presets into a Spy movie
+
+2026-11-04: Mysterie-2's batch movie visually switched among presets while its
+source snapshots and media checks remained valid. A hidden-window rerender from
+identical snapshots matched the first nine frames, then differed for 381 of 390;
+WAV bytes matched exactly. This supports the user's report of interacting with
+the editable render instance, though the old export had no revision journal.
+
+Export now pins the monotonic document revision returned by openGraph and checks
+it on each renderSpyFrame before capture/write. A real preset-switch test rejects
+the changed document without writing a PNG (`.context/mysterie-guard-proof.json`).
+The clean copy `.context/mysterie-2-clean-1080p/sequence.mp4` ran with its owned
+PID hidden and revision 2 checked throughout. The original montage is preserved.

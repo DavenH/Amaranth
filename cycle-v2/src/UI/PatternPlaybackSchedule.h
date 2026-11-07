@@ -13,7 +13,7 @@ struct PatternPlaybackSchedule {
     std::vector<PatternPlaybackEvent> notes;
     std::vector<PatternControlScheduler> controls;
 
-    static PatternPlaybackSchedule prepare(const PresetMidiSequence& sequence);
+    static PatternPlaybackSchedule prepare(const PresetMidiSequence& sequence, double startSeconds = 0.0);
     static bool precedes(const PatternPlaybackEvent& first, const PatternPlaybackEvent& second);
 };
 

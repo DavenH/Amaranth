@@ -39,6 +39,8 @@ enum class CycleV2AutomationCommand {
     InvokePaletteItem,
     CaptureAudio,
     ExportPatternSchedule,
+    ListSpyGradients,
+    RenderSpyFrame,
     SetPresetSequence,
     CaptureLiveAudio,
     OpenNodeEditor,

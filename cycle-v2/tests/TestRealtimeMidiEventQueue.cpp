@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include "Runtime/RealtimeMidiEventQueue.h"
 
@@ -66,21 +67,23 @@ TEST_CASE("Realtime MIDI retriggers receive distinct clock-scoped lifecycle seed
 
 TEST_CASE("Realtime MIDI queue overflow requests source-scoped recovery",
         "[cycle-v2][midi][realtime]") {
+    const auto source = GENERATE(MidiEventSource::PerformanceKeyboard,
+            MidiEventSource::Hardware, MidiEventSource::PatternPlayback, MidiEventSource::EditorAudition);
     RealtimeMidiEventQueue queue;
     for (size_t index = 0; index < RealtimeMidiEventQueue::capacity; ++index) {
         REQUIRE(queue.enqueue(
                 MidiMessage::noteOn(1, 60, (uint8) 100),
-                MidiEventSource::PerformanceKeyboard,
+                source,
                 (double) index));
     }
 
     REQUIRE_FALSE(queue.enqueue(
             MidiMessage::noteOff(1, 60),
-            MidiEventSource::PerformanceKeyboard,
+            source,
             1000.0));
     REQUIRE(queue.droppedEventCount() == 1);
-    REQUIRE(queue.consumeRecoveryRequest(MidiEventSource::PerformanceKeyboard));
-    REQUIRE_FALSE(queue.consumeRecoveryRequest(MidiEventSource::PerformanceKeyboard));
+    REQUIRE(queue.consumeRecoveryRequest(source));
+    REQUIRE_FALSE(queue.consumeRecoveryRequest(source));
 }
 
 TEST_CASE("Canceling pattern playback invalidates queued notes without touching the keyboard",

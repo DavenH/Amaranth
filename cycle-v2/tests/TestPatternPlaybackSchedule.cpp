@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
 
 #include "App/Automation/PatternScheduleAutomation.h"
 #include "Graph/PresetPresentation.h"
@@ -62,4 +63,43 @@ TEST_CASE("Pattern schedule export rejects malformed and oversized performances 
     REQUIRE_FALSE((bool) result["ok"]);
     REQUIRE(result["message"].toString().contains("capacity"));
     REQUIRE(result["data"].isVoid());
+}
+
+TEST_CASE("Seek schedules remaining overlapping notes and current multi-lane automation",
+        "[cycle-v2][pattern-schedule][seek]") {
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes = {{60, 90, 0.0, 1.0}, {64, 100, 0.5, 2.0}, {67, 80, 1.0, 1.0}};
+    phrase.controls = {{1, 0, 0.0}, {1, 100, 2.0}, {73, 120, 0.0}, {73, 20, 2.0}};
+    auto schedule = PatternPlaybackSchedule::prepare(phrase, 1.0);
+    REQUIRE(schedule.notes.size() == 4);
+    REQUIRE(schedule.notes[0].timeSeconds == 1.0);
+    REQUIRE(schedule.notes[0].message.isNoteOn());
+    REQUIRE(schedule.notes[0].message.getNoteNumber() == 64);
+    REQUIRE(schedule.notes[1].timeSeconds == 1.0);
+    REQUIRE(schedule.notes[1].message.getNoteNumber() == 67);
+    REQUIRE(schedule.notes[2].timeSeconds == 2.0);
+    REQUIRE(schedule.notes[3].timeSeconds == 2.5);
+    struct Sink final : MidiEventSink {
+        std::vector<juce::MidiMessage> messages;
+        std::vector<double> times;
+        bool enqueueMidiMessage(const juce::MidiMessage&, MidiEventSource) override { return false; }
+        bool enqueueMidiMessageAt(const juce::MidiMessage& message, MidiEventSource source, double time) override {
+            REQUIRE(source == MidiEventSource::PatternPlayback);
+            messages.push_back(message);
+            times.push_back(time);
+            return true;
+        }
+        void releaseMidiSource(MidiEventSource) override {}
+    } sink;
+    for (auto& controller : schedule.controls) {
+        controller.seekTo(1.013);
+        REQUIRE(controller.scheduleUntil(1.013, 8.987, sink));
+    }
+    REQUIRE(sink.messages.size() == 2);
+    REQUIRE(sink.messages[0].getControllerValue() == 51);
+    REQUIRE(sink.messages[1].getControllerValue() == 69);
+    REQUIRE(sink.times[0] == Catch::Approx(10.0));
+    REQUIRE(sink.times[1] == Catch::Approx(10.0));
+    REQUIRE(PatternPlaybackSchedule::prepare(phrase, 4.0).notes.empty());
 }

@@ -15,6 +15,7 @@
 #include "Runtime/MidiControlState.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
 #include "Runtime/VoiceNoteState.h"
+#include "Runtime/VoicePlayback.h"
 
 namespace CycleV2 {
 
@@ -74,6 +75,9 @@ public:
         deterministicRandomSeed = seed;
         hasDeterministicRandomSeed = true;
     }
+    void setKeyScaleNoteOverride(int note) { keyScaleNoteOverride = jlimit(-1, 127, note); }
+    // Renderer-owning thread only; captures the current allocator state at this event time.
+    VoicePlaybackFrame voicePlaybackFrame(double timeSeconds) const;
     uint64_t process(
             RealtimeMidiEventQueue& events,
             float* const* outputChannels,
@@ -81,7 +85,8 @@ public:
             int frameCount,
             double sampleRate,
             double callbackStartSeconds,
-            AudioPerformanceMetrics::RealtimeSample* performanceSample = nullptr);
+            AudioPerformanceMetrics::RealtimeSample* performanceSample = nullptr,
+            VoicePlaybackCapture* playback = nullptr);
     void resetVoices(bool resetControls);
     PlaybackCursorExchange& playbackCursors() { return cursorExchange; }
     const PlaybackCursorExchange& playbackCursors() const { return cursorExchange; }
@@ -118,6 +123,8 @@ private:
         int oscillatorNoteNumber { 60 };
         float velocity { 1.f };
         float normalizedTime {};
+        double startedAtSeconds {};
+        double releasedAtSeconds {};
         bool active {};
         bool released {};
         VoiceNoteState notes;
@@ -129,7 +136,9 @@ private:
             RealtimeMidiEventQueue& queue,
             int frameCount,
             double sampleRate,
-            double callbackStartSeconds);
+            double callbackStartSeconds,
+            VoicePlaybackCapture* playback);
+    void capturePlaybackBefore(VoicePlaybackCapture* playback, size_t sampleOffset);
     void applyEvent(const RealtimeMidiEvent& event, size_t sampleOffset);
     void releaseSource(MidiEventSource source, size_t sampleOffset, int channel = 0);
     void resetSource(MidiEventSource source, size_t sampleOffset, int channel = 0);
@@ -156,7 +165,7 @@ private:
     PreparedGraph* preparedGraph {};
     CycleDsp::SpectralStageCaptureSink* spectralStageCapture {};
     std::array<Voice, voiceCount> voices;
-    std::array<std::array<std::array<uint16_t, 128>, 16>, 3> pendingStolenNoteOffs {};
+    std::array<std::array<std::array<uint16_t, 128>, 16>, RealtimeMidiEventQueue::sourceCount> pendingStolenNoteOffs {};
     MidiControlState midiControls;
     std::array<RealtimeMidiEvent, maximumScheduledEvents> scheduledEvents;
     size_t scheduledEventCount {};
@@ -165,6 +174,7 @@ private:
     std::atomic<float> voiceDurationOverrideSeconds {};
     double volumeEnvelopeClockSampleRate {};
     double currentSampleRate { 44100.0 };
+    double currentBlockStartSeconds {};
     float outputGain { defaultOutputGain };
     SmoothedParameter graphOutputGain { 1.f };
     std::atomic<float> requestedGraphOutputGain { 1.f };
@@ -172,6 +182,7 @@ private:
     int64_t deterministicRandomSeed {};
     bool hasDeterministicRandomSeed {};
     int controlNoteOffset {};
+    int keyScaleNoteOverride { -1 };
 
     std::atomic<uint64_t> callbackCounter {};
     std::atomic<uint64_t> activeRevision {};

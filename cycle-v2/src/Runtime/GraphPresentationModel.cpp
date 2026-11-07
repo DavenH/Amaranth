@@ -251,19 +251,36 @@ bool GraphPresentationModel::refreshPreviewControllerValue(
         uint64_t documentRevision,
         int controller,
         int value) {
-    const int selectedController = jlimit(0, 127, controller);
-    const int selectedValue = jlimit(0, 127, value);
-    if (current.previewControllerValues[(size_t) selectedController] == selectedValue) {
+    auto values = current.previewControllerValues;
+    values[(size_t) jlimit(0, 127, controller)] = jlimit(0, 127, value);
+    return refreshPreviewControllerValues(graph, documentRevision, values);
+}
+
+bool GraphPresentationModel::refreshPreviewControllerValues(
+        const NodeGraph& graph,
+        uint64_t documentRevision,
+        const std::array<int, 128>& values) {
+    if (std::any_of(values.begin(), values.end(), [](int value) { return value < 0 || value > 127; })) {
+        return false;
+    }
+    if (current.previewControllerValues == values) {
         return true;
     }
 
     scheduler.cancelAndWait();
-    current.previewControllerValues[(size_t) selectedController] = selectedValue;
-
-    return refreshPreviewControls(
-            graph,
-            documentRevision,
-            controllerPreviewRootNodeIds[(size_t) selectedController]);
+    std::vector<String> roots;
+    for (size_t controller = 0; controller < values.size(); ++controller) {
+        if (current.previewControllerValues[controller] == values[controller]) {
+            continue;
+        }
+        for (const auto& root : controllerPreviewRootNodeIds[controller]) {
+            if (std::find(roots.begin(), roots.end(), root) == roots.end()) {
+                roots.push_back(root);
+            }
+        }
+    }
+    current.previewControllerValues = values;
+    return refreshPreviewControls(graph, documentRevision, std::move(roots));
 }
 
 void GraphPresentationModel::stagePreviewModWheelValue(int value) {
@@ -543,7 +560,8 @@ GraphPresentationModel::captureProbePreview(
         const String& probeId,
         size_t rasterRowCount,
         int midiNote,
-        double noteOffTime) {
+        double noteOffTime,
+        std::optional<PresetPreviewView> viewOverride) {
     if (!current.compileResult.succeeded() || rasterRowCount == 0) {
         return std::nullopt;
     }
@@ -558,7 +576,7 @@ GraphPresentationModel::captureProbePreview(
             midiNote,
             performance,
             noteOffTime,
-            view);
+            viewOverride.value_or(view));
 }
 
 std::vector<std::optional<GraphPreviewResult::SignalProbePreview>>

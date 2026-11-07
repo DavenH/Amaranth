@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 7,
+    "formatVersion": 9,
     "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
@@ -12,7 +12,10 @@
                 "octave": 0,
                 "voiceLength": 0.35915493,
                 "pitch": 0.0,
+                "noteMode": "polyphonic",
                 "portamento": false,
+                "portamentoSeconds": 0.06,
+                "envelopeModulation": "latched",
                 "pitchIndependentSpectralControl": false,
                 "oversampling": "4x",
                 "controlInterval": "64"
@@ -32,7 +35,16 @@
                 "redConstant": 0.5,
                 "blueSource": "modWheel",
                 "blueController": 1,
-                "blueConstant": 0.5
+                "blueConstant": 0.5,
+                "envelopeYellowSource": "unmapped",
+                "envelopeYellowController": 1,
+                "envelopeYellowConstant": 0.5,
+                "envelopeRedSource": "keyScale",
+                "envelopeRedController": 1,
+                "envelopeRedConstant": 0.5,
+                "envelopeBlueSource": "modWheel",
+                "envelopeBlueController": 1,
+                "envelopeBlueConstant": 0.5
             }
         },
         {
@@ -55,6 +67,7 @@
             "definitionVersion": 1,
             "position": { "x": 1021.84918, "y": 886.0 },
             "parameters": {
+                "dimensionCount": 3,
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.5,
@@ -574,6 +587,7 @@
                 "outputs": { "out": "bottom" }
             },
             "parameters": {
+                "dimensionCount": 3,
                 "enabled": false,
                 "gain": 0.5,
                 "range": 0.5,
@@ -643,20 +657,30 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 100.0, "y": 863.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.5, "level": 1.0 },
+            "parameters": {
+                "dimensionCount": 2,
+                "yellow": 0.0,
+                "enabled": true,
+                "purpose": "scratch",
+                "logarithmic": false,
+                "declick": false,
+                "red": 0.5,
+                "blue": 0.5,
+                "level": 1.0
+            },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 1,
+                "revision": 2,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 1,
+                    "revision": 2,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
                             "name": "ScratchMesh0",
-                            "version": 1,
+                            "version": 2,
                             "vertices": [
                                 { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 0 },
                                 { "time": 0.0, "phase": 0.0, "amp": 0.81818175, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
@@ -707,7 +731,8 @@
                     "logarithmic": false,
                     "red": 0.5,
                     "blue": 0.5,
-                    "cubeIds": [ 1, 2, 3 ]
+                    "cubeIds": [ 1, 2, 3 ],
+                    "nextCubeIdentity": 4
                 }
             }
         },
@@ -879,6 +904,7 @@
         },
         "patternId": "user-491e097a01694be28b5e650838472c2d",
         "outputSpyX": 863.84167,
-        "outputSpyY": 1171.97998
+        "outputSpyY": 1171.97998,
+        "outputSpyView": "time"
     }
 }

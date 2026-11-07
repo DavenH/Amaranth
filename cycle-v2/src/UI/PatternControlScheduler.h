@@ -12,6 +12,7 @@ class PatternControlScheduler {
 public:
     void reset(std::vector<PresetMidiControl> points, int controller,
             double durationSeconds);
+    void seekTo(double elapsedSeconds);
     bool scheduleUntil(double elapsedSeconds, double startSeconds,
             MidiEventSink& sink);
 
@@ -22,6 +23,7 @@ private:
     int controller { 1 };
     double durationSeconds {};
     size_t nextStep {};
+    double nextTimeSeconds {};
     size_t segment {};
     int lastValue { -1 };
 };
