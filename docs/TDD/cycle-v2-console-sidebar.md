@@ -49,3 +49,11 @@ Native evidence is in .context/console-sidebar/; focused logs are
 Production diff/style, code-map, architecture audit and whitespace checks pass.
 No new incidental application assertions or crashes were observed. User preset
 edits remain outside this change.
+
+Follow-up: PatternBrowser's Edit button now supplies console help for editing
+user notes/automation or copying a factory pattern. The shared help lookup is
+covered by the pattern-browser test, and the native sidebar check verifies real
+pointer hover over the enabled factory Edit action. Debug/Release builds and
+845 assertions in 10 pattern/status cases pass. Evidence:
+`.context/midi-edit-help-tests.log`, `.context/midi-edit-help-native.log`, and
+`.context/console-sidebar/pattern-edit-help.png`.

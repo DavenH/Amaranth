@@ -61,6 +61,17 @@ def check():
         assert not any(c in current['consoleText'] for c in '\r\n\t')
         evidence['hoverState'] = current
         native.capture('console-hover', origin)
+        send(command='pointer', targetId='workspace.sidebar.patterns', event='click')
+        send(command='pointer', targetId='workspace.sidebar.tag.keys', event='click')
+        send(command='pointer', targetId='workspace.sidebar.pattern.factory-basic-keys', event='click')
+        edit = targets()['workspace.sidebar.patternEdit']['bounds']
+        native.click(f"m:{round(origin['x'] + edit['x'] + edit['width']/2)},"
+                f"{round(origin['y'] + edit['y'] + edit['height']/2)}")
+        time.sleep(.3)
+        edit_help = send(command='snapshotState')['consoleText']
+        assert edit_help == 'Create an editable copy of the selected factory MIDI pattern', edit_help
+        evidence['patternEditHelp'] = edit_help
+        native.capture('pattern-edit-help', origin)
         send(command='resizeWindow', width=800, height=700)
         time.sleep(.2)
         native.capture('compact', targets()['comparisonWorkspace']['screenBounds'])
