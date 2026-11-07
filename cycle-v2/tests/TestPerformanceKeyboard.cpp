@@ -143,6 +143,29 @@ TEST_CASE("Performance keyboard octave changes release its owned notes",
     REQUIRE_FALSE(keyboard.noteBounds(42).isEmpty());
 }
 
+TEST_CASE("Dark keyboard edges do not expose bright background pixels",
+        "[cycle-v2][keyboard][keyboard-pixels]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboard keyboard(state, sink);
+    for (const int width : { 210, 359, 360, 361 }) {
+        keyboard.setSize(width, 50);
+        for (const float scale : { 1.f, 1.25f, 1.5f, 2.f }) {
+            const auto image = keyboard.createComponentSnapshot(keyboard.getLocalBounds(), true, scale);
+            int brightPixels = 0;
+            for (int y = 0; y < roundToInt(8.f * scale); ++y) {
+                for (int x = 0; x < image.getWidth(); ++x) {
+                    const auto colour = image.getPixelAt(x, y);
+                    brightPixels += colour.getBrightness() > 0.65f ? 1 : 0;
+                }
+            }
+            INFO("width=" << width << " scale=" << scale);
+            REQUIRE(brightPixels == 0);
+        }
+    }
+}
+
 TEST_CASE("Performance keyboard right click selects preview note without sounding it",
         "[cycle-v2][keyboard][preview-note]") {
     ScopedJuceInitialiser_GUI gui;
@@ -624,6 +647,42 @@ TEST_CASE("Mapped CC wheel sits beside the mod wheel and sends live MIDI",
     REQUIRE(sink.messages.back().getControllerNumber() == 120);
     REQUIRE(sink.messages.back().getControllerValue() == 127);
 
+}
+
+TEST_CASE("Performance waveform stays fixed across controller mapping counts",
+        "[cycle-v2][keyboard][performance-layout]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    for (const int width : { 1200, 1438 }) {
+        panel.setSize(width, 56);
+        const auto waveformBounds = panel.waveformPreview().getBounds();
+        const auto keyBounds = panel.noteBounds(panel.baseNote());
+        for (const std::vector<int> mappings : {
+                std::vector<int> {}, { 1, 73 }, { 1, 11, 14, 73, 120 },
+                { 1, 11, 14, 15, 16, 17, 18, 19, 73, 120 } }) {
+            panel.setMappedControllers(mappings);
+            INFO("width=" << width << " mappings=" << mappings.size());
+            REQUIRE(panel.waveformPreview().getBounds() == waveformBounds);
+            REQUIRE(panel.noteBounds(panel.baseNote()) == keyBounds);
+            auto* mod = namedControl(panel, "PerformanceKeyboard.ModWheel");
+            REQUIRE(mod != nullptr);
+            auto* viewport = mod->findParentComponentOfClass<Viewport>();
+            REQUIRE(viewport != nullptr);
+            REQUIRE(viewport->getWidth() == 5 * 44);
+        }
+    }
+    for (const int width : { 1200, 1199, 1100, 1000, 950, 900 }) {
+        panel.setSize(width, 56);
+        const auto& waveform = panel.waveformPreview();
+        if (waveform.isVisible()) {
+            REQUIRE(waveform.getWidth() <= 384);
+            REQUIRE(768 % waveform.getWidth() == 0);
+            REQUIRE(waveform.getRight() == panel.getWidth() - 18);
+            REQUIRE(waveform.getX() >= panel.modWheelBounds().getX() + 5 * 44 + 18);
+        }
+    }
 }
 
 TEST_CASE("Performance keyboard preview transport follows its configured duration",

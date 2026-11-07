@@ -41,6 +41,7 @@ def check(output):
         before = first['performance']['waveform']
         assert before['visible'] and before['colourStyle'] == 'blues', before
         assert before['background'] == 'toolbar'
+        assert before['pixelWidth'] > 0 and before['heatColumns'] % before['pixelWidth'] == 0, before
         assert first['performance']['whiteKeyHeight'] == 50
         assert first['performance']['screenHeight'] == 56
         send(command='sendMidi', type='noteOn', note=60, velocity=.7)

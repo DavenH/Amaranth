@@ -51,6 +51,7 @@ PerformanceWaveformPreview::PerformanceWaveformPreview() {
     addAndMakeVisible(waveform);
     addAndMakeVisible(overlay);
     waveform.setColourStyle(WaveformColourStyles::Style::Blues);
+    waveform.setBorderVisible(false);
     waveform.onBackground = [](juce::Graphics& graphics) {
         graphics.fillAll(CanvasChromePalette::dockSurface);
     };

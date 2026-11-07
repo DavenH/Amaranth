@@ -2,6 +2,16 @@
 
 Status: Complete (2026-11-07).
 
+Completed follow-up: remove the performance preview's enclosing
+border, reserve five 44 px controller slots (including MOD) independent of preset
+mapping count, and scroll additional mappings within that viewport. Constrained
+windows still shrink the viewport to protect key width. Right-align a stable
+384 px waveform, stepping down to 256/192/128 px before hiding; derive widths from
+the shared 768-column density grid. At 2x scale these are 1:1, 3:2, 2:1 and 3:1
+grid-to-pixel ratios. Keep the existing density cache and physical-pixel coverage
+renderer. Remove the default white JUCE keyboard backing that leaks through
+rounded antialiased key corners, preserving the grain and washes.
+
 Replace the keyboard's progress strip with a right-hand density waveform using
 ReferenceWaveformView, pinned to the existing Blues gradient on the same grey
 background as the bar. Let the keys use
@@ -41,7 +51,7 @@ SignalProbeWaveformCapture. Source identity, pitch and controller values gate
 requests. A changed prepared plan is copied once at the accepted post-gesture
 audition boundary for worker lifetime safety. Cancelled requests cannot publish,
 and readiness includes both capture and density publication. Old pixels remain
-visible until their replacement is ready. Below 120 px available preview width,
+visible until their replacement is ready. Below 128 px available preview width,
 the view hides and keeps the cached source for its return.
 
 ReferenceWaveformView adds an optional fixed palette, leaving ordinary reference
@@ -88,3 +98,30 @@ Evidence: `.context/performance-waveform-tests.log`,
 Normal-size native captures were inspected, including the final grey backing.
 Architecture audit, semantic code-map, production style/diff and whitespace checks
 pass. No new incidental assertions or runtime crashes were observed.
+
+## Border, controller buffer and density alignment follow-up
+
+The shared view's border remains enabled by default; only the performance view
+disables it. Controller viewport width no longer depends on mapping count:
+five slots stay reserved, and more mappings use the existing horizontal scroll.
+The waveform is right-aligned at the largest fitting grid-derived width, so
+preset changes cannot move it. Rendering/analysis owners and cache lifetimes
+are unchanged. The largest touched production file is 406 lines; all additions
+stay in the existing layout, key presentation and waveform owners.
+
+Before the fix, the pixel regression found two bright edge pixels at 210 px
+keyboard width and 1.25x scale; the controller geometry regression found only
+44 px reserved instead of 220 px. Afterward, all 137,419 assertions in the 60
+focused keyboard/waveform/status cases pass. Pixel coverage includes four key
+widths at 1/1.25/1.5/2x scales, and border rendering preserves the ordinary
+reference frame while blending this preview into the toolbar. Geometry tests
+cover changing mapping counts, overflow, grid ratios and compact widths.
+
+The exact app build and `test_cycle_v2_performance_waveform.py --no-build`
+pass. On the Retina capture the displayed 768 physical columns match the 768
+density columns. Polyphonic playback leaves capture/source/heat/geometry counts
+unchanged; edit/undo and native held-MOD release still publish correctly.
+Native captures were reviewed with the frame removed and clean key edges.
+Code-map, architecture audit, production diff/style and whitespace checks pass.
+Evidence: `.context/keyboard-refinement-before.log`,
+`.context/keyboard-refinement-tests.log`, and `.context/keyboard-refinement/`.

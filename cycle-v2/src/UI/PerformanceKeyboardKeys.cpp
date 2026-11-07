@@ -1,5 +1,7 @@
 #include "UI/PerformanceKeyboard.h"
 
+#include "UI/CanvasChromePalette.h"
+
 namespace CycleV2 {
 
 namespace {
@@ -44,6 +46,8 @@ PerformanceKeyboard::PerformanceKeyboard(
     setMouseClickGrabsKeyboardFocus(false);
     setScrollButtonsVisible(false);
     setUseVectorKeys(true);
+    // The JUCE backing remains visible through antialiased key edges and corners.
+    setColour(MidiKeyboardComponent::whiteNoteColourId, CanvasChromePalette::restingControlSurface);
     setVectorKeyPalette({ Colour(0xff465361), Colour(0xff232c36),
             Colour(0xff171f28), Colour(0xff080e15),
             Colour(0xff3296b5), Colour(0xff12445e),

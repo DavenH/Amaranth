@@ -27,6 +27,7 @@ public:
     void setSignal(std::shared_ptr<const std::vector<float>> samples);
     void setViewport(const ZoomRect& viewport);
     void setColourStyle(std::optional<WaveformColourStyles::Style> style);
+    void setBorderVisible(bool visible);
     juce::var diagnostics() const;
     void paint(juce::Graphics& graphics) override;
     void resized() override;
@@ -77,6 +78,7 @@ private:
     double renderMs {};
     bool line {};
     bool filled {};
+    bool borderVisible { true };
     size_t crossings {};
 };
 

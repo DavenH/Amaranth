@@ -102,6 +102,11 @@ ReferenceWaveformView::~ReferenceWaveformView() {
     worker.removeAllJobs(true, 2000);
 }
 
+void ReferenceWaveformView::setBorderVisible(bool visible) {
+    borderVisible = visible;
+    repaint();
+}
+
 void ReferenceWaveformView::setSample(const PitchedSample* sample) {
     if (sampleIdentity == sample && signalIdentity == nullptr) {
         return;
@@ -257,8 +262,10 @@ void ReferenceWaveformView::paint(juce::Graphics& graphics) {
     if (onOverlay) {
         onOverlay(graphics);
     }
-    graphics.setColour(CanvasChromePalette::border);
-    graphics.drawRect(getLocalBounds());
+    if (borderVisible) {
+        graphics.setColour(CanvasChromePalette::border);
+        graphics.drawRect(getLocalBounds());
+    }
     paintMs = juce::Time::getMillisecondCounterHiRes() - started;
     if (paintedOnGpu) {
         gpuHeatPaintTotalMs += paintMs;
@@ -302,6 +309,7 @@ juce::var ReferenceWaveformView::diagnostics() const {
     value->setProperty("gpuHeatPaintMaxMs", gpuHeatPaintMaxMs);
     value->setProperty("background", "black");
     value->setProperty("pixelWidth", image.getWidth());
+    value->setProperty("heatColumns", waveformHeatColumns);
     value->setProperty("sourceBuilds", sourceBuildCount);
     value->setProperty("heatBuilds", source != nullptr ? source->heatBuilds.load() : 0);
     value->setProperty("colourBuilds", source != nullptr ? source->colourBuilds.load() : 0);

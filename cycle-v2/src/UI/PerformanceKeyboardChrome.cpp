@@ -3,6 +3,7 @@
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/Editors/PropertyControlLookAndFeel.h"
+#include "UI/ReferenceWaveformPreview.h"
 #include "UI/WorkspaceDock.h"
 
 namespace CycleV2 {
@@ -63,7 +64,7 @@ void PerformanceKeyboardPanel::resized() {
     editButton.setBounds(actions.getX() + 76, actionY, 28, 28);
     content.removeFromLeft(16);
     const int dialCount = 1 + (int) extraWheels.size();
-    const int dialSpace = jmin(dialCount * 44, jmax(44, content.getWidth() - 282));
+    const int dialSpace = jmin(5 * 44, jmax(44, content.getWidth() - 282));
     const int keysWidth = jmin(360, jmax(0, content.getWidth() - dialSpace - 72));
     octaveDown.setBounds(content.removeFromLeft(28));
     content.removeFromLeft(2);
@@ -73,8 +74,17 @@ void PerformanceKeyboardPanel::resized() {
     content.removeFromLeft(12);
     controllerViewport.setBounds(content.removeFromLeft(dialSpace).withY(2).withHeight(getHeight() - 4));
     content.removeFromLeft(18);
-    waveform.setBounds(content.withY(3).withHeight(getHeight() - 6));
-    waveform.setVisible(content.getWidth() >= 120);
+    // Simple density-grid ratios avoid an arbitrary stretch as the bar resizes.
+    int waveformWidth = 0;
+    for (const int divisor : { 2, 3, 4, 6 }) {
+        const int width = waveformHeatColumns / divisor;
+        if (width <= content.getWidth()) {
+            waveformWidth = width;
+            break;
+        }
+    }
+    waveform.setBounds(content.removeFromRight(waveformWidth).withY(3).withHeight(getHeight() - 6));
+    waveform.setVisible(waveformWidth > 0);
     controllerStrip.setSize(dialCount * 44, controllerViewport.getHeight() - 3);
     modWheel.setBounds(0, 0, 44, controllerStrip.getHeight());
     for (size_t index = 0; index < extraWheels.size(); ++index) {

@@ -2,10 +2,31 @@
 #include <catch2/catch_approx.hpp>
 
 #include "Runtime/GraphPresentationModel.h"
+#include "UI/CanvasChromePalette.h"
 #include "UI/PerformanceWaveformPreview.h"
 
 using namespace CycleV2;
 using namespace juce;
+
+TEST_CASE("Performance waveform blends into toolbar without an enclosing border",
+        "[cycle-v2][ui][performance-waveform][waveform-chrome]") {
+    ScopedJuceInitialiser_GUI gui;
+    PerformanceWaveformPreview view;
+    view.setSize(384, 50);
+    const auto image = view.createComponentSnapshot(view.getLocalBounds());
+    for (int x = 0; x < image.getWidth(); ++x) {
+        REQUIRE(image.getPixelAt(x, 0) == CanvasChromePalette::dockSurface);
+        REQUIRE(image.getPixelAt(x, image.getHeight() - 1) == CanvasChromePalette::dockSurface);
+    }
+    for (int y = 0; y < image.getHeight(); ++y) {
+        REQUIRE(image.getPixelAt(0, y) == CanvasChromePalette::dockSurface);
+        REQUIRE(image.getPixelAt(image.getWidth() - 1, y) == CanvasChromePalette::dockSurface);
+    }
+    ReferenceWaveformView reference;
+    reference.setSize(384, 50);
+    const auto referenceImage = reference.createComponentSnapshot(reference.getLocalBounds());
+    REQUIRE(referenceImage.getPixelAt(0, 0) == CanvasChromePalette::border);
+}
 
 TEST_CASE("Performance waveform retains density through cursor updates and pins Blues",
         "[cycle-v2][ui][performance-waveform][waveform][cache]") {
