@@ -199,7 +199,7 @@ TEST_CASE("Trackpad deltas accumulate and overview seeking preserves pitch navig
     editor.mouseUp(pointer(editor, { grid.getX() + 2.f, grid.getCentreY() }));
     REQUIRE(changed.notes.size() == 1);
     REQUIRE(changed.notes[0].startSeconds == 0.125);
-    REQUIRE(changed.notes[0].pitch == 64);
+    REQUIRE(changed.notes[0].pitch == 67);
     const auto control = editor.controlGrid();
     editor.mouseDown(pointer(editor, { grid.getX() + 2.f, control.getCentreY() }));
     editor.mouseUp(pointer(editor, { grid.getX() + 2.f, control.getCentreY() }));
@@ -386,7 +386,7 @@ TEST_CASE("Creating and dragging moves a fixed length note and hands off auditio
         ++publications;
     }, {}, [&](int pitch, int, bool on) { audition.emplace_back(pitch, on); });
     const float y = pitch60Y(editor);
-    const float nextY = y - editor.noteGrid().getHeight() / 29.f;
+    const float nextY = editor.pitchRow(61).getCentreY();
     editor.mouseDown(pointer(editor, {xAt(editor, 0.5, 4.0), y}));
     editor.mouseDrag(pointer(editor, {xAt(editor, 0.75, 4.0), nextY}));
     REQUIRE(publications == 0);
@@ -557,7 +557,7 @@ TEST_CASE("Grid and snapping follow saved tempo independently of saved duration"
     REQUIRE(tempo != nullptr);
     const auto grid = editor.noteGrid();
     const int beatX = roundToInt(grid.getX() + grid.getWidth() * 0.25f);
-    const int gridY = roundToInt(grid.getY() + grid.getHeight() / 58.f);
+    const int gridY = roundToInt(grid.getY() + editor.pitchRow(60).getHeight() * 0.5f);
     const Image before = editor.createComponentSnapshot(editor.getLocalBounds());
     const auto place = [&](PresetMidiEditor& roll) {
         const auto area = roll.noteGrid();
@@ -624,7 +624,7 @@ TEST_CASE("New notes inherit the last touched note length and edited velocity",
         expectedVelocity = 83;
     }
     const int committed = publications;
-    const float nextY = y - editor.noteGrid().getHeight() * 2.f / 29.f;
+    const float nextY = editor.pitchRow(62).getCentreY();
     const float x = xAt(editor, 1.25, 4.0);
     editor.mouseDown(pointer(editor, {x, nextY}));
     editor.mouseDrag(pointer(editor, {xAt(editor, 1.375, 4.0), nextY}));
@@ -813,7 +813,7 @@ TEST_CASE("Left and Right seek one measure relative to the live phrase cursor",
     }
 }
 
-TEST_CASE("Compact editor aligns plots and exposes 29 editable semitone rows",
+TEST_CASE("Compact editor aligns plots and exposes 36 editable semitone rows",
         "[cycle-v2][preset][sequence][editor][ui]") {
     ScopedJuceInitialiser_GUI gui;
     PresetMidiSequence phrase;
@@ -854,8 +854,8 @@ TEST_CASE("Compact editor aligns plots and exposes 29 editable semitone rows",
         REQUIRE(velocity.getY() - roll.getBottom() == 4.f);
         REQUIRE(cc.getY() - velocity.getBottom() == 4.f);
         REQUIRE((float) editor.getHeight() - cc.getBottom() == 4.f);
-        REQUIRE(std::abs(roll.getHeight() / editor.pitchRow(60).getHeight() - 29.f) < 0.001f);
-        for (int pitch = 46; pitch <= 74; ++pitch) {
+        REQUIRE(std::abs(roll.getHeight() / editor.pitchRow(60).getHeight() - 36.f) < 0.001f);
+        for (int pitch = 42; pitch <= 77; ++pitch) {
             const auto row = editor.pitchRow(pitch);
             REQUIRE(roll.contains(row));
             const Point<float> at(roll.getX() + roll.getWidth() * 0.75f, row.getCentreY());
@@ -865,7 +865,7 @@ TEST_CASE("Compact editor aligns plots and exposes 29 editable semitone rows",
             REQUIRE(changed.notes.back().startSeconds == 1.5);
         }
     }
-    REQUIRE(publications == 58);
+    REQUIRE(publications == 72);
 }
 
 TEST_CASE("Overview excludes automation while controller lanes retain it",

@@ -8,8 +8,8 @@ in the toolbar. Remove the repeated phrase heading, Length widgets, selected
 event metadata and bottom shortcut bar. Keep the native title “MIDI Pattern”.
 
 Geometry: shared 80 px left / 16 px right timeline gutters, 32 px notes-only
-overview, 24 px tick ruler, 29 chromatic rows (previously 24), 48 px velocity and
-76 px controller plots with 4 px gaps. Freed height belongs to the piano roll.
+overview, 24 px tick ruler, 36 chromatic rows (increased from the initial 29),
+48 px velocity and 76 px controller plots with 4 px gaps. Freed height belongs to the piano roll.
 Use recognizable grey natural / near-black accidental keys, restrained blue
 notes and thin velocity stems, small amber automation handles and faint fill.
 Keep existing 8 px controller and velocity acquisition and Shift fine gestures.
@@ -48,7 +48,7 @@ The ordinary screenshot includes selected-note/resize and velocity-cap states.
 
 Debug and Release apps build. Focused authoring/keyboard/scheduler verification
 passes 1,632 assertions in 61 cases, including direct tempo text entry and
-clamping, saved silence/timing retention, all 29 pitches at both sizes, identical
+clamping, saved silence/timing retention, all 29 initial pitches at both sizes, identical
 notes-only overview pixels with/without CC data, and editing the eighth CC lane
 after scrolling at minimum size. Velocity retains its existing 8 px acquisition
 and Shift mapping (2 px per velocity step), despite its smaller visible cap.
@@ -66,3 +66,14 @@ header 135, keyboard panel 643. The panel changes only its technical dialog ID;
 transport, audition and save ownership are unchanged. Shared lane constants and
 geometry drive paint, hit testing and overflow. Production diff/style and
 whitespace checks pass. All deletion targets above are complete.
+
+
+## Three-octave pitch range
+
+The requested follow-up raises the shared pitch count from 29 to 36 while
+preserving the window and lane dimensions. Rendering, hit testing, initial
+centering and MIDI-range scrolling clamps derive from that one count.
+Existing gesture tests now use pitch-row geometry instead of fixed density.
+All 36 rows remain editable at normal and minimum window sizes; all 1,674
+assertions in 61 focused cases pass. Debug and Release apps build. The layout
+fixture verifies the actual app; capture: `.context/midi-editor-36-rows.png`.

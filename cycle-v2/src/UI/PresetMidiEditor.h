@@ -51,7 +51,7 @@ private:
         void paintButton(juce::Graphics&, bool highlighted, bool down) override;
     };
 
-    static constexpr int visiblePitches = 29;
+    static constexpr int visiblePitches = 36;
     static constexpr int laneGap = 4;
     static constexpr int velocityHeight = 48;
     static constexpr int controllerHeight = 76;
