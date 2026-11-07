@@ -842,48 +842,25 @@ TEST_CASE("Preview transport duration uses the longest Voice Context",
     REQUIRE(RealtimeGraphRenderer::maximumVoiceDurationSeconds({}) == 1.f);
 }
 
-TEST_CASE("Canvas utilities keep the console clear at the top left",
+TEST_CASE("Canvas utilities share a single-line footer with a right-aligned legend",
         "[cycle-v2][canvas][utility-dock][layout]") {
-    const Rectangle<float> content { 0.f, 0.f, 1200.f, 700.f };
-    const CanvasUtilityDockLayout layout = CanvasUtilityDock::layout(content);
-
-    REQUIRE(layout.minimap.getRight() == content.getRight() - CanvasUtilityDock::margin);
-    REQUIRE(layout.minimap.getWidth() == CanvasUtilityDock::preferredMinimapWidth);
-    REQUIRE(layout.legend.getRight()
-            == layout.minimap.getX() - CanvasUtilityDock::gap);
-    REQUIRE(layout.keyboard.getCentreX() == content.getCentreX());
-    REQUIRE(layout.keyboard.getY() == content.getY());
-    REQUIRE(layout.keyboard.getWidth() == content.getWidth());
-    REQUIRE(layout.keyboard.getHeight() == CanvasUtilityDock::preferredKeyboardHeight);
-    REQUIRE(layout.status.getX() == content.getX() + CanvasUtilityDock::margin);
-    REQUIRE(layout.status.getY() == layout.keyboard.getBottom() + CanvasUtilityDock::margin);
-    REQUIRE(layout.legend.getBottom()
-            == content.getBottom() - CanvasUtilityDock::margin);
-    REQUIRE(layout.legend.getHeight()
-            == Catch::Approx(CanvasUtilityDock::preferredLegendHeight));
-    REQUIRE(layout.legend.getWidth()
-            == Catch::Approx(CanvasUtilityDock::preferredLegendWidth));
-    REQUIRE_FALSE(layout.status.intersects(layout.minimap));
-    REQUIRE_FALSE(layout.status.intersects(layout.keyboard));
-    REQUIRE_FALSE(layout.minimap.intersects(layout.keyboard));
-    REQUIRE_FALSE(layout.legend.intersects(layout.keyboard));
-    REQUIRE(content.contains(layout.minimap));
-    REQUIRE(content.contains(layout.legend));
-    REQUIRE(content.contains(layout.keyboard));
-    REQUIRE(content.contains(layout.status));
-
-    const Rectangle<float> compactContent { 0.f, 0.f, 500.f, 300.f };
-    const CanvasUtilityDockLayout compact = CanvasUtilityDock::layout(compactContent);
-    REQUIRE(compact.keyboard.getWidth() == 500.f);
-    REQUIRE(compact.keyboard.getHeight() == CanvasUtilityDock::preferredKeyboardHeight);
-    REQUIRE(compact.keyboard.getY() == compactContent.getY());
-    REQUIRE(compact.keyboard.getCentreX() == compactContent.getCentreX());
-    REQUIRE_FALSE(compact.legend.isEmpty());
-    REQUIRE(compact.minimap.getHeight() == 92.f);
-    REQUIRE_FALSE(compact.status.intersects(compact.minimap));
-    REQUIRE_FALSE(compact.legend.intersects(compact.keyboard));
-    REQUIRE(compactContent.contains(compact.keyboard));
-    REQUIRE(compactContent.contains(compact.status));
+    for (const float width : { 500.f, 1200.f }) {
+        const Rectangle<float> content(0.f, 0.f, width, 700.f);
+        const auto layout = CanvasUtilityDock::layout(content);
+        REQUIRE(layout.keyboard.getWidth() == width);
+        REQUIRE(layout.keyboard.getHeight() == CanvasUtilityDock::preferredKeyboardHeight);
+        REQUIRE(layout.keyboard.getY() == content.getY());
+        REQUIRE(layout.footer.getBottom() == content.getBottom());
+        REQUIRE(layout.footer.getHeight() == 30.f);
+        REQUIRE(layout.status.getX() == content.getX() + CanvasUtilityDock::margin);
+        REQUIRE(layout.legend.getRight() == content.getRight() - CanvasUtilityDock::margin);
+        REQUIRE(layout.status.getRight() + CanvasUtilityDock::gap == layout.legend.getX());
+        REQUIRE(layout.status.getCentreY() == layout.legend.getCentreY());
+        REQUIRE(layout.status.getHeight() == 28.f);
+        REQUIRE_FALSE(layout.status.intersects(layout.keyboard));
+        REQUIRE(layout.footer.contains(layout.status));
+        REQUIRE(layout.footer.contains(layout.legend));
+    }
 }
 
 TEST_CASE("Centred MIDI dialog hard-stops only editor audition on pitch changes",

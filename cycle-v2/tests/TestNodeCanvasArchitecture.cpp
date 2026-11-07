@@ -188,12 +188,10 @@ TEST_CASE("Guide shelf occupies the left side without a Spy tray",
     WorkspaceDockState state;
     const WorkspaceDockLayout balanced = WorkspaceDock::layout(workspace, state);
 
-    const CanvasUtilityDockLayout utilities = CanvasUtilityDock::layout(workspace);
     REQUIRE(balanced.content == workspace);
     REQUIRE(balanced.leftShelf.getY() == workspace.getY() + CanvasUtilityDock::margin);
     REQUIRE(balanced.leftShelf.getX() == workspace.getX() + CanvasUtilityDock::margin);
     REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(256.f));
-    REQUIRE_FALSE(balanced.leftShelf.intersects(utilities.minimap));
     REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);
 
     const auto first = WorkspaceDock::guideTileBounds(balanced.leftShelf, 0, 0.f);
@@ -214,8 +212,6 @@ TEST_CASE("Guide shelf occupies the left side without a Spy tray",
 
     const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
     const WorkspaceDockLayout narrow = WorkspaceDock::layout(narrowWorkspace, state);
-    const CanvasUtilityDockLayout narrowUtilities = CanvasUtilityDock::layout(narrowWorkspace);
-    REQUIRE_FALSE(narrow.leftShelf.intersects(narrowUtilities.minimap));
     REQUIRE(narrow.leftShelf.getHeight()
             >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
 
@@ -2018,7 +2014,8 @@ TEST_CASE("Canvas legend collapses non-signal domains into Control",
     REQUIRE(CanvasChromeMetrics::legendFontSize == 11.f);
     REQUIRE(CanvasChromeMetrics::legendLineLength == 14.f);
     REQUIRE(CanvasChromeMetrics::legendLineWidth == 2.f);
-    REQUIRE(CanvasUtilityDock::preferredLegendHeight == 30.f);
+    REQUIRE(CanvasUtilityDock::footerHeight == 30.f);
+    REQUIRE(CanvasUtilityDock::preferredLegendHeight == 28.f);
 
     const Colour control = colourForDomain(PortDomain::ControlSignal);
     REQUIRE(colourForDomain(PortDomain::DomainContext) == control);

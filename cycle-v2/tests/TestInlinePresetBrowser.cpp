@@ -669,3 +669,27 @@ TEST_CASE("Tag cloud paints distinct membership filter and combined colours",
         REQUIRE(PNGImageFormat().writeImageToStream(rendered, stream));
     }
 }
+
+TEST_CASE("Sidebar groups sound content before authoring objects with a content divider",
+        "[cycle-v2][sidebar][layout]") {
+    ScopedJuceInitialiser_GUI gui;
+    InlinePresetBrowser browser({}, [](const File&) { return true; }, [] {}, [](WorkspaceSidebarTab) {});
+    browser.setSize(290, 600);
+    const std::array<String, 5> ids {
+        "workspace.sidebar.assets", "workspace.sidebar.presets", "workspace.sidebar.patterns",
+        "workspace.sidebar.nodes", "workspace.sidebar.curves"
+    };
+    Component* previous = nullptr;
+    for (const auto& id : ids) {
+        auto* tab = browser.findChildWithID(id);
+        REQUIRE(tab != nullptr);
+        REQUIRE(tab->getHeight() == 46);
+        if (previous != nullptr) {
+            REQUIRE(tab->getX() - previous->getRight() == (id == "workspace.sidebar.nodes" ? 16 : 0));
+        }
+        previous = tab;
+    }
+    browser.setActiveTab(WorkspaceSidebarTab::Nodes);
+    const auto image = browser.createComponentSnapshot(browser.getLocalBounds());
+    REQUIRE(image.getPixelAt(100, 46).getAlpha() == 255);
+}

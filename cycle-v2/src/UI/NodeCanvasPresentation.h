@@ -101,7 +101,6 @@ public:
             const String& statusMessage,
             const String& hoverText);
     static String controlHelpText(Component* hovered, const Component& scope);
-    static TextLayout canvasStatusLayout(const String& text, float width);
     static Rectangle<float> globalProcessingIndicatorBounds(
             Rectangle<float> header,
             float zoom,
@@ -139,7 +138,6 @@ private:
             Graphics& graphics,
             const NodeCanvasPresentationFrame& frame,
             const Node& node);
-    void paintMiniMap(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintLegend(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintPalette(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
     void paintPaletteContent(Graphics& graphics, const NodeCanvasPresentationFrame& frame);
@@ -169,9 +167,6 @@ private:
     float paletteCacheScale {};
     int paletteCacheActiveSection { -2 };
     int paletteCacheHoveredEntry { -2 };
-    String statusTextCache;
-    float statusTextWidthCache { -1.f };
-    TextLayout statusLayoutCache;
 };
 
 }

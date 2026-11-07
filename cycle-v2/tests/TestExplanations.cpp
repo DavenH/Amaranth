@@ -238,26 +238,13 @@ TEST_CASE("Information actions stay inside headers and clear existing controls",
     }
 }
 
-TEST_CASE("Explanation console preserves paragraphs and wraps at a readable size",
+TEST_CASE("Explanation console flattens paragraphs into one status line",
         "[cycle-v2][explanations][ui][status]") {
     const ScopedJuceInitialiser_GUI gui;
-    const String text = "Body waveform\r\nThe rounded shape supplies a restrained harmonic foundation.\n"
-            "Keep the transient bright, then let the upper harmonics settle into the sustained body.";
-    const auto normal = NodeCanvasPresentation::canvasStatusLayout(text, 390.f);
-    const auto narrow = NodeCanvasPresentation::canvasStatusLayout(text, 160.f);
-    REQUIRE(normal.getNumLines() > 3);
-    REQUIRE(narrow.getNumLines() > normal.getNumLines());
-    for (const auto* layout : { &normal, &narrow }) {
-        const auto first = layout->getLine(0).stringRange;
-        REQUIRE(text.substring(first.getStart(), first.getEnd()).trim() == "Body waveform");
-        REQUIRE(layout->getLine(layout->getNumLines() - 1).stringRange.getEnd() == text.length());
-        for (const auto& line : *layout) {
-            for (const auto* run : line.runs) {
-                REQUIRE(run->font.getHeight() == CanvasChromeMetrics::sectionTitleFontSize);
-            }
-        }
-    }
-
+    const auto text = NodeCanvasPresentation::canvasStatusText("Previous", "Body waveform\r\nDetails\tmore");
+    REQUIRE_FALSE(text.containsAnyOf("\r\n\t"));
+    REQUIRE(text.startsWith("Body waveform"));
+    REQUIRE(text.endsWith("Details more"));
     PresetExplanationButton info;
     REQUIRE(info.getTitle() == "Preset explanation");
     REQUIRE(info.getDescription().contains("Read or edit"));
@@ -268,7 +255,7 @@ TEST_CASE("Explanation console preserves paragraphs and wraps at a readable size
         const auto dock = CanvasUtilityDock::layout(content);
         REQUIRE(dock.status.getHeight() == CanvasUtilityDock::preferredStatusHeight);
         REQUIRE_FALSE(dock.status.intersects(dock.keyboard));
-        REQUIRE_FALSE(dock.status.intersects(dock.minimap));
+        REQUIRE_FALSE(dock.status.intersects(dock.legend));
         REQUIRE(content.contains(dock.status));
     }
 }

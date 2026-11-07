@@ -94,14 +94,15 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/NodeWorkspace.h` — Workspace composition, ephemeral controllers, and audio playback cursor delivery.
 - `cycle-v2/src/UI/NodeCanvas.h` — Canvas orchestrator; delegate interaction, scene, presentation, and commands.
 - `cycle-v2/src/UI/NodeCanvasInteraction.h` — Pointer/gesture routing; preserve semantic command and cost boundaries.
-- `cycle-v2/src/UI/NodeCanvasPresentation.h` — Builds visible canvas presentation from graph/runtime facts.
+- `cycle-v2/src/UI/NodeCanvasPresentation.h` — Canvas presentation from graph/runtime facts; shared single-line console and right-aligned legend footer.
 - `cycle-v2/src/UI/NodeCanvasScene.h` — Retained node scene and geometry used by hit-testing and rendering.
 - `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement; PanelPlaybackOverlay draws bounded audio cursor frames.
 - `cycle-v2/src/UI/NodeCanvasExplanations.cpp` — Preset/node/group explanations, shared editor and attached card orchestration.
 - `cycle-v2/src/UI/SurfaceAppearanceDialog.h`, `cycle-v2/src/UI/WaveformColourStyles.h`, `scripts/test_cycle_v2_surface_appearance.py` — Modal palette selectors, waveform gradient identity, and UI verification.
 - `cycle-v2/src/UI/NodePreviewRenderer.h`, `cycle-v2/src/UI/ComparisonSurfaceView.h`, `cycle-v2/src/UI/SignalProbeDetailPanel.h`, `cycle-v2/src/UI/SpyFrameRenderer.h`, `cycle-v2/src/UI/SpyPlaybackRipple.h` — Preview plots, expanded Spy capture and palette-preserving saturation playback ripples.
 - `cycle-v2/src/UI/SignalProbeCanvas.h`, `scripts/test_cycle_v2_spy_refresh.py` — Spy views; refresh-count, tray update and retained-waveform regression checks.
-- `cycle-v2/src/UI/InlinePresetBrowser.h` — Shared tabs; ReferenceAssetBrowser owns audio assets, ReferenceTrayBar owns tray disclosure.
+- `cycle-v2/src/UI/InlinePresetBrowser.h` — Grouped library/authoring tabs; ReferenceAssetBrowser and ReferenceTrayBar own assets and tray.
+- `scripts/test_cycle_v2_console_sidebar.py` — Native sidebar, single-line console hover and resize regression checks.
 - `cycle-v2/src/UI/LibraryThumbnailCache.h` — Async reference-asset thumbnails.
 - `cycle-v2/src/UI/ReferenceWaveformPreview.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Shared waveform analysis/cache and async indexed density/path views.
 - `scripts/fixtures/cycle-v2-agent-spy-waveform-reuse.json` — Checks unchanged tray analysis and presentation invalidation.

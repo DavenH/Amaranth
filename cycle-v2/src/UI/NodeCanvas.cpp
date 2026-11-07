@@ -2460,7 +2460,8 @@ void NodeCanvas::fitDocumentInViewport() {
     const auto utilities = CanvasUtilityDock::layout(
             content);
     Rectangle<float> available = content.reduced(visibleMargin);
-    available.setTop(jmax(available.getY(), utilities.status.getBottom() + dockClearance));
+    available.setTop(jmax(available.getY(), utilities.keyboard.getBottom() + dockClearance));
+    available.setBottom(jmin(available.getBottom(), utilities.footer.getY() - dockClearance));
     viewport.setBounds(canvasContentBounds());
     viewport.fit(graphBounds, available);
 }

@@ -8,73 +8,6 @@
 
 namespace CycleV2 {
 
-namespace {
-
-Rectangle<float> graphBounds(const NodeGraph& graph) {
-    Rectangle<float> bounds;
-    for (const auto& node : graph.getNodes()) {
-        bounds = bounds.isEmpty() ? node.bounds : bounds.getUnion(node.bounds);
-    }
-
-    return bounds.expanded(120.f);
-}
-
-}
-
-void NodeCanvasPresentation::paintMiniMap(
-        Graphics& graphics,
-        const NodeCanvasPresentationFrame& frame) {
-    const Rectangle<float> map = CanvasUtilityDock::layout(
-            frame.utilityBounds).minimap;
-    graphics.setColour(CanvasChromePalette::minimapBackground);
-    graphics.fillRoundedRectangle(map, CanvasChromeMetrics::panelCornerRadius);
-
-    if (frame.graph.getNodes().empty()) {
-        return;
-    }
-
-    const Rectangle<float> worldBounds = graphBounds(frame.graph);
-    const float scale = jmin(
-            map.getWidth() / worldBounds.getWidth(),
-            map.getHeight() / worldBounds.getHeight());
-    const Rectangle<float> projectedBounds(
-            map.getCentreX() - worldBounds.getWidth() * scale * 0.5f,
-            map.getCentreY() - worldBounds.getHeight() * scale * 0.5f,
-            worldBounds.getWidth() * scale,
-            worldBounds.getHeight() * scale);
-    const auto project = [&](Rectangle<float> bounds) {
-        return Rectangle<float>(
-                projectedBounds.getX() + (bounds.getX() - worldBounds.getX()) * scale,
-                projectedBounds.getY() + (bounds.getY() - worldBounds.getY()) * scale,
-                bounds.getWidth() * scale,
-                bounds.getHeight() * scale);
-    };
-
-    for (const auto& node : frame.graph.getNodes()) {
-        graphics.setColour(CanvasChromePalette::minimapContent.withAlpha(0.40f));
-        graphics.fillRoundedRectangle(
-                project(node.bounds),
-                CanvasChromeMetrics::microCornerRadius);
-    }
-
-    const Point<float> pan = frame.viewport.getPan();
-    const float zoom = frame.viewport.getZoom();
-    const Rectangle<float> viewportWorld(
-            -pan.x / zoom,
-            -pan.y / zoom,
-            frame.canvasBounds.getWidth() / zoom,
-            frame.canvasBounds.getHeight() / zoom);
-    const Rectangle<float> viewportInMap = project(viewportWorld).getIntersection(projectedBounds);
-    graphics.setColour(CanvasChromePalette::minimapViewport.withAlpha(0.10f));
-    graphics.fillRoundedRectangle(viewportInMap, CanvasChromeMetrics::insetCornerRadius);
-    graphics.setColour(CanvasChromePalette::minimapViewport.withAlpha(0.50f));
-    graphics.drawRoundedRectangle(
-            viewportInMap,
-            CanvasChromeMetrics::insetCornerRadius,
-            CanvasChromeMetrics::restingBorderWidth);
-
-}
-
 void NodeCanvasPresentation::paintLegend(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
@@ -98,38 +31,34 @@ void NodeCanvasPresentation::paintLegend(
     graphics.reduceClipRegion(legend.toNearestInt());
     graphics.setFont(FontOptions(CanvasChromeMetrics::legendFontSize));
 
-    const Rectangle<float> content = legend.reduced(
-            CanvasChromeMetrics::legendHorizontalInset, 0.f);
-    const float cellWidth = content.getWidth() / (float) entryCount;
+    const Font font { FontOptions(CanvasChromeMetrics::legendFontSize) };
+    float totalWidth = 0.f;
+    for (const auto& entry : entries) {
+        totalWidth += CanvasChromeMetrics::legendLineLength + CanvasChromeMetrics::legendTextGap
+                + font.getStringWidthFloat(entry.label);
+    }
+    constexpr float entryGap = 16.f;
+    totalWidth += entryGap * (entryCount - 1);
+    float x = legend.getRight() - totalWidth;
     const float y = legend.getCentreY();
-    for (int index = 0; index < entryCount; ++index) {
-        const auto& entry = entries[index];
-        const float x = content.getX() + cellWidth * (float) index;
-        Path line;
-        line.startNewSubPath(x, y);
-        line.lineTo(x + CanvasChromeMetrics::legendLineLength, y);
+    for (const auto& entry : entries) {
         graphics.setColour(colourForDomain(entry.domain).withAlpha(0.90f));
-
-        graphics.strokePath(line, PathStrokeType(CanvasChromeMetrics::legendLineWidth));
-
+        graphics.drawLine(x, y, x + CanvasChromeMetrics::legendLineLength, y,
+                CanvasChromeMetrics::legendLineWidth);
+        x += CanvasChromeMetrics::legendLineLength + CanvasChromeMetrics::legendTextGap;
+        const float width = font.getStringWidthFloat(entry.label);
         graphics.setColour(CanvasChromePalette::mutedText);
-        graphics.drawText(
-                entry.label,
-                Rectangle<float>(
-                        x + CanvasChromeMetrics::legendLineLength
-                                + CanvasChromeMetrics::legendTextGap,
-                        y - CanvasChromeMetrics::legendTextHeight * 0.5f,
-                        cellWidth - CanvasChromeMetrics::legendLineLength
-                                - CanvasChromeMetrics::legendTextGap,
-                        CanvasChromeMetrics::legendTextHeight),
+        graphics.drawText(entry.label, Rectangle<float>(x, legend.getY(), width, legend.getHeight()),
                 Justification::centredLeft);
+        x += width + entryGap;
     }
 }
 
 String NodeCanvasPresentation::canvasStatusText(
         const String& statusMessage,
         const String& hoverText) {
-    return hoverText.isNotEmpty() ? hoverText : statusMessage;
+    return (hoverText.isNotEmpty() ? hoverText : statusMessage)
+            .replaceCharacters("\r\n\t", "   ").trim();
 }
 
 String NodeCanvasPresentation::controlHelpText(Component* hovered, const Component& scope) {
@@ -151,63 +80,17 @@ String NodeCanvasPresentation::controlHelpText(Component* hovered, const Compone
     return {};
 }
 
-TextLayout NodeCanvasPresentation::canvasStatusLayout(const String& text, float width) {
-    AttributedString attributed;
-    attributed.setJustification(Justification::topLeft);
-    attributed.setWordWrap(AttributedString::byWord);
-    attributed.setLineSpacing(2.f);
-    attributed.append(text, Font(FontOptions(CanvasChromeMetrics::sectionTitleFontSize)),
-            CanvasChromePalette::text.withAlpha(0.8f));
-    TextLayout result;
-    result.createLayout(attributed, jmax(1.f, width));
-    return result;
-}
-
 void NodeCanvasPresentation::paintStatus(
         Graphics& graphics,
         const NodeCanvasPresentationFrame& frame) {
-    const Rectangle<float> status = CanvasUtilityDock::layout(
-            frame.utilityBounds).status;
-    graphics.setColour(CanvasChromePalette::canvasBackground);
-    graphics.fillRect(status.expanded(2.f));
-    const String text = canvasStatusText(frame.statusMessage, frame.hoverText);
-    const Rectangle<float> textBounds = status.withTrimmedLeft(
-            (float) ExplanationBadge::presetButtonWidth + 8.f).reduced(2.f, 5.f);
-    if (text.isEmpty() || textBounds.getWidth() < 40.f || textBounds.getHeight() < 14.f) {
-        return;
-    }
-    if (statusTextCache != text || statusTextWidthCache != textBounds.getWidth()) {
-        statusLayoutCache = canvasStatusLayout(text, textBounds.getWidth());
-        statusTextCache = text;
-        statusTextWidthCache = textBounds.getWidth();
-    }
-    auto visibleText = textBounds;
-    const bool overflow = statusLayoutCache.getHeight() > visibleText.getHeight();
-    if (overflow) {
-        const float availableHeight = visibleText.getHeight()
-                - CanvasChromeMetrics::sectionTitleFontSize - 2.f;
-        float completeLineHeight = 0.f;
-        for (const auto& line : statusLayoutCache) {
-            const float bottom = line.getLineBoundsY().getEnd();
-            if (bottom > availableHeight) {
-                break;
-            }
-            completeLineHeight = bottom;
-        }
-        visibleText.setHeight(completeLineHeight);
-    }
-    {
-        Graphics::ScopedSaveState save(graphics);
-        graphics.reduceClipRegion(visibleText.toNearestInt());
-        statusLayoutCache.draw(graphics, visibleText);
-    }
-    if (!overflow) {
-        return;
-    }
+    const auto status = CanvasUtilityDock::layout(frame.utilityBounds).status;
+    graphics.setColour(CanvasChromePalette::dockSurface);
+    graphics.fillRect(status);
+    const auto textBounds = status.withTrimmedLeft((float) ExplanationBadge::presetButtonWidth + 8.f);
     graphics.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
-    graphics.setColour(CanvasChromePalette::mutedText);
-    graphics.drawText(String::charToString(0x2026),
-            textBounds.withTop(visibleText.getBottom()), Justification::topLeft);
+    graphics.setColour(CanvasChromePalette::text.withAlpha(0.8f));
+    graphics.drawText(canvasStatusText(frame.statusMessage, frame.hoverText), textBounds,
+            Justification::centredLeft, true);
 }
 
 void NodeCanvasPresentation::paintPalette(
