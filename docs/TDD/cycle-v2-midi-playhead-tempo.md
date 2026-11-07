@@ -114,3 +114,24 @@ editor were inspected. Evidence: .context/midi-scroll-tail-tests.log,
 .context/midi-scroll-tail-before/after.cyclegraph. Code-map, architecture audit,
 production style/diff and whitespace checks pass; no new incidental crashes or
 runtime assertions were observed.
+
+## Backspace returns to start (2026-11-07)
+
+Backspace seeks to 0 and reveals the first measure without modifying notes,
+automation or selection. Delete remains the event-removal key. Reuse the same
+editor seek callback as ruler/overview scrubbing, so the panel preserves paused
+or playing state and its existing source-reset/scheduler behavior. No new
+transport owner, document publication or undo entry. Verify selected notes and
+controls survive Backspace and still respond to Delete; verify return from the
+scroll tail and actual app behavior while stopped and playing.
+
+Completed: the editor and its shared seek operation stay at 621 lines; header
+128. The automation input adapter adds only a Backspace key alias. Debug/Release
+builds and 1,167 assertions in 57 authoring/keyboard/scheduler cases pass. Selected
+notes and controls survive Backspace, remain deletable with Delete, and return
+from the scroll tail reveals time zero. The 25-command app fixture verifies
+paused return, playing restart without pause, and unchanged event counts;
+before/after exported graph/pattern JSON is byte-identical. The captured ruler
+starts at 1.1 with its playhead at zero. Evidence: .context/midi-backspace-tests.log,
+.context/midi-backspace-native.log and .context/midi-backspace-start.png.
+Code-map, architecture, production style/diff and whitespace checks pass.

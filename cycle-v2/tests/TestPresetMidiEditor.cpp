@@ -710,3 +710,52 @@ TEST_CASE("Piano-roll scroll space respects automation tails empty patterns and 
     REQUIRE(std::abs(changed.notes.back().startSeconds - expectedStart) < 0.00001);
     REQUIRE(changed.durationSeconds <= PresetMidiSequence::maximumDurationSeconds);
 }
+
+TEST_CASE("Backspace returns to the phrase start without deleting the selection",
+        "[cycle-v2][preset][sequence][editor][seek]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes.push_back({ 60, 100, 1.0, 0.5 });
+    phrase.controls.push_back({ 1, 40, 1.0 });
+    PresetMidiSequence changed;
+    int publications = 0;
+    std::vector<double> positions;
+    PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+        changed = std::move(next);
+        ++publications;
+    }, {}, {}, {}, {}, [&](double position) { positions.push_back(position); });
+    bool controlSelected = false;
+    SECTION("Selected note remains available to Delete") {
+        const Point<float> note(xAt(editor, 1.2, 4.0), pitch60Y(editor));
+        editor.mouseDown(pointer(editor, note));
+        editor.mouseUp(pointer(editor, note));
+    }
+    SECTION("Selected automation point remains available to Delete") {
+        controlSelected = true;
+        const auto lane = editor.controlGrid();
+        const Point<float> point(xAt(editor, 1.0, 4.0), lane.getBottom() - lane.getHeight() * 40.f / 127.f);
+        editor.mouseDown(pointer(editor, point));
+        editor.mouseUp(pointer(editor, point));
+    }
+    const auto map = editor.miniMap();
+    const Point<float> seek(map.getX() + map.getWidth() * 0.75f, map.getCentreY());
+    editor.mouseDown(pointer(editor, seek));
+    editor.mouseUp(pointer(editor, seek));
+    REQUIRE(positions.back() == 3.0);
+    MouseWheelDetails wheel {};
+    wheel.deltaX = -1000.f;
+    editor.mouseWheelMove(pointer(editor, editor.noteGrid().getCentre()), wheel);
+    const int before = publications;
+    REQUIRE(editor.keyPressed(KeyPress(KeyPress::backspaceKey)));
+    REQUIRE(positions.back() == 0.0);
+    REQUIRE(publications == before);
+    REQUIRE(editor.keyPressed(KeyPress(KeyPress::deleteKey)));
+    REQUIRE(publications == before + 1);
+    REQUIRE((controlSelected ? changed.controls.empty() : changed.notes.empty()));
+    const auto grid = editor.noteGrid();
+    const Point<float> start(grid.getX() + 0.01f, grid.getY() + grid.getHeight() / 48.f);
+    editor.mouseDown(pointer(editor, start));
+    editor.mouseUp(pointer(editor, start));
+    REQUIRE(changed.notes.back().startSeconds == 0.0);
+}

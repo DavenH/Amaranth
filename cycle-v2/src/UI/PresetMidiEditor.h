@@ -72,6 +72,7 @@ private:
     int noteAt(juce::Point<float> point) const;
     int velocityNoteAt(float x) const;
     void scrubPlayback(juce::Point<float> point);
+    void seekPlayback(double seconds, bool reveal);
     void revealPlaybackCursor(double seconds);
     double cursorPosition() const;
     void updateDurationRange();

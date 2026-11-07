@@ -279,11 +279,15 @@ void PresetMidiEditor::scrubPlayback(Point<float> point) {
             ? sequence.durationSeconds * jlimit(0.0, 1.0,
                     (double) (point.x - map.getX()) / map.getWidth())
             : rawTimeAt(point.x);
+    seekPlayback(seconds, draggingOverview);
+}
+
+void PresetMidiEditor::seekPlayback(double seconds, bool reveal) {
     cursorSeconds = jlimit(0.0, sequence.durationSeconds, seconds);
     if (onSeek) {
         onSeek(cursorSeconds);
     }
-    if (draggingOverview) {
+    if (reveal) {
         revealPlaybackCursor(cursorSeconds);
     }
     repaint();
@@ -522,6 +526,11 @@ void PresetMidiEditor::editControl(Point<float> point, int controller) {
 }
 
 bool PresetMidiEditor::keyPressed(const KeyPress& key) {
+    if (key == KeyPress::backspaceKey) {
+        releaseAudition();
+        seekPlayback(0.0, true);
+        return true;
+    }
     if (key.getModifiers().isShiftDown() && !key.getModifiers().isCommandDown()
             && !key.getModifiers().isCtrlDown() && !key.getModifiers().isAltDown()
             && (key.getKeyCode() == KeyPress::upKey || key.getKeyCode() == KeyPress::downKey)) {
@@ -534,7 +543,7 @@ bool PresetMidiEditor::keyPressed(const KeyPress& key) {
         }
         return true;
     }
-    if ((key == KeyPress::deleteKey || key == KeyPress::backspaceKey)
+    if (key == KeyPress::deleteKey
             && selectedControl >= 0
             && selectedControl < (int) sequence.controls.size()) {
         sequence.controls.erase(sequence.controls.begin() + selectedControl);
@@ -542,7 +551,7 @@ bool PresetMidiEditor::keyPressed(const KeyPress& key) {
         publish();
         return true;
     }
-    if ((key == KeyPress::deleteKey || key == KeyPress::backspaceKey)
+    if (key == KeyPress::deleteKey
             && selectedNote >= 0 && selectedNote < (int) sequence.notes.size()) {
         releaseAudition();
         sequence.notes.erase(sequence.notes.begin() + selectedNote);

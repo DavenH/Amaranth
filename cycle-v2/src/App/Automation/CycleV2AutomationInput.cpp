@@ -40,7 +40,8 @@ bool automationKeyPress(const String& name, KeyPress& result) {
             { "return", KeyPress::returnKey },
             { "space", KeyPress::spaceKey },
             { "escape", KeyPress::escapeKey },
-            { "delete", KeyPress::deleteKey }
+            { "delete", KeyPress::deleteKey },
+            { "backspace", KeyPress::backspaceKey }
     };
     for (const auto& key : keys) {
         if (name == key.first) {
