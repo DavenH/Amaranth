@@ -135,3 +135,23 @@ before/after exported graph/pattern JSON is byte-identical. The captured ruler
 starts at 1.1 with its playhead at zero. Evidence: .context/midi-backspace-tests.log,
 .context/midi-backspace-native.log and .context/midi-backspace-start.png.
 Code-map, architecture, production style/diff and whitespace checks pass.
+
+## Measure arrow navigation (2026-11-07)
+
+Left/Right seek one 4/4 measure backward/forward from the current playhead at
+the saved BPM. Preserve the fractional position within the measure. Reuse the
+Backspace/ruler seek owner, clamp to the authored phrase, reveal the new cursor,
+and leave events, selection and document history unchanged. Playback continues
+when seeking within the phrase; reaching its endpoint uses existing end behavior.
+Verify multiple tempos, stopped/live position sources, boundaries, view return
+and unchanged publication/toggle counts; extend the actual-app shortcut fixture.
+
+Completed: Debug/Release apps and tests build. All 1,383 assertions in 58 focused
+editor/keyboard/scheduler cases pass, including 60/100/240 BPM, stopped and live
+cursor providers, fractional starting positions, start/end clamps, view return
+and zero edit publications or playback toggles. The 43-command app fixture
+verifies exact stopped one-measure moves and both directions while playing;
+exported graph/pattern JSON remains byte-identical. Logs:
+.context/midi-arrow-tests.log and .context/midi-arrow-native.log. Production
+style/diff, code-map and architecture checks pass. No new playback owner or
+scheduler policy was introduced; the change is a key binding to shared seeking.

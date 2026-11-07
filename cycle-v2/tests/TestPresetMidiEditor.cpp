@@ -759,3 +759,49 @@ TEST_CASE("Backspace returns to the phrase start without deleting the selection"
     editor.mouseUp(pointer(editor, start));
     REQUIRE(changed.notes.back().startSeconds == 0.0);
 }
+
+TEST_CASE("Left and Right seek one measure relative to the live phrase cursor",
+        "[cycle-v2][preset][sequence][editor][seek]") {
+    ScopedJuceInitialiser_GUI gui;
+    for (const double bpm : { 60.0, 100.0, 240.0 }) {
+        for (const bool playing : { false, true }) {
+            PresetMidiSequence phrase;
+            phrase.durationSeconds = 10.0;
+            phrase.tempoBpm = bpm;
+            phrase.notes.push_back({ 60, 100, 1.0, 0.5 });
+            PresetMidiSequence changed;
+            int publications = 0;
+            int toggles = 0;
+            double position = 0.75;
+            PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+                changed = std::move(next);
+                ++publications;
+            }, [&] { ++toggles; }, {}, [&]() -> std::optional<double> {
+                return playing ? std::optional<double>(position) : std::nullopt;
+            }, {}, [&](double target) { position = target; }, position);
+            const double measure = 240.0 / bpm;
+            REQUIRE(editor.keyPressed(KeyPress(KeyPress::rightKey)));
+            REQUIRE(std::abs(position - (0.75 + measure)) < 0.00001);
+            REQUIRE(editor.keyPressed(KeyPress(KeyPress::leftKey)));
+            REQUIRE(std::abs(position - 0.75) < 0.00001);
+            for (int step = 0; step < 12; ++step) {
+                REQUIRE(editor.keyPressed(KeyPress(KeyPress::rightKey)));
+            }
+            REQUIRE(position == 10.0);
+            REQUIRE(editor.keyPressed(KeyPress(KeyPress::leftKey)));
+            REQUIRE(std::abs(position - (10.0 - measure)) < 0.00001);
+            for (int step = 0; step < 12; ++step) {
+                REQUIRE(editor.keyPressed(KeyPress(KeyPress::leftKey)));
+            }
+            REQUIRE(position == 0.0);
+            REQUIRE(publications == 0);
+            REQUIRE(toggles == 0);
+            const auto grid = editor.noteGrid();
+            const Point<float> start(grid.getX() + 0.01f, grid.getY() + grid.getHeight() / 48.f);
+            editor.mouseDown(pointer(editor, start));
+            editor.mouseUp(pointer(editor, start));
+            REQUIRE(publications == 1);
+            REQUIRE(changed.notes.back().startSeconds == 0.0);
+        }
+    }
+}

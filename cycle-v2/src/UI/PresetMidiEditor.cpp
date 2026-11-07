@@ -526,6 +526,12 @@ void PresetMidiEditor::editControl(Point<float> point, int controller) {
 }
 
 bool PresetMidiEditor::keyPressed(const KeyPress& key) {
+    if (key == KeyPress::leftKey || key == KeyPress::rightKey) {
+        releaseAudition();
+        const double measure = gridStep() * 16.0;
+        seekPlayback(cursorPosition() + (key == KeyPress::rightKey ? measure : -measure), true);
+        return true;
+    }
     if (key == KeyPress::backspaceKey) {
         releaseAudition();
         seekPlayback(0.0, true);
