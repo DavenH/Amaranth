@@ -1449,3 +1449,12 @@ around the console text region. Status repaint invalidated an expanded two-pixel
 margin while filling only the inner rectangle. Both now use the same integer
 bounds. The native hover check passes and `.context/console-seam/footer.png`
 shows a continuous grey footer without the inset rectangle.
+
+
+## MIDI editor tempo-entry test focus (2026-11-07, resolved)
+
+The direct-entry unit fixture initially called `Label::showEditor()` without a
+visible peer, producing JUCE `Component.cpp:2694` focus assertions. Mounting the
+fixture on a temporary desktop peer before editing resolves them; 1,632 focused
+assertions and native tempo-entry/cancel verification pass without assertions.
+No production focus workaround was added.

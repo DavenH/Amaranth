@@ -881,18 +881,19 @@ TEST_CASE("Centred MIDI dialog hard-stops only editor audition on pitch changes"
     DialogWindow* dialog = nullptr;
     for (int index = 0; index < Desktop::getInstance().getNumComponents(); ++index) {
         auto* candidate = Desktop::getInstance().getComponent(index);
-        if (candidate->getName() == "PresetMidiEditor.Dialog") {
+        if (candidate->getComponentID() == "PresetMidiEditor.Dialog") {
             dialog = dynamic_cast<DialogWindow*>(candidate);
         }
     }
     REQUIRE(dialog != nullptr);
+    REQUIRE(dialog->getName() == "MIDI Pattern");
     auto* editor = dynamic_cast<PresetMidiEditor*>(dialog->getContentComponent());
     REQUIRE(editor != nullptr);
     REQUIRE(editor->getWidth() >= 900);
     REQUIRE(editor->getHeight() >= 640);
     const auto grid = editor->noteGrid();
-    const float y = grid.getY() + grid.getHeight() * 11.5f / 24.f;
-    const float nextY = y - grid.getHeight() / 24.f;
+    const float y = editor->pitchRow(60).getCentreY();
+    const float nextY = editor->pitchRow(61).getCentreY();
     const float x = grid.getX() + grid.getWidth() * 0.25f;
     sink.messages.clear();
     sink.sources.clear();

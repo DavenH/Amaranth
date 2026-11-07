@@ -618,7 +618,7 @@ void PerformanceKeyboardPanel::showSequenceEditor(
     options.resizable = true;
     options.escapeKeyTriggersCloseButton = true;
     auto* dialog = options.launchAsync();
-    dialog->setName("PresetMidiEditor.Dialog");
+    dialog->setComponentID("PresetMidiEditor.Dialog");
     dialog->setResizeLimits(jmin(900, editorContent->getWidth()),
             jmin(640, editorContent->getHeight()),
             display != nullptr ? display->userArea.getWidth() : 1920,
