@@ -1441,3 +1441,11 @@ The same merge changes clean exec to own a scoped app session. The waveform
 check's persistent-instance lookup returned no identity; it now looks up the
 coordinator record by the supplied exact PID and socket, retaining the existing
 native helper's identity validation. No application crash occurred.
+
+## Resolved: console partial repaints left a dark rectangular fringe
+
+2026-11-07: the user's crop in `.context/attachments/tLWZUI/` shows dark edges
+around the console text region. Status repaint invalidated an expanded two-pixel
+margin while filling only the inner rectangle. Both now use the same integer
+bounds. The native hover check passes and `.context/console-seam/footer.png`
+shows a continuous grey footer without the inset rectangle.

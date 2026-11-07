@@ -85,7 +85,7 @@ void NodeCanvasPresentation::paintStatus(
         const NodeCanvasPresentationFrame& frame) {
     const auto status = CanvasUtilityDock::layout(frame.utilityBounds).status;
     graphics.setColour(CanvasChromePalette::dockSurface);
-    graphics.fillRect(status);
+    graphics.fillRect(status.toNearestInt());
     const auto textBounds = status.withTrimmedLeft((float) ExplanationBadge::presetButtonWidth + 8.f);
     graphics.setFont(FontOptions(CanvasChromeMetrics::sectionTitleFontSize));
     graphics.setColour(CanvasChromePalette::text.withAlpha(0.8f));

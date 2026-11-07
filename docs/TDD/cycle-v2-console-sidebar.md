@@ -57,3 +57,10 @@ pointer hover over the enabled factory Edit action. Debug/Release builds and
 845 assertions in 10 pattern/status cases pass. Evidence:
 `.context/midi-edit-help-tests.log`, `.context/midi-edit-help-native.log`, and
 `.context/console-sidebar/pattern-edit-help.png`.
+
+Console seam follow-up: the status-only repaint invalidated a two-pixel margin
+outside its filled rectangle, leaving a dark fringe in partial GL repaints.
+Invalidate and fill the same integer-aligned rectangle. Debug/Release builds,
+53 assertions in four utility/status cases, and the native sidebar/hover check
+pass. The reviewed footer crop `.context/console-seam/footer.png` has no inset
+console outline; the ordinary shared footer separator remains.

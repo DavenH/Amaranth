@@ -155,7 +155,7 @@ const SignalProbe* cableExtraProbe(
 
 Rectangle<int> statusRepaintBounds(Rectangle<float> canvasBounds) {
     return CanvasUtilityDock::layout(canvasBounds)
-            .status.expanded(2.f).toNearestInt();
+            .status.toNearestInt();
 }
 
 GraphDocument createStartupDocument() {
