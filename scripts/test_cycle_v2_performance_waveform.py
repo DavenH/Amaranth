@@ -36,6 +36,13 @@ def check(output):
 
         send(command='openGraph', path=str(ROOT / 'cycle-v2/resources/default.cyclegraph'))
         first = wait(lambda s: s['performance']['waveform']['ready'])
+        assert first['performance']['highestNote'] - first['performance']['baseNote'] == 36
+        last_note = first['performance']['highestNote']
+        send(command='pointer', targetId=f'PerformanceKeyboard.Note{last_note}', event='down', targetY=.85)
+        assert state()['performance']['heldNote'] == last_note
+        send(command='pointer', targetId=f'PerformanceKeyboard.Note{last_note}', event='up', targetY=.85)
+        wait(lambda s: s['performance']['waveform']['cursorCount'] == 0
+                and s['performance']['waveform']['ready'])
         time.sleep(.3)
         first = state()
         before = first['performance']['waveform']
@@ -87,6 +94,16 @@ def check(output):
         native.focus_app()
         targets = send(command='inspectPointerTargets')['targets']
         origin = next(t for t in targets if t['id'] == 'comparisonWorkspace')['screenBounds']
+        last = next(t for t in targets if t['id'] == f'PerformanceKeyboard.Note{last_note}')['bounds']
+        last_key = (round(origin['x'] + last['x'] + last['width'] / 2),
+                round(origin['y'] + last['y'] + last['height'] * .85))
+        try:
+            native.begin_drag(last_key)
+            wait(lambda s: s['performance']['heldNote'] == last_note)
+        finally:
+            native.release_drag(last_key)
+        wait(lambda s: s['performance']['heldNote'] == -1
+                and s['performance']['waveform']['cursorCount'] == 0)
         control = next(t for t in targets if t['id'] == 'PerformanceKeyboard.ModWheel')['bounds']
         source = (round(origin['x'] + control['x'] + control['width'] / 2),
                 round(origin['y'] + control['y'] + control['height'] / 2))

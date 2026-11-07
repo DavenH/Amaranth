@@ -28,6 +28,7 @@ PerformanceKeyboardPanel::PerformanceKeyboardPanel(
     controllerViewport.setViewedComponent(&controllerStrip, false);
     controllerViewport.setScrollBarsShown(false, true, false, true);
     controllerViewport.setScrollBarThickness(3);
+    controllerStrip.setInterceptsMouseClicks(false, true);
     controllerStrip.addAndMakeVisible(modWheel);
     addAndMakeVisible(playButton);
     addAndMakeVisible(editButton);
@@ -271,6 +272,7 @@ void PerformanceKeyboardPanel::setMappedControllers(std::vector<int> controllers
         nextWheels.push_back(std::move(wheel));
     }
     extraWheels = std::move(nextWheels);
+    controllerViewport.setViewPosition(0, 0);
     resized();
 }
 

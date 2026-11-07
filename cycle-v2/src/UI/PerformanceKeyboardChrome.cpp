@@ -64,31 +64,47 @@ void PerformanceKeyboardPanel::resized() {
     editButton.setBounds(actions.getX() + 76, actionY, 28, 28);
     content.removeFromLeft(16);
     const int dialCount = 1 + (int) extraWheels.size();
-    const int dialSpace = jmin(5 * 44, jmax(44, content.getWidth() - 282));
-    const int keysWidth = jmin(360, jmax(0, content.getWidth() - dialSpace - 72));
-    octaveDown.setBounds(content.removeFromLeft(28));
-    content.removeFromLeft(2);
-    keyboard.setBounds(content.removeFromLeft(keysWidth));
-    content.removeFromLeft(2);
-    octaveUp.setBounds(content.removeFromLeft(28));
-    content.removeFromLeft(12);
-    controllerViewport.setBounds(content.removeFromLeft(dialSpace).withY(2).withHeight(getHeight() - 4));
-    content.removeFromLeft(18);
+    const int minimumKeysWidth = PerformanceKeyboard::whiteKeyCount * 10;
+    const int preferredKeysWidth = PerformanceKeyboard::whiteKeyCount * 24;
+    const int dialSpace = jmin(5 * 44, jmax(44, content.getWidth() - minimumKeysWidth - 72));
+    const int keysWidth = jmin(preferredKeysWidth, jmax(0, content.getWidth() - dialSpace - 72));
     // Simple density-grid ratios avoid an arbitrary stretch as the bar resizes.
     int waveformWidth = 0;
     for (const int divisor : { 2, 3, 4, 6 }) {
         const int width = waveformHeatColumns / divisor;
-        if (width <= content.getWidth()) {
+        if (width <= content.getWidth() - dialSpace - keysWidth - 90) {
             waveformWidth = width;
             break;
         }
     }
     waveform.setBounds(content.removeFromRight(waveformWidth).withY(3).withHeight(getHeight() - 6));
     waveform.setVisible(waveformWidth > 0);
-    controllerStrip.setSize(dialCount * 44, controllerViewport.getHeight() - 3);
+    if (waveformWidth > 0) {
+        content.removeFromRight(18);
+    }
+    auto keys = content.removeFromRight(keysWidth + 60);
+    octaveDown.setBounds(keys.removeFromLeft(28));
+    keys.removeFromLeft(2);
+    keyboard.setBounds(keys.removeFromLeft(keysWidth));
+    keys.removeFromLeft(2);
+    octaveUp.setBounds(keys);
+    content.removeFromRight(12);
+    controllerViewport.setBounds(content.removeFromRight(dialSpace).withY(2).withHeight(getHeight() - 4));
+    controllerStrip.mappedSlots = dialCount;
+    controllerStrip.setSize(jmax(5, dialCount) * 44, controllerViewport.getHeight() - 3);
+    controllerStrip.repaint();
     modWheel.setBounds(0, 0, 44, controllerStrip.getHeight());
     for (size_t index = 0; index < extraWheels.size(); ++index) {
         extraWheels[index]->setBounds((int) (index + 1) * 44, 0, 44, controllerStrip.getHeight());
+    }
+}
+
+void PerformanceKeyboardPanel::ControllerStrip::paint(Graphics& graphics) {
+    graphics.setColour(CanvasChromePalette::strongBorder.withMultipliedAlpha(0.5f));
+    for (int slot = mappedSlots; slot < 5; ++slot) {
+        const float x = (float) (slot * 44);
+        graphics.drawEllipse(x + 9.f, 2.f, 26.f, 26.f, 1.5f);
+        graphics.drawHorizontalLine(34, x + 19.f, x + 25.f);
     }
 }
 

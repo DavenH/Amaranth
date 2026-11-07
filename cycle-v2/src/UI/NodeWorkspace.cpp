@@ -676,7 +676,7 @@ var NodeWorkspace::inspectPointerTargetsForAutomation() const {
             keyboard.recordBounds().translated(
                     keyboardBounds.getX(),
                     keyboardBounds.getY())));
-    for (int note = keyboard.baseNote(); note <= keyboard.baseNote() + 24; ++note) {
+    for (int note = keyboard.baseNote(); note <= keyboard.highestNote(); ++note) {
         targets->add(pointerTarget(
                 "PerformanceKeyboard.Note" + String(note),
                 "performanceKey",
@@ -735,7 +735,7 @@ var NodeWorkspace::performanceStateForAutomation() const {
     auto* object = new DynamicObject();
     object->setProperty("visible", keyboard.isVisible());
     object->setProperty("baseNote", keyboard.baseNote());
-    object->setProperty("highestNote", keyboard.baseNote() + 24);
+    object->setProperty("highestNote", keyboard.highestNote());
     object->setProperty("baseNoteLabel", keyboard.baseNoteLabel());
     object->setProperty("highestNoteLabel", keyboard.highestNoteLabel());
     object->setProperty("heldNote", keyboard.heldNote());
@@ -818,7 +818,7 @@ var NodeWorkspace::outputMeterStateForAutomation() const {
 bool NodeWorkspace::performancePointerDownForAutomation(
         int noteNumber,
         float velocity) {
-    if (noteNumber < keyboard.baseNote() || noteNumber > keyboard.baseNote() + 24) {
+    if (noteNumber < keyboard.baseNote() || noteNumber > keyboard.highestNote()) {
         return false;
     }
     if (keyboard.heldNote() >= 0) {
@@ -846,7 +846,7 @@ bool NodeWorkspace::performancePointerUpForAutomation() {
 }
 
 bool NodeWorkspace::performanceSelectPreviewNoteForAutomation(int noteNumber) {
-    if (noteNumber < keyboard.baseNote() || noteNumber > keyboard.baseNote() + 24) {
+    if (noteNumber < keyboard.baseNote() || noteNumber > keyboard.highestNote()) {
         return false;
     }
     keyboard.setPreviewNote(noteNumber);

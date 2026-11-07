@@ -80,3 +80,47 @@ clearance. Broader canvas decomposition remains in `refactors.md`.
 `cycle-v2-performance-waveform.md` replaces the progress stripe with a right-hand
 cached Blues waveform on toolbar grey, uses real polyphonic playback cursors,
 and gives the keys the recovered vertical space plus stable subtle grain.
+
+## Three-octave grouping follow-up
+
+Reorder the band to pattern transport, five CC slots, three-octave keyboard,
+then the waveform. Anchor the keyboard immediately left of the grid-aligned
+waveform with an 18 px gap after its octave-up button. Keep 24 px natural keys
+at normal width (22 naturals including the terminal C); compact windows reduce
+key width to 10 px while retaining all three octaves, hide the waveform first,
+and scroll the controller viewport. Mapping changes reset its scroll position
+so a sparse preset cannot leave MOD hidden behind empty slots. Spare space
+separates pattern transport from the right-hand instrument group, rather than
+splitting keys from waveform.
+
+The controller strip paints muted, noninteractive outlines for unmapped slots;
+real controls retain existing CC routing, precise relative dragging and overflow.
+The keyboard owns its three-octave range, MIDI-boundary clamp and range reveal;
+panel and automation query that same range. No new graph/audio behavior.
+Verify final-note input, octave shifting and reveal at MIDI boundaries, stable
+layout through preset mapping changes, placeholders and scrolling, compact
+geometry, density ratios, and exact-app native captures. Build Debug/Release
+and tests, run focused checks, review sizes/style/architecture, and commit.
+
+Implementation stays with the existing panel/key/chrome owners. NodeWorkspace
+remains 1,057 lines; its four changes replace hard-coded range limits with a
+query to the keyboard owner, without adding responsibilities. The panel remains
+under 600 lines, chrome 226, keys 266 and header 281. Three octaves still use the
+shared Amaranth key geometry, texture and MIDI path. Only the placeholder strip
+paints unused slots; it intercepts no mouse input and owns no controller values.
+
+Completed and verified: exact Debug and Release apps build; 1,711 assertions in
+37 focused keyboard, waveform and status cases pass. The 41-command performance
+keyboard fixture passes with the three-octave range. The native waveform check
+passes physical mouse down/up on the terminal key, MOD drag/release publication,
+polyphonic cursors without cache rebuilds, edit/undo, and compact/normal resizing.
+Geometry assertions cover tight key/waveform adjacency, fixed five-slot width,
+mapping changes and overflow; rendered placeholders cannot emit MIDI. Key-edge
+pixel checks cover the wider keyboard and fractional display scales.
+
+Native captures in `.context/three-octave/` were reviewed at production size;
+the waveform remains 768 physical pixels against 768 heat columns on Retina.
+Evidence: `.context/three-octave-tests.log`, `.context/three-octave-fixture.log`,
+`.context/three-octave-native.log`, and `.context/three-octave/results.json`.
+Code-map, architecture audit, production style/diff and whitespace checks pass.
+No new incidental runtime assertions or crashes were observed.

@@ -97,16 +97,20 @@ void PerformanceKeyboard::revealRange(int lowest, int highest) {
     int bestStart = rangeStart;
     int bestOverlap = -1;
     int bestOffset = 128;
-    for (int candidate = 0; candidate <= 103; candidate = candidate == 96 ? 103 : candidate + 12) {
+    constexpr int highestStart = 127 - visibleSemitones;
+    for (int candidate = 0; ; candidate = jmin(highestStart, candidate + 12)) {
         const int overlap = jmax(0,
                 jmin(highest, candidate + visibleSemitones)
                         - jmax(lowest, candidate) + 1);
-        const int centresDelta = lowest + highest - 2 * (candidate + 12);
+        const int centresDelta = lowest + highest - 2 * candidate - visibleSemitones;
         const int offset = centresDelta < 0 ? -centresDelta : centresDelta;
         if (overlap > bestOverlap || (overlap == bestOverlap && offset < bestOffset)) {
             bestStart = candidate;
             bestOverlap = overlap;
             bestOffset = offset;
+        }
+        if (candidate == highestStart) {
+            break;
         }
     }
     setRangeStart(bestStart);
@@ -144,7 +148,6 @@ void PerformanceKeyboard::mirrorSequenceNote(
 }
 
 void PerformanceKeyboard::resized() {
-    constexpr int whiteKeyCount = 15;
     if (getWidth() <= 0) {
         return;
     }

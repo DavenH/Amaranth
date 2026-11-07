@@ -79,7 +79,7 @@ Component* namedControl(Component& parent, const String& name) {
 
 }
 
-TEST_CASE("Performance keyboard emits ordinary MIDI and keeps two octaves visible",
+TEST_CASE("Performance keyboard emits ordinary MIDI and keeps three octaves visible",
         "[cycle-v2][keyboard][midi]") {
     ScopedJuceInitialiser_GUI gui;
     MidiKeyboardState state;
@@ -95,6 +95,9 @@ TEST_CASE("Performance keyboard emits ordinary MIDI and keeps two octaves visibl
     REQUIRE_FALSE(keyboard.noteBounds(48).isEmpty());
     REQUIRE_FALSE(keyboard.noteBounds(60).isEmpty());
     REQUIRE_FALSE(keyboard.noteBounds(72).isEmpty());
+    REQUIRE_FALSE(keyboard.noteBounds(84).isEmpty());
+    REQUIRE(keyboard.noteLabel(84) == "C5");
+    REQUIRE(keyboard.noteBounds(85).isEmpty());
     REQUIRE(keyboard.noteBounds(47).isEmpty());
 
     state.noteOn(1, 60, 0.75f);
@@ -108,6 +111,14 @@ TEST_CASE("Performance keyboard emits ordinary MIDI and keeps two octaves visibl
     REQUIRE(sink.messages.back().isNoteOff());
     REQUIRE(sink.messages.back().getNoteNumber() == 60);
     REQUIRE(keyboard.heldNote() == -1);
+
+    state.noteOn(1, 84, 0.75f);
+    REQUIRE(sink.messages.back().isNoteOn());
+    REQUIRE(sink.messages.back().getNoteNumber() == 84);
+    REQUIRE(keyboard.heldNote() == 84);
+    state.noteOff(1, 84, 0.f);
+    REQUIRE(sink.messages.back().isNoteOff());
+    REQUIRE(sink.messages.back().getNoteNumber() == 84);
 }
 
 TEST_CASE("Performance keyboard octave changes release its owned notes",
@@ -132,14 +143,14 @@ TEST_CASE("Performance keyboard octave changes release its owned notes",
     REQUIRE(sink.releasedSources.back() == MidiEventSource::PerformanceKeyboard);
 
     keyboard.shiftOctave(20);
-    REQUIRE(keyboard.baseNote() == 103);
+    REQUIRE(keyboard.baseNote() == 91);
     REQUIRE_FALSE(keyboard.noteBounds(127).isEmpty());
 
     keyboard.revealRange(24, 96);
-    REQUIRE(keyboard.baseNote() == 48);
+    REQUIRE(keyboard.baseNote() == 36);
     REQUIRE_FALSE(keyboard.noteBounds(60).isEmpty());
     keyboard.revealRange(20, 42);
-    REQUIRE(keyboard.baseNote() == 24);
+    REQUIRE(keyboard.baseNote() == 12);
     REQUIRE_FALSE(keyboard.noteBounds(42).isEmpty());
 }
 
@@ -149,7 +160,7 @@ TEST_CASE("Dark keyboard edges do not expose bright background pixels",
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboard keyboard(state, sink);
-    for (const int width : { 210, 359, 360, 361 }) {
+    for (const int width : { 210, 220, 359, 360, 361, 527, 528, 529 }) {
         keyboard.setSize(width, 50);
         for (const float scale : { 1.f, 1.25f, 1.5f, 2.f }) {
             const auto image = keyboard.createComponentSnapshot(keyboard.getLocalBounds(), true, scale);
@@ -197,11 +208,11 @@ TEST_CASE("Performance keyboard keeps a loaded preview note visible",
     PerformanceKeyboardPanel panel(state, sink);
     panel.setBounds(0, 0, 489, 112);
 
-    panel.setPreviewNote(73);
+    panel.setPreviewNote(85);
 
-    REQUIRE(panel.previewNote() == 73);
+    REQUIRE(panel.previewNote() == 85);
     REQUIRE(panel.baseNote() == 60);
-    REQUIRE_FALSE(panel.noteBounds(73).isEmpty());
+    REQUIRE_FALSE(panel.noteBounds(85).isEmpty());
     REQUIRE(sink.messages.empty());
 }
 
@@ -452,7 +463,7 @@ TEST_CASE("Record button captures MIDI note and controller gestures into the pre
     REQUIRE(saveCount == 1);
     REQUIRE(saved.notes.size() == 1);
     REQUIRE(saved.notes[0].pitch == 72);
-    REQUIRE(panel.baseNote() == 60);
+    REQUIRE(panel.baseNote() == 48);
     REQUIRE_FALSE(panel.noteBounds(72).isEmpty());
     REQUIRE(saved.notes[0].velocity == 101);
     REQUIRE(saved.notes[0].durationSeconds == Catch::Approx(0.5).margin(0.01));
@@ -473,17 +484,19 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
 
     const auto checkLayout = [&] {
         const auto first = panel.noteBounds(panel.baseNote());
-        const auto last = panel.noteBounds(panel.baseNote() + 24);
+        const auto last = panel.noteBounds(panel.highestNote());
         const auto actions = panel.playBounds().getUnion(panel.editBounds());
         REQUIRE(actions.getX() == 18.f);
         REQUIRE(panel.playBounds().getY() == panel.recordBounds().getY());
         REQUIRE(panel.recordBounds().getY() == panel.editBounds().getY());
         REQUIRE(panel.playBounds().getRight() < panel.recordBounds().getX());
         REQUIRE(panel.recordBounds().getRight() < panel.editBounds().getX());
-        REQUIRE(panel.editBounds().getRight() < panel.octaveDownBounds().getX());
+        REQUIRE(panel.editBounds().getRight() < panel.modWheelBounds().getX());
         REQUIRE(panel.octaveDownBounds().getRight() < first.getX());
+        REQUIRE(first.getX() == panel.octaveDownBounds().getRight() + 2.f);
         REQUIRE(panel.octaveUpBounds().getX() > last.getRight());
-        REQUIRE(panel.modWheelBounds().getX() > panel.octaveUpBounds().getRight());
+        REQUIRE(panel.octaveUpBounds().getX() == last.getRight() + 2.f);
+        REQUIRE(panel.modWheelBounds().getRight() < panel.octaveDownBounds().getX());
         REQUIRE(first.getY() == 3.f);
         REQUIRE(first.getBottom() == panel.getHeight() - 3.f);
         REQUIRE(panel.noteBounds(panel.baseNote() + 1).getWidth() < first.getWidth());
@@ -494,9 +507,10 @@ TEST_CASE("Performance keyboard panel exposes compact dock interaction targets",
     panel.setSize(1200, 56);
     checkLayout();
     REQUIRE(panel.noteBounds(60).getWidth() == Catch::Approx(24.f));
+    REQUIRE(panel.highestNote() - panel.baseNote() == 36);
     panel.setSize(500, 56);
     checkLayout();
-    REQUIRE(panel.noteBounds(60).getWidth() >= 14.f);
+    REQUIRE(panel.noteBounds(60).getWidth() >= 10.f);
 
 }
 
@@ -587,7 +601,7 @@ TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
     REQUIRE(sink.messages.back().getNoteNumber() == 55);
 }
 
-TEST_CASE("Mapped CC wheel sits beside the mod wheel and sends live MIDI",
+TEST_CASE("Mapped CC wheels precede the keyboard and send live MIDI",
         "[cycle-v2][keyboard][midi-cc][ui]") {
     ScopedJuceInitialiser_GUI gui;
     MidiKeyboardState state;
@@ -601,8 +615,8 @@ TEST_CASE("Mapped CC wheel sits beside the mod wheel and sends live MIDI",
     const auto ccBounds = panel.controllerBounds(73);
     REQUIRE(ccBounds.getWidth() == 44.f);
     REQUIRE(ccBounds.getX() == panel.modWheelBounds().getRight());
-    REQUIRE(panel.modWheelBounds().getX() > panel.octaveUpBounds().getRight());
-    REQUIRE(panel.noteBounds(60).getWidth() >= 14.f);
+    REQUIRE(panel.modWheelBounds().getRight() < panel.octaveDownBounds().getX());
+    REQUIRE(panel.noteBounds(60).getWidth() >= 10.f);
 
     Component* ccWheel = namedControl(panel, "PerformanceKeyboard.CC73");
     REQUIRE(ccWheel != nullptr);
@@ -630,7 +644,7 @@ TEST_CASE("Mapped CC wheel sits beside the mod wheel and sends live MIDI",
     const auto compactDock = CanvasUtilityDock::layout(
             { 0.f, 0.f, 500.f, 500.f });
     panel.setBounds(compactDock.keyboard.toNearestInt());
-    REQUIRE(panel.noteBounds(60).getWidth() >= 14.f);
+    REQUIRE(panel.noteBounds(60).getWidth() >= 10.f);
     auto* dial = namedControl(panel, "PerformanceKeyboard.CC73");
     REQUIRE(dial != nullptr);
     auto* viewport = dial->findParentComponentOfClass<Viewport>();
@@ -647,6 +661,9 @@ TEST_CASE("Mapped CC wheel sits beside the mod wheel and sends live MIDI",
     REQUIRE(sink.messages.back().getControllerNumber() == 120);
     REQUIRE(sink.messages.back().getControllerValue() == 127);
 
+    panel.setMappedControllers({ 1 });
+    REQUIRE(viewport->getViewPositionX() == 0);
+    REQUIRE(panel.getLocalBounds().toFloat().contains(panel.modWheelBounds()));
 }
 
 TEST_CASE("Performance waveform stays fixed across controller mapping counts",
@@ -671,6 +688,7 @@ TEST_CASE("Performance waveform stays fixed across controller mapping counts",
             auto* viewport = mod->findParentComponentOfClass<Viewport>();
             REQUIRE(viewport != nullptr);
             REQUIRE(viewport->getWidth() == 5 * 44);
+            REQUIRE(viewport->getRight() + 12 == panel.octaveDownBounds().getX());
         }
     }
     for (const int width : { 1200, 1199, 1100, 1000, 950, 900 }) {
@@ -680,9 +698,42 @@ TEST_CASE("Performance waveform stays fixed across controller mapping counts",
             REQUIRE(waveform.getWidth() <= 384);
             REQUIRE(768 % waveform.getWidth() == 0);
             REQUIRE(waveform.getRight() == panel.getWidth() - 18);
-            REQUIRE(waveform.getX() >= panel.modWheelBounds().getX() + 5 * 44 + 18);
+            REQUIRE(waveform.getX() == panel.octaveUpBounds().getRight() + 18);
         }
     }
+}
+
+TEST_CASE("Unmapped controller slots are visible and cannot emit MIDI",
+        "[cycle-v2][keyboard][performance-layout]") {
+    ScopedJuceInitialiser_GUI gui;
+    MidiKeyboardState state;
+    RecordingMidiSink sink;
+    PerformanceKeyboardPanel panel(state, sink);
+    panel.setSize(1438, 56);
+    panel.setVisible(true);
+    auto* mod = namedControl(panel, "PerformanceKeyboard.ModWheel");
+    REQUIRE(mod != nullptr);
+    auto* viewport = mod->findParentComponentOfClass<Viewport>();
+    REQUIRE(viewport != nullptr);
+    auto* strip = viewport->getViewedComponent();
+    const auto image = strip->createComponentSnapshot(strip->getLocalBounds());
+    for (int slot = 1; slot < 5; ++slot) {
+        const auto rim = image.getPixelAt(slot * 44 + 9, 15);
+        REQUIRE(rim.getAlpha() > 0);
+        REQUIRE(rim.getAlpha() < 255);
+        const auto point = panel.getLocalPoint(strip, Point<int>(slot * 44 + 22, 15));
+        auto* target = panel.getComponentAt(point);
+        REQUIRE(dynamic_cast<Slider*>(target) == nullptr);
+        if (target != nullptr) {
+            const auto local = target->getLocalPoint(&panel, point).toFloat();
+            target->mouseDown(keyboardMouseEvent(*target, local, ModifierKeys::leftButtonModifier));
+            target->mouseUp(keyboardMouseEvent(*target, local, {}));
+        }
+    }
+    REQUIRE(sink.messages.empty());
+    panel.setMappedControllers({ 1, 73 });
+    REQUIRE(panel.controllerBounds(73).getWidth() == 44.f);
+    REQUIRE(panel.controllerBounds(73).getX() == panel.modWheelBounds().getRight());
 }
 
 TEST_CASE("Performance keyboard preview transport follows its configured duration",

@@ -83,7 +83,7 @@
     {
       "command": "assertState",
       "path": "performance.highestNote",
-      "equals": 72
+      "equals": 84
     },
     {
       "command": "assertState",
@@ -93,7 +93,7 @@
     {
       "command": "assertState",
       "path": "performance.highestNoteLabel",
-      "equals": "C4"
+      "equals": "C5"
     },
     {
       "command": "assertState",
@@ -113,7 +113,7 @@
     {
       "command": "assertState",
       "path": "performance.highestNote",
-      "equals": 84
+      "equals": 96
     },
     {
       "command": "pointer",

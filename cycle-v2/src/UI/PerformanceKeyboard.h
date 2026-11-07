@@ -17,6 +17,9 @@ namespace CycleV2 {
 
 class PerformanceKeyboard final : public AmaranthMidiKeyboard {
 public:
+    static constexpr int visibleSemitones = 36;
+    static constexpr int whiteKeyCount = visibleSemitones / 12 * 7 + 1;
+
     PerformanceKeyboard(MidiKeyboardState& state, MidiEventSink& sink);
     ~PerformanceKeyboard() override;
 
@@ -84,8 +87,6 @@ private:
             float velocity);
     void setRangeStart(int noteNumber);
 
-    static constexpr int visibleSemitones = 24;
-
     int rangeStart { 48 };
     int currentHeldNote { -1 };
     float currentVelocity {};
@@ -106,10 +107,11 @@ public:
     PerformanceKeyboardPanel(MidiKeyboardState& state, MidiEventSink& sink);
 
     int baseNote() const { return keyboard.baseNote(); }
+    int highestNote() const { return baseNote() + PerformanceKeyboard::visibleSemitones; }
     int heldNote() const { return keyboard.heldNote(); }
     float heldVelocity() const { return keyboard.heldVelocity(); }
     String baseNoteLabel() const { return keyboard.noteLabel(keyboard.baseNote()); }
-    String highestNoteLabel() const { return keyboard.noteLabel(keyboard.baseNote() + 24); }
+    String highestNoteLabel() const { return keyboard.noteLabel(highestNote()); }
     Rectangle<float> noteBounds(int noteNumber) const;
     Rectangle<float> octaveDownBounds() const;
     Rectangle<float> octaveUpBounds() const;
@@ -171,6 +173,12 @@ public:
     void resized() override;
 
 private:
+    class ControllerStrip final : public Component {
+    public:
+        void paint(Graphics& graphics) override;
+        int mappedSlots { 1 };
+    };
+
     class OctaveButton final : public Button {
     public:
         explicit OctaveButton(bool advancesOctave);
@@ -261,7 +269,7 @@ private:
     PerformanceWaveformPreview waveform;
     OctaveButton octaveDown { false };
     OctaveButton octaveUp { true };
-    Component controllerStrip;
+    ControllerStrip controllerStrip;
     Viewport controllerViewport;
     ModWheel modWheel;
     std::vector<std::unique_ptr<ModWheel>> extraWheels;
