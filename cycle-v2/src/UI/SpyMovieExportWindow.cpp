@@ -6,16 +6,37 @@
 namespace CycleV2 {
 using namespace juce;
 
+void SpyMovieExportWindow::ExportLookAndFeel::fillResizableWindowBackground(
+        Graphics& graphics, int, int, const BorderSize<int>&, ResizableWindow& window) {
+    graphics.fillAll(window.findColour(ResizableWindow::backgroundColourId));
+}
+
+void SpyMovieExportWindow::ExportLookAndFeel::drawProgressBar(
+        Graphics& graphics, ProgressBar& bar, int width, int height, double value, const String& text) {
+    graphics.fillAll(bar.findColour(ProgressBar::backgroundColourId));
+    graphics.setColour(bar.findColour(ProgressBar::foregroundColourId));
+    if (value >= 0.0 && value <= 1.0) {
+        graphics.fillRect(0, 0, roundToInt(width * value), height);
+    } else {
+        const int segment = jmax(1, width / 5);
+        const int position = (int) ((Time::getMillisecondCounter() / 16) % (width + segment)) - segment;
+        graphics.fillRect(position, 0, segment, height);
+    }
+    graphics.setColour(CanvasChromePalette::text);
+    graphics.setFont(FontOptions(12.f));
+    graphics.drawText(text, 0, 0, width, height, Justification::centred);
+}
+
 SpyMovieExportWindow::SpyMovieExportWindow(Component& parent, Snapshot snapshot) :
-        DocumentWindow("Export Movie", CanvasChromePalette::dockSurface, closeButton)
+        DocumentWindow("Export Movie", Colour(0xff333333), closeButton)
     ,   capture(std::move(snapshot)) {
     lookAndFeel.setColour(Slider::textBoxBackgroundColourId, lookAndFeel.findColour(TextEditor::backgroundColourId));
     lookAndFeel.setColour(Slider::textBoxTextColourId, lookAndFeel.findColour(TextEditor::textColourId));
     lookAndFeel.setColour(Slider::textBoxOutlineColourId, lookAndFeel.findColour(TextEditor::outlineColourId));
     lookAndFeel.setColour(ProgressBar::backgroundColourId, CanvasChromePalette::restingControlSurface);
-    lookAndFeel.setColour(ProgressBar::foregroundColourId, CanvasChromePalette::focus);
+    lookAndFeel.setColour(ProgressBar::foregroundColourId, CanvasChromePalette::areaSelection);
     setLookAndFeel(&lookAndFeel);
-    setColour(ResizableWindow::backgroundColourId, CanvasChromePalette::dockSurface);
+    setColour(ResizableWindow::backgroundColourId, Colour(0xff333333));
     setName("SpyMovieExport");
     setUsingNativeTitleBar(true);
     setContentNonOwned(&content, false);
@@ -26,8 +47,8 @@ SpyMovieExportWindow::SpyMovieExportWindow(Component& parent, Snapshot snapshot)
     };
     label(heading, "Export an automated Cyclogram movie");
     heading.setFont(FontOptions(18.f, Font::bold));
-    label(detail, "Current preset + linked phrase | synth audio | playback ripples");
-    detail.setFont(FontOptions(12.f));
+    label(statusLabel, {});
+    statusLabel.setFont(FontOptions(12.f));
     label(gradientLabel, "Gradient");
     label(resolutionLabel, "Resolution");
     label(fpsLabel, "Frame rate");
@@ -88,19 +109,19 @@ void SpyMovieExportWindow::resized() {
     }
     const int width = content.getWidth();
     heading.setBounds(24, 18, width - 48, 28);
-    detail.setBounds(24, 48, width - 48, 40);
+    statusLabel.setBounds(24, 382, width - 48, 28);
     Label* labels[] {&gradientLabel, &resolutionLabel, &fpsLabel, &bitrateLabel, &tailLabel};
     Component* controls[] {&gradient, &resolution, &fps, &bitrate, &tail};
     for (int index = 0; index < 5; ++index) {
-        labels[index]->setBounds(24, 98 + index * 38, 190, 28);
-        controls[index]->setBounds(222, 98 + index * 38, index < 2 ? width - 246 : 154, 28);
+        labels[index]->setBounds(24, 64 + index * 38, 190, 28);
+        controls[index]->setBounds(222, 64 + index * 38, index < 2 ? width - 246 : 154, 28);
     }
-    outputLabel.setBounds(24, 294, 180, 24);
-    destination.setBounds(24, 320, width - 130, 27);
-    outputBrowse.setBounds(width - 94, 320, 70, 27);
-    encoderLabel.setBounds(24, 354, 180, 24);
-    ffmpeg.setBounds(24, 380, width - 130, 27);
-    encoderBrowse.setBounds(width - 94, 380, 70, 27);
+    outputLabel.setBounds(24, 260, 180, 24);
+    destination.setBounds(24, 286, width - 130, 27);
+    outputBrowse.setBounds(width - 94, 286, 70, 27);
+    encoderLabel.setBounds(24, 320, 180, 24);
+    ffmpeg.setBounds(24, 346, width - 130, 27);
+    encoderBrowse.setBounds(width - 94, 346, 70, 27);
     progressBar.setBounds(24, 418, width - 48, 18);
     cancel.setBounds(24, 452, 80, 28);
     reveal.setBounds(116, 452, 116, 28);
@@ -150,13 +171,13 @@ void SpyMovieExportWindow::beginExport() {
         settings.gradient = TimeSurfaceStyles::entries[(size_t) gradient.getSelectedId() - 2].id;
     }
     if (const auto valid = settings.validate(phrase); valid.failed()) {
-        detail.setText(valid.getErrorMessage(), dontSendNotification);
+        statusLabel.setText(valid.getErrorMessage(), dontSendNotification);
         return;
     }
     jobDirectory = File::getSpecialLocation(File::tempDirectory).getChildFile("cycle-movie-" + Uuid().toString());
     const auto job = jobDirectory.getChildFile("job.json");
     if (!jobDirectory.createDirectory() || !job.replaceWithText(JSON::toString(settings.toJSON(snapshot, phrase)))) {
-        detail.setText("Could not write the export job.", dontSendNotification);
+        statusLabel.setText("Could not write the export job.", dontSendNotification);
         return;
     }
     outputDirectory = settings.outputDirectory;
@@ -164,18 +185,18 @@ void SpyMovieExportWindow::beginExport() {
     reveal.setEnabled(false);
     if (!worker.start(StringArray {File::getSpecialLocation(File::currentExecutableFile).getFullPathName(),
                 "--export-movie-job", job.getFullPathName()}, 0)) {
-        detail.setText("Could not launch the export worker.", dontSendNotification);
+        statusLabel.setText("Could not launch the export worker.", dontSendNotification);
         return;
     }
     setRunning(true);
-    detail.setText("Preparing export. You can continue editing.", dontSendNotification);
+    statusLabel.setText("Preparing export...", dontSendNotification);
     startTimerHz(5);
 }
 
 void SpyMovieExportWindow::cancelExport() {
     if (running) {
         jobDirectory.getChildFile("cancel").replaceWithText("cancel");
-        detail.setText("Cancelling export...", dontSendNotification);
+        statusLabel.setText("Cancelling export...", dontSendNotification);
     }
 }
 
@@ -190,7 +211,7 @@ void SpyMovieExportWindow::closeButtonPressed() {
 void SpyMovieExportWindow::timerCallback() {
     const auto status = JSON::parse(jobDirectory.getChildFile("status.json"));
     if (status.isObject()) {
-        detail.setText(status["message"].toString(), dontSendNotification);
+        statusLabel.setText(status["message"].toString(), dontSendNotification);
         const int count = status["totalFrames"];
         progress = status["status"].toString() == "frames" && count > 0
                 ? (double) status["completedFrames"] / count : -1.0;
@@ -201,7 +222,7 @@ void SpyMovieExportWindow::timerCallback() {
         progress = complete ? 1.0 : 0.0;
         const auto result = status["status"].toString();
         if (result != "complete" && result != "cancelled" && result != "failed") {
-            detail.setText("The export worker stopped unexpectedly. Completed files were retained.", dontSendNotification);
+            statusLabel.setText("The export worker stopped unexpectedly. Completed files were retained.", dontSendNotification);
         }
         setRunning(false);
         reveal.setEnabled(outputDirectory.isDirectory());

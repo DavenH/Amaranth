@@ -21,6 +21,9 @@ resolution, fps, bitrate, tail, destination and ffmpeg path. Defaults: 1080p/30f
 8Mbps, 1s tail, saved gradient. Progress, cancellation, errors, reveal destination.
 Use the shared AmaranthLookAndFeel for the window and all controls, including
 the numeric stepper buttons. Keep its lifetime scoped to the export window.
+The window uses a #333 background and solid progress fills, without gloss or
+stripes. Omit an explanatory subtitle; reserve local secondary text beside the
+progress bar for transient progress and errors. Settings begin below the heading.
 Find ffmpeg via PATH and common platform locations; allow explicit executable.
 No shell command construction: JUCE ChildProcess receives argument arrays.
 
@@ -55,6 +58,9 @@ map/diff checks. No algorithm copies, alternate synth or screen capture.
   This covers saved Icy Hot Raw material, saved release position, initial CC,
   note reference, production voice markers and audio publication.
 - Architecture audit, code-map checker and diff whitespace checks passed.
+- Visual polish: Debug/Release app and test targets rebuilt; focused export
+  tests pass. Actual idle and partially filled progress screenshots reviewed;
+  a 36-frame export completed and an isolated UI cancellation passed.
 
 Output ownership uses exclusive directory creation; a failed claim never writes
 a manifest into an existing folder. PNG streams close before atomic publication,
