@@ -1362,6 +1362,35 @@ plot offset, predating the 32 px mode-selector header; that assertion now checks
 three incidental empty-Guide `SignalBuffer.h:123` assertions recur in the broader
 selection; their existing investigation remains in `audio-bugs.md`.
 
+## Resolved: Hover checks encountered stale native component targets
+
+2026-11-02: native movement over the performance MOD wheel reported the correct
+screen coordinates but retained `NodeCanvas` as the component under the pointer.
+Console help was empty or retained the previous control. Console lookup now uses
+JUCE component hit-testing at the current screen position in the active window.
+The same run exposed a stale Trimesh control test fixture: it expected all morph
+rows while omitting `dimensionCount`; that fixture now explicitly selects 3D.
+Evidence: `.context/check_console_hover.py`, `.context/console-hover-tests.log`.
+
+## Resolved: Startup during an in-progress rebuild used inconsistent layouts
+
+2026-11-02: a first automation build launched after a header changed while that
+build was compiling. `MainWindow::updateDocumentPresentation` crashed copying
+`workspace->graphFile()` before socket readiness. Completing an incremental
+rebuild after the header edit resolved startup; the read-only fixture then passed
+all seven commands. Crash: `CycleV2-2026-11-02-121909.ips`; fixture evidence:
+`.context/topbar-current-report.json`.
+
+## P3: Old canvas hover fixture addresses a removed node
+
+2026-11-02: `cycle-v2-agent-hover-help.json` cannot resolve
+`node:magnitudeLayer1Process` in `old/stengah.cyclegraph`. Synthetic pointer moves
+also produced status/hover request totals of 2 instead of 1 while the native
+pointer timer remained active. Evidence: `.context/console-canvas-hover-report.json`.
+Current focused status/editor cases and real-pointer control-hover checks pass.
+Repair the fixture's graph targets and establish one authoritative pointer source
+before relying on its exact synthetic repaint counts.
+
 
 ## Intermittent isolated Spy export dispatch rejection
 
@@ -1399,3 +1428,33 @@ it on each renderSpyFrame before capture/write. A real preset-switch test reject
 the changed document without writing a PNG (`.context/mysterie-guard-proof.json`).
 The clean copy `.context/mysterie-2-clean-1080p/sequence.mp4` ran with its owned
 PID hidden and revision 2 checked throughout. The original montage is preserved.
+
+## Resolved: MIDI playhead fixture assumed a short pattern library
+
+2026-11-07: after merging #202's 25 saved patterns, the playhead fixture could
+not resolve `workspace.sidebar.pattern.factory-basic-keys`: the row was below
+the visible list. The fixture now selects the existing Keys tag before choosing
+that pattern. Editor scrubbing and Space commands themselves passed in the
+initial run. Evidence: `.context/cycle-automation/cycle-v2/e02dcf995ed5/report.json`.
+
+The same merge changes clean exec to own a scoped app session. The waveform
+check's persistent-instance lookup returned no identity; it now looks up the
+coordinator record by the supplied exact PID and socket, retaining the existing
+native helper's identity validation. No application crash occurred.
+
+## Resolved: console partial repaints left a dark rectangular fringe
+
+2026-11-07: the user's crop in `.context/attachments/tLWZUI/` shows dark edges
+around the console text region. Status repaint invalidated an expanded two-pixel
+margin while filling only the inner rectangle. Both now use the same integer
+bounds. The native hover check passes and `.context/console-seam/footer.png`
+shows a continuous grey footer without the inset rectangle.
+
+
+## MIDI editor tempo-entry test focus (2026-11-07, resolved)
+
+The direct-entry unit fixture initially called `Label::showEditor()` without a
+visible peer, producing JUCE `Component.cpp:2694` focus assertions. Mounting the
+fixture on a temporary desktop peer before editing resolves them; 1,632 focused
+assertions and native tempo-entry/cancel verification pass without assertions.
+No production focus workaround was added.

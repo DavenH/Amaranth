@@ -15,7 +15,7 @@ MidiPatternEditorWindow::MidiPatternEditorWindow(
     ,   draft(std::move(initial))
     ,   onSave(std::move(save))
     ,   onDismiss(std::move(dismissed)) {
-    setName("PresetMidiEditor.Dialog");
+    setComponentID("PresetMidiEditor.Dialog");
     setUsingNativeTitleBar(true);
     setResizable(true, false);
     if (onSave) {

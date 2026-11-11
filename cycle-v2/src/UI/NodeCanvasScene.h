@@ -19,7 +19,6 @@ enum class NodeSceneTargetKind {
     NodeAction,
     ParameterControl,
     PaletteItem,
-    MiniMap,
     ExpandedEditor,
     NodeGroupToggle,
     NodeGroupBackground

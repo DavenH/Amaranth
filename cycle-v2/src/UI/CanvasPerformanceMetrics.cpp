@@ -657,7 +657,6 @@ const char* CanvasPerformanceMetrics::label(NodeCanvasPresentationStage stage) {
         case NodeCanvasPresentationStage::Nodes:                   return "nodes";
         case NodeCanvasPresentationStage::RelationshipHighlights:  return "relationshipHighlights";
         case NodeCanvasPresentationStage::Utilities:               return "utilities";
-        case NodeCanvasPresentationStage::MiniMap:                 return "miniMap";
         case NodeCanvasPresentationStage::Legend:                  return "legend";
         case NodeCanvasPresentationStage::Palette:                 return "palette";
         case NodeCanvasPresentationStage::Status:                  return "status";

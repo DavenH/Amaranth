@@ -2,6 +2,15 @@
 
 namespace CycleV2 {
 
+const GraphPresentationSnapshot* NodeCanvas::performanceWaveformSource() const {
+    if (commands.hasActiveEdit()
+            || ModifierKeys::getCurrentModifiersRealtime().isAnyMouseButtonDown()) {
+        return nullptr;
+    }
+    return &presentation.snapshot();
+}
+
+
 bool NodeCanvas::setAuditionControllerValue(int controller, int value) {
     if (!isPositiveAndBelow(controller, 128) || !isPositiveAndBelow(value, 128)) {
         return false;

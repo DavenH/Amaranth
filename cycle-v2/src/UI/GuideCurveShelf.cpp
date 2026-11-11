@@ -232,6 +232,8 @@ void GuideCurveShelf::paint(
         const GuideCurveShelfState& state,
         const WorkspaceDockFocus& focus) const {
     Rectangle<float> shelf = boundsFor(workspace, dockState, state);
+    graphics.setColour(CanvasChromePalette::dockSurface);
+    graphics.fillRect(guideWorkspace(workspace, state.minimized));
 
     graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
     graphics.fillRoundedRectangle(shelf, CanvasChromeMetrics::panelCornerRadius);

@@ -248,7 +248,7 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
             NodeCanvasPresentationStage::CableAnnotations,
             350);
     metrics.presentationStageCompleted(
-            NodeCanvasPresentationStage::MiniMap,
+            NodeCanvasPresentationStage::Legend,
             700);
     metrics.presentationStageCompleted(
             NodeCanvasPresentationStage::Palette,
@@ -280,7 +280,7 @@ TEST_CASE("Canvas metrics aggregate presentation layer durations",
             == Catch::Approx(2.4));
     REQUIRE((double) property(property(stages, "cableAnnotations"), "meanMs")
             == Catch::Approx(0.35));
-    REQUIRE((double) property(property(stages, "miniMap"), "meanMs")
+    REQUIRE((double) property(property(stages, "legend"), "meanMs")
             == Catch::Approx(0.7));
     REQUIRE((double) property(property(stages, "palette"), "meanMs")
             == Catch::Approx(1.25));

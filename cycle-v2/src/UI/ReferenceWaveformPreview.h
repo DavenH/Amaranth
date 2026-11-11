@@ -10,6 +10,8 @@
 
 namespace CycleV2 {
 
+inline constexpr int waveformHeatColumns = 768;
+
 enum class WaveformPalette { Monochrome, CrossingHeat };
 
 struct ReferenceWaveformResolution {

@@ -15,12 +15,10 @@ void PresetMidiEditor::selectNote(int index) {
 }
 
 juce::Rectangle<float> PresetMidiEditor::noteBounds(const PresetMidiNote& note) const {
-    const auto grid = noteGrid();
-    const float height = grid.getHeight() / 24.f;
-    return { xForTime(note.startSeconds),
-            grid.getY() + (lowestPitch + 23 - note.pitch) * height,
+    const auto row = pitchRow(note.pitch);
+    return { xForTime(note.startSeconds), row.getY(),
             juce::jmax(3.f, xForTime(note.startSeconds + note.durationSeconds)
-                    - xForTime(note.startSeconds)), height };
+                    - xForTime(note.startSeconds)), row.getHeight() };
 }
 
 void PresetMidiEditor::updateBoxSelection(juce::Point<float> position) {

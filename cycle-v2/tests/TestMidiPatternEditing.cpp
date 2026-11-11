@@ -30,8 +30,8 @@ TEST_CASE("MIDI box selection moves only selected notes and publishes on release
     });
     const auto grid = editor.noteGrid();
     const int shiftDrag = ModifierKeys::leftButtonModifier | ModifierKeys::shiftModifier;
-    const Point<float> start { grid.getX() + 1.f, grid.getY() + grid.getHeight() * 0.49f };
-    const Point<float> end { grid.getX() + grid.getWidth() * 0.4f, grid.getBottom() - 1.f };
+    const Point<float> start { grid.getX() + 1.f, editor.pitchRow(64).getY() - 1.f };
+    const Point<float> end { grid.getX() + grid.getWidth() * 0.4f, editor.pitchRow(60).getBottom() + 1.f };
     editor.mouseDown(pointer(editor, start, shiftDrag));
     editor.mouseDrag(pointer(editor, end, shiftDrag));
     editor.mouseUp(pointer(editor, end, shiftDrag));
@@ -48,7 +48,7 @@ TEST_CASE("MIDI box selection moves only selected notes and publishes on release
     REQUIRE(changed.notes[1].pitch == 65);
     REQUIRE(changed.notes[2].pitch == 72);
     const Point<float> down { grid.getX() + grid.getWidth() * 0.4f,
-            grid.getY() + grid.getHeight() * 16.5f / 24.f };
+            editor.pitchRow(61).getCentreY() };
     const auto middle = down.translated(grid.getWidth() * 0.0625f, 0.f);
     const auto finish = down.translated(grid.getWidth() * 0.125f, 0.f);
     const int beforeDrag = publications;

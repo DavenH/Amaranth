@@ -17,6 +17,11 @@ void PlaybackCursorExchange::publish(const PlaybackCursorFrame& frame) {
         destination.flags.store((source.hasMorph ? 1u : 0u)
                 | (source.hasEnvelopeTime ? 2u : 0u));
     }
+    timelineCount.store(frame.timelineCount);
+    for (size_t index = 0; index < frame.timelineCount; ++index) {
+        voiceTimes[index].store(frame.timeline[index].time);
+        releaseTimes[index].store(frame.timeline[index].releaseTime);
+    }
     sequence.fetch_add(1);
 }
 
@@ -39,6 +44,10 @@ PlaybackCursorFrame PlaybackCursorExchange::read() const {
         const unsigned flags = voices[index].flags.load();
         destination.hasMorph = (flags & 1u) != 0;
         destination.hasEnvelopeTime = (flags & 2u) != 0;
+    }
+    frame.timelineCount = timelineCount.load();
+    for (size_t index = 0; index < frame.timelineCount; ++index) {
+        frame.timeline[index] = { voiceTimes[index].load(), releaseTimes[index].load() };
     }
     return sequence.load() == before ? frame : PlaybackCursorFrame {};
 }

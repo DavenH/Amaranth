@@ -4489,35 +4489,15 @@ TEST_CASE("Envelope morph shortcuts use curve transactions and session links",
     REQUIRE(editor->focusedMorphAxis() == "red");
     Component* shortcutHint = editor->findChildWithID(
             "envelopeEditor.morph.shortcuts");
-    Component* shortcutBubble = editor->findChildWithID(
-            "envelopeEditor.morph.shortcuts.bubble");
     REQUIRE(shortcutHint != nullptr);
-    REQUIRE(shortcutBubble != nullptr);
     REQUIRE(shortcutHint->isVisible());
     REQUIRE(shortcutHint->getWidth() == 24);
     REQUIRE(shortcutHint->getHeight() == 24);
-    REQUIRE_FALSE(shortcutBubble->isVisible());
-    shortcutHint->mouseDown(curvePanelMouseEvent(
-            *shortcutHint,
-            { 12.f, 12.f },
-            ModifierKeys::leftButtonModifier,
-            { 12.f, 12.f },
-            false));
-    REQUIRE_FALSE(shortcutBubble->isVisible());
-    shortcutHint->mouseEnter(curvePanelMouseEvent(
-            *shortcutHint, { 12.f, 12.f }, {}, { 12.f, 12.f }, false));
-    REQUIRE(shortcutBubble->isVisible());
-    REQUIRE(shortcutBubble->getWidth() == 168);
-    REQUIRE(shortcutBubble->getHeight() == 130);
-    REQUIRE(editor->getLocalBounds().contains(shortcutBubble->getBounds()));
-    REQUIRE(shortcutBubble->getBounds().getCentreX()
-            == shortcutHint->getBounds().getCentreX());
-    REQUIRE(shortcutBubble->getDescription().startsWith("Y / R / B"));
-    REQUIRE(shortcutBubble->getDescription().contains(
-            "Shift + Left / Right"));
-    shortcutHint->mouseExit(curvePanelMouseEvent(
-            *shortcutHint, { 25.f, 12.f }, {}, { 12.f, 12.f }, false));
-    REQUIRE_FALSE(shortcutBubble->isVisible());
+    auto* shortcutHelp = dynamic_cast<TooltipClient*>(shortcutHint);
+    REQUIRE(shortcutHelp != nullptr);
+    REQUIRE(shortcutHelp->getTooltip().startsWith("Y / R / B"));
+    REQUIRE(shortcutHelp->getTooltip().contains("Shift + Left / Right"));
+    REQUIRE(editor->findChildWithID("envelopeEditor.morph.shortcuts.bubble") == nullptr);
 
     Component focusSink;
     focusSink.setWantsKeyboardFocus(true);

@@ -7,7 +7,19 @@ using namespace juce;
 class AmaranthMidiKeyboard :
         public MidiKeyboardComponent {
 public:
+    struct VectorKeyPalette {
+        Colour naturalTop { 0xffb8b8b8 };
+        Colour naturalBottom { 0xff484848 };
+        Colour accidentalTop { 0xff707070 };
+        Colour accidentalBottom { 0xff202020 };
+        Colour pressedTop { 0xffb7642f };
+        Colour pressedBottom { 0xff4f210d };
+        Colour highlightedTop { 0xff4f89aa };
+        Colour highlightedBottom { 0xff18384a };
+    };
+
     AmaranthMidiKeyboard(MidiKeyboardState& state, Orientation orientation);
+    void setVectorKeyPalette(const VectorKeyPalette& palette);
 
     static String getText(int note);
 
@@ -49,6 +61,7 @@ private:
     Range<int> midiRange;
     int highlightedNote = -1;
     bool useVectorKeys = false;
+    VectorKeyPalette vectorKeyPalette;
 
     JUCE_LEAK_DETECTOR(AmaranthMidiKeyboard)
 };

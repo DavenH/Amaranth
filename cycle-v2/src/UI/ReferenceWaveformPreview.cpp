@@ -13,7 +13,6 @@ namespace CycleV2 {
 
 namespace {
 
-constexpr int kHeatColumns = 768;
 constexpr int kHeatRows = 384;
 
 float normalizeWaveform(Buffer<float> samples) {
@@ -265,7 +264,7 @@ juce::Image signalWaveformCoverage(const WaveformPreviewSource& source, int widt
 }
 
 std::vector<float> signalWaveformHeatDensity(Buffer<float> mono) {
-    auto density = referenceWaveformDensity(mono, kHeatColumns, kHeatRows);
+    auto density = referenceWaveformDensity(mono, waveformHeatColumns, kHeatRows);
     if (!density.empty()) {
         normalizeDensity(density);
     }
@@ -277,7 +276,7 @@ juce::Image signalWaveformHeatField(Buffer<float> mono, WaveformColourStyles::St
 }
 
 juce::Image signalWaveformHeatField(const std::vector<float>& density, WaveformColourStyles::Style style) {
-    constexpr int columns = kHeatColumns;
+    constexpr int columns = waveformHeatColumns;
     constexpr int rows = kHeatRows;
     if (density.size() != (size_t) columns * rows) {
         return {};

@@ -9,20 +9,18 @@
     {
       "command": "assertState",
       "path": "performance.screenHeight",
-      "op": "greaterThan",
-      "value": 100
+      "equals": 56
     },
     {
       "command": "assertState",
       "path": "performance.whiteKeyWidth",
-      "op": "greaterThan",
-      "value": 24
+      "equals": 24
     },
     {
       "command": "assertState",
       "path": "performance.whiteKeyAspect",
       "op": "greaterThan",
-      "value": 3.9
+      "value": 1.8
     },
     {
       "command": "assertState",
@@ -32,7 +30,7 @@
     {
       "command": "assertState",
       "path": "performance.octaveButtonHeight",
-      "equals": 100
+      "equals": 50
     },
     {
       "command": "inspectPointerTargets"

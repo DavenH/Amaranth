@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "UI/WaveformColourStyles.h"
@@ -25,6 +26,8 @@ public:
     void setSample(const PitchedSample* sample);
     void setSignal(std::shared_ptr<const std::vector<float>> samples);
     void setViewport(const ZoomRect& viewport);
+    void setColourStyle(std::optional<WaveformColourStyles::Style> style);
+    void setBorderVisible(bool visible);
     juce::var diagnostics() const;
     void paint(juce::Graphics& graphics) override;
     void resized() override;
@@ -49,6 +52,7 @@ private:
     std::shared_ptr<const WaveformPreviewSource> source;
     std::shared_ptr<const WaveformPreviewSource> imageSource;
     WaveformColourStyles::Style colourStyle { WaveformColourStyles::defaultStyle };
+    std::optional<WaveformColourStyles::Style> fixedColourStyle;
     ZoomRect viewport;
     ZoomRect imageViewport;
     juce::Image image;
@@ -74,6 +78,7 @@ private:
     double renderMs {};
     bool line {};
     bool filled {};
+    bool borderVisible { true };
     size_t crossings {};
 };
 

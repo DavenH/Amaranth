@@ -78,3 +78,27 @@ Reused the ordinary IFFT zero-phase policy, Buffer scratch storage, palette
 catalogue, authoring commands, PatternLibrary atomic persistence, JUCE menus,
 rectangles and native dialog lifecycle. Architecture audit, code-map validation
 and diff whitespace checks completed. Deferred tasks above remain separate.
+
+## Master integration (2026-11-11)
+
+Merged `origin/master` at `69def2ef`. Retained the compact editor, three-octave
+pitch grid, scrollable controller lanes, notes-only overview and native dialog
+title. The copy-save button sits beside Clear without restoring the removed
+Length widgets or shortcut footer. Selection hit testing now reuses `pitchRow`
+instead of the former 24-row calculation. Plain arrows retain measure seeking;
+Backspace retains return-to-start, Delete removes selected events, and
+Shift-arrows move the selected notes. Updated transpose/boundary tests select
+notes explicitly; gesture tests derive positions from pitch rows.
+
+Adopted master's extracted JUCE rotary controls and removed the obsolete wheel
+implementation during conflict resolution. Ordinary travel remains 32 px;
+master's fine Shift travel and endpoint/key behavior remain with JUCE Slider.
+The merged focused suite passes 3,695 assertions in 72 test cases.
+
+Merged Debug app and test targets build. The pattern-copy (21 commands), compact
+editor layout (9), and playhead (21) app fixtures pass sequentially. Native
+node-menu creation/undo, Cmd-S/Ctrl-S, cancellation and preservation of factory
+and user-pattern consumers pass. Reviewed `.context/midi-pattern-selection.png`
+for the integrated compact editor and Save/Clear alignment. Code-map,
+architecture audit and whitespace checks pass; the panel/editor/view/selection
+owners are 647/656/389/76 lines after integration.

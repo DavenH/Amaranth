@@ -253,7 +253,7 @@ InlinePresetBrowser::InlinePresetBrowser(
     styleTabButton(presets, LibraryIcon::Presets, "Presets");
     styleTabButton(patterns, LibraryIcon::Patterns, "Patterns");
     styleTabButton(nodes, LibraryIcon::Nodes, "Nodes");
-    styleTabButton(assets, LibraryIcon::Assets, "Assets");
+    styleTabButton(assets, LibraryIcon::Assets, "WAV references");
     curves.setComponentID("workspace.sidebar.curves");
     presets.setComponentID("workspace.sidebar.presets");
     patterns.setComponentID("workspace.sidebar.patterns");
@@ -489,6 +489,9 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
     }
     graphics.setColour(CanvasChromePalette::dockSurface);
     graphics.fillRect(bounds.withHeight(46.f));
+    graphics.setColour(CanvasChromePalette::border);
+    graphics.drawHorizontalLine(46, 0.f, bounds.getRight());
+    graphics.drawVerticalLine(patterns.getRight() + 8, 10.f, 36.f);
     const auto selectedTab = tab == WorkspaceSidebarTab::Curves
             ? curves.getBounds().toFloat()
             : tab == WorkspaceSidebarTab::Presets
@@ -510,12 +513,13 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
 void InlinePresetBrowser::resized() {
     auto bounds = getLocalBounds();
     auto tabs = bounds.removeFromTop(46).reduced(8, 0);
-    const int tabWidth = juce::jmin(100, tabs.getWidth() / 5);
-    curves.setBounds(tabs.removeFromLeft(tabWidth));
+    const int tabWidth = juce::jmin(100, (tabs.getWidth() - 16) / 5);
+    assets.setBounds(tabs.removeFromLeft(tabWidth));
     presets.setBounds(tabs.removeFromLeft(tabWidth));
     patterns.setBounds(tabs.removeFromLeft(tabWidth));
+    tabs.removeFromLeft(16);
     nodes.setBounds(tabs.removeFromLeft(tabWidth));
-    assets.setBounds(tabs);
+    curves.setBounds(tabs.removeFromLeft(tabWidth));
     if (assetBrowser != nullptr) {
         assetBrowser->setBounds(bounds);
     }
