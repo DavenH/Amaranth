@@ -64,7 +64,8 @@ private:
     void paintNoteGrid(juce::Graphics& graphics) const;
     void paintNotes(juce::Graphics& graphics) const;
     void paintVelocity(juce::Graphics& graphics) const;
-    void paintLaneGrid(juce::Graphics& graphics, juce::Rectangle<float> grid,
+    void paintLaneGrid(juce::Graphics& graphics, juce::Rectangle<float> grid) const;
+    void paintLaneLabel(juce::Graphics& graphics, juce::Rectangle<float> grid,
             const juce::String& label) const;
     void paintModulation(juce::Graphics& graphics) const;
     void paintModulationLane(juce::Graphics& graphics, int controller) const;

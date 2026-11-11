@@ -248,7 +248,7 @@ void PresetMidiEditor::paintNotes(Graphics& graphics) const {
 
 void PresetMidiEditor::paintVelocity(Graphics& graphics) const {
     const auto grid = velocityGrid();
-    paintLaneGrid(graphics, grid, "Velocity");
+    paintLaneGrid(graphics, grid);
     Graphics::ScopedSaveState saveState(graphics);
     graphics.reduceClipRegion(grid.getSmallestIntegerContainer());
     for (size_t index = 0; index < sequence.notes.size(); ++index) {
@@ -262,16 +262,13 @@ void PresetMidiEditor::paintVelocity(Graphics& graphics) const {
                 : CanvasChromePalette::focus);
         graphics.fillRect(Rectangle<float>(x - 2.5f, grid.getBottom() - height, 5.f, 2.f));
     }
+    paintLaneLabel(graphics, grid, "Velocity");
 }
 
-void PresetMidiEditor::paintLaneGrid(Graphics& graphics, Rectangle<float> grid,
-        const String& label) const {
+void PresetMidiEditor::paintLaneGrid(Graphics& graphics, Rectangle<float> grid) const {
     graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(0.55f));
     graphics.fillRect(grid);
-    graphics.setColour(CanvasChromePalette::text.withAlpha(0.85f));
     graphics.setFont(FontOptions(10.f));
-    graphics.drawText(label, 2, roundToInt(grid.getCentreY()) - 9, 49, 18,
-            Justification::centredLeft);
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.drawText("127", 52, roundToInt(grid.getY()), 24, 12, Justification::centredRight);
     graphics.drawText("0", 52, roundToInt(grid.getBottom()) - 12, 24, 12,
@@ -290,6 +287,14 @@ void PresetMidiEditor::paintLaneGrid(Graphics& graphics, Rectangle<float> grid,
     }
 }
 
+void PresetMidiEditor::paintLaneLabel(Graphics& graphics, Rectangle<float> grid,
+        const String& label) const {
+    graphics.setColour(CanvasChromePalette::text.withAlpha(0.85f));
+    graphics.setFont(FontOptions(10.f));
+    graphics.drawText(label, grid.reduced(8.f, 4.f).removeFromTop(16.f),
+            Justification::topRight);
+}
+
 void PresetMidiEditor::paintModulation(Graphics& graphics) const {
     Graphics::ScopedSaveState saveState(graphics);
     const auto area = automationBounds();
@@ -304,7 +309,7 @@ void PresetMidiEditor::paintModulationLane(Graphics& graphics, int controller) c
     if (!grid.intersects(automationBounds())) {
         return;
     }
-    paintLaneGrid(graphics, grid, controller == 1 ? "MOD" : "CC " + String(controller));
+    paintLaneGrid(graphics, grid);
     std::vector<size_t> points;
     for (size_t index = 0; index < sequence.controls.size(); ++index) {
         if (sequence.controls[index].controller == controller) {
@@ -353,6 +358,7 @@ void PresetMidiEditor::paintModulationLane(Graphics& graphics, int controller) c
         graphics.setColour(CanvasChromePalette::dockSurface);
         graphics.drawEllipse(x - 2.5f, y - 2.5f, 5.f, 5.f, 0.75f);
     }
+    paintLaneLabel(graphics, grid, controller == 1 ? "MOD" : "CC " + String(controller));
 }
 
 void PresetMidiEditor::paintPlaybackCursor(Graphics& graphics) const {

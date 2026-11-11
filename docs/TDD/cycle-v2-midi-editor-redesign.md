@@ -77,3 +77,14 @@ Existing gesture tests now use pitch-row geometry instead of fixed density.
 All 36 rows remain editable at normal and minimum window sizes; all 1,674
 assertions in 61 focused cases pass. Debug and Release apps build. The layout
 fixture verifies the actual app; capture: `.context/midi-editor-36-rows.png`.
+
+
+## Inset lane labels
+
+Velocity, MOD and CC names now sit inside the top-right of their own plot,
+with an 8 px horizontal / 4 px vertical inset. One shared painter draws names
+after the lane data so handles and stems cannot paint over the text. Plot sizes,
+value scales and gesture geometry stay unchanged. Debug and Release builds and
+all 698 assertions in 24 focused editor cases pass. Actual-app single/multiple
+controller captures are `.context/midi-lane-labels.png` and
+`.context/midi-lane-labels-multiple.png`; code-map and architecture checks pass.
