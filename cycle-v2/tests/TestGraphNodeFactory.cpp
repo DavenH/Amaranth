@@ -170,7 +170,8 @@ TEST_CASE("Graph node factory creates mesh and arithmetic nodes", "[cycle-v2][gr
     REQUIRE(mesh.inputs[2].side == PortSide::Left);
     REQUIRE(mesh.inputs[3].side == PortSide::Left);
     REQUIRE(mesh.inputs[4].side == PortSide::Left);
-    REQUIRE(mesh.bounds.getHeight() == 269.f);
+    REQUIRE(mesh.bounds.getHeight() == 215.f);
+    REQUIRE(mesh.inputs[0].side == PortSide::Bottom);
     REQUIRE(parameterValueForNode(mesh, "link.yellow") == "1");
     REQUIRE(parameterValueForNode(mesh, "link.red") == "1");
     REQUIRE(parameterValueForNode(mesh, "link.blue") == "1");
@@ -244,8 +245,8 @@ TEST_CASE("Graph node factory sizes nodes from their content", "[cycle-v2][graph
     const Node mesh = GraphNodeFactory().createNode(NodeKind::TrilinearMesh, "mesh", {});
     const Node env = GraphNodeFactory().createNode(NodeKind::Envelope, "env", {});
     REQUIRE(mesh.bounds.getWidth() >= 280.f);
-    REQUIRE(mesh.bounds.getHeight() >= 250.f);
+    REQUIRE(mesh.bounds.getHeight() >= 200.f);
     REQUIRE(env.bounds.getWidth() >= 240.f);
     REQUIRE(env.bounds.getHeight() >= 160.f);
-    REQUIRE(mesh.bounds.getHeight() > env.bounds.getHeight());
+    REQUIRE(env.bounds.getHeight() <= 225.f);
 }

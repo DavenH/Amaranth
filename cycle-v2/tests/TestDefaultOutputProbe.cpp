@@ -3,7 +3,11 @@
 #include <algorithm>
 #include <cmath>
 
+#include <Audio/CycleDsp/EffectParameterMapping.h>
+
 #include "Graph/DefaultOutputProbeResolver.h"
+#include "Graph/GraphNodeStateEditor.h"
+#include "Runtime/SignalProbeWaveformCapture.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
@@ -44,7 +48,7 @@ TEST_CASE("Default output probe excludes the wet and EQ suffix",
             { NodeKind::Equalizer, "eq" },
             { NodeKind::Reverb, "verb" },
             { NodeKind::Delay, "delay" },
-            { NodeKind::Output, "output" }
+            { NodeKind::GlobalOutput, "output" }
     });
 
     const auto address = DefaultOutputProbeResolver().resolve(graph);
@@ -61,7 +65,7 @@ TEST_CASE("Default output probe retains a meaningful dry effect at the boundary"
     const NodeGraph graph = chain({
             { NodeKind::GlobalInput, "input" },
             { NodeKind::Waveshaper, "shape" },
-            { NodeKind::Output, "output" }
+            { NodeKind::GlobalOutput, "output" }
     });
 
     const auto address = DefaultOutputProbeResolver().resolve(graph);
@@ -74,7 +78,7 @@ TEST_CASE("Default output probe handles direct and individually excluded boundar
         "[cycle-v2][preset][preview][routing]") {
     const NodeGraph direct = chain({
             { NodeKind::GlobalInput, "input" },
-            { NodeKind::Output, "output" }
+            { NodeKind::GlobalOutput, "output" }
     });
     REQUIRE(DefaultOutputProbeResolver().resolve(direct)->sourceNodeId == "input");
 
@@ -87,7 +91,7 @@ TEST_CASE("Default output probe handles direct and individually excluded boundar
                 { NodeKind::GlobalInput, "input" },
                 { NodeKind::Waveshaper, "shape" },
                 { kind, id },
-                { NodeKind::Output, "output" }
+                { NodeKind::GlobalOutput, "output" }
         });
         const auto address = DefaultOutputProbeResolver().resolve(graph);
         REQUIRE(address.has_value());
@@ -98,12 +102,12 @@ TEST_CASE("Default output probe handles direct and individually excluded boundar
 TEST_CASE("Default output probe rejects ambiguous and disconnected boundaries",
         "[cycle-v2][preset][preview][routing]") {
     NodeGraph disconnected;
-    disconnected.addNode(GraphNodeFactory().createNode(NodeKind::Output, "output", {}));
+    disconnected.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "output", {}));
     REQUIRE_FALSE(DefaultOutputProbeResolver().resolve(disconnected).has_value());
 
     NodeGraph ambiguous = chain({
             { NodeKind::GlobalInput, "input" },
-            { NodeKind::Output, "output" }
+            { NodeKind::GlobalOutput, "output" }
     });
     ambiguous.addNode(GraphNodeFactory().createNode(NodeKind::GlobalInput, "second", {}));
     ambiguous.addEdge({ "second", "out", "output", "in", PortDomain::TimeSignal, false });
@@ -326,4 +330,40 @@ TEST_CASE("Expanded output spectrum retains the compact FFT resolution",
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
+}
+
+TEST_CASE("Default output waveform captures include gain before the wet suffix",
+        "[cycle-v2][output][gain][preview]") {
+    const auto file = File(CYCLE_V2_SOURCE_DIR).getChildFile("content/presets/acidic-2.cyclegraph");
+    const auto loaded = GraphSerializer().loadJsonString(file.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    auto graph = loaded.graph;
+    const auto output = std::find_if(graph.getNodes().begin(), graph.getNodes().end(),
+            [](const auto& node) { return node.kind == NodeKind::Gain; });
+    REQUIRE(output != graph.getNodes().end());
+    const auto id = output->id;
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, id, "gain", "Gain", "0.5").succeeded());
+    const auto unity = GraphCompiler().compile(graph);
+    REQUIRE(unity.succeeded());
+    REQUIRE(unity.plan.defaultOutputProbe.has_value());
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, id, "gain", "Gain", "0.4").succeeded());
+    const auto quiet = GraphCompiler().compile(graph);
+    REQUIRE(quiet.succeeded());
+    SignalProbeWaveformCapture unityCapture;
+    SignalProbeWaveformCapture quietCapture;
+    const auto original = unityCapture.capture(unity.plan,
+            {{ *unity.plan.defaultOutputProbe, 0., 1. }}, 60, {});
+    const auto scaled = quietCapture.capture(quiet.plan,
+            {{ *quiet.plan.defaultOutputProbe, 0., 1. }}, 60, {});
+    REQUIRE(original[0] != nullptr);
+    REQUIRE(scaled[0] != nullptr);
+    REQUIRE(original[0]->size() == scaled[0]->size());
+    float energy = 0.f;
+    float error = 0.f;
+    for (size_t index = 0; index < original[0]->size(); ++index) {
+        energy += std::abs((*original[0])[index]);
+        error += std::abs((*scaled[0])[index] - (*original[0])[index] * CycleDsp::outputGain(0.4f));
+    }
+    REQUIRE(energy > 0.01f);
+    REQUIRE(error / energy < 1e-5f);
 }

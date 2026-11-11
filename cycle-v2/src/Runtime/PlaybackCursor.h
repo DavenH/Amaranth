@@ -15,6 +15,7 @@ struct PlaybackCursorCapture {
     float envelopeTime {};
     bool hasMorph {};
     bool hasEnvelopeTime {};
+    bool released {};
 
     void setMorph(const MorphPosition& position) {
         morph = { position.time, position.red, position.blue };

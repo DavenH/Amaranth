@@ -185,7 +185,6 @@ struct GraphExecutionPlan {
     size_t maximumOutputCount { 1 };
     size_t maximumAttachmentCount {};
     size_t maximumTraversalColumns { 8 };
-    float outputGain { 1.f };
     std::vector<String> nodeOrder;
     std::vector<GraphExecutionStep> steps;
     std::vector<GraphBufferPlan> buffers;
@@ -213,7 +212,6 @@ class GraphCompiler {
 public:
     static std::vector<Edge> implicitVoiceContextEdges(const NodeGraph& graph);
     GraphCompileResult compile(const NodeGraph& graph) const;
-    static float outputGainFor(const NodeGraph& graph);
     void refreshSignalProbes(const NodeGraph& graph, GraphExecutionPlan& plan) const;
     void refreshVoiceContexts(const NodeGraph& graph, GraphExecutionPlan& plan) const;
 

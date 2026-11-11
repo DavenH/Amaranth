@@ -28,6 +28,7 @@ HeaderLabelsLayout headerLabelsLayout(
         juce::Rectangle<float> favorite,
         const juce::StringArray& tags);
 
+juce::Rectangle<float> deleteBounds(juce::Rectangle<float> slot);
 juce::Rectangle<float> favoriteBounds(juce::Rectangle<float> slot);
 juce::Rectangle<float> patternFavoriteBounds(juce::Rectangle<float> slot);
 juce::Rectangle<float> cardBounds(juce::Rectangle<float> slot);

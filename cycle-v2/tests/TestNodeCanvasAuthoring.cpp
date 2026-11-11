@@ -86,7 +86,7 @@ TEST_CASE("Node canvas authoring preserves graph and layout semantics",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 20.f, 80.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 260.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 260.f, 80.f }));
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     GraphDocument document(std::move(graph));
@@ -330,7 +330,7 @@ TEST_CASE("Node canvas authoring keeps a toggled selection and bulk move in one 
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 20.f, 30.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 260.f, 90.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 260.f, 90.f }));
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
@@ -461,7 +461,7 @@ TEST_CASE("Deleting a cable removes its Spy and restores both with undo",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     graph.addEdge({
             "wave", "out", "output", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal });
@@ -486,7 +486,7 @@ TEST_CASE("Deleting another branch leaves a Spy anchored to its surviving cable"
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "first", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "first", {}));
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "second", {}));
     graph.addEdge({
             "wave", "out", "first", "time",
@@ -513,7 +513,7 @@ TEST_CASE("Deleting an inline panning cable removes the pan and its Spy",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     graph.addEdge({
             "wave", "out", "pan", "in",
             PortDomain::TimeSignal, ConnectionKind::Signal });
@@ -931,7 +931,7 @@ TEST_CASE("Inline Pan drag publishes one undoable parameter gesture",
 TEST_CASE("Output gain drag publishes one transient undoable DSP gesture",
         "[cycle-v2][canvas][authoring][output][gain]") {
     NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "output", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::Gain, "output", {}));
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);
     GraphPresentationModel presentation;
@@ -1008,7 +1008,7 @@ TEST_CASE("Pan can be removed from a cable as one undoable authoring command",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::SpectralLayer, "pan", { 220.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", { 440.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", { 440.f, 0.f }));
     graph.addEdge({
             "wave", "out", "pan", "in",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -1043,7 +1043,7 @@ TEST_CASE("Time cable Pan supports a complete edit and undo sequence",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 300.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", { 600.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", { 600.f, 0.f }));
     graph.addEdge({
             "voice", "context", "wave", "context",
             PortDomain::DomainContext, ConnectionKind::Signal

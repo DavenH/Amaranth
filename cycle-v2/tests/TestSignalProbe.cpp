@@ -61,7 +61,7 @@ NodeGraph probeGraph() {
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 400.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 400.f, 0.f }));
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     return graph;
 }
@@ -218,9 +218,9 @@ TEST_CASE("Signal probe labels and rail positions remain unique after deletion",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "firstWave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "firstOut", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "firstOut", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "secondWave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "secondOut", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "secondOut", {}));
     graph.addEdge({ "firstWave", "out", "firstOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "secondWave", "out", "secondOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addSignalProbe({
@@ -276,8 +276,8 @@ TEST_CASE("Signal probe commands reattach remove and restore through undo", "[cy
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "first", { 400.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "second", { 400.f, 240.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "first", { 400.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "second", { 400.f, 240.f }));
     graph.addEdge({ "wave", "out", "first", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "wave", "out", "second", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
@@ -308,7 +308,7 @@ TEST_CASE("Pinned Spy batch matches targeted capture at one comparison note",
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal,
             ConnectionKind::Signal });
     graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal,
@@ -361,7 +361,7 @@ TEST_CASE("Comparison morph capture preparation ignores unrelated graph and mesh
         graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
         graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
         graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
-        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
         graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal,
                 ConnectionKind::Signal });
         graph.addEdge({ "mesh", "out", "add", "right", PortDomain::ControlSignal,
@@ -464,7 +464,7 @@ TEST_CASE("Waveform capture retains continuous samples independently of folded S
     source.model = TrimeshNodeModelState::takeOwnership(
             TrimeshMeshFactory::createDefaultMesh("waveform-capture"), 1);
     graph.addNode(std::move(source));
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     SECTION("Direct voice output") {
@@ -544,8 +544,8 @@ TEST_CASE("Waveform auditions share compatible outputs and retain distinct audit
     graph.addNode(std::move(source));
     graph.addNode(std::move(second));
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "secondOut", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "secondOut", {}));
     graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     graph.addEdge({ "voice", "context", "secondWave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
@@ -623,7 +623,7 @@ TEST_CASE("Expanded and pinned spectrum Spies preserve enough harmonics to fill 
     source.model = TrimeshNodeModelState::takeOwnership(
             TrimeshMeshFactory::createDefaultMesh("spectrum-full-range"), 1);
     graph.addNode(std::move(source));
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });

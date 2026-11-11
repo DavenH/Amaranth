@@ -34,6 +34,16 @@ namespace CycleV2 {
 
 namespace {
 
+bool hasLiveGainMeter(const NodeCanvasPresentationFrame& frame, const Node& node) {
+    const auto& plan = frame.snapshot.compileResult.plan;
+    if (node.kind != NodeKind::Gain || !plan.defaultOutputProbe.has_value()) {
+        return false;
+    }
+    const int index = plan.defaultOutputProbe->sourceStepIndex;
+    return index >= 0 && index < (int) plan.steps.size()
+            && plan.steps[(size_t) index].nodeId == node.id;
+}
+
 bool isNodeSelected(const NodeCanvasPresentationFrame& frame, const String& nodeId) {
     if (frame.selectedNodeIds.empty()) {
         return nodeId == frame.selectedNodeId;
@@ -1283,7 +1293,10 @@ void NodeCanvasPresentation::paintNode(
                     zoom);
         }
 
-        graphics.setFont(FontOptions(CanvasChromeMetrics::editorTitleFontSize * zoom));
+        const float titleSize = node.kind == NodeKind::TrilinearMesh || node.kind == NodeKind::Envelope
+                ? 21.f : CanvasChromeMetrics::editorTitleFontSize;
+        graphics.setFont(FontOptions("Helvetica Neue", jmax(9.f, titleSize * zoom), Font::plain)
+                .withStyle("Medium"));
         graphics.setColour(CanvasChromePalette::text);
         const float existingReservation = globalProcessing
                 ? (reservesHeaderRight ? 65.f : 24.f)
@@ -1293,7 +1306,7 @@ void NodeCanvasPresentation::paintNode(
                 : existingReservation;
         Rectangle<float> titleBounds = header.reduced(13.f * zoom, 4.f * zoom)
                 .withTrimmedRight(titleRightReservation * zoom);
-        if (node.kind == NodeKind::Output) {
+        if (node.kind == NodeKind::Gain) {
             const Rectangle<float> speaker = Rectangle<float>(28.f * zoom, 28.f * zoom)
                     .withCentre({ header.getX() + 27.f * zoom, header.getCentreY() });
             NodeIconRenderer::paint(graphics, node.kind, speaker, 1.f);
@@ -1357,7 +1370,7 @@ void NodeCanvasPresentation::paintNode(
                                     frame.unisonPreviewContext)
                             : frame.unisonPreviewContext,
                     false,
-                    node.kind == NodeKind::Output
+                    hasLiveGainMeter(frame, node)
                             ? frame.liveOutputMeterLevels
                             : std::optional<OutputMeterLevels> {},
                     &frame.graph
@@ -1487,7 +1500,7 @@ uint64_t NodeCanvasPresentation::renderContextFingerprintFor(
                 .getSurfaceStyle().materialStyleSignature();
         fingerprint.add((uint64_t) (styleSignature + 1));
     }
-    if (node.kind == NodeKind::Output && frame.liveOutputMeterLevels.has_value()) {
+    if (hasLiveGainMeter(frame, node) && frame.liveOutputMeterLevels.has_value()) {
         uint32_t leftBits {};
         uint32_t rightBits {};
         std::memcpy(&leftBits, &frame.liveOutputMeterLevels->left, sizeof(leftBits));

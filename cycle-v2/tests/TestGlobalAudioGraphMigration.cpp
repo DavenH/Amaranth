@@ -1,4 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_approx.hpp>
+
+#include "Graph/DefaultOutputProbeResolver.h"
 
 #include "NodeGraphTestAccess.h"
 
@@ -19,7 +22,7 @@ NodeGraph legacyEffectGraph() {
     graph.addNode(factory.createNode(NodeKind::WaveSource, "voice", { 120.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 480.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", { 760.f, 80.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 1040.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 1040.f, 80.f }));
     graph.addEdge({
             "voice", "out", "shape", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -133,7 +136,7 @@ TEST_CASE("Format four migration retains its resolved voice boundary source",
     graph.addNode(factory.createNode(NodeKind::Envelope, "envelope", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addNode(factory.createNode(NodeKind::ImpulseResponse, "ir", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "voice", "context", "mesh", "context",
             PortDomain::DomainContext, ConnectionKind::Signal
@@ -173,7 +176,7 @@ TEST_CASE("Format five graphs gain one explicit voice terminal",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalInput", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 320.f, 240.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 320.f, 240.f }));
     graph.addEdge({
             "globalInput", "time", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -243,4 +246,67 @@ TEST_CASE("Ambiguous legacy boundaries are rejected without partial mutation",
     REQUIRE(migration.error.containsIgnoreCase("multiple"));
     REQUIRE(GraphSerializer().toJsonString(graph) == before);
     REQUIRE(graph.findNode("globalInput") == nullptr);
+}
+
+TEST_CASE("Legacy Output becomes Gain before wet effects and a neutral Global Out",
+        "[cycle-v2][output-migration][serialization]") {
+    GraphSerializer serializer;
+    var encoded = serializer.writeJSON(legacyEffectGraph());
+    encoded.getDynamicObject()->setProperty("formatVersion", 9);
+    auto* legacy = encodedNode(encoded, "out");
+    REQUIRE(legacy != nullptr);
+    legacy->setProperty("kind", "output");
+    auto parameters = std::make_unique<DynamicObject>();
+    parameters->setProperty("gain", 0.37);
+    legacy->setProperty("parameters", var(parameters.release()));
+    legacy->setProperty("rationale", "Retain my gain explanation");
+    const String original = JSON::toString(encoded);
+    const auto loaded = serializer.readJSON(encoded);
+    for (const auto& issue : loaded.issues) {
+        INFO(issue.message);
+    }
+    REQUIRE(loaded.succeeded());
+    REQUIRE(JSON::toString(encoded) == original);
+    REQUIRE(loaded.graph.findNode("out")->kind == NodeKind::Gain);
+    REQUIRE(NodeParameterMap(*loaded.graph.findNode("out")).floatValue("gain", 0.f)
+            == Catch::Approx(0.37f));
+    REQUIRE(loaded.graph.findNode("out")->rationale == "Retain my gain explanation");
+    REQUIRE(loaded.graph.findNode("globalOutput")->kind == NodeKind::GlobalOutput);
+    REQUIRE(loaded.graph.findNode("globalOutput")->parameters.empty());
+    REQUIRE(hasEdge(loaded.graph, "shape", "out"));
+    REQUIRE(hasEdge(loaded.graph, "out", "delay"));
+    REQUIRE(hasEdge(loaded.graph, "delay", "globalOutput"));
+    REQUIRE_FALSE(hasEdge(loaded.graph, "shape", "delay"));
+    REQUIRE(loaded.graph.findNode("out")->bounds.getX()
+            < loaded.graph.findNode("delay")->bounds.getX());
+    const auto address = DefaultOutputProbeResolver().resolve(loaded.graph);
+    REQUIRE(address.has_value());
+    REQUIRE(address->sourceNodeId == "out");
+    const auto saved = serializer.toJsonString(loaded.graph);
+    const auto repeated = serializer.loadJsonString(saved);
+    REQUIRE(repeated.succeeded());
+    REQUIRE(serializer.toJsonString(repeated.graph) == saved);
+}
+
+TEST_CASE("Output migration preserves colliding IDs and rejects ambiguous signal paths",
+        "[cycle-v2][output-migration][serialization]") {
+    GraphSerializer serializer;
+    auto graph = legacyEffectGraph();
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::ModulationSource, "globalOutput", {}));
+    var encoded = serializer.writeJSON(graph);
+    encoded.getDynamicObject()->setProperty("formatVersion", 9);
+    encodedNode(encoded, "out")->setProperty("kind", "output");
+    const auto loaded = serializer.readJSON(encoded);
+    REQUIRE(loaded.succeeded());
+    REQUIRE(loaded.graph.findNode("globalOutput")->kind == NodeKind::ModulationSource);
+    REQUIRE(loaded.graph.findNode("globalOutput2")->kind == NodeKind::GlobalOutput);
+
+    auto* edges = encoded.getProperty("edges", {}).getArray();
+    REQUIRE(edges != nullptr);
+    auto alternate = edges->getLast().clone();
+    alternate.getDynamicObject()->setProperty("sourceNodeId", "shape");
+    edges->add(alternate);
+    const String original = JSON::toString(encoded);
+    REQUIRE_FALSE(serializer.readJSON(encoded).succeeded());
+    REQUIRE(JSON::toString(encoded) == original);
 }

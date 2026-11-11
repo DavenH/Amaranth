@@ -139,7 +139,7 @@ TrimeshSemanticRepresentationMigration::migrate(var& graph) const {
         return result;
     }
     const int version = (int) root->getProperty("formatVersion");
-    if (version == 7 || version == 8 || version == 9) {
+    if (version == 7 || version == 8 || version == 9 || version == 10) {
         return result;
     }
     if (version != 6) {

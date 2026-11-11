@@ -3,6 +3,7 @@
 #include "Runtime/AudioProcessTypes.h"
 #include "Runtime/NodeModuleRegistry.h"
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -42,10 +43,11 @@ struct FftNodeConfiguration final : public INodeDspConfiguration {
     AudioModuleRole role() const override { return processorRole; }
 };
 
-struct OutputNodeConfiguration final : public INodeDspConfiguration {
+struct GainNodeConfiguration final : public INodeDspConfiguration {
     float gain { 1.f };
+    std::shared_ptr<std::atomic<float>> liveGain { std::make_shared<std::atomic<float>>(1.f) };
 
-    AudioModuleRole role() const override { return AudioModuleRole::Output; }
+    AudioModuleRole role() const override { return AudioModuleRole::Gain; }
 };
 
 struct PanConfiguration final : public INodeDspConfiguration {

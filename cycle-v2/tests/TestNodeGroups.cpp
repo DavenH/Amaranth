@@ -100,7 +100,7 @@ TEST_CASE("Collapsed groups hide member targets and internal cables",
     NodeGraph graph;
     Node first = factory.createNode(NodeKind::WaveSource, "first", { 0.f, 0.f });
     Node second = factory.createNode(NodeKind::Multiply, "second", { 260.f, 0.f });
-    Node outside = factory.createNode(NodeKind::Output, "outside", { 530.f, 0.f });
+    Node outside = factory.createNode(NodeKind::GlobalOutput, "outside", { 530.f, 0.f });
     REQUIRE_FALSE(first.outputs.empty());
     REQUIRE_FALSE(second.inputs.empty());
     REQUIRE_FALSE(second.outputs.empty());
@@ -185,7 +185,7 @@ TEST_CASE("Expanded group header clears endpoint nodes and their captions",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "input", { 200.f, 200.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", { 700.f, 200.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", { 700.f, 200.f }));
     REQUIRE(graph.addNodeGroup({ "group", "Global FX", { "input", "output" }, false }));
     const GraphEdgeIndex edgeIndex(graph.getEdges());
     const NodeGroup& group = *graph.findNodeGroup("group");
@@ -217,7 +217,7 @@ TEST_CASE("Group toggles stay anchored while their Spy cards collapse",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "input", { 100.f, 150.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", { 450.f, 150.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", { 450.f, 150.f }));
     graph.addEdge({ "input", "time", "output", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addSignalProbe({ "spy", "input", "time", "output", "time",

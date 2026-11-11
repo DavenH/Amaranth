@@ -1207,7 +1207,7 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
         const Node* node = context.document.graph().findNode(sceneTarget.nodeId);
         if (sceneTarget.kind == NodeSceneTargetKind::Node
                 && node != nullptr
-                && node->kind == NodeKind::Output) {
+                && node->kind == NodeKind::Gain) {
             const auto preview = NodePreviewRenderer::boundsFor(
                     *node,
                     sceneTarget.bounds,
@@ -1215,7 +1215,7 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
             targets.add(AutomationValueEncoder::pointerTargetToVar(
                     "outputGain:" + node->id,
                     "outputGain",
-                    OutputMeterPresentation::layout(preview).faderHitTarget,
+                    OutputMeterPresentation::layout(preview).gainHitTarget,
                     node->id));
         }
     }

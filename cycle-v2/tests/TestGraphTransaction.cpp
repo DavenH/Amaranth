@@ -18,7 +18,7 @@ TEST_CASE("Graph commands commit compound changes with one undo step", "[cycle-v
     GraphCommandDispatcher commands(document);
     commands.beginCompoundEdit();
     const auto wave = commands.addNode(NodeKind::WaveSource, {});
-    const auto output = commands.addNode(NodeKind::Output, { 300.f, 0.f });
+    const auto output = commands.addNode(NodeKind::GlobalOutput, { 300.f, 0.f });
 
     REQUIRE(wave.succeeded());
     REQUIRE(output.succeeded());
@@ -66,7 +66,7 @@ TEST_CASE("Cancelled compound edits restore implicit removals in serialized orde
                 graph, id, "logarithmic", "Logarithmic", "1").succeeded());
     }
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply-a", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply-b", {}));
     graph.addEdge({ "wave", "out", "multiply-a", "left", PortDomain::TimeSignal });
@@ -180,7 +180,7 @@ TEST_CASE("Splice commands capture only affected edge inputs",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     graph.addEdge({ "wave", "out", "output", "time", PortDomain::TimeSignal });
     AudioSampleResource audio { "unrelated-audio", "Unrelated.wav", 48000.0, {} };
     audio.samples.resize(16384);

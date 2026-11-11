@@ -31,7 +31,8 @@ enum class AudioModuleRole {
     StereoSplit,
     StereoJoin,
     GlobalInput,
-    Output,
+    GlobalOutput,
+    Gain,
     GenericProcessor
 };
 

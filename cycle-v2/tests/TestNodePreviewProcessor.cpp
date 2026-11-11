@@ -1135,81 +1135,34 @@ TEST_CASE("Output meters report captured mono and stereo peaks", "[cycle-v2][run
     REQUIRE(stereoContext.secondary == std::vector<float> { 1.f, 1.f, 1.f });
 }
 
-TEST_CASE("Output meter layout gives width to both channels", "[cycle-v2][ui]") {
-    const std::array<Rectangle<float>, 3> areas {
-            Rectangle<float>(0.f, 0.f, 72.f, 64.f),
-            Rectangle<float>(0.f, 0.f, 190.f, 132.f),
-            Rectangle<float>(0.f, 0.f, 320.f, 220.f)
-    };
-
-    for (const auto area : areas) {
+TEST_CASE("Output gain dial stays compact between symmetric stereo meters", "[cycle-v2][ui][output]") {
+    for (const auto area : { Rectangle<float>(0.f, 0.f, 72.f, 64.f),
+            Rectangle<float>(0.f, 0.f, 190.f, 104.f), Rectangle<float>(0.f, 0.f, 320.f, 220.f) }) {
         const auto layout = OutputMeterPresentation::layout(area);
-        const float leftGap = layout.faderHitTarget.getX() - layout.left.getRight();
-        const float rightGap = layout.right.getX() - layout.faderHitTarget.getRight();
-
-        REQUIRE(layout.left.getWidth() == Catch::Approx(layout.right.getWidth()));
-        REQUIRE(layout.left.getRight() <= layout.right.getX());
-        REQUIRE(leftGap == Catch::Approx(rightGap));
-        REQUIRE(leftGap >= 3.99f);
-        REQUIRE(leftGap <= 8.01f);
         REQUIRE(area.contains(layout.left));
         REQUIRE(area.contains(layout.right));
-        REQUIRE(area.contains(layout.faderHitTarget));
-        REQUIRE(layout.faderHitTarget.getWidth() >= 24.f);
-        REQUIRE(layout.left.getRight() < layout.faderHitTarget.getX());
-        REQUIRE(layout.faderHitTarget.getRight() < layout.right.getX());
-        REQUIRE(layout.faderHitTarget.getCentreX() == Catch::Approx(area.getCentreX()));
-        REQUIRE(layout.faderTrack.getWidth() == 2.f);
+        REQUIRE(area.contains(layout.gainHitTarget));
+        REQUIRE(layout.left.getWidth() == Catch::Approx(layout.right.getWidth()));
+        REQUIRE(layout.gainHitTarget.getWidth() == layout.gainHitTarget.getHeight());
+        REQUIRE(layout.gainHitTarget.getWidth() <= 58.f);
+        REQUIRE(layout.gainHitTarget.getCentreX() == Catch::Approx(area.getCentreX()));
+        REQUIRE(layout.gainHitTarget.getX() - layout.left.getRight()
+                == Catch::Approx(layout.right.getX() - layout.gainHitTarget.getRight()));
+        REQUIRE(layout.gainLabel.getY() >= layout.gainHitTarget.getBottom());
+        const auto low = OutputMeterPresentation::gainIndicatorBounds(area, 0.f);
+        const auto unity = OutputMeterPresentation::gainIndicatorBounds(area, 0.5f);
+        const auto high = OutputMeterPresentation::gainIndicatorBounds(area, 1.f);
+        REQUIRE(low.getCentreX() < unity.getCentreX());
+        REQUIRE(high.getCentreX() > unity.getCentreX());
+        REQUIRE(low.getCentreY() > unity.getCentreY());
+        REQUIRE(high.getCentreY() > unity.getCentreY());
     }
-
-    const auto natural = OutputMeterPresentation::layout({ 0.f, 0.f, 190.f, 132.f });
-    const float occupiedFraction = (natural.left.getWidth() + natural.right.getWidth()) / 190.f;
-    REQUIRE(occupiedFraction >= 0.56f);
-    REQUIRE(natural.faderHitTarget.getWidth() / 190.f <= 0.24f);
-    const Rectangle<float> naturalThumb = OutputMeterPresentation::gainThumbBounds(
-            { 0.f, 0.f, 190.f, 132.f },
-            0.5f);
-    REQUIRE(naturalThumb.getWidth() == Catch::Approx(30.f));
-    REQUIRE(naturalThumb.getHeight() == Catch::Approx(10.5f));
-
-    const auto zoomed = OutputMeterPresentation::layout(
-            { 0.f, 0.f, 380.f, 264.f },
-            2.f);
-    REQUIRE(zoomed.faderHitTarget.getWidth()
-            == Catch::Approx(natural.faderHitTarget.getWidth() * 2.f));
-    REQUIRE(zoomed.faderTrack.getWidth()
-            == Catch::Approx(natural.faderTrack.getWidth() * 2.f));
-    REQUIRE(zoomed.faderTrack.getHeight()
-            == Catch::Approx(natural.faderTrack.getHeight() * 2.f));
-    REQUIRE(OutputMeterPresentation::gainThumbBounds(
-            { 0.f, 0.f, 380.f, 264.f },
-            0.5f,
-            2.f).getHeight()
-            == Catch::Approx(OutputMeterPresentation::gainThumbBounds(
-                    { 0.f, 0.f, 190.f, 132.f },
-                    0.5f).getHeight() * 2.f));
-
-    const Rectangle<float> channel(10.f, 20.f, 30.f, 100.f);
+    REQUIRE(OutputMeterPresentation::gainLabel(0.5f) == "0 dB");
+    const Rectangle<float> channel(10.f, 20.f, 9.f, 100.f);
     REQUIRE(OutputMeterPresentation::fillBounds(channel, 0.f).getHeight() == 0.f);
     REQUIRE(OutputMeterPresentation::fillBounds(channel, 0.25f)
-            == Rectangle<float>(10.f, 95.f, 30.f, 25.f));
+            == Rectangle<float>(10.f, 95.f, 9.f, 25.f));
     REQUIRE(OutputMeterPresentation::fillBounds(channel, 2.f) == channel);
-
-    const Rectangle<float> faderArea(0.f, 0.f, 190.f, 132.f);
-    const auto fader = OutputMeterPresentation::layout(faderArea);
-    REQUIRE(OutputMeterPresentation::gainUnitValueAt(
-            faderArea,
-            fader.faderTrack.getY()) == 1.f);
-    REQUIRE(OutputMeterPresentation::gainUnitValueAt(
-            faderArea,
-            fader.faderTrack.getBottom()) == 0.f);
-    REQUIRE(OutputMeterPresentation::gainThumbBounds(faderArea, 0.f).getCentreY()
-            == Catch::Approx(fader.faderTrack.getBottom()));
-    REQUIRE(OutputMeterPresentation::gainThumbBounds(faderArea, 0.5f).getCentreY()
-            == Catch::Approx(fader.faderTrack.getCentreY()));
-    REQUIRE(OutputMeterPresentation::gainThumbBounds(faderArea, 1.f).getCentreY()
-            == Catch::Approx(fader.faderTrack.getY()));
-    REQUIRE(OutputMeterPresentation::gainLabel(0.5f) == "0 dB");
 }
 
 TEST_CASE("Output meter painting reveals a low nonzero level", "[cycle-v2][ui]") {

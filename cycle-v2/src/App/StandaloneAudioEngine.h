@@ -38,7 +38,6 @@ public:
     void stop();
     bool publishGraph(GraphExecutionPlan plan, uint64_t revision);
     void setVoiceDurationSeconds(float durationSeconds);
-    void setGraphOutputGain(float gain);
     Status status() const;
     PlaybackCursorFrame playbackCursors(const juce::String& nodeId);
     juce::var audioPerformance();

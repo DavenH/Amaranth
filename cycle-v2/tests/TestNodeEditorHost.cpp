@@ -5857,7 +5857,7 @@ TEST_CASE("Envelope morph gestures survive live preview injection release and se
         graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
         graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
         graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
-        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
         GraphEditor graphEditor;
         REQUIRE(graphEditor.connect(graph, { "mesh", "out", false }, { "multiply", "left", true }).succeeded());
         REQUIRE(graphEditor.connect(graph, { "env", "env", false }, { "multiply", "right", true }).succeeded());
@@ -6296,7 +6296,7 @@ TEST_CASE("Hosted Trimesh morph rails follow pointer updates without publishing 
                 mesh->destroy();
                 graph.addNode(std::move(node));
                 graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
-                graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+                graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "out", {}));
                 graph.addEdge({ "voice", "context", "mesh", "context",
                         PortDomain::DomainContext, ConnectionKind::Signal });
                 graph.addEdge({ "mesh", "out", "out", "time",
@@ -6452,7 +6452,7 @@ TEST_CASE("Trimesh rail close and document reset preserve the correct local morp
         owner.setVisible(true);
         NodeGraph graph = TestSupport::authoredTrimeshGraph();
         graph.addNode(GraphNodeFactory().createNode(NodeKind::VoiceContext, "voice", {}));
-        graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+        graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "out", {}));
         graph.addEdge({ "voice", "context", "mesh", "context",
                 PortDomain::DomainContext, ConnectionKind::Signal });
         graph.addEdge({ "mesh", "out", "out", "time",
@@ -6678,7 +6678,7 @@ TEST_CASE("Compact Spy resize and palette changes reuse source analysis",
     ScopedJuceInitialiser_GUI gui;
     Component canvas;
     NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "spy", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "spy", {}));
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher graphCommands(document);
     NullPresentation presentation;

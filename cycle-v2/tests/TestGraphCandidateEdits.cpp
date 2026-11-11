@@ -25,7 +25,7 @@ NodeGraph candidateGraph() {
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
     REQUIRE(GraphNodeStateEditor().setNodeParameter(

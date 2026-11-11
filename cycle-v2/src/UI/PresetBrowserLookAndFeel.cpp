@@ -18,7 +18,8 @@ void PresetBrowserLookAndFeel::drawButtonBackground(
         const juce::Colour& backgroundColour,
         bool isHighlighted,
         bool isDown) {
-    if (button.getProperties().contains("libraryIcon")
+    if ((button.getProperties().contains("libraryIcon")
+                || (bool) button.getProperties()["quietAction"])
             && !isHighlighted && !isDown && !button.hasKeyboardFocus(false)) {
         return;
     }

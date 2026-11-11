@@ -17,7 +17,7 @@ TEST_CASE("Preset library publishes only the newest coalesced search",
     REQUIRE(directory.createDirectory().wasOk());
 
     NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "output", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "output", {}));
     REQUIRE(directory.getChildFile("Acidic 2.cyclegraph").replaceWithText(
             GraphSerializer().toJsonString(graph)));
     REQUIRE(directory.getChildFile("Soft Pad.cyclegraph").replaceWithText(

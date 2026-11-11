@@ -108,7 +108,7 @@ Rectangle<float> outputFaderBounds(
     const Rectangle<float> nodeBounds = viewport.toScreen(
             NodeCanvasScene::presentationWorldBounds(graph, node, edgeIndex));
     const Rectangle<float> preview = NodePreviewRenderer::boundsFor(node, nodeBounds, zoom);
-    return OutputMeterPresentation::layout(preview, zoom).faderHitTarget;
+    return OutputMeterPresentation::layout(preview, zoom).gainHitTarget;
 }
 
 const Node* findOutputFaderAt(
@@ -121,7 +121,7 @@ const Node* findOutputFaderAt(
         if (!graph.isNodeVisible(node->id)) {
             continue;
         }
-        if (node->kind == NodeKind::Output
+        if (node->kind == NodeKind::Gain
                 && outputFaderBounds(viewport, graph, *node, edgeIndex).contains(position)) {
             return &*node;
         }
@@ -622,7 +622,7 @@ NodeCanvas::HoverRepaint NodeCanvas::updateHoverAt(
     const bool adjustsOutputGain = outputFader != nullptr;
     if (adjustsOutputGain) {
         const float gain = NodeParameterMap(*outputFader).floatValue("gain", 0.5f);
-        resolvedHoverText = "Master gain: " + OutputMeterPresentation::gainLabel(gain);
+        resolvedHoverText = "Gain: " + OutputMeterPresentation::gainLabel(gain);
     }
     const Node* explanationNode = explanationNodeAt(position);
     const NodeGroup* explanationGroup = explanationGroupAt(position);
@@ -1493,7 +1493,7 @@ bool NodeCanvas::keyPressed(const KeyPress& key) {
 
     if (keyCode == KeyPress::upKey || keyCode == KeyPress::downKey) {
         const Node* selected = queries.findNode(selectedNodeId);
-        if (selected != nullptr && selected->kind == NodeKind::Output) {
+        if (selected != nullptr && selected->kind == NodeKind::Gain) {
             const float current = NodeParameterMap(*selected).floatValue("gain", 0.5f);
             const float step = key.getModifiers().isShiftDown() ? 0.005f : 0.02f;
             const float direction = keyCode == KeyPress::upKey ? 1.f : -1.f;
@@ -2753,9 +2753,6 @@ bool NodeCanvas::copyAudioPlan(
     return true;
 }
 
-float NodeCanvas::graphOutputGain() const {
-    return GraphCompiler::outputGainFor(commands.editingGraph());
-}
 
 void NodeCanvas::setProbeRefreshMode(ProbeRefreshMode mode) {
     dockInteraction->setProbeRefreshMode(mode);

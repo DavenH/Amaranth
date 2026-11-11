@@ -75,12 +75,12 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Graph/GraphDocument.h` — Committed graph ownership, publication, and document observers.
 - `cycle-v2/src/Graph/GraphCommandDispatcher.h` — Semantic values, topology, Guides, gestures and staged undoable publication.
 - `cycle-v2/src/Graph/GraphDelta.h` — Ordered semantic deltas for atomic graph edits, rollback, undo, and redo.
-- `cycle-v2/src/Graph/GraphSerializer.h` — Current graph persistence and migration-facing serialization.
+- `cycle-v2/src/Graph/GraphSerializer.h` — Graph persistence; OutputStageRepresentationMigration splits legacy Gain and Global Out.
 - `cycle-v2/src/Graph/GraphCompiler.h` — Compiles graph topology into executable runtime structure.
 - `cycle-v2/src/Graph/GraphValidator.h` — Coordinates graph validation; reuse focused validators beneath it.
 - `cycle-v2/src/Graph/NodeDefinition.h` — Node types, ports, defaults, constraints, and synthesis capability metadata.
 - `cycle-v2/src/Runtime/GraphRuntime.h` — Owns compiled runtime state and graph execution lifecycle.
-- `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime audio and cursor capture; GraphPreviewTiming measures tails for shared PreviewTraversal coordinates.
+- `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime audio/cursors and pre-wet monitoring; GraphPreviewTiming measures PreviewTraversal tails.
 - `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Scoped preview extraction, full-band spectrum sizing and view-specific row reduction.
 - `cycle-v2/src/Runtime/SignalProbeWaveformCapture.h` — Snapshot-scoped continuous Spy audition reuse and compatible multi-probe capture.
 - `cycle-v2/src/Runtime/NodeModuleRegistry.h` — Registration boundary for node model, DSP, preview, and view modules.
@@ -103,7 +103,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/SurfaceAppearanceDialog.h`, `cycle-v2/src/UI/WaveformColourStyles.h`, `scripts/test_cycle_v2_surface_appearance.py` — Modal palette selectors, waveform gradient identity, and UI verification.
 - `cycle-v2/src/UI/NodePreviewRenderer.h`, `cycle-v2/src/UI/ComparisonSurfaceView.h`, `cycle-v2/src/UI/SignalProbeDetailPanel.h`, `cycle-v2/src/UI/SpyFrameRenderer.h`, `cycle-v2/src/UI/SpyPlaybackRipple.h` — Preview plots, expanded Spy capture and palette-preserving saturation playback ripples.
 - `cycle-v2/src/UI/SignalProbeCanvas.h`, `scripts/test_cycle_v2_spy_refresh.py` — Spy views; refresh-count, tray update and retained-waveform regression checks.
-- `cycle-v2/src/UI/InlinePresetBrowser.h` — Grouped library/authoring tabs; ReferenceAssetBrowser and ReferenceTrayBar own assets and tray.
+- `cycle-v2/src/UI/InlinePresetBrowser.h` — Library/authoring tabs; PresetCardList owns cards; ReferenceTrayBar owns Visual Reference.
 - `scripts/test_cycle_v2_console_sidebar.py` — Native sidebar, single-line console hover and resize regression checks.
 - `cycle-v2/src/UI/LibraryThumbnailCache.h` — Async reference-asset thumbnails.
 - `cycle-v2/src/UI/ReferenceWaveformPreview.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Shared waveform analysis/cache and async indexed density/path views.

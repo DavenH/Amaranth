@@ -2,7 +2,6 @@
 
 #include <JuceHeader.h>
 
-#include <Audio/SmoothedParameter.h>
 #include <Array/ScopedAlloc.h>
 
 #include <array>
@@ -28,7 +27,6 @@ public:
         GraphExecutionPlan plan;
         AudioExecutionSpec spec;
         GraphAudioExecutor executor;
-        ScopedAlloc<float> outputGainRamp;
         ScopedAlloc<float> pitchRamps;
         bool monophonicLegato {};
         float portamentoSeconds {};
@@ -47,6 +45,8 @@ public:
         float rms {};
         float leftPeak {};
         float rightPeak {};
+        float monitorLeftPeak {};
+        float monitorRightPeak {};
     };
 
     RealtimeGraphRenderer();
@@ -61,9 +61,6 @@ public:
         spectralStageCapture = capture;
     }
     void setVoiceDurationSeconds(float durationSeconds);
-    void setGraphOutputGain(float gain) {
-        requestedGraphOutputGain.store(jmax(0.f, gain), std::memory_order_release);
-    }
     void setVolumeEnvelopeClockSampleRate(double sampleRate) {
         volumeEnvelopeClockSampleRate = jmax(0., sampleRate);
     }
@@ -101,7 +98,9 @@ public:
                 outputPeak.load(std::memory_order_acquire),
                 outputRms.load(std::memory_order_acquire),
                 outputLeftPeak.load(std::memory_order_acquire),
-                outputRightPeak.load(std::memory_order_acquire)
+                outputRightPeak.load(std::memory_order_acquire),
+                monitorLeftPeak.load(std::memory_order_acquire),
+                monitorRightPeak.load(std::memory_order_acquire)
         };
     }
 
@@ -176,9 +175,6 @@ private:
     double currentSampleRate { 44100.0 };
     double currentBlockStartSeconds {};
     float outputGain { defaultOutputGain };
-    SmoothedParameter graphOutputGain { 1.f };
-    std::atomic<float> requestedGraphOutputGain { 1.f };
-    bool outputGainInitialized {};
     int64_t deterministicRandomSeed {};
     bool hasDeterministicRandomSeed {};
     int controlNoteOffset {};
@@ -193,6 +189,8 @@ private:
     std::atomic<float> outputRms {};
     std::atomic<float> outputLeftPeak {};
     std::atomic<float> outputRightPeak {};
+    std::atomic<float> monitorLeftPeak {};
+    std::atomic<float> monitorRightPeak {};
 };
 
 }

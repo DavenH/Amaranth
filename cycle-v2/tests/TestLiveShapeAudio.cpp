@@ -11,7 +11,7 @@ using namespace CycleV2;
 TEST_CASE("An addressed live shape edit changes seeded audio and undo restores exact PCM",
         "[cycle-v2][live-shape][audio]") {
     auto graph = TestSupport::authoredTrimeshGraph(0);
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "mesh", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);

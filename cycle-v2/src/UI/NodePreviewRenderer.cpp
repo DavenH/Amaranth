@@ -556,7 +556,9 @@ Rectangle<float> NodePreviewRenderer::boundsFor(
 }
 
 void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderRequest& request) {
-    const float minimumDimension = request.node.kind == NodeKind::SpectralLayer ? 8.f : 20.f;
+    const bool compactSymbol = request.node.kind == NodeKind::SpectralLayer
+            || request.node.kind == NodeKind::Add || request.node.kind == NodeKind::Multiply;
+    const float minimumDimension = compactSymbol ? 6.f : 20.f;
     if (request.area.getWidth() < minimumDimension || request.area.getHeight() < minimumDimension) {
         return;
     }
@@ -957,7 +959,7 @@ void NodePreviewRenderer::paintQualitative(
         return;
     }
 
-    if (kind == NodeKind::Output) {
+    if (kind == NodeKind::Gain) {
         const NodePreviewResult meters {
                 request.node.id,
                 PreviewModuleRole::OutputMeters

@@ -254,6 +254,15 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
                 : nullptr;
         return ReverbSignalProcessor::buildConfiguration(parameters, previousReverb);
     }
+    if (role == AudioModuleRole::Gain) {
+        auto configuration = std::make_shared<GainNodeConfiguration>();
+        configuration->gain = CycleDsp::outputGain(NodeParameterMap(parameters).floatValue("gain", 0.5f));
+        if (const auto* gain = dynamic_cast<const GainNodeConfiguration*>(previous)) {
+            configuration->liveGain = gain->liveGain;
+        }
+        configuration->liveGain->store(configuration->gain, std::memory_order_release);
+        return configuration;
+    }
     if (role == AudioModuleRole::Envelope) {
         return EnvelopeSignalProcessor::buildConfiguration(
                 parameters, model, graph, nodeId);
@@ -302,12 +311,6 @@ std::shared_ptr<const INodeDspConfiguration> NodeDspConfigurationFactory::create
             configuration->processorRole = roleToUse;
             configuration->halfCycleCarry = NodeParameterMap(values).stringValue("mode", "cyclic")
                     == "acyclicCarry";
-            return std::shared_ptr<const INodeDspConfiguration>(configuration);
-        } },
-        { AudioModuleRole::Output, [](AudioModuleRole, const auto& values, const auto&) {
-            auto configuration = std::make_shared<OutputNodeConfiguration>();
-            configuration->gain = CycleDsp::outputGain(
-                    NodeParameterMap(values).floatValue("gain", 0.5f));
             return std::shared_ptr<const INodeDspConfiguration>(configuration);
         } },
         { AudioModuleRole::Waveshaper, [](AudioModuleRole, const auto& values, const auto& modelState) {

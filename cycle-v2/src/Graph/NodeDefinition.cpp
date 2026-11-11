@@ -589,7 +589,8 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .presentation({ 220.f, 90.f })
                     .finish(),
             buildDefinition(definition("trilinearMesh", NodeKind::TrilinearMesh, "Trilinear Mesh", "mesh operand", "mesh",
-                    { input("context", "Context", PortDomain::DomainContext),
+                    { input("context", "Context", PortDomain::DomainContext,
+                              ChannelLayout::Mono, PortPurpose::Signal, PortSide::Bottom),
                       input("scratch", "Scratch", PortDomain::EnvelopeSignal, ChannelLayout::Mono, PortPurpose::ScratchAttachment),
                       input("yellow", "Yellow Morph", PortDomain::ControlSignal,
                               ChannelLayout::Mono, PortPurpose::Signal, PortSide::Left,
@@ -635,7 +636,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::CycleGenerator)
                     .runtime(AudioModuleRole::MeshSource, PreviewModuleRole::MeshSurface,
                             "cycle/src/Curve/Rasterization/Rasterizer/VoiceMeshRasterizer.cpp")
-                    .presentation({ 260.f, 130.f }, { 286.f, 269.f })
+                    .presentation({ 260.f, 130.f }, { 286.f, 215.f })
                     .finish(),
             buildDefinition(definition("spectralLayer", NodeKind::SpectralLayer,
                     "Pan", "stereo placement", "pan",
@@ -707,7 +708,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .execution(NodeExecutionTrait::ControlProducer)
                     .runtime(AudioModuleRole::Envelope, PreviewModuleRole::Envelope,
                             "cycle/src/Inter/EnvelopeInter2D.cpp")
-                    .presentation({ wideCompactPreviewWidth, 92.f })
+                    .presentation({ wideCompactPreviewWidth, 72.f }, { wideCompactPreviewWidth + 26.f, 222.f })
                     .finish(),
             buildDefinition(definition("add", NodeKind::Add, "Add", "combine", "add",
                     { input("left", "A", PortDomain::ControlSignal), input("right", "B", PortDomain::ControlSignal) },
@@ -897,18 +898,26 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .disablePreview()
                     .presentation({}, { 116.f, 116.f })
                     .finish(),
-            buildDefinition(definition("output", NodeKind::Output, "Output", "sink", "out",
-                    { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}, {
-                            physical(number("gain", "Gain", 0.5f, 0.f, 1.f,
-                                    dsp | preview | presentation),
+            buildDefinition(definition("gain", NodeKind::Gain, "Gain", "level", "gain",
+                    { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
+                    { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {
+                            physical(number("gain", "Gain", 0.5f, 0.f, 1.f, dsp | preview | presentation),
                                     "outputGain", "linear gain",
                                     CycleDsp::outputGain, CycleDsp::outputGainUnitValue)
                     }))
-                    .help("Sends the finished sound to the audio output.")
+                    .help("Sets the signal level. Put Gain before wet effects to leave their tails audible.")
+                    .globalProcessing()
+                    .runtime(AudioModuleRole::Gain, PreviewModuleRole::OutputMeters)
+                    .presentation({}, { 190.f, 160.f })
+                    .finish(),
+            buildDefinition(definition("globalOutput", NodeKind::GlobalOutput, "Global Out", "audio output", "globalOutput",
+                    { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}))
+                    .help("Sends the global signal to the audio device.")
                     .globalProcessing()
                     .requiredSingleton()
-                    .runtime(AudioModuleRole::Output, PreviewModuleRole::OutputMeters)
-                    .presentation({}, { 190.f, 320.f })
+                    .disablePreview()
+                    .runtime(AudioModuleRole::GlobalOutput, PreviewModuleRole::None)
+                    .presentation({}, { 116.f, 116.f })
                     .finish()
     };
 }
@@ -922,6 +931,10 @@ const NodeDefinition* NodeDefinitionRegistry::find(NodeKind kind) const {
     return nullptr;
 }
 const NodeDefinition* NodeDefinitionRegistry::find(const String& typeId) const {
+    if (typeId == "output") {
+        return find(NodeKind::GlobalOutput);
+    }
+
     for (const auto& definitionToCheck : nodeDefinitions) {
         if (definitionToCheck.typeId == typeId) {
             return &definitionToCheck;
@@ -978,6 +991,8 @@ void NodeDefinitionRegistry::normalize(Node& node) const {
         });
         if (existing == node.inputs.end()) {
             node.inputs.push_back(canonicalInput);
+        } else if (node.kind == NodeKind::TrilinearMesh && canonicalInput.id == "context") {
+            existing->side = canonicalInput.side;
         } else if ((node.kind == NodeKind::Envelope || node.kind == NodeKind::TrilinearMesh)
                 && (canonicalInput.id == "yellow" || canonicalInput.id == "red" || canonicalInput.id == "blue")) {
             existing->side = canonicalInput.side;

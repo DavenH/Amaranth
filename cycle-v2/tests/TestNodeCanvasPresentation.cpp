@@ -164,7 +164,7 @@ TEST_CASE("Node canvas marks only authored global processing",
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "global", {}));
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "wave", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({
             "global", "time", "route", "in",

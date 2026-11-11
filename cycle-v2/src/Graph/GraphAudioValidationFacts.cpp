@@ -207,7 +207,7 @@ GraphAudioValidationFacts::GraphAudioValidationFacts(
             voiceOutputs.push_back(node.id);
         } else if (node.kind == NodeKind::GlobalInput) {
             globalInputs.push_back(node.id);
-        } else if (node.kind == NodeKind::Output) {
+        } else if (node.kind == NodeKind::GlobalOutput) {
             outputs.push_back(node.id);
         }
         if (scopes.scopeFor(node.id) == AuthoredAudioScope::Global) {

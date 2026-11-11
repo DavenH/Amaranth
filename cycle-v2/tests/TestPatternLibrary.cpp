@@ -48,7 +48,7 @@ bool clickTarget(SidebarTagCloud& cloud, const String& target) {
 TEST_CASE("Pattern IDs round trip without embedding MIDI events",
         "[cycle-v2][pattern][serialization]") {
     NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "output", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "output", {}));
     PresetPresentation presentation;
     presentation.patternId = "factory-basic-sustained";
     PresetMidiSequence legacy;

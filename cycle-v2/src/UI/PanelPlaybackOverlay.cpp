@@ -1,4 +1,5 @@
 #include "UI/PanelPlaybackOverlay.h"
+#include "Nodes/Envelope/Rendering/EnvelopeSectionColours.h"
 
 namespace CycleV2 {
 
@@ -9,7 +10,8 @@ bool PanelPlaybackOverlay::setFrame(const PlaybackCursorFrame& next) {
         const auto& current = next.voices[index];
         changed = previous.morph != current.morph || previous.envelopeTime != current.envelopeTime
                 || previous.hasMorph != current.hasMorph
-                || previous.hasEnvelopeTime != current.hasEnvelopeTime;
+                || previous.hasEnvelopeTime != current.hasEnvelopeTime
+                || previous.released != current.released;
     }
     if (changed) {
         frame = next;
@@ -41,10 +43,10 @@ PanelPlaybackOverlay::lines(int axis, bool envelope, bool surface, size_t& count
     for (size_t index = 0; index < frame.count; ++index) {
         const auto& voice = frame.voices[index];
         if (envelope && !surface && voice.hasEnvelopeTime) {
-            result[count++] = { voice.envelopeTime, false };
+            result[count++] = { voice.envelopeTime, false, voice.released };
         }
         if (surface && voice.hasMorph) {
-            result[count++] = { voice.morph[morphIndex], envelope };
+            result[count++] = { voice.morph[morphIndex], envelope, voice.released };
         }
     }
     if (surface && frame.count == 0) {
@@ -53,16 +55,16 @@ PanelPlaybackOverlay::lines(int axis, bool envelope, bool surface, size_t& count
     return result;
 }
 
-std::array<Point<float>, PlaybackCursorFrame::capacity>
+std::array<PanelPlaybackOverlay::Marker, PlaybackCursorFrame::capacity>
 PanelPlaybackOverlay::dots(int axis, bool envelope, size_t& count) const {
-    std::array<Point<float>, PlaybackCursorFrame::capacity> result;
+    std::array<Marker, PlaybackCursorFrame::capacity> result;
     count = 0;
     const size_t morphIndex = axis == Vertex::Red ? 1 : axis == Vertex::Blue ? 2 : 0;
     for (size_t index = 0; index < frame.count; ++index) {
         const auto& voice = frame.voices[index];
         if (voice.hasMorph && (envelope ? voice.hasEnvelopeTime : axis == keyScaleAxis)) {
-            result[count++] = envelope ? Point<float>(voice.envelopeTime, voice.morph[morphIndex])
-                    : Point<float>(voice.morph[morphIndex], 0.f);
+            result[count++] = { envelope ? Point<float>(voice.envelopeTime, voice.morph[morphIndex])
+                    : Point<float>(voice.morph[morphIndex], 0.f), voice.released };
         }
     }
     return result;
@@ -79,6 +81,8 @@ void PanelPlaybackOverlay::draw(Panel& panel, int axis, bool envelope, bool surf
     renderer->setCurrentColour(0.85f, 0.88f, 0.92f, envelope && surface ? 0.4f : 0.8f);
     for (size_t index = 0; index < count; ++index) {
         const auto& line = cursors[index];
+        renderer->setCurrentColour(playbackCursorColour(line.released).withAlpha(
+                envelope && surface ? 0.4f : 0.85f));
         const float coordinate = line.horizontal ? panel.sy(line.position) : panel.sx(line.position);
         const float limit = (float) (line.horizontal ? panel.getHeight() : panel.getWidth());
         if (coordinate >= 0.f && coordinate <= limit) {
@@ -92,8 +96,8 @@ void PanelPlaybackOverlay::draw(Panel& panel, int axis, bool envelope, bool surf
         const auto markers = dots(axis, envelope, count);
         renderer->enableSmoothing();
         for (size_t index = 0; index < count; ++index) {
-            const Vertex2 point(panel.sx(markers[index].x),
-                    envelope ? panel.sy(markers[index].y) : (float) panel.getHeight() - 8.f);
+            const Vertex2 point(panel.sx(markers[index].position.x),
+                    envelope ? panel.sy(markers[index].position.y) : (float) panel.getHeight() - 8.f);
             if (point.x >= 0.f && point.x <= panel.getWidth()
                     && point.y >= 0.f && point.y <= panel.getHeight()) {
                 float x[] { point.x - 4.f, point.x, point.x + 4.f, point.x, point.x - 4.f };
@@ -103,7 +107,7 @@ void PanelPlaybackOverlay::draw(Panel& panel, int axis, bool envelope, bool surf
                 renderer->setCurrentColour(0.04f, 0.06f, 0.09f, 0.95f);
                 renderer->drawLineStrip(diamond, false);
                 renderer->setCurrentLineWidth(2.f);
-                renderer->setCurrentColour(0.95f, 0.97f, 1.f, 1.f);
+                renderer->setCurrentColour(playbackCursorColour(markers[index].released));
                 renderer->drawLineStrip(diamond, false);
             }
         }
@@ -118,6 +122,7 @@ void PanelPlaybackOverlay::appendAutomation(DynamicObject& state,
     for (size_t index = 0; index < count; ++index) {
         auto* cursor = new DynamicObject();
         cursor->setProperty("position", cursors[index].position);
+        cursor->setProperty("released", cursors[index].released);
         cursor->setProperty("axis", cursors[index].horizontal ? "y" : "x");
         values.add(cursor);
     }
@@ -128,8 +133,9 @@ void PanelPlaybackOverlay::appendAutomation(DynamicObject& state,
         const auto markers = dots(axis, envelope, count);
         for (size_t index = 0; index < count; ++index) {
             auto* marker = new DynamicObject();
-            marker->setProperty("x", markers[index].x);
-            marker->setProperty("y", markers[index].y);
+            marker->setProperty("released", markers[index].released);
+            marker->setProperty("x", markers[index].position.x);
+            marker->setProperty("y", markers[index].position.y);
             positions.add(marker);
         }
     }

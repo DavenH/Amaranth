@@ -374,6 +374,22 @@ GraphAudioOutputView GraphAudioExecutor::processRealtimeGlobal(
     return { realtimeOutput };
 }
 
+const SignalPayload* GraphAudioExecutor::outputMonitorSignal(const GraphExecutionPlan& plan) const {
+    if (!plan.defaultOutputProbe.has_value()) {
+        return nullptr;
+    }
+    const auto& tap = *plan.defaultOutputProbe;
+    if (tap.sourceStepIndex < 0 || (size_t) tap.sourceStepIndex >= plan.steps.size()) {
+        return nullptr;
+    }
+    const auto& outputs = plan.steps[(size_t) tap.sourceStepIndex].outputs;
+    if (tap.sourceOutputIndex < 0 || (size_t) tap.sourceOutputIndex >= outputs.size()) {
+        return nullptr;
+    }
+    const int buffer = outputs[(size_t) tap.sourceOutputIndex].bufferIndex;
+    return buffer >= 0 && (size_t) buffer < bufferSlots.size() ? &bufferSlots[(size_t) buffer] : nullptr;
+}
+
 GraphAudioResult GraphAudioExecutor::processInternal(
         const GraphExecutionPlan& plan,
         size_t frameCount,

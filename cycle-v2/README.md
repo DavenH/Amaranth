@@ -2,6 +2,11 @@
 
 Cycle 2.0 is a sister project to Cycle, built around a node-based workflow for explicit audio, spectral, mesh, envelope, pitch, voice, and scratch-attachment routing.
 
+The global signal chain has a separate Gain node for level control and stereo
+metering, followed by wet effects and a neutral Global Out endpoint. Global In
+and Global Out are required and cannot be deleted. Existing presets migrate on
+load, retaining their gain setting and wet-effect order; saving writes format 10.
+
 ## Build and Run
 
 From the repository root:

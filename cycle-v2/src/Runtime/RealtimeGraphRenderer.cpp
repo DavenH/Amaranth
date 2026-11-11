@@ -54,7 +54,6 @@ RealtimeGraphRenderer::prepareGraph(
     prepared->spec = spec;
     // Realtime execution never captures traversal grids.
     prepared->spec.prewarmTraversalGrid = false;
-    prepared->outputGainRamp.resize((int) spec.maximumFrameCount);
     if (!prepared->plan.oscillatorRegions.empty()) {
         const auto& nodeId = prepared->plan.oscillatorRegions.front().voiceContextNodeId;
         const auto found = std::find_if(
@@ -101,14 +100,6 @@ void RealtimeGraphRenderer::setPreparedGraph(PreparedGraph* graph) {
     }
     resetVoices(graph == nullptr);
     preparedGraph = graph;
-    const float nextGain = graph == nullptr ? 1.f : graph->plan.outputGain;
-    requestedGraphOutputGain.store(nextGain, std::memory_order_release);
-    if (!outputGainInitialized) {
-        graphOutputGain.setValueDirect(nextGain);
-        outputGainInitialized = true;
-    } else {
-        graphOutputGain = nextGain;
-    }
     activeRevision.store(graph == nullptr ? 0 : graph->revision, std::memory_order_release);
     activeExecutionStepCount.store(
             graph == nullptr ? 0 : graph->plan.steps.size(),
@@ -153,6 +144,8 @@ uint64_t RealtimeGraphRenderer::process(
         double callbackStartSeconds,
         AudioPerformanceMetrics::RealtimeSample* performanceSample,
         VoicePlaybackCapture* playback) {
+    monitorLeftPeak.store(0.f, std::memory_order_relaxed);
+    monitorRightPeak.store(0.f, std::memory_order_relaxed);
     const uint64_t callback = callbackCounter.fetch_add(
             1,
             std::memory_order_relaxed) + 1;
@@ -673,6 +666,7 @@ void RealtimeGraphRenderer::renderVoices(
                     measuredOperations);
 
             voice.context.playbackCursor = nullptr;
+            cursor.released = voice.released;
             voice.normalizedTime = jmin(
                     1.f,
                     voice.normalizedTime
@@ -733,18 +727,27 @@ void RealtimeGraphRenderer::renderVoices(
             }
         }
 
-        graphOutputGain = requestedGraphOutputGain.load(std::memory_order_acquire);
-        graphOutputGain.update(frameCount);
         for (int channel = 0; channel < jmin(2, outputChannelCount); ++channel) {
             if (outputChannels[channel] != nullptr) {
-                graphOutputGain.maybeApplyRamp(
-                        preparedGraph->outputGainRamp.withSize(frameCount),
-                        Buffer<float>(outputChannels[channel], frameCount),
-                        outputGain);
+                Buffer<float>(outputChannels[channel], frameCount).mul(outputGain);
                 Buffer<float>(outputChannels[channel], frameCount).clip(-1.f, 1.f);
             }
         }
     }
+    const auto* monitor = preparedGraph->executor.outputMonitorSignal(preparedGraph->plan);
+    const auto peakFor = [frameCount](const SignalBlock& block) {
+        if (block.samples.size() < (size_t) frameCount) {
+            return 0.f;
+        }
+        float minimum {};
+        float maximum {};
+        Buffer<float>(const_cast<float*>(block.samples.data()), frameCount).minmax(minimum, maximum);
+        return jmax(-minimum, maximum);
+    };
+    const float left = monitor != nullptr ? peakFor(monitor->block) : 0.f;
+    monitorLeftPeak.store(left, std::memory_order_relaxed);
+    monitorRightPeak.store(monitor != nullptr && monitor->isStereo()
+            ? peakFor(monitor->secondaryBlock) : left, std::memory_order_relaxed);
     activeVoices.store(activeCount, std::memory_order_relaxed);
     if (performanceSample != nullptr) {
         performanceSample->executionStepVisitCount = operationCounts.stepVisits;

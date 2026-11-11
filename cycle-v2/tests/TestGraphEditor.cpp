@@ -124,7 +124,7 @@ TEST_CASE("Processing scope edits retain cables until explicit repair and undo",
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "global", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "voice", "out", "shape", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -203,7 +203,7 @@ TEST_CASE("Global effect scope can be repaired into the voice graph and undone",
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", {}));
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "global", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "shape",
@@ -777,7 +777,7 @@ TEST_CASE("Trimesh topology edits reconcile Guide assignments in one undoable co
 TEST_CASE("Graph editor colours universal output edges from typed destinations", "[cycle-v2][graph]") {
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::Multiply, "mul", {}));
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", { 260.f, 0.f }));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "out", { 260.f, 0.f }));
 
     const auto result = GraphEditor().connect(
             graph,
@@ -794,7 +794,7 @@ TEST_CASE("Graph editor splices a node into an edge", "[cycle-v2][graph]") {
 
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 260.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 520.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 520.f, 0.f }));
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto result = GraphEditor().spliceNodeIntoEdge(graph, 0, "shape");
@@ -814,7 +814,7 @@ TEST_CASE("Graph editor rejects incompatible edge splices", "[cycle-v2][graph]")
 
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 260.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 520.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 520.f, 0.f }));
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto result = GraphEditor().spliceNodeIntoEdge(graph, 0, "fft");

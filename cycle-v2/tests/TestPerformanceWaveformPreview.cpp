@@ -71,6 +71,12 @@ TEST_CASE("Performance waveform retains density through cursor updates and pins 
     }
     auto after = view.diagnostics();
     REQUIRE((int) after["cursorCount"] == 2);
+    REQUIRE_FALSE((bool) after["cursorReleased"][0]);
+    REQUIRE((bool) after["cursorReleased"][1]);
+    const auto cursors = view.createComponentSnapshot(view.getLocalBounds());
+    const int releasedX = roundToInt((float) after["cursorPositions"][1] * (view.getWidth() - 2.f) + 1.f);
+    const auto releaseColour = cursors.getPixelAt(releasedX, view.getHeight() / 2);
+    REQUIRE(releaseColour.getRed() > releaseColour.getBlue());
     REQUIRE((float) after["cursorPositions"][0] > 0.f);
     REQUIRE((float) after["cursorPositions"][1] > (float) after["cursorPositions"][0]);
     for (const char* count : { "captureRequests", "capturePublications", "sourceBuilds", "heatBuilds", "geometryBuilds" }) {

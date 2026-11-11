@@ -18,12 +18,12 @@ Rectangle<float> captionBounds(
     const float width = 76.f * zoom;
     const float gap = 8.f * zoom;
     const float edgeInset = 36.f * zoom;
-    const float x = kind == NodeKind::VoiceOutput
+    const float x = (kind == NodeKind::VoiceOutput || kind == NodeKind::GlobalOutput)
             ? nodeBounds.getRight() + gap
             : nodeBounds.getX() - gap - width;
     Rectangle<float> caption(x, nodeBounds.getCentreY() - 24.f * zoom,
             width, 48.f * zoom);
-    if (kind == NodeKind::VoiceOutput
+    if ((kind == NodeKind::VoiceOutput || kind == NodeKind::GlobalOutput)
             && caption.getRight() > viewportBounds.getRight() - edgeInset) {
         caption.setPosition(nodeBounds.getCentreX() - width * 0.5f,
                 nodeBounds.getY() - caption.getHeight() - gap);
@@ -38,7 +38,7 @@ Rectangle<float> captionBounds(
 }
 
 bool GraphEndpointNodeRenderer::isConnector(NodeKind kind) {
-    return kind == NodeKind::VoiceOutput || kind == NodeKind::GlobalInput;
+    return kind == NodeKind::VoiceOutput || kind == NodeKind::GlobalInput || kind == NodeKind::GlobalOutput;
 }
 
 Rectangle<float> GraphEndpointNodeRenderer::visualBounds(
@@ -79,12 +79,13 @@ void GraphEndpointNodeRenderer::paintConnector(
     Rectangle<float> caption = captionBounds(kind, nodeBounds, viewportBounds, zoom);
     const Rectangle<float> firstLine = caption.removeFromTop(24.f * zoom);
     const bool voiceOutput = kind == NodeKind::VoiceOutput;
+    const bool output = voiceOutput || kind == NodeKind::GlobalOutput;
     graphics.setFont(FontOptions(21.f * zoom));
     graphics.setColour(CanvasChromePalette::text);
     graphics.drawText(voiceOutput ? "VOICE" : "GLOBAL",
             firstLine, Justification::centred);
     graphics.setColour(CanvasChromePalette::mutedText);
-    graphics.drawText(voiceOutput ? "OUT" : "IN",
+    graphics.drawText(output ? "OUT" : "IN",
             caption, Justification::centred);
 }
 

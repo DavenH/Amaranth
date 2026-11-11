@@ -1458,3 +1458,15 @@ visible peer, producing JUCE `Component.cpp:2694` focus assertions. Mounting the
 fixture on a temporary desktop peer before editing resolves them; 1,632 focused
 assertions and native tempo-entry/cancel verification pass without assertions.
 No production focus workaround was added.
+
+## Open: pre-existing empty demo-model graph fixtures fail and one serializer test crashes
+
+During the usability-polish run, `Compiled Output gain changes the graph audio
+payload` produced only zeros and `Trimesh guide gain gesture publishes prepared
+gain and undoes as one edit` could not attach its Guide. Both reproduce on the
+untouched b87afb37 baseline in `.context/polish-baseline-failures.log`.
+`A Trimesh vertex edit has a localized canonical JSON diff` independently
+reproduces SIGSEGV on that baseline (`.context/polish-baseline-crash.log`).
+Several broader graph fixtures also reference missing/changed factory presets.
+These fixtures need current populated domain data; new output regressions use
+populated factory or mesh-owner fixtures. No production fallback is justified.

@@ -11,6 +11,7 @@ struct DefaultOutputProbeAddress {
     String sourcePortId;
     String destNodeId;
     String destPortId;
+    std::vector<String> excludedEffectNodeIds;
 };
 
 class DefaultOutputProbeResolver {

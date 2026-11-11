@@ -782,7 +782,7 @@ NodeCanvasAuthoringResult NodeCanvasAuthoring::endSpectralPanGesture() {
 
 bool NodeCanvasAuthoring::beginOutputGainGesture(const String& nodeId) {
     const Node* node = findNode(nodeId);
-    if (node == nullptr || node->kind != NodeKind::Output) {
+    if (node == nullptr || node->kind != NodeKind::Gain) {
         return false;
     }
 

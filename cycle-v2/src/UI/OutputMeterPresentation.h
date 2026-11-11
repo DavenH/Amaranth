@@ -7,8 +7,8 @@ namespace CycleV2 {
 struct OutputMeterLayout {
     juce::Rectangle<float> left;
     juce::Rectangle<float> right;
-    juce::Rectangle<float> faderHitTarget;
-    juce::Rectangle<float> faderTrack;
+    juce::Rectangle<float> gainHitTarget;
+    juce::Rectangle<float> gainDial;
     juce::Rectangle<float> gainLabel;
 };
 
@@ -46,11 +46,7 @@ public:
     static juce::Rectangle<float> fillBounds(
             juce::Rectangle<float> channelBounds,
             float level);
-    static float gainUnitValueAt(
-            juce::Rectangle<float> area,
-            float y,
-            float zoom = 1.f);
-    static juce::Rectangle<float> gainThumbBounds(
+    static juce::Rectangle<float> gainIndicatorBounds(
             juce::Rectangle<float> area,
             float gainUnitValue,
             float zoom = 1.f);

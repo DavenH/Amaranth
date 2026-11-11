@@ -231,11 +231,13 @@ NodeGraph NodeGraph::createDemoGraph() {
 
     graph.addNode(node(
             "out",
-            NodeKind::Output,
-            "sink",
+            NodeKind::Gain,
+            "level",
             { 2100.f, 420.f },
             { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) },
-            {}));
+            { output("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }));
+
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "globalOutput", { 2338.f, 420.f }));
 
     graph.edges = {
             { "scratchEnv", "env", "waveMesh", "scratch", PortDomain::EnvelopeSignal,
@@ -251,7 +253,8 @@ NodeGraph NodeGraph::createDemoGraph() {
             { "addPhase", "out", "ifft", "phase", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal },
             { "ifft", "time", "multiply", "left", PortDomain::TimeSignal, ConnectionKind::Signal },
             { "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal },
-            { "multiply", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal }
+            { "multiply", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal },
+            { "out", "time", "globalOutput", "time", PortDomain::TimeSignal, ConnectionKind::Signal }
     };
 
     const auto migration = GlobalAudioGraphMigration().migrate(graph);

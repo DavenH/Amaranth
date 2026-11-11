@@ -287,9 +287,11 @@ std::vector<float> renderImageThroughOutputGain(float gainUnitValue) {
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    Node output = factory.createNode(NodeKind::Output, "output", {});
+    Node output = factory.createNode(NodeKind::Gain, "gain", {});
     setNodeParameter(output, "gain", String(gainUnitValue));
     graph.addNode(std::move(output));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
+    graph.addEdge({ "gain", "time", "output", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     REQUIRE(GraphEditor().connect(
             graph,
             { "voice", "context", false },
@@ -297,7 +299,7 @@ std::vector<float> renderImageThroughOutputGain(float gainUnitValue) {
     REQUIRE(GraphEditor().connect(
             graph,
             { "wave", "out", false },
-            { "output", "time", true }).succeeded());
+            { "gain", "time", true }).succeeded());
 
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
@@ -396,7 +398,7 @@ TEST_CASE("Graph executor audibly renders and folds a chained Wave Unison region
     setNodeParameter(unison, "panSpread", "1");
     graph.addNode(std::move(unison));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     REQUIRE(GraphEditor().connect(
             graph,
             { "unison", "unison", false },
@@ -547,7 +549,7 @@ TEST_CASE("Time Pan remains inside the chained oscillator region",
     Node pan = factory.createNode(NodeKind::SpectralLayer, "pan", {});
     setNodeParameter(pan, "pan", "1");
     graph.addNode(std::move(pan));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     REQUIRE(GraphEditor().connect(
             graph,
             { "voice", "context", false },
@@ -601,7 +603,7 @@ TEST_CASE("Chained oscillator recipes combine cycle fields before folding Unison
         setNodeParameter(unison, "width", "12");
         graph.addNode(std::move(unison));
         graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "firstMesh", {}));
-        graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
         REQUIRE(GraphEditor().connect(
                 graph,
                 { "unison", "unison", false },
@@ -708,7 +710,7 @@ TEST_CASE("Graph executor reconstructs a shared spectral Wave Unison frame",
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     REQUIRE(GraphEditor().connect(
             graph,
             { "unison", "unison", false },
@@ -863,7 +865,7 @@ TEST_CASE("Independent oscillator regions fold Unison lanes before block arithme
         setNodeParameter(unison, "width", "12");
         setNodeParameter(unison, "panSpread", "1");
         graph.addNode(std::move(unison));
-        graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
         REQUIRE(GraphEditor().connect(
                 graph,
                 { "unison", "unison", false },
@@ -998,7 +1000,7 @@ TEST_CASE("Graph audio executor renders source through envelope multiply to outp
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", { 240.f, 180.f }));
     setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
     graph.addNode(factory.createNode(NodeKind::Multiply, "mul", { 520.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 760.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 760.f, 0.f }));
 
     graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext, ConnectionKind::Signal });
     graph.addEdge({ "wave", "out", "mul", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
@@ -1145,7 +1147,7 @@ TEST_CASE("Graph control edges drive absolute Envelope morph without graph edits
     setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     graph.addEdge({
             "redControl", "value", "env", "red", PortDomain::ControlSignal, ConnectionKind::Signal
     });
@@ -1486,7 +1488,7 @@ TEST_CASE("Published curve edits change their node and downstream graph output",
     graph.addNode(factory.createNode(NodeKind::Envelope, "env", {}));
     setEnvelopePurpose(graph, "env", EnvelopePurpose::Volume);
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "wave", "out", "shape", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "shape", "time", "multiply", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "env", "env", "multiply", "right", PortDomain::EnvelopeSignal, ConnectionKind::Signal });
@@ -1568,7 +1570,7 @@ TEST_CASE("Graph audio node payloads expose transformed grids for spy taps", "[c
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Add, "add", { 260.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shape", { 520.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 780.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 780.f, 0.f }));
 
     auto mesh = factory.createNode(NodeKind::TrilinearMesh, "operand", { 260.f, 200.f });
     mesh.parameters = {
@@ -1606,7 +1608,7 @@ TEST_CASE("Graph audio executor passes parameters to node processors", "[cycle-v
 
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
     graph.replaceNodeParameters("wave", { { "level", "Level", "0.5" } });
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 260.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 260.f, 0.f }));
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
@@ -1639,7 +1641,7 @@ TEST_CASE("Graph audio executor preserves per-node processor state between block
             { "feedback", "Feedback", "1" },
             { "wet", "Wet", "1" }
     });
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 520.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 520.f, 0.f }));
     graph.addEdge({ "wave", "out", "delay", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "delay", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
@@ -1740,7 +1742,7 @@ TEST_CASE("Prepared graph audio dispatch remains available for every voice", "[c
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compiled = GraphCompiler().compile(graph);
@@ -1771,7 +1773,7 @@ TEST_CASE("Realtime passes visit only their prepared ownership scope",
     graph.addNode(factory.createNode(NodeKind::WaveSource, "voiceTerminal", {}));
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "voiceTerminal", "out", "voiceOut", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -1848,7 +1850,7 @@ TEST_CASE("Graph audio executor returns silence for disconnected output", "[cycl
     GraphNodeFactory factory;
     NodeGraph graph;
 
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 0.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 0.f, 0.f }));
 
     const auto compileResult = GraphCompiler().compile(graph);
     REQUIRE(compileResult.succeeded());
@@ -1865,7 +1867,7 @@ TEST_CASE("Graph audio executor routes multi-output node buffers by port", "[cyc
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 260.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 520.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 780.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 780.f, 0.f }));
     graph.addEdge({ "wave", "out", "fft", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "fft", "mag", "ifft", "mag", PortDomain::SpectralMagnitudeSignal, ConnectionKind::Signal });
     graph.addEdge({ "fft", "phase", "ifft", "phase", PortDomain::SpectralPhaseSignal, ConnectionKind::Signal });
@@ -1906,7 +1908,7 @@ TEST_CASE("Trimesh sawtooth survives an FFT and IFFT graph round trip",
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "saw", { 260.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 560.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", { 860.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 1160.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 1160.f, 0.f }));
     graph.replaceNodeParameters("saw", {
             { "yellow", "Yellow", "0.5" },
             { "red", "Red", "0.5" },
@@ -2512,7 +2514,7 @@ TEST_CASE("Graph audio executor exposes a bounded realtime output view", "[cycle
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
@@ -2727,7 +2729,7 @@ TEST_CASE("Prepared step contexts avoid block-time route assembly",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "wave", "out", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -2852,7 +2854,7 @@ TEST_CASE("Synchronous Envelope note preparation remains allocation-free on the 
             graph, "env", "dimensionCount", "Dimensions", "3").succeeded());
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     graph.addEdge({
             "redControl", "out", "env", "red", PortDomain::ControlSignal, ConnectionKind::Signal
     });
@@ -2995,7 +2997,7 @@ TEST_CASE("Realtime observation is optional and fan-out shares compiled slot sto
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Add, "add", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "wave", "out", "add", "left", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "wave", "out", "add", "right", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "add", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });

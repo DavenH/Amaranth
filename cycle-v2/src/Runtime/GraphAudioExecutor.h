@@ -143,6 +143,7 @@ public:
     void beginRealtimeVoiceMix(
             const GraphExecutionPlan& plan,
             size_t frameCount) const;
+    const SignalPayload* outputMonitorSignal(const GraphExecutionPlan& plan) const;
     void processRealtimeVoiceToMix(
             const GraphExecutionPlan& plan,
             size_t frameCount,

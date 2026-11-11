@@ -47,7 +47,7 @@ generate_svg_data(
     genericProcessor voiceContext scratchDefaultOverride waveSource imageSource trilinearMesh
     modulationSource modulationTriple
     fft ifft fourier inverseFourier envelope add multiply guideCurve componentCurve impulseResponse waveshaper
-    spectralLayer unison reverb delay equalizer stereoSplit stereoJoin globalInput voiceOutput output
+    spectralLayer unison reverb delay equalizer stereoSplit stereoJoin globalInput voiceOutput output gain
 )
 
 generate_svg_data(
@@ -113,6 +113,7 @@ set(GRAPH_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/DefaultOutputProbeResolver.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphMigration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphRepresentationMigration.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/OutputStageRepresentationMigration.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScope.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScopeCompiler.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScopeValidator.cpp"
@@ -309,6 +310,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/GuideCurveShelf.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/GuideRelationshipPresentation.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/InlinePresetBrowser.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetCardList.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/TransformCompactEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/VoiceContextCompactEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/NodeEditorHost.cpp"
@@ -418,6 +420,8 @@ if(BUILD_TESTING)
     add_executable(CycleV2GraphMigrator
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphMigration.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GlobalAudioGraphRepresentationMigration.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/OutputStageRepresentationMigration.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/DefaultOutputProbeResolver.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScope.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioScopeValidator.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/GraphAudioValidationFacts.cpp"

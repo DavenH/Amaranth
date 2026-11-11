@@ -754,7 +754,7 @@ TEST_CASE("Graph preview executor captures a probe after Reverb", "[cycle-v2][ru
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Reverb, "reverb", { 300.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 600.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 600.f, 0.f }));
     graph.addEdge({ "wave", "out", "reverb", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "reverb", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     REQUIRE(GraphEditor().toggleSignalProbe(graph, 1, 0.5f).succeeded());
@@ -779,7 +779,7 @@ TEST_CASE("Graph preview executor meters the captured Output payload", "[cycle-v
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 300.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 300.f, 0.f }));
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);

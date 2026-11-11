@@ -20,6 +20,9 @@
 #include "Graph/GraphSerializer.h"
 #include "Graph/NodeGraph.h"
 #include "Runtime/RealtimeGraphRenderer.h"
+#include "Runtime/GraphPresentationModel.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/GraphCommandDispatcher.h"
 #include "Runtime/PreparedOscillatorRegion.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshFactory.h"
 #include "Nodes/Trimesh/Model/TrimeshMeshState.h"
@@ -87,6 +90,15 @@ struct LegatoRender {
     }
 };
 
+const GainNodeConfiguration& gainConfiguration(const GraphExecutionPlan& plan) {
+    const auto step = std::find_if(plan.steps.begin(), plan.steps.end(),
+            [](const auto& candidate) { return candidate.nodeId == "out"; });
+    REQUIRE(step != plan.steps.end());
+    const auto* configuration = dynamic_cast<const GainNodeConfiguration*>(step->configuration.value.get());
+    REQUIRE(configuration != nullptr);
+    return *configuration;
+}
+
 std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain) {
     NodeGraph graph = NodeGraph::createDemoGraph();
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
@@ -98,7 +110,7 @@ std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain) {
 
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
-    compiledGain = compiled.plan.outputGain;
+    compiledGain = gainConfiguration(compiled.plan).gain;
     AudioExecutionSpec spec;
     spec.maximumFrameCount = 256;
     auto prepared = RealtimeGraphRenderer::prepareGraph(compiled.plan, 1, spec);
@@ -396,7 +408,11 @@ TEST_CASE("Realtime keyboard velocity follows the attached Mod Triple mapping",
 
 TEST_CASE("Realtime Output gain changes do not replace the graph or active voice",
         "[cycle-v2][audio-device][realtime][output][gain][gesture]") {
-    const auto compiled = GraphCompiler().compile(NodeGraph::createDemoGraph());
+    GraphDocument document(legatoGraph());
+    GraphCommandDispatcher commands(document);
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    const auto compiled = presentation.compileResult();
     REQUIRE(compiled.succeeded());
     constexpr int frameCount = 256;
     constexpr double sampleRate = 44'100.0;
@@ -418,7 +434,11 @@ TEST_CASE("Realtime Output gain changes do not replace the graph or active voice
     renderer.process(queue, channels, 2, frameCount, sampleRate, 1.0);
     REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
 
-    renderer.setGraphOutputGain(CycleDsp::outputGain(0.f));
+    REQUIRE(renderer.diagnostics(queue).peak > 0.02f);
+    REQUIRE(commands.setNodeParameter("out", "gain", "Gain", "0.25").succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    REQUIRE(commands.setNodeParameter("out", "gain", "Gain", "0").succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
     double callbackTime = 1.0 + blockDuration;
     for (int block = 0; block < 8; ++block) {
         renderer.process(
@@ -436,6 +456,16 @@ TEST_CASE("Realtime Output gain changes do not replace the graph or active voice
     REQUIRE(quiet.activeVoiceCount == 1);
     REQUIRE(quiet.peak > 0.f);
     REQUIRE(quiet.peak < 0.02f);
+    REQUIRE(document.undo());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    for (int block = 0; block < 8; ++block) {
+        renderer.process(queue, channels, 2, frameCount, sampleRate, callbackTime);
+        callbackTime += blockDuration;
+    }
+    REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 1);
+    REQUIRE(renderer.diagnostics(queue).graphRevision == 41);
+    REQUIRE(renderer.diagnostics(queue).peak > quiet.peak * 5.f);
+
 }
 
 TEST_CASE("Realtime graph renderer turns MIDI note gestures into graph audio",
@@ -519,7 +549,7 @@ TEST_CASE("Realtime renderer supplies the mixed voice terminal through Global In
     graph.addNode(factory.createNode(NodeKind::WaveSource, "voiceTerminal", {}));
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "boundary", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "boundary", "time", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -599,7 +629,7 @@ TEST_CASE("Realtime voice length updates the active voice-time clock",
             { "controller", "Controller", "1" },
             { "constant", "Constant", "0.5" }
     });
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "time", "value", "out", "time",
             PortDomain::ControlSignal, ConnectionKind::Signal
@@ -649,7 +679,7 @@ TEST_CASE("Realtime graph replacement preserves channel controllers for the next
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::ModulationSource, "mod", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "mod", "value", "out", "time",
             PortDomain::ControlSignal, ConnectionKind::Signal
@@ -710,7 +740,7 @@ TEST_CASE("Realtime voice-time clock uses the compiled Voice Context length",
                 { "controller", "Controller", "1" },
                 { "constant", "Constant", "0.5" }
         });
-        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
         REQUIRE(GraphNodeStateEditor().setNodeParameter(
                 graph,
                 "voice",
@@ -793,13 +823,7 @@ TEST_CASE("Realtime graph renderer stops immediately without a volume envelope",
 
 TEST_CASE("Global delay continues after its source voice retires",
         "[cycle-v2][audio-device][realtime][delay][audio-scope]") {
-    NodeGraph graph = NodeGraph::createDemoGraph();
-    graph.removeNode("env");
-    graph.removeNode("multiply");
-    graph.addEdge({
-            "ifft", "time", "voiceOutput", "time",
-            PortDomain::TimeSignal, ConnectionKind::Signal
-    });
+    NodeGraph graph = legatoGraph();
     GraphNodeFactory factory;
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
     graph.replaceNodeParameters("delay", {
@@ -814,19 +838,19 @@ TEST_CASE("Global delay continues after its source voice retires",
             graph.getEdges().begin(),
             graph.getEdges().end(),
             [](const Edge& edge) {
-                return edge.sourceNodeId == "globalInput"
-                        && edge.destNodeId == "out";
+                return edge.sourceNodeId == "out"
+                        && edge.destNodeId == "globalOutput";
             });
     REQUIRE(globalOutputEdge != graph.getEdges().end());
     graph.removeEdgeAt((size_t) std::distance(
             graph.getEdges().begin(),
             globalOutputEdge));
     graph.addEdge({
-            "globalInput", "time", "delay", "time",
+            "out", "time", "delay", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
     graph.addEdge({
-            "delay", "time", "out", "time",
+            "delay", "time", "globalOutput", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
     });
     const auto compiled = GraphCompiler().compile(graph);
@@ -874,6 +898,8 @@ TEST_CASE("Global delay continues after its source voice retires",
                 sampleRate,
                 callbackTime);
         REQUIRE(renderer.diagnostics(queue).activeVoiceCount == 0);
+        REQUIRE(renderer.diagnostics(queue).monitorLeftPeak == 0.f);
+        REQUIRE(renderer.diagnostics(queue).monitorRightPeak == 0.f);
         releasedPeak = jmax(releasedPeak, renderer.diagnostics(queue).peak);
         callbackTime += blockDuration;
     }

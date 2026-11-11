@@ -2,6 +2,7 @@
 
 #include "Runtime/GraphPresentationSnapshot.h"
 #include "UI/CanvasChromePalette.h"
+#include "Nodes/Envelope/Rendering/EnvelopeSectionColours.h"
 
 namespace CycleV2 {
 
@@ -101,14 +102,17 @@ void PerformanceWaveformPreview::setPlaybackCursors(const PlaybackCursorFrame& f
 
 void PerformanceWaveformPreview::VoiceOverlay::setFrame(const PlaybackCursorFrame& frame, float span) {
     std::array<float, PlaybackCursorFrame::capacity> next {};
+    std::array<bool, PlaybackCursorFrame::capacity> nextReleased {};
     const auto nextCount = jmin(frame.timelineCount, next.size());
     for (size_t index = 0; index < nextCount; ++index) {
         const auto& voice = frame.timeline[index];
+        nextReleased[index] = voice.releaseTime >= 0.f;
         const float time = voice.releaseTime >= 0.f
                 ? 1.f + voice.time - voice.releaseTime : jmin(1.f, voice.time);
         next[index] = jlimit(0.f, 1.f, time / jmax(1.f, span));
     }
-    if (positions != next || count != nextCount) {
+    if (positions != next || released != nextReleased || count != nextCount) {
+        released = nextReleased;
         positions = next;
         count = nextCount;
         repaint();
@@ -116,11 +120,10 @@ void PerformanceWaveformPreview::VoiceOverlay::setFrame(const PlaybackCursorFram
 }
 
 void PerformanceWaveformPreview::VoiceOverlay::paint(juce::Graphics& graphics) {
-    graphics.setColour(juce::Colour(0xffa9d9ff).withAlpha(0.8f));
     for (size_t index = 0; index < count; ++index) {
+        graphics.setColour(playbackCursorColour(released[index]).toColour());
         const float x = positions[index] * (getWidth() - 2.f) + 1.f;
         graphics.drawLine(x, 1.f, x, getHeight() - 1.f, 1.f);
-        graphics.fillRect(x - 1.5f, 1.f, 3.f, 2.f);
     }
 }
 
@@ -143,6 +146,11 @@ juce::var PerformanceWaveformPreview::diagnostics() const {
         positions.add(overlay.positions[index]);
     }
     object->setProperty("cursorPositions", positions);
+    juce::Array<juce::var> releaseStates;
+    for (size_t index = 0; index < overlay.count; ++index) {
+        releaseStates.add(overlay.released[index]);
+    }
+    object->setProperty("cursorReleased", releaseStates);
     return result;
 }
 
