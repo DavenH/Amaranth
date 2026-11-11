@@ -89,6 +89,7 @@ public:
             PresetPreviewImage image,
             const File& destination,
             String& errorMessage);
+    String movieExportSnapshot() const { return document.toJson(); }
     bool isGraphDirty() const { return document.isDirty(); }
     const File& graphFile() const { return document.file(); }
     WaveformColourStyles::Style waveformColourStyle() const;

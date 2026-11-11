@@ -11,6 +11,7 @@
 #include "App/GraphFileHistory.h"
 #include "App/LibraryFavorites.h"
 #include "App/StandaloneAudioEngine.h"
+#include "App/SpyMovieExport.h"
 #include "UI/NodeWorkspace.h"
 #include "UI/PresetBrowserPage.h"
 #include "incl/JucePluginDefines.h"
@@ -26,6 +27,19 @@ public:
     bool moreThanOneInstanceAllowed() override { return true; }
 
     void initialise(const String& commandLine) override {
+        const auto arguments = StringArray::fromTokens(commandLine, true);
+        const int exportIndex = arguments.indexOf("--export-movie-job");
+        if (exportIndex >= 0) {
+            if (exportIndex + 1 >= arguments.size()) {
+                setApplicationReturnValue(1);
+                quit();
+                return;
+            }
+            movieWorker = std::make_unique<CycleV2::SpyMovieExportWorker>(
+                    File::getCurrentWorkingDirectory().getChildFile(arguments[exportIndex + 1].unquoted()));
+            movieWorker->start();
+            return;
+        }
         Process::makeForegroundProcess();
         automationOptions = CycleV2::CycleV2Automation::parseCommandLine(commandLine);
         audioEngine = std::make_unique<CycleV2::StandaloneAudioEngine>();
@@ -41,6 +55,7 @@ public:
     }
 
     void shutdown() override {
+        movieWorker = nullptr;
         mainWindow = nullptr;
         audioEngine = nullptr;
     }
@@ -58,7 +73,8 @@ public:
             CommandSpyRefreshOnRelease,
             CommandSpyRefreshLive,
             CommandToggleComparisonShelf,
-            CommandSurfaceAppearance
+            CommandSurfaceAppearance,
+            CommandExportMovie
         };
 
         MainWindow(
@@ -171,6 +187,8 @@ public:
                 menu.addSeparator();
                 menu.addCommandItem(&commandManager, CommandSaveGraph);
                 menu.addCommandItem(&commandManager, CommandSaveGraphAs);
+                menu.addSeparator();
+                menu.addCommandItem(&commandManager, CommandExportMovie);
 
                 PopupMenu spyRefreshMenu;
                 spyRefreshMenu.addCommandItem(
@@ -209,7 +227,8 @@ public:
                     CommandSpyRefreshOnRelease,
                     CommandSpyRefreshLive,
                     CommandToggleComparisonShelf,
-                    CommandSurfaceAppearance
+                    CommandSurfaceAppearance,
+                    CommandExportMovie
             });
         }
 
@@ -223,6 +242,10 @@ public:
                 case CommandImportWaveReference:
                     result.setInfo("Import Wave Reference...",
                             "Add audio to the shared comparison library", "File", 0);
+                    break;
+
+                case CommandExportMovie:
+                    result.setInfo("Export Movie...", "Render the current preset and phrase as a Cyclogram movie", "File", 0);
                     break;
 
                 case CommandSurfaceAppearance:
@@ -285,6 +308,10 @@ public:
 
                 case CommandImportWaveReference:
                     workspace->importWaveReference();
+                    return true;
+
+                case CommandExportMovie:
+                    workspace->showMovieExport();
                     return true;
 
                 case CommandSurfaceAppearance:
@@ -636,6 +663,7 @@ private:
     CycleV2::CycleV2Automation::Options automationOptions;
     std::unique_ptr<CycleV2::StandaloneAudioEngine> audioEngine;
     std::unique_ptr<MainWindow> mainWindow;
+    std::unique_ptr<CycleV2::SpyMovieExportWorker> movieWorker;
 };
 
 #ifndef BUILD_TESTING

@@ -87,6 +87,31 @@ previous resource, size and model. The response includes source rate, retained
 sample count, IR length, actual processing parameters and committed revisions.
 Source samples retain their original rate without output-rate resampling.
 
+## Export movies from the app
+
+Choose **File > Export Movie...** to render the current preset and its linked
+phrase as a Cyclogram movie. Select the gradient (or inherit the preset style),
+resolution, frame rate, video bitrate, release tail and a new output folder.
+The default is 1080p, 30 fps, 8 Mbps with a one-second tail. ffmpeg is discovered
+from PATH/common install locations or can be selected explicitly.
+
+Export snapshots the current unsaved preset and resolved phrase when Export is
+pressed, then launches the installed executable as an isolated render worker.
+You can continue editing. No Python, source checkout, automation server or second
+audio device is required. The output includes PNG frames, stereo 24-bit/48 kHz
+`audio.wav`, `sequence.mp4`, source snapshots and a completion manifest. Cancel
+retains completed frames; cancelling during audio preparation waits for that
+synchronous phase to finish. Existing destination folders are rejected.
+
+The worker entry point is `CycleV2 --export-movie-job /absolute/path/job.json`.
+Portable acceptance checks can be run with:
+
+```sh
+python3 scripts/test_cycle_v2_movie_export.py \
+  --executable /path/to/CycleV2 \
+  --output-dir /new/path/to/verification
+```
+
 ## Export Spy PNG sequences
 
 Export a Cyclogram plot while a preview pattern's controller automation advances:

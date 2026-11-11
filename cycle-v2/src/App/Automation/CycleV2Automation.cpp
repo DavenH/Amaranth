@@ -651,6 +651,10 @@ var CycleV2Automation::invokeMenuItem(const var& commandValue) {
     if (id == "file.openGraph") {
         return openGraph(commandValue);
     }
+    if (id == "file.exportMovie") {
+        workspace.showMovieExport();
+        return okResult("invokeMenuItem", snapshotState());
+    }
     if (id == "file.importWaveReference") {
         workspace.importWaveReference();
         return okResult("invokeMenuItem", snapshotState());
@@ -1089,6 +1093,15 @@ var CycleV2Automation::waitForIdle(const var& commandValue) const {
 Component* CycleV2Automation::componentForArea(const String& area) const {
     if (area == "modal") {
         return Component::getCurrentlyModalComponent();
+    }
+    if (area == "movieExport" || area.startsWith("movieExport.")) {
+        const String name = "SpyMovieExport" + area.substring(String("movieExport").length());
+        auto& desktop = Desktop::getInstance();
+        for (int index = 0; index < desktop.getNumComponents(); ++index) {
+            if (auto* match = findNamedComponent(*desktop.getComponent(index), name)) {
+                return match;
+            }
+        }
     }
     if (area.startsWith("surfaceAppearance")) {
         auto& desktop = Desktop::getInstance();

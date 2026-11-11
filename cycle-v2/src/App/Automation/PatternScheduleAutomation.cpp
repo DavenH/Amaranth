@@ -9,28 +9,6 @@ namespace CycleV2 {
 
 namespace {
 
-class PatternScheduleSink final : public MidiEventSink {
-public:
-    bool enqueueMidiMessage(const juce::MidiMessage& message, MidiEventSource source) override {
-        return enqueueMidiMessageAt(message, source, 0.0);
-    }
-
-    bool enqueueMidiMessageAt(
-            const juce::MidiMessage& message,
-            MidiEventSource,
-            double timestampSeconds) override {
-        if (events.size() >= RealtimeMidiEventQueue::capacity) {
-            return false;
-        }
-        events.push_back({ timestampSeconds, message });
-        return true;
-    }
-
-    void releaseMidiSource(MidiEventSource) override {}
-
-    std::vector<PatternPlaybackEvent> events;
-};
-
 juce::var encodeEvent(const PatternPlaybackEvent& event, int channel) {
     auto object = std::make_unique<juce::DynamicObject>();
     const auto& message = event.message;
@@ -62,21 +40,13 @@ juce::var exportPatternSchedule(const juce::var& command) {
         return failedResult("exportPatternSchedule", "Invalid pattern sequence or MIDI channel");
     }
 
-    auto prepared = PatternPlaybackSchedule::prepare(*sequence);
-    PatternScheduleSink sink;
-    for (auto& scheduler : prepared.controls) {
-        if (!scheduler.scheduleUntil(sequence->durationSeconds, 0.0, sink)) {
-            return failedResult("exportPatternSchedule", "Expanded pattern exceeds MIDI queue capacity");
-        }
+    juce::String error;
+    const auto expanded = PatternPlaybackSchedule::expand(*sequence, error);
+    if (!expanded.has_value()) {
+        return failedResult("exportPatternSchedule", error);
     }
-    for (const auto& event : prepared.notes) {
-        if (!sink.enqueueMidiMessageAt(event.message, MidiEventSource::PatternPlayback, event.timeSeconds)) {
-            return failedResult("exportPatternSchedule", "Expanded pattern exceeds MIDI queue capacity");
-        }
-    }
-    std::stable_sort(sink.events.begin(), sink.events.end(), PatternPlaybackSchedule::precedes);
     juce::Array<juce::var> events;
-    for (const auto& event : sink.events) {
+    for (const auto& event : *expanded) {
         events.add(encodeEvent(event, channel));
     }
     auto data = std::make_unique<juce::DynamicObject>();

@@ -1,4 +1,5 @@
 #include "UI/NodeWorkspace.h"
+#include "UI/SpyMovieExportWindow.h"
 #include "UI/SurfaceAppearanceDialog.h"
 #include "UI/CanvasChromePalette.h"
 
@@ -117,6 +118,19 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     });
     startTimerHz(30);
     timerCallback();
+}
+
+void NodeWorkspace::showMovieExport() {
+    if (movieExportWindow != nullptr && movieExportWindow->isVisible()) {
+        movieExportWindow->toFront(true);
+        return;
+    }
+    const Component::SafePointer<NodeWorkspace> safe(this);
+    movieExportWindow = std::make_unique<SpyMovieExportWindow>(*getTopLevelComponent(), [safe] {
+        return safe != nullptr ? std::make_pair(safe->canvas.movieExportSnapshot(),
+                safe->resolvedPresetSequence().value_or(PresetMidiSequence {}))
+                : std::pair<String, PresetMidiSequence> {};
+    });
 }
 
 void NodeWorkspace::showSurfaceAppearance() {

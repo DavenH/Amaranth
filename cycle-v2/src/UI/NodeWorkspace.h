@@ -15,6 +15,7 @@
 namespace CycleV2 {
 
 using namespace juce;
+class SpyMovieExportWindow;
 
 class NodeWorkspace :
         public Component
@@ -39,6 +40,7 @@ public:
     ProbeRefreshMode probeRefreshMode() const { return canvas.probeRefreshMode(); }
     void setProbeRefreshMode(ProbeRefreshMode mode) { canvas.setProbeRefreshMode(mode); }
     void showSurfaceAppearance();
+    void showMovieExport();
     bool selectSurfaceAppearanceStyle(const juce::String& section, const juce::String& styleId);
     bool isSurfaceAppearanceOpen() const;
     WaveformColourStyles::Style waveformColourStyle() const { return canvas.waveformColourStyle(); }
@@ -178,6 +180,7 @@ private:
     var outputMeterStateForAutomation() const;
 
     juce::Component::SafePointer<juce::DialogWindow> surfaceAppearanceWindow;
+    std::unique_ptr<SpyMovieExportWindow> movieExportWindow;
     StandaloneAudioEngine& audioEngine;
     NodeCanvas canvas;
     ReferenceLibrary referenceLibrary;
