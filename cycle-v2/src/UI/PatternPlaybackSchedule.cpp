@@ -6,6 +6,32 @@
 
 namespace CycleV2 {
 
+namespace {
+
+class PatternScheduleSink final : public MidiEventSink {
+public:
+    bool enqueueMidiMessage(const juce::MidiMessage& message, MidiEventSource source) override {
+        return enqueueMidiMessageAt(message, source, 0.0);
+    }
+
+    bool enqueueMidiMessageAt(
+            const juce::MidiMessage& message,
+            MidiEventSource,
+            double timestampSeconds) override {
+        if (events.size() >= RealtimeMidiEventQueue::capacity) {
+            return false;
+        }
+        events.push_back({ timestampSeconds, message });
+        return true;
+    }
+
+    void releaseMidiSource(MidiEventSource) override {}
+
+    std::vector<PatternPlaybackEvent> events;
+};
+
+}
+
 PatternPlaybackSchedule PatternPlaybackSchedule::prepare(
         const PresetMidiSequence& sequence, double startSeconds) {
     PatternPlaybackSchedule result;
@@ -33,6 +59,27 @@ PatternPlaybackSchedule PatternPlaybackSchedule::prepare(
     }
     std::stable_sort(result.notes.begin(), result.notes.end(), precedes);
     return result;
+}
+
+std::optional<std::vector<PatternPlaybackEvent>> PatternPlaybackSchedule::expand(
+        const PresetMidiSequence& sequence, juce::String& error) {
+    auto prepared = prepare(sequence);
+    PatternScheduleSink sink;
+    for (auto& scheduler : prepared.controls) {
+        if (!scheduler.scheduleUntil(sequence.durationSeconds, 0.0, sink)) {
+            error = "Expanded pattern exceeds MIDI queue capacity";
+            return std::nullopt;
+        }
+    }
+    for (const auto& event : prepared.notes) {
+        if (!sink.enqueueMidiMessageAt(event.message, MidiEventSource::PatternPlayback, event.timeSeconds)) {
+            error = "Expanded pattern exceeds MIDI queue capacity";
+            return std::nullopt;
+        }
+    }
+    std::stable_sort(sink.events.begin(), sink.events.end(), precedes);
+    error.clear();
+    return std::move(sink.events);
 }
 
 bool PatternPlaybackSchedule::precedes(

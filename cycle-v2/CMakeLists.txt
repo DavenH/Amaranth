@@ -525,6 +525,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             ${NODE_SOURCES}
             ${CANVAS_ARCHITECTURE_SOURCES}
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GraphDocumentReplacement.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/App/SpyMovieExport.cpp"
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/SpyMovieExportWindow.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/GraphFileHistory.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/LibraryFavorites.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/App/Automation/CycleV2AutomationCommand.cpp"

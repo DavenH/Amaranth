@@ -68,6 +68,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/README.md` — Node-workflow overview, current controls, build, test, and automation commands.
 - `cycle-v2/CMakeLists.txt` — CycleV2 app, graph migrator, and test target source lists.
 - `cycle-v2/src/Main.cpp` — App composition root; App/ owns audio engine, graph files and library lifecycle.
+- `cycle-v2/src/App/SpyMovieExport.h`, `cycle-v2/src/UI/SpyMovieExportWindow.h`, `scripts/test_cycle_v2_movie_export.py` — Native movie settings, isolated job worker, cancellation, ffmpeg and executable acceptance checks.
 - `cycle-v2/src/App/Automation/` — Socket transport, input, inspection, command routing and semantic authoring adapters.
 - `cycle-v2/src/Reference/` — Five-second reference loads, cycle-resolution analysis, session view modes, numerical exports.
 - `cycle-v2/src/Graph/NodeGraph.h` — Durable graph data model; read through dispatcher-owned edit views in UI code.
