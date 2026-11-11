@@ -168,6 +168,8 @@ private:
     void deletePattern(const String& id);
     void saveEditedSequence(PresetMidiSequence sequence, const String& sourceId);
     void showPatternSaveError();
+    void savePatternCopy(const String& sourceId, PresetMidiSequence sequence,
+            bool closing, std::function<void(bool)> complete);
     void timerCallback() override;
     void drainRecordedMidi();
     bool publishAudioPlan(

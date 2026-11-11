@@ -92,8 +92,9 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Nodes/Envelope/` — State/playback, shared section palette, surfaces and EnvelopeEditCore for panel and headless edits.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
 - `cycle-v2/src/Nodes/ImpulseResponse/` — Canonical IR import/analysis; effect processors prepare playback-rate kernels.
-- `cycle-v2/src/UI/NodeWorkspace.h` — Workspace composition, ephemeral controllers, and audio playback cursor delivery.
+- `cycle-v2/src/UI/NodeWorkspace.h`, `cycle-v2/src/UI/NodeWorkspacePatterns.cpp` — Workspace composition and pattern-library persistence.
 - `cycle-v2/src/UI/NodeCanvas.h` — Canvas orchestrator; delegate interaction, scene, presentation, and commands.
+- `cycle-v2/src/UI/NodeCanvasNodeMenu.cpp`, `scripts/test_cycle_v2_daily_usability.py` — Empty-canvas node creation menu reuses palette catalogue and authoring commands.
 - `cycle-v2/src/UI/NodeCanvasInteraction.h` — Pointer/gesture routing; preserve semantic command and cost boundaries.
 - `cycle-v2/src/UI/NodeCanvasPresentation.h` — Builds visible canvas presentation from graph/runtime facts.
 - `cycle-v2/src/UI/NodeCanvasScene.h` — Retained node scene and geometry used by hit-testing and rendering.
@@ -107,6 +108,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/ReferenceWaveformPreview.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Shared waveform analysis/cache and async indexed density/path views.
 - `scripts/fixtures/cycle-v2-agent-spy-waveform-reuse.json` — Checks unchanged tray analysis and presentation invalidation.
 - `cycle-v2/src/UI/WaveformHeatRenderer.h`, `scripts/fixtures/cycle-v2-agent-waveform-zoom-performance.json` — GPU waveform coverage/heat composition and zoom performance workload.
+- `cycle-v2/src/UI/MidiPatternEditorWindow.h`, `cycle-v2/src/UI/PresetMidiEditorSelection.cpp` — Pattern drafts, explicit copy saves and MIDI group selection.
 - `cycle-v2/src/UI/PresetMidiEditor.h`, `cycle-v2/src/UI/PerformanceKeyboard.h`, `cycle-v2/src/UI/PatternPlaybackSchedule.h`, `scripts/fixtures/cycle-v2-agent-midi-playhead.json` — Tempo-grid authoring, playhead scrubbing, audition and timestamp-ordered pattern startup/seek.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
 - `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.

@@ -105,7 +105,7 @@ PresetMidiEditor::PresetMidiEditor(
         releaseAudition();
         sequence.notes.clear();
         sequence.controls.clear();
-        selectedNote = -1;
+        selectNote(-1);
         selectedControl = -1;
         publish();
     };
@@ -130,13 +130,27 @@ PresetMidiEditor::~PresetMidiEditor() {
     releaseAudition();
 }
 
+void PresetMidiEditor::setSaveRequest(std::function<void()> callback) {
+    onSaveRequest = std::move(callback);
+    addAndMakeVisible(saveButton);
+    saveButton.setName("PresetMidiEditor.Save");
+    saveButton.onClick = [this] {
+        if (onSaveRequest) {
+            onSaveRequest();
+        }
+    };
+    resized();
+}
+
 void PresetMidiEditor::resized() {
+    saveButton.setBounds(getWidth() - 160, 8, 70, 24);
+    const int saveWidth = saveButton.isVisible() ? 78 : 0;
     clearButton.setBounds(getWidth() - 82, 8, 64, 24);
     tempoLabel.setBounds(173, 9, 34, 22);
     tempoSlider.setBounds(207, 8, 100, 24);
-    snapButton.setBounds(getWidth() - 390, 8, 84, 26);
-    durationLabel.setBounds(getWidth() - 293, 9, 52, 22);
-    durationSlider.setBounds(getWidth() - 240, 8, 148, 24);
+    snapButton.setBounds(getWidth() - 390 - saveWidth, 8, 84, 26);
+    durationLabel.setBounds(getWidth() - 293 - saveWidth, 9, 52, 22);
+    durationSlider.setBounds(getWidth() - 240 - saveWidth, 8, 148, 24);
 }
 
 void PresetMidiEditor::configureControllers(std::vector<int> mappedControllers) {
@@ -220,23 +234,6 @@ void PresetMidiEditor::extendDurationTo(double endTime) {
 
 double PresetMidiEditor::minimumNoteDuration() const {
     return snapButton.getToggleState() ? gridStep() : 0.01;
-}
-
-bool PresetMidiEditor::transposeNotes(int semitones) {
-    if (sequence.notes.empty()) {
-        return true;
-    }
-    if (std::any_of(sequence.notes.begin(), sequence.notes.end(), [semitones](const auto& note) {
-            return note.pitch + semitones < 0 || note.pitch + semitones > 127;
-        })) {
-        return true;
-    }
-    releaseAudition();
-    for (auto& note : sequence.notes) {
-        note.pitch += semitones;
-    }
-    publish();
-    return true;
 }
 
 int PresetMidiEditor::noteAt(Point<float> point) const {
@@ -331,7 +328,7 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
         const int index = velocityNoteAt(event.position.x);
         if (index >= 0 && !event.mods.isRightButtonDown()) {
             activeVelocity = index;
-            selectedNote = index;
+            selectNote(index);
             selectedControl = -1;
             velocitySelected = true;
             gestureStart = event.position;
@@ -381,11 +378,28 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
     selectedControl = -1;
     const int pitch = pitchAt(event.position.y);
     const int existing = noteAt(event.position);
+    if (event.mods.isShiftDown() && !event.mods.isRightButtonDown()) {
+        gestureStart = event.position;
+        if (existing >= 0) {
+            if (selectedNotes.erase(existing) == 0) {
+                selectedNotes.insert(existing);
+            }
+            selectedNote = selectedNotes.empty() ? -1 : *selectedNotes.begin();
+        } else {
+            selectionBeforeBox = selectedNotes;
+            selectionBox = Rectangle<float>(event.position, event.position);
+        }
+        repaint();
+        return;
+    }
     if (existing >= 0) {
+        if (!isNoteSelected(existing)) {
+            selectNote(existing);
+        }
         selectedNote = existing;
         if (event.mods.isRightButtonDown()) {
             sequence.notes.erase(sequence.notes.begin() + existing);
-            selectedNote = -1;
+            selectNote(-1);
             publish();
             return;
         }
@@ -394,7 +408,11 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
         gestureStart = event.position;
         const float noteRight = xForTime(
                 originalNote.startSeconds + originalNote.durationSeconds);
-        resizingNote = event.position.x >= noteRight - 12.f;
+        resizingNote = selectedNotes.size() == 1 && event.position.x >= noteRight - 12.f;
+        draggedNotes.clear();
+        for (const int index : selectedNotes) {
+            draggedNotes.emplace_back(index, sequence.notes[(size_t) index]);
+        }
         audition(originalNote.pitch, originalNote.velocity);
         repaint();
         return;
@@ -409,7 +427,8 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
     sequence.notes.push_back({ pitch, velocity, start, duration });
     extendDurationTo(start + duration);
     activeNote = (int) sequence.notes.size() - 1;
-    selectedNote = activeNote;
+    selectNote(activeNote);
+    draggedNotes = {{ activeNote, sequence.notes.back() }};
     originalNote = sequence.notes.back();
     gestureStart = event.position;
     resizingNote = false;
@@ -419,6 +438,10 @@ void PresetMidiEditor::mouseDown(const MouseEvent& event) {
 }
 
 void PresetMidiEditor::mouseDrag(const MouseEvent& event) {
+    if (selectionBox.has_value()) {
+        updateBoxSelection(event.position);
+        return;
+    }
     if (draggingPlayback) {
         scrubPlayback(event.position);
         return;
@@ -455,12 +478,7 @@ void PresetMidiEditor::mouseDrag(const MouseEvent& event) {
                 originalNote.durationSeconds
                         + timeAt(event.position.x) - timeAt(gestureStart.x));
     } else {
-        note.pitch = jlimit(0, 127, originalNote.pitch
-                + pitchAt(event.position.y) - pitchAt(gestureStart.y));
-        note.startSeconds = jlimit(0.0,
-                PresetMidiSequence::maximumDurationSeconds - originalNote.durationSeconds,
-                originalNote.startSeconds
-                        + timeAt(event.position.x) - timeAt(gestureStart.x));
+        dragSelectedNotes(event.position);
         audition(note.pitch, note.velocity);
     }
     extendDurationTo(note.startSeconds + note.durationSeconds);
@@ -469,6 +487,10 @@ void PresetMidiEditor::mouseDrag(const MouseEvent& event) {
 }
 
 void PresetMidiEditor::mouseUp(const MouseEvent&) {
+    selectionBox.reset();
+    selectionBeforeBox.clear();
+    draggedNotes.clear();
+    repaint();
     const int edited = activeVelocity >= 0 ? activeVelocity : activeNote;
     if (edited >= 0 && edited < (int) sequence.notes.size()) {
         lastEditedNote = sequence.notes[(size_t) edited];
@@ -512,17 +534,27 @@ void PresetMidiEditor::editControl(Point<float> point, int controller) {
         existing->value = value;
         selectedControl = (int) std::distance(sequence.controls.begin(), existing);
     }
-    selectedNote = -1;
+    selectNote(-1);
     activeControl = selectedControl;
     pendingChange = true;
     repaint();
 }
 
 bool PresetMidiEditor::keyPressed(const KeyPress& key) {
+    if ((key.getModifiers().isCommandDown() || key.getModifiers().isCtrlDown())
+            && key.getKeyCode() == 'S' && onSaveRequest) {
+        onSaveRequest();
+        return true;
+    }
     if (key.getModifiers().isShiftDown() && !key.getModifiers().isCommandDown()
             && !key.getModifiers().isCtrlDown() && !key.getModifiers().isAltDown()
-            && (key.getKeyCode() == KeyPress::upKey || key.getKeyCode() == KeyPress::downKey)) {
-        return transposeNotes(key.getKeyCode() == KeyPress::upKey ? 1 : -1);
+            && (key.getKeyCode() == KeyPress::upKey || key.getKeyCode() == KeyPress::downKey
+                    || key.getKeyCode() == KeyPress::leftKey || key.getKeyCode() == KeyPress::rightKey)) {
+        const int code = key.getKeyCode();
+        const int semitones = code == KeyPress::upKey ? 1 : code == KeyPress::downKey ? -1 : 0;
+        const double seconds = code == KeyPress::rightKey ? 60.0 / sequence.tempoBpm
+                : code == KeyPress::leftKey ? -60.0 / sequence.tempoBpm : 0.0;
+        return moveSelectedNotes(semitones, seconds);
     }
     if (key == KeyPress::spaceKey) {
         cursorSeconds = cursorPosition();
@@ -542,8 +574,10 @@ bool PresetMidiEditor::keyPressed(const KeyPress& key) {
     if ((key == KeyPress::deleteKey || key == KeyPress::backspaceKey)
             && selectedNote >= 0 && selectedNote < (int) sequence.notes.size()) {
         releaseAudition();
-        sequence.notes.erase(sequence.notes.begin() + selectedNote);
-        selectedNote = -1;
+        for (auto index = selectedNotes.rbegin(); index != selectedNotes.rend(); ++index) {
+            sequence.notes.erase(sequence.notes.begin() + *index);
+        }
+        selectNote(-1);
         publish();
         return true;
     }
@@ -559,7 +593,9 @@ bool PresetMidiEditor::keyPressed(const KeyPress& key) {
     }
     if (key == KeyPress::escapeKey) {
         releaseAudition();
-        if (auto* dialog = findParentComponentOfClass<DialogWindow>()) {
+        if (onCloseRequest) {
+            onCloseRequest();
+        } else if (auto* dialog = findParentComponentOfClass<DialogWindow>()) {
             dialog->setVisible(false);
         }
         return true;

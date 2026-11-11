@@ -66,8 +66,9 @@ bool SpectralOscillatorFrameRenderer::supports(
         if (!leftInRegion) {
             return false;
         }
-        if ((step.audioRole == AudioModuleRole::Ifft
-                    || step.audioRole == AudioModuleRole::Multiply)
+        if ((step.audioRole == AudioModuleRole::Multiply
+                    || (step.audioRole == AudioModuleRole::Ifft
+                            && regionView.inputForPort(step, 1) != nullptr))
                 && !rightInRegion) {
             return false;
         }
@@ -151,8 +152,7 @@ bool SpectralOscillatorFrameRenderer::prepare(
                 || (!sourceRole(step.audioRole)
                         && step.audioRole != AudioModuleRole::Add
                         && operation.leftInput < 0)
-                || ((step.audioRole == AudioModuleRole::Ifft
-                            || step.audioRole == AudioModuleRole::Multiply)
+                || (step.audioRole == AudioModuleRole::Multiply
                         && operation.rightInput < 0)) {
             return false;
         }
@@ -425,7 +425,10 @@ bool SpectralOscillatorFrameRenderer::renderFrameInternal(
                                 channel,
                                 magnitude.section(1, activeHarmonicCount));
                     }
-                    slot(operation.rightInput, channel, binCount).copyTo(phase);
+                    phase.zero();
+                    if (operation.rightInput >= 0) {
+                        slot(operation.rightInput, channel, binCount).copyTo(phase);
+                    }
                     transformStage.inverse(
                             *transform,
                             magnitude,

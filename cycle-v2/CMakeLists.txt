@@ -276,6 +276,8 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternPlaybackSchedule.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetMidiEditor.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetMidiEditorView.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetMidiEditorSelection.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/MidiPatternEditorWindow.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/MidiPatternMiniMap.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/Graph/PatternLibrary.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PatternBrowser.cpp"

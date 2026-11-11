@@ -169,12 +169,18 @@ void PresetMidiEditor::paint(Graphics& graphics) {
     }
     paintNoteGrid(graphics);
     paintNotes(graphics);
+    if (selectionBox.has_value()) {
+        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.15f));
+        graphics.fillRect(*selectionBox);
+        graphics.setColour(CanvasChromePalette::focus);
+        graphics.drawRect(*selectionBox, 1.f);
+    }
     paintVelocity(graphics);
     paintModulation(graphics);
     paintPlaybackCursor(graphics);
     graphics.setColour(CanvasChromePalette::mutedText);
     graphics.setFont(FontOptions(11.f));
-    graphics.drawText("Velocity: drag (Shift: fine)  |  Delete: remove  |  Scroll: pan  |  Ruler/overview: seek  |  Shift-Up/Down: transpose  |  Space: play",
+    graphics.drawText("Velocity: drag (Shift: fine)  |  Delete: remove  |  Scroll: pan  |  Ruler/overview: seek  |  Shift-drag: select  |  Shift-arrows: move  |  Space: play",
             62, getHeight() - 23, getWidth() - 82, 17,
             Justification::centredLeft);
 }
@@ -243,9 +249,9 @@ void PresetMidiEditor::paintNotes(Graphics& graphics) const {
         const Rectangle<float> bar(x, y + 1.5f,
                 jmax(3.f, right - x), rowHeight - 3.f);
         graphics.setColour(CanvasChromePalette::focus.withAlpha(
-                (int) index == selectedNote ? 1.f : 0.77f));
+                isNoteSelected((int) index) ? 1.f : 0.77f));
         graphics.fillRoundedRectangle(bar, 2.f);
-        if ((int) index == selectedNote) {
+        if (isNoteSelected((int) index)) {
             graphics.setColour(Colours::white.withAlpha(0.9f));
             graphics.drawRoundedRectangle(bar, 2.f, 1.f);
             if (right >= grid.getX() && right <= grid.getRight()) {
@@ -285,10 +291,10 @@ void PresetMidiEditor::paintVelocity(Graphics& graphics) const {
         const float x = xForTime(note.startSeconds);
         const float height = grid.getHeight() * note.velocity / 127.f;
         graphics.setColour(CanvasChromePalette::focus.withAlpha(
-                (int) index == selectedNote ? 0.96f : 0.54f));
+                isNoteSelected((int) index) ? 0.96f : 0.54f));
         graphics.fillRoundedRectangle({ x - 4.f, grid.getBottom() - height,
                 8.f, height }, 2.f);
-        if ((int) index == selectedNote) {
+        if (isNoteSelected((int) index)) {
             graphics.setColour(Colours::white);
             graphics.fillEllipse(x - 5.f, grid.getBottom() - height - 5.f,
                     10.f, 10.f);

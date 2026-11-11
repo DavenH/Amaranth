@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 
 #include <optional>
+#include <set>
 #include <vector>
 
 #include "Graph/PresetPresentation.h"
@@ -44,6 +45,10 @@ public:
             const juce::MouseWheelDetails& wheel) override;
     bool keyPressed(const juce::KeyPress& key) override;
 
+    void setSaveRequest(std::function<void()> callback);
+    std::function<void()> onSaveRequest;
+    std::function<void()> onCloseRequest;
+
 private:
     class SnapToggle final : public juce::ToggleButton {
         void paintButton(juce::Graphics&, bool highlighted, bool down) override;
@@ -76,7 +81,12 @@ private:
     void updateDurationRange();
     void extendDurationTo(double endTime);
     double minimumNoteDuration() const;
-    bool transposeNotes(int semitones);
+    bool moveSelectedNotes(int semitones, double seconds);
+    bool isNoteSelected(int index) const;
+    void selectNote(int index);
+    juce::Rectangle<float> noteBounds(const PresetMidiNote& note) const;
+    void updateBoxSelection(juce::Point<float> position);
+    void dragSelectedNotes(juce::Point<float> position);
     void audition(int pitch, int velocity);
     void releaseAudition();
     void configureControllers(std::vector<int> mappedControllers);
@@ -91,6 +101,7 @@ private:
     PlaybackTimeCallback playbackTime;
     SeekCallback onSeek;
     juce::TextButton clearButton { "Clear" };
+    juce::TextButton saveButton { "Save..." };
     SnapToggle snapButton;
     std::vector<int> controllers;
     juce::Label tempoLabel;
@@ -112,6 +123,10 @@ private:
     float verticalWheelRemainder {};
     juce::Point<float> gestureStart;
     PresetMidiNote originalNote;
+    std::set<int> selectedNotes;
+    std::set<int> selectionBeforeBox;
+    std::vector<std::pair<int, PresetMidiNote>> draggedNotes;
+    std::optional<juce::Rectangle<float>> selectionBox;
     std::optional<PresetMidiNote> lastEditedNote;
     bool draggingPlayback {};
     bool draggingOverview {};

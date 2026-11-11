@@ -1100,13 +1100,18 @@ void NodeCanvas::mouseDown(const MouseEvent& event) {
         return;
     }
 
+    if (event.mods.isPopupMenu()) {
+        if (selectedNodeIds.size() >= 2) {
+            showSelectionGroupMenu(event.position);
+        } else {
+            showNodeCreationMenu(event.position);
+        }
+        return;
+    }
+
     if (event.mods.isShiftDown()) {
         interaction.beginAreaSelection(event.position);
     } else {
-        if (event.mods.isPopupMenu() && selectedNodeIds.size() >= 2) {
-            showSelectionGroupMenu(event.position);
-            return;
-        }
         probeCanvasState.selectedProbeIds.clear();
         authoring.selectNode({});
         interaction.beginPan(viewport.getPan());

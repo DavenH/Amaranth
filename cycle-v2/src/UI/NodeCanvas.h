@@ -411,6 +411,7 @@ private:
     Rectangle<float> canvasUtilityBounds() const;
     Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
+    void showNodeCreationMenu(Point<float> canvasPosition);
     void showEdgeMenu(int edgeIndex, Point<float> canvasPosition);
     void showNodeGroupMenu(const String& groupId, Point<float> canvasPosition);
     void promptRenameNodeGroup(const String& groupId);

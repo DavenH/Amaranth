@@ -97,6 +97,14 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     keyboard.setPreviewNote(canvas.previewMidiNote());
     keyboard.setSequence(canvas.presetSequence());
     keyboard.setMappedControllers(canvas.mappedMidiControllers());
+    keyboard.setSequenceEditorRequestedCallback([this] {
+        const auto id = canvas.presetPatternId();
+        if (patternLibrary == nullptr || patternLibrary->find(id) == nullptr) {
+            return false;
+        }
+        editPattern(id);
+        return true;
+    });
     keyboard.setSequenceChangedCallback([this](PresetMidiSequence sequence) {
         saveEditedSequence(std::move(sequence), canvas.presetPatternId());
     });
@@ -214,144 +222,6 @@ void NodeWorkspace::refreshPresetSidebarRecord(const File& file) {
 
 void NodeWorkspace::setCurrentPresetTags(StringArray tags) {
     canvas.setCurrentPresetTags(std::move(tags));
-}
-
-void NodeWorkspace::configurePatternLibrary(File factoryDirectory, File userDirectory) {
-    patternLibrary = std::make_unique<PatternLibrary>(
-            std::move(factoryDirectory), std::move(userDirectory));
-    keyboard.setSequence(resolvedPresetSequence());
-    refreshPatternSidebar();
-}
-
-std::optional<PresetMidiSequence> NodeWorkspace::resolvedPresetSequence() const {
-    if (patternLibrary != nullptr && canvas.presetPatternId().isNotEmpty()) {
-        if (const auto* pattern = patternLibrary->find(canvas.presetPatternId())) {
-            return pattern->sequence;
-        }
-    }
-    return canvas.presetSequence();
-}
-
-void NodeWorkspace::refreshPatternSidebar() {
-    if (patternLibrary != nullptr) {
-        canvas.setPatternSidebarRecords(
-                patternLibrary->records(), canvas.presetPatternId());
-    }
-}
-
-void NodeWorkspace::selectPattern(const String& id) {
-    if (patternLibrary == nullptr) {
-        return;
-    }
-    const auto* pattern = patternLibrary->find(id);
-    if (pattern == nullptr) {
-        return;
-    }
-    if (canvas.setPresetPatternId(id)) {
-        keyboard.setSequence(pattern->sequence);
-        refreshPatternSidebar();
-    }
-}
-
-void NodeWorkspace::createPattern(const String& name, const StringArray& tags) {
-    if (patternLibrary == nullptr) {
-        return;
-    }
-    const auto sequence = resolvedPresetSequence().value_or(PresetMidiSequence {});
-    const auto saved = patternLibrary->saveUserPattern(
-            patternLibrary->newUserId(), name, sequence,
-            tags.isEmpty() ? String("Other") : tags[0], tags);
-    if (saved.has_value()) {
-        selectPattern(saved->id);
-        editPattern(saved->id);
-    } else {
-        showPatternSaveError();
-    }
-}
-
-void NodeWorkspace::editPattern(const String& id) {
-    if (patternLibrary == nullptr) {
-        return;
-    }
-    const auto* pattern = patternLibrary->find(id);
-    if (pattern == nullptr) {
-        return;
-    }
-    selectPattern(id);
-    auto editingId = std::make_shared<String>(id);
-    keyboard.showSequenceEditor(pattern->sequence,
-            [safeThis = Component::SafePointer<NodeWorkspace>(this), editingId](
-                    PresetMidiSequence sequence) {
-                if (safeThis != nullptr) {
-                    safeThis->saveEditedSequence(std::move(sequence), *editingId);
-                    *editingId = safeThis->canvas.presetPatternId();
-                }
-    });
-}
-
-void NodeWorkspace::renamePattern(const String& id, const String& name) {
-    if (patternLibrary == nullptr) {
-        return;
-    }
-    if (patternLibrary->renameUserPattern(id, name).has_value()) {
-        refreshPatternSidebar();
-        return;
-    }
-    AlertWindow::showMessageBoxAsync(
-            MessageBoxIconType::WarningIcon,
-            "Pattern not renamed",
-            "The selected user pattern could not be renamed.",
-            "OK");
-}
-
-void NodeWorkspace::deletePattern(const String& id) {
-    if (patternLibrary == nullptr) {
-        return;
-    }
-    if (patternLibrary->deleteUserPattern(id)) {
-        keyboard.setSequence(resolvedPresetSequence());
-        refreshPatternSidebar();
-        return;
-    }
-    AlertWindow::showMessageBoxAsync(
-            MessageBoxIconType::WarningIcon,
-            "Pattern not deleted",
-            "The selected user pattern could not be moved to Trash.",
-            "OK");
-}
-
-void NodeWorkspace::saveEditedSequence(
-        PresetMidiSequence sequence, const String& sourceId) {
-    if (patternLibrary == nullptr) {
-        canvas.setPresetSequence(std::move(sequence));
-        return;
-    }
-    const auto* source = patternLibrary->find(sourceId);
-    const bool updateUserPattern = source != nullptr && !source->factory;
-    const String id = updateUserPattern
-            ? sourceId : patternLibrary->newUserId();
-    const String presetName = canvas.graphFile().getFileNameWithoutExtension();
-    const String name = source != nullptr
-            ? source->name + (updateUserPattern ? "" : " Variation")
-            : (presetName.isNotEmpty() ? presetName : "Untitled") + " Pattern";
-    const auto saved = patternLibrary->saveUserPattern(id, name, sequence,
-            source != nullptr ? source->tag : juce::String(),
-            source != nullptr ? source->tags : juce::StringArray());
-    if (saved.has_value()) {
-        canvas.setPresetPatternId(saved->id);
-        refreshPatternSidebar();
-    } else {
-        keyboard.setSequence(resolvedPresetSequence());
-        showPatternSaveError();
-    }
-}
-
-void NodeWorkspace::showPatternSaveError() {
-    AlertWindow::showMessageBoxAsync(
-            MessageBoxIconType::WarningIcon,
-            "Pattern not saved",
-            "The pattern library could not save this phrase.",
-            "OK");
 }
 
 bool NodeWorkspace::saveGraphToFile(const File& file) {

@@ -1,0 +1,47 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/trombone.cyclegraph"
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note60",
+      "event": "down",
+      "targetY": 0.85
+    },
+    {
+      "command": "captureLiveAudio",
+      "durationMs": 650,
+      "path": "../../.context/trombone-note-60.wav",
+      "rmsGreaterThan": 1e-06,
+      "peakLessThan": 1.0
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note60",
+      "event": "up",
+      "targetY": 0.85
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note72",
+      "event": "down",
+      "targetY": 0.85
+    },
+    {
+      "command": "captureLiveAudio",
+      "durationMs": 650,
+      "path": "../../.context/trombone-note-72.wav",
+      "rmsGreaterThan": 1e-06,
+      "peakLessThan": 1.0
+    },
+    {
+      "command": "pointer",
+      "targetId": "PerformanceKeyboard.Note72",
+      "event": "up",
+      "targetY": 0.85
+    }
+  ],
+  "quit": true
+}

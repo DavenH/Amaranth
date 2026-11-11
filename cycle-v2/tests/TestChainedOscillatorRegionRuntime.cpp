@@ -360,10 +360,10 @@ TEST_CASE("Prepared chained Add preserves a lone connected operand",
 #endif
 }
 
-TEST_CASE("Factory spectral graphs with one-sided Add use prepared oscillators",
+TEST_CASE("Factory spectral graphs support one-sided Add and optional IFFT phase",
         "[cycle-v2][runtime][oscillator-region][spectral-frame][add][preset]") {
 #if defined(CYCLE_V2_SOURCE_DIR)
-    for (const String& presetName : { String("dirty-guitar-2"), String("time") }) {
+    for (const String& presetName : { String("old/dirty-guitar-2"), String("time"), String("trombone") }) {
         DYNAMIC_SECTION(presetName) {
             const auto compiled = GraphCompiler().compile(
                     loadOscillatorPresetGraph(presetName));
@@ -1400,4 +1400,40 @@ TEST_CASE("Prepared spectral regions reject unresolved live controls",
   #else
     SUCCEED("CYCLE_V2_SOURCE_DIR is not defined");
   #endif
+}
+
+TEST_CASE("Trombone pitch follows notes independently of host callback size",
+        "[cycle-v2][runtime][trombone]") {
+#if defined(CYCLE_V2_SOURCE_DIR)
+    const auto compiled = GraphCompiler().compile(loadOscillatorPresetGraph("trombone"));
+    REQUIRE(compiled.succeeded());
+    const auto full = renderPreparedGraph(compiled.plan, 512, 24000, -1, 60);
+    const auto split = renderPreparedGraph(compiled.plan, 127, 24000, -1, 60);
+    const auto octave = renderPreparedGraph(compiled.plan, 256, 24000, -1, 72);
+    double error = 0.0;
+    double energy = 0.0;
+    for (size_t i = 0; i < full.left.size(); ++i) {
+        error += std::abs(full.left[i] - split.left[i]);
+        energy += std::abs(full.left[i]);
+    }
+    REQUIRE(energy > 0.01);
+    REQUIRE(error / energy < 0.01);
+    const auto periodicity = [](const std::vector<float>& audio, int expectedPeriod) {
+        double best = 0.0;
+        for (int lag = expectedPeriod - 3; lag <= expectedPeriod + 3; ++lag) {
+            double cross = 0.0;
+            double energyA = 0.0;
+            double energyB = 0.0;
+            for (size_t i = 4800; i < 9600; ++i) {
+                cross += audio[i] * audio[i + (size_t) lag];
+                energyA += audio[i] * audio[i];
+                energyB += audio[i + (size_t) lag] * audio[i + (size_t) lag];
+            }
+            best = std::max(best, cross / std::sqrt(energyA * energyB));
+        }
+        return best;
+    };
+    REQUIRE(periodicity(full.left, 183) > 0.8);
+    REQUIRE(periodicity(octave.left, 92) > 0.8);
+#endif
 }

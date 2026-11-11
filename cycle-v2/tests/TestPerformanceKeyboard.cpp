@@ -529,7 +529,7 @@ TEST_CASE("Performance mod wheel drag controls preview CC 1 and audition start",
             ModifierKeys::leftButtonModifier));
     wheel->mouseDrag(keyboardMouseEvent(
             *wheel,
-            { wheel->getWidth() * 0.5f, 0.f },
+            { wheel->getWidth() * 0.5f, wheel->getHeight() * 0.5f - 20.f },
             ModifierKeys::leftButtonModifier));
     wheel->mouseUp(keyboardMouseEvent(
             *wheel,
