@@ -153,9 +153,9 @@ const SignalProbe* cableExtraProbe(
             : nullptr;
 }
 
-Rectangle<int> statusRepaintBounds(Rectangle<float> canvasBounds, int extraControllers) {
-    return CanvasUtilityDock::layout(canvasBounds, extraControllers)
-            .status.expanded(2.f).toNearestInt();
+Rectangle<int> statusRepaintBounds(Rectangle<float> canvasBounds) {
+    return CanvasUtilityDock::layout(canvasBounds)
+            .status.toNearestInt();
 }
 
 GraphDocument createStartupDocument() {
@@ -426,7 +426,7 @@ void NodeCanvas::paint(Graphics& g) {
     const uint64_t framePreparationStartedAt = performanceMetrics.timestamp();
     const NodeCanvasPresentationFrame frame = presentationFrame();
     const Rectangle<int> status = statusRepaintBounds(
-            frame.utilityBounds, frame.keyboardExtraControllerCount);
+            frame.utilityBounds);
     if (!probeDetailState.isOpen() && frame.canvasOcclusion.isEmpty()
             && !status.isEmpty() && status.contains(g.getClipBounds())) {
         canvasPresentation.paintStatus(g, frame);
@@ -470,7 +470,7 @@ void NodeCanvas::resized() {
             getLocalBounds().toFloat(), guideShelfState.minimized));
     viewport.setBounds(canvasContentBounds());
     const auto status = CanvasUtilityDock::layout(
-            canvasUtilityBounds(), extraMidiControllerCount()).status;
+            canvasUtilityBounds()).status;
     presetInformation.setBounds(status.withSize(
             (float) ExplanationBadge::presetButtonWidth,
             (float) ExplanationBadge::presetButtonWidth).toNearestInt());
@@ -1635,6 +1635,16 @@ void NodeCanvas::openGLContextClosing() {
 
 void NodeCanvas::timerCallback() {
     auto measurement = performanceMetrics.measure(CanvasPerformanceMetrics::Trigger::Timer);
+    auto* window = getTopLevelComponent();
+    const auto pointer = Desktop::getInstance().getMainMouseSource().getScreenPosition();
+    const String help = NodeCanvasPresentation::controlHelpText(
+            window->isShowing() && Process::isForegroundProcess()
+                    ? window->getComponentAt(window->getLocalPoint(nullptr, pointer)) : nullptr,
+            *window);
+    if (controlHoverText != help) {
+        controlHoverText = help;
+        requestHoverRepaint(HoverRepaint::Status);
+    }
     if (compiledStateRefreshPending
             && (int32) (Time::getMillisecondCounter() - compiledStateRefreshDueMs) >= 0) {
         flushScheduledCompiledStateRefresh();
@@ -1723,8 +1733,9 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             lastMousePosition,
             selectedNodeId,
             editStatusMessage,
-            (pointerInsideCanvas || presetInformation.isMouseOver()) && !pointerOccluded
-                    ? resolvedHoverText : String {},
+            controlHoverText.isNotEmpty() ? controlHoverText
+                    : (pointerInsideCanvas || presetInformation.isMouseOver()) && !pointerOccluded
+                            ? resolvedHoverText : String {},
             std::move(pending),
             snapGuides,
             presentation.revision(),
@@ -1747,7 +1758,6 @@ NodeCanvasPresentationFrame NodeCanvas::presentationFrame() const {
             hoveredEdgeIndex,
             areaSelectionBounds,
             canvasUtilityBounds(),
-            extraMidiControllerCount(),
             &informationCards,
             focusedInformationGroup,
             informationCardPreview(),
@@ -1789,7 +1799,8 @@ Rectangle<float> NodeCanvas::probeDetailBounds() const {
 }
 
 Rectangle<float> NodeCanvas::canvasUtilityBounds() const {
-    return WorkspaceDock::editorAvailableBounds(workspaceDockLayout());
+    const auto dock = workspaceDockLayout();
+    return dock.content.withLeft(dock.leftShelf.getRight());
 }
 
 Rectangle<float> NodeCanvas::editorContentBounds() const {
@@ -2447,9 +2458,10 @@ void NodeCanvas::fitDocumentInViewport() {
     constexpr float dockClearance = 12.f;
     const Rectangle<float> content = canvasUtilityBounds();
     const auto utilities = CanvasUtilityDock::layout(
-            content, extraMidiControllerCount());
+            content);
     Rectangle<float> available = content.reduced(visibleMargin);
     available.setTop(jmax(available.getY(), utilities.keyboard.getBottom() + dockClearance));
+    available.setBottom(jmin(available.getBottom(), utilities.footer.getY() - dockClearance));
     viewport.setBounds(canvasContentBounds());
     viewport.fit(graphBounds, available);
 }
@@ -2457,6 +2469,8 @@ void NodeCanvas::fitDocumentInViewport() {
 var NodeCanvas::exportAutomationState() const {
     var state = automation.exportState(automationPresentationState());
     if (auto* object = state.getDynamicObject()) {
+        object->setProperty("consoleText", NodeCanvasPresentation::canvasStatusText(
+                editStatusMessage, presentationFrame().hoverText));
         object->setProperty("presentationGraphRevision",
                 (int64) presentation.snapshot().graphRevision);
         object->setProperty("documentGraphRevision", (int64) document.revision());
@@ -2964,8 +2978,7 @@ void NodeCanvas::finishPreviewControllerRefresh() {
 }
 
 Rectangle<int> NodeCanvas::performanceKeyboardDockBounds() const {
-    return CanvasUtilityDock::layout(canvasUtilityBounds(),
-            extraMidiControllerCount()).keyboard.toNearestInt();
+    return CanvasUtilityDock::layout(canvasUtilityBounds()).keyboard.toNearestInt();
 }
 
 Rectangle<float> NodeCanvas::expandedEditorBoundsForOverlay() const {
@@ -3041,12 +3054,6 @@ std::vector<int> NodeCanvas::mappedMidiControllers() const {
         mappedControllerCacheValid = true;
     }
     return mappedControllerCache;
-}
-
-int NodeCanvas::extraMidiControllerCount() const {
-    const auto controllers = mappedMidiControllers();
-    return (int) std::count_if(controllers.begin(), controllers.end(),
-            [](int controller) { return controller != 1; });
 }
 
 bool NodeCanvas::setPresetSequence(PresetMidiSequence sequence) {
@@ -3737,8 +3744,7 @@ void NodeCanvas::flushRenderInvalidations(uint32_t categories) {
         return;
     }
     if ((categories & NodeCanvasInvalidation::StatusRepaint) != 0) {
-        Component::repaint(statusRepaintBounds(canvasUtilityBounds(),
-                extraMidiControllerCount()));
+        Component::repaint(statusRepaintBounds(canvasUtilityBounds()));
     }
 }
 

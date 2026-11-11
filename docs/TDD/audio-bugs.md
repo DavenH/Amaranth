@@ -1296,6 +1296,16 @@ crash was observed. Exact cases and assertions: `.context/baseline/cases.json`
 and `.context/baseline/results.xml`. The focused cursor, envelope lifecycle,
 Guide-noise and realtime allocation/lock contracts pass separately.
 
+2026-11-07 mainline merge verification: the broader 137-case MIDI/cursor/realtime
+selection passes 130 cases. Its seven failures are the same telemetry-segment,
+Astral load, missing pitch-independent preset, mixed-terminal peak, legacy
+volume-clock, global Delay tail and shared spectral Unison signal fixtures.
+Relinking the exact unmodified origin/master RealtimeGraphRenderer against the
+same harness reproduces all seven at the same assertions; the merged renderer
+was then restored and rebuilt. Logs: `.context/merge-mainline/tests.log` and
+`.context/merge-mainline/baseline-tests.log`. These failures predate the cursor
+clock reconciliation and do not justify changing synthesis during this merge.
+
 ## Resolved: scoped preview preparation could retain a freed Envelope source
 
 2026-10-25: the complete-tail test alternates a full demo-graph capture with a

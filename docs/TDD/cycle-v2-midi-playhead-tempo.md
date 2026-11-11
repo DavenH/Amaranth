@@ -83,3 +83,75 @@ Verification
 - Sizes: editor566->609, view399->388, panel1024->1048, note scheduler45->50,
   controller scheduler65->73. Deletion targets are complete: no overview viewport
   rectangle/navigation or duration-derived beat/snap mapping remains.
+
+## Two-measure authoring buffer (2026-11-07)
+
+Add two measures of empty horizontal scroll range after the last note end or
+controller event at the current saved tempo. Keep longer explicit saved timelines
+reachable and preserve the existing duration cap. Scrolling is ephemeral; only
+authored events extend saved duration through the existing gesture/commit path.
+
+Reuse the content scan already performed by updateDurationRange, cache its actual
+endpoint, and update that bound in O(1) during extension gestures. Wheel updates
+stay O(1), independent of note count and unrelated graph content. Keep playback
+cursor framing within the authored timeline so overview/ruler seek behavior does
+not change merely because free scroll now has extra space. Test at multiple
+tempos, after new content, with later automation, empty data and the duration cap.
+This interaction change is separate from the proposed visual editor redesign.
+
+Completed: exact Debug/Release apps and tests build. Focused authoring, keyboard
+and scheduler tests pass 1,151 assertions in 56 cases. Added cases cover 60/120/240
+BPM, repeated extension with refreshed padding, automation after notes, empty
+patterns, one publication per gesture and the 120-second cap. Existing overview
+seek and authoring projection tests retain their behavior. The editor is 612
+lines, its view 394, and header 127; policy stays in the existing editor owners.
+
+The 12-command cycle-v2-agent-midi-scroll-tail.json app fixture passes. Its last
+note ends at 3 seconds, and the scrolled ruler reaches 7 seconds at 120 BPM;
+before/after exports are byte-identical. Software captures of this JUCE 2D
+editor were inspected. Evidence: .context/midi-scroll-tail-tests.log,
+.context/midi-scroll-tail-native.log, .context/midi-scroll-tail-after.png and
+.context/midi-scroll-tail-before/after.cyclegraph. Code-map, architecture audit,
+production style/diff and whitespace checks pass; no new incidental crashes or
+runtime assertions were observed.
+
+## Backspace returns to start (2026-11-07)
+
+Backspace seeks to 0 and reveals the first measure without modifying notes,
+automation or selection. Delete remains the event-removal key. Reuse the same
+editor seek callback as ruler/overview scrubbing, so the panel preserves paused
+or playing state and its existing source-reset/scheduler behavior. No new
+transport owner, document publication or undo entry. Verify selected notes and
+controls survive Backspace and still respond to Delete; verify return from the
+scroll tail and actual app behavior while stopped and playing.
+
+Completed: the editor and its shared seek operation stay at 621 lines; header
+128. The automation input adapter adds only a Backspace key alias. Debug/Release
+builds and 1,167 assertions in 57 authoring/keyboard/scheduler cases pass. Selected
+notes and controls survive Backspace, remain deletable with Delete, and return
+from the scroll tail reveals time zero. The 25-command app fixture verifies
+paused return, playing restart without pause, and unchanged event counts;
+before/after exported graph/pattern JSON is byte-identical. The captured ruler
+starts at 1.1 with its playhead at zero. Evidence: .context/midi-backspace-tests.log,
+.context/midi-backspace-native.log and .context/midi-backspace-start.png.
+Code-map, architecture, production style/diff and whitespace checks pass.
+
+## Measure arrow navigation (2026-11-07)
+
+Left/Right seek one 4/4 measure backward/forward from the current playhead at
+the saved BPM. Preserve the fractional position within the measure. Reuse the
+Backspace/ruler seek owner, clamp to the authored phrase, reveal the new cursor,
+and leave events, selection and document history unchanged. Playback continues
+when seeking within the phrase; reaching its endpoint uses existing end behavior.
+Verify multiple tempos, stopped/live position sources, boundaries, view return
+and unchanged publication/toggle counts; extend the actual-app shortcut fixture.
+
+Completed: Debug/Release apps and tests build. All 1,383 assertions in 58 focused
+editor/keyboard/scheduler cases pass, including 60/100/240 BPM, stopped and live
+cursor providers, fractional starting positions, start/end clamps, view return
+and zero edit publications or playback toggles. The 43-command app fixture
+verifies exact stopped one-measure moves and both directions while playing;
+exported graph/pattern JSON remains byte-identical. Logs:
+.context/midi-arrow-tests.log and .context/midi-arrow-native.log. Production
+style/diff, code-map and architecture checks pass. No new playback owner or
+scheduler policy was introduced; the change is a key binding to shared seeking.

@@ -252,6 +252,9 @@ const PatternRecord* PatternBrowser::selectedRecord() const {
 
 void PatternBrowser::updateActions() {
     const auto* record = selectedRecord();
+    toolbar.editButton().setTooltip(record != nullptr && record->factory
+            ? "Create an editable copy of the selected factory MIDI pattern"
+            : "Edit notes and automation in the selected MIDI pattern");
     toolbar.editButton().setEnabled(record != nullptr);
     const bool userPattern = record != nullptr && !record->factory;
     toolbar.renameButton().setEnabled(userPattern);

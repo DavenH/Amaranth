@@ -102,6 +102,11 @@ ReferenceWaveformView::~ReferenceWaveformView() {
     worker.removeAllJobs(true, 2000);
 }
 
+void ReferenceWaveformView::setBorderVisible(bool visible) {
+    borderVisible = visible;
+    repaint();
+}
+
 void ReferenceWaveformView::setSample(const PitchedSample* sample) {
     if (sampleIdentity == sample && signalIdentity == nullptr) {
         return;
@@ -124,7 +129,7 @@ void ReferenceWaveformView::setSignal(std::shared_ptr<const std::vector<float>> 
     if (signalIdentity == samples && sampleIdentity == nullptr) {
         return;
     }
-    colourStyle = WaveformColourStyles::current();
+    colourStyle = fixedColourStyle.value_or(WaveformColourStyles::current());
     signalIdentity = std::move(samples);
     setTitle("Signal waveform");
     sampleIdentity = nullptr;
@@ -139,6 +144,16 @@ void ReferenceWaveformView::setSignal(std::shared_ptr<const std::vector<float>> 
     }
     requestImage();
     repaint();
+}
+
+void ReferenceWaveformView::setColourStyle(std::optional<WaveformColourStyles::Style> style) {
+    fixedColourStyle = style;
+    const auto next = fixedColourStyle.value_or(WaveformColourStyles::current());
+    if (colourStyle != next) {
+        colourStyle = next;
+        requestImage();
+        repaint();
+    }
 }
 
 void ReferenceWaveformView::setViewport(const ZoomRect& next) {
@@ -212,8 +227,9 @@ void ReferenceWaveformView::paint(juce::Graphics& graphics) {
     if (onBackground) {
         onBackground(graphics);
     }
-    if (signalIdentity != nullptr && colourStyle != WaveformColourStyles::current()) {
-        colourStyle = WaveformColourStyles::current();
+    if (signalIdentity != nullptr
+            && colourStyle != fixedColourStyle.value_or(WaveformColourStyles::current())) {
+        colourStyle = fixedColourStyle.value_or(WaveformColourStyles::current());
         requestImage();
     }
     const float scale = graphics.getInternalContext().getPhysicalPixelScaleFactor();
@@ -246,8 +262,10 @@ void ReferenceWaveformView::paint(juce::Graphics& graphics) {
     if (onOverlay) {
         onOverlay(graphics);
     }
-    graphics.setColour(CanvasChromePalette::border);
-    graphics.drawRect(getLocalBounds());
+    if (borderVisible) {
+        graphics.setColour(CanvasChromePalette::border);
+        graphics.drawRect(getLocalBounds());
+    }
     paintMs = juce::Time::getMillisecondCounterHiRes() - started;
     if (paintedOnGpu) {
         gpuHeatPaintTotalMs += paintMs;
@@ -291,6 +309,7 @@ juce::var ReferenceWaveformView::diagnostics() const {
     value->setProperty("gpuHeatPaintMaxMs", gpuHeatPaintMaxMs);
     value->setProperty("background", "black");
     value->setProperty("pixelWidth", image.getWidth());
+    value->setProperty("heatColumns", waveformHeatColumns);
     value->setProperty("sourceBuilds", sourceBuildCount);
     value->setProperty("heatBuilds", source != nullptr ? source->heatBuilds.load() : 0);
     value->setProperty("colourBuilds", source != nullptr ? source->colourBuilds.load() : 0);

@@ -689,6 +689,14 @@ void RealtimeGraphRenderer::renderVoices(
             }
         }
     }
+    const auto playback = voicePlaybackFrame(currentBlockStartSeconds + frameCount / sampleRate);
+    for (size_t index = 0; index < playback.count; ++index) {
+        const auto& voice = playback.voices[index];
+        cursorFrame.timeline[cursorFrame.timelineCount++] = {
+                (float) (voice.ageSeconds / voice.durationSeconds),
+                voice.released ? (float) ((voice.ageSeconds - voice.releaseAgeSeconds) / voice.durationSeconds) : -1.f
+        };
+    }
     cursorExchange.publish(cursorFrame);
     if (performanceSample != nullptr) {
         performanceSample->activeVoiceCount = (uint16_t) activeCount;

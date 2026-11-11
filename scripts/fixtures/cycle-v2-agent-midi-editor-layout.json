@@ -1,0 +1,40 @@
+{
+  "commands": [
+    {"command": "openGraph", "path": "../../cycle-v2/resources/default.cyclegraph"},
+    {"command": "setPresetSequence", "sequence": {
+      "durationSeconds": 4.0, "tempoBpm": 120.0,
+      "notes": [
+        {"pitch": 48, "velocity": 92, "startSeconds": 0.0, "durationSeconds": 0.2},
+        {"pitch": 52, "velocity": 104, "startSeconds": 0.25, "durationSeconds": 0.2},
+        {"pitch": 50, "velocity": 88, "startSeconds": 0.5, "durationSeconds": 0.15},
+        {"pitch": 55, "velocity": 108, "startSeconds": 0.75, "durationSeconds": 0.25},
+        {"pitch": 48, "velocity": 72, "startSeconds": 1.0, "durationSeconds": 0.2},
+        {"pitch": 51, "velocity": 96, "startSeconds": 1.25, "durationSeconds": 0.15},
+        {"pitch": 53, "velocity": 100, "startSeconds": 1.5, "durationSeconds": 0.25},
+        {"pitch": 55, "velocity": 104, "startSeconds": 1.8, "durationSeconds": 0.2},
+        {"pitch": 57, "velocity": 90, "startSeconds": 2.0, "durationSeconds": 0.25},
+        {"pitch": 60, "velocity": 102, "startSeconds": 2.25, "durationSeconds": 0.25},
+        {"pitch": 55, "velocity": 92, "startSeconds": 2.5, "durationSeconds": 0.25},
+        {"pitch": 52, "velocity": 100, "startSeconds": 3.0, "durationSeconds": 0.5}
+      ],
+      "controls": [
+        {"controller": 1, "value": 12, "timeSeconds": 0.0},
+        {"controller": 1, "value": 14, "timeSeconds": 0.25},
+        {"controller": 1, "value": 44, "timeSeconds": 0.5},
+        {"controller": 1, "value": 80, "timeSeconds": 0.75},
+        {"controller": 1, "value": 120, "timeSeconds": 1.0},
+        {"controller": 1, "value": 64, "timeSeconds": 1.5},
+        {"controller": 1, "value": 8, "timeSeconds": 1.8},
+        {"controller": 1, "value": 8, "timeSeconds": 2.0}
+      ]
+    }},
+    {"command": "pointer", "targetId": "PerformanceKeyboard.EditSequence", "event": "click"},
+    {"command": "pointer", "area": "presetMidiEditor", "event": "down", "x": 438, "y": 93},
+    {"command": "pointer", "area": "presetMidiEditor", "event": "up", "x": 438, "y": 93},
+    {"command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 12},
+    {"command": "assertState", "path": "performance.previewSequenceControlCount", "equals": 8},
+    {"command": "screenshot", "area": "presetMidiEditor", "path": "../../.context/midi-editor-implemented.png"},
+    {"command": "key", "area": "presetMidiEditor", "key": "escape"}
+  ],
+  "quit": true
+}

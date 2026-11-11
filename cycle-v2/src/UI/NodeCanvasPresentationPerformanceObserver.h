@@ -17,7 +17,6 @@ enum class NodeCanvasPresentationStage : uint8_t {
     Nodes,
     RelationshipHighlights,
     Utilities,
-    MiniMap,
     Legend,
     Palette,
     Status,

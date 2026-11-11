@@ -3,6 +3,7 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphSerializer.h"
 #include "UI/PatternBrowser.h"
+#include "UI/NodeCanvasPresentation.h"
 #include "UI/SidebarMediaRow.h"
 #include "Graph/PatternLibrary.h"
 #include "UI/SidebarTagCloud.h"
@@ -227,6 +228,8 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
     REQUIRE(search != nullptr);
     REQUIRE(create != nullptr);
     REQUIRE(edit != nullptr);
+    REQUIRE(NodeCanvasPresentation::controlHelpText(edit, browser)
+            == "Create an editable copy of the selected factory MIDI pattern");
     REQUIRE(rename != nullptr);
     REQUIRE(remove != nullptr);
     REQUIRE(search->getX() == create->getX());

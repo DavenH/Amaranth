@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "UI/NodeCanvasPresentation.h"
+#include "UI/CanvasUtilityDock.h"
 #include "UI/ExplanationEditor.h"
 
 #include "Graph/NodeParameterMap.h"
@@ -754,14 +755,11 @@ void NodeCanvasPresentation::paintContent(
         ScopedNodeCanvasPresentationStage measurement(
                 performanceObserver,
                 NodeCanvasPresentationStage::Utilities);
-        {
-            ScopedNodeCanvasPresentationStage childMeasurement(
-                    performanceObserver,
-                    NodeCanvasPresentationStage::MiniMap);
-            if (!frame.guideShelfState.presetBrowserVisible) {
-                paintMiniMap(graphics, frame);
-            }
-        }
+        const auto footer = CanvasUtilityDock::layout(frame.utilityBounds).footer;
+        graphics.setColour(CanvasChromePalette::dockSurface);
+        graphics.fillRect(footer);
+        graphics.setColour(CanvasChromePalette::border);
+        graphics.drawHorizontalLine(roundToInt(footer.getY()), footer.getX(), footer.getRight());
         {
             ScopedNodeCanvasPresentationStage childMeasurement(
                     performanceObserver,

@@ -16,7 +16,7 @@ struct PropertySegmentOption {
     std::vector<juce::Colour> ticks;
 };
 
-class PropertySegmentedSelector final : public juce::Component, private juce::Timer {
+class PropertySegmentedSelector final : public juce::Component {
 public:
     explicit PropertySegmentedSelector(std::vector<PropertySegmentOption> options);
     ~PropertySegmentedSelector() override;
@@ -39,15 +39,11 @@ private:
 
     void select(int index, juce::NotificationType notification);
     void focus(int index);
-    void timerCallback() override;
 
     std::vector<PropertySegmentOption> optionDefinitions;
     std::vector<std::unique_ptr<OptionButton>> buttons;
     juce::String value;
     std::function<juce::String(const juce::String&)> hoverMessageProvider;
-    std::unique_ptr<juce::BubbleMessageComponent> hoverCallout;
-    int hoveredIndex { -1 };
-    uint32_t hoverStarted {};
 };
 
 }

@@ -156,16 +156,21 @@ void AmaranthMidiKeyboard::setUseVectorKeys(bool shouldUseVectorKeys) {
     }
 }
 
+void AmaranthMidiKeyboard::setVectorKeyPalette(const VectorKeyPalette& palette) {
+    vectorKeyPalette = palette;
+    repaint();
+}
+
 void AmaranthMidiKeyboard::drawVectorKey(
         Graphics& g, Rectangle<float> area, bool blackKey,
         bool isDown, bool isOver, bool isHighlighted) const {
     const bool accented = isDown || isOver || isHighlighted;
     const Colour top = accented
-        ? (isDown ? Colour(0xffb7642f) : Colour(0xff4f89aa))
-        : (blackKey ? Colour(0xff707070) : Colour(0xffb8b8b8));
+        ? (isDown ? vectorKeyPalette.pressedTop : vectorKeyPalette.highlightedTop)
+        : (blackKey ? vectorKeyPalette.accidentalTop : vectorKeyPalette.naturalTop);
     const Colour bottom = accented
-        ? (isDown ? Colour(0xff4f210d) : Colour(0xff18384a))
-        : (blackKey ? Colour(0xff202020) : Colour(0xff484848));
+        ? (isDown ? vectorKeyPalette.pressedBottom : vectorKeyPalette.highlightedBottom)
+        : (blackKey ? vectorKeyPalette.accidentalBottom : vectorKeyPalette.naturalBottom);
 
     const float corner = blackKey ? jmin(2.5f, area.getWidth() * 0.18f) : 1.0f;
     Path key;

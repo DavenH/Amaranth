@@ -11,11 +11,15 @@
 #include "Graph/PresetPresentation.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
 #include "UI/PatternPlaybackSchedule.h"
+#include "UI/PerformanceWaveformPreview.h"
 
 namespace CycleV2 {
 
 class PerformanceKeyboard final : public AmaranthMidiKeyboard {
 public:
+    static constexpr int visibleSemitones = 36;
+    static constexpr int whiteKeyCount = visibleSemitones / 12 * 7 + 1;
+
     PerformanceKeyboard(MidiKeyboardState& state, MidiEventSink& sink);
     ~PerformanceKeyboard() override;
 
@@ -48,7 +52,12 @@ protected:
             bool isOver,
             Colour lineColour,
             Colour textColour) override;
+    void drawBlackNote(int midiNoteNumber, Graphics& graphics, Rectangle<float> area,
+            bool isDown, bool isOver, Colour fill) override;
+
 private:
+    void paintKeyTexture(Graphics& graphics, Rectangle<float> area, int note, bool black);
+    Image keyTexture;
     class StateListener final : public MidiKeyboardState::Listener {
     public:
         explicit StateListener(PerformanceKeyboard& owner) : owner(owner) {}
@@ -78,8 +87,6 @@ private:
             float velocity);
     void setRangeStart(int noteNumber);
 
-    static constexpr int visibleSemitones = 24;
-
     int rangeStart { 48 };
     int currentHeldNote { -1 };
     float currentVelocity {};
@@ -100,16 +107,18 @@ public:
     PerformanceKeyboardPanel(MidiKeyboardState& state, MidiEventSink& sink);
 
     int baseNote() const { return keyboard.baseNote(); }
+    int highestNote() const { return baseNote() + PerformanceKeyboard::visibleSemitones; }
     int heldNote() const { return keyboard.heldNote(); }
     float heldVelocity() const { return keyboard.heldVelocity(); }
     String baseNoteLabel() const { return keyboard.noteLabel(keyboard.baseNote()); }
-    String highestNoteLabel() const { return keyboard.noteLabel(keyboard.baseNote() + 24); }
+    String highestNoteLabel() const { return keyboard.noteLabel(highestNote()); }
     Rectangle<float> noteBounds(int noteNumber) const;
     Rectangle<float> octaveDownBounds() const;
     Rectangle<float> octaveUpBounds() const;
     Rectangle<float> modWheelBounds() const;
     Rectangle<float> controllerBounds(int controller) const;
-    Rectangle<float> progressBounds() const;
+    PerformanceWaveformPreview& waveformPreview() { return waveform; }
+    const PerformanceWaveformPreview& waveformPreview() const { return waveform; }
     Rectangle<float> editBounds() const { return editButton.getBounds().toFloat(); }
     Rectangle<float> recordBounds() const { return recordButton.getBounds().toFloat(); }
     Rectangle<float> playBounds() const { return playButton.getBounds().toFloat(); }
@@ -166,6 +175,12 @@ public:
     void resized() override;
 
 private:
+    class ControllerStrip final : public Component {
+    public:
+        void paint(Graphics& graphics) override;
+        int mappedSlots { 1 };
+    };
+
     class OctaveButton final : public Button {
     public:
         explicit OctaveButton(bool advancesOctave);
@@ -176,33 +191,34 @@ private:
         bool advances;
     };
 
-    class ModWheel final :
-            public Component
-        ,   public SettableTooltipClient {
+    class PatternButton final : public TextButton {
+    public:
+        enum class Action { Play, Record, Edit };
+        explicit PatternButton(Action action);
+        void paintButton(Graphics& graphics, bool hovered, bool down) override;
+
+    private:
+        Action action;
+    };
+
+    class ModWheel final : public Slider {
     public:
         explicit ModWheel(int controllerNumber = 1);
-
-        int value() const { return currentValue; }
+        int value() const { return roundToInt(getValue()); }
         int controller() const { return controllerNumber; }
         void setValue(int value, bool sendNotification);
-
-        void focusGained(FocusChangeType cause) override;
-        void focusLost(FocusChangeType cause) override;
         bool keyPressed(const KeyPress& key) override;
         void mouseDown(const MouseEvent& event) override;
-        void mouseDrag(const MouseEvent& event) override;
-        void mouseUp(const MouseEvent& event) override;
         void paint(Graphics& graphics) override;
-
+        String getTooltip() override;
         std::function<void(int)> onValueChanged;
         std::function<void()> onGestureStarted;
         std::function<void()> onGestureEnded;
 
     private:
-        Rectangle<float> wheelTrack() const;
-        void updateFromPointer(float y);
-
-        int currentValue {};
+        void valueChanged() override;
+        void startedDragging() override;
+        void stoppedDragging() override;
         int controllerNumber { 1 };
     };
 
@@ -255,13 +271,16 @@ private:
     MidiKeyboardState& keyboardState;
     MidiEventSink& eventSink;
     PerformanceKeyboard keyboard;
+    PerformanceWaveformPreview waveform;
     OctaveButton octaveDown { false };
     OctaveButton octaveUp { true };
+    ControllerStrip controllerStrip;
+    Viewport controllerViewport;
     ModWheel modWheel;
     std::vector<std::unique_ptr<ModWheel>> extraWheels;
-    TextButton playButton { "PLAY" };
-    TextButton editButton { "EDIT" };
-    TextButton recordButton { "REC" };
+    PatternButton playButton { PatternButton::Action::Play };
+    PatternButton editButton { PatternButton::Action::Edit };
+    PatternButton recordButton { PatternButton::Action::Record };
 };
 
 }

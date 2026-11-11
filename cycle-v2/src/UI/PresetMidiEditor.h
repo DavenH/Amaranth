@@ -11,7 +11,8 @@ namespace CycleV2 {
 
 class PresetMidiEditor final :
         public juce::Component
-    ,   private juce::Timer {
+    ,   private juce::Timer
+    ,   private juce::ScrollBar::Listener {
 public:
     using ChangeCallback = std::function<void(PresetMidiSequence)>;
     using AuditionCallback = std::function<void(int, int, bool)>;
@@ -27,6 +28,7 @@ public:
     ~PresetMidiEditor() override;
 
     juce::Rectangle<float> noteGrid() const;
+    juce::Rectangle<float> pitchRow(int pitch) const;
     juce::Rectangle<float> velocityGrid() const;
     juce::Rectangle<float> controlGrid() const;
     juce::Rectangle<float> controlGrid(int controller) const;
@@ -49,11 +51,22 @@ private:
         void paintButton(juce::Graphics&, bool highlighted, bool down) override;
     };
 
+    static constexpr int visiblePitches = 36;
+    static constexpr int laneGap = 4;
+    static constexpr int velocityHeight = 48;
+    static constexpr int controllerHeight = 76;
+    static constexpr int controllerStride = controllerHeight + laneGap;
+
     void timerCallback() override;
+    void scrollBarMoved(juce::ScrollBar*, double) override;
+    juce::Rectangle<float> automationBounds() const;
 
     void paintNoteGrid(juce::Graphics& graphics) const;
     void paintNotes(juce::Graphics& graphics) const;
     void paintVelocity(juce::Graphics& graphics) const;
+    void paintLaneGrid(juce::Graphics& graphics, juce::Rectangle<float> grid) const;
+    void paintLaneLabel(juce::Graphics& graphics, juce::Rectangle<float> grid,
+            const juce::String& label) const;
     void paintModulation(juce::Graphics& graphics) const;
     void paintModulationLane(juce::Graphics& graphics, int controller) const;
     void paintMiniMap(juce::Graphics& graphics) const;
@@ -66,11 +79,13 @@ private:
     double gridStep() const;
     double timeOffset() const;
     int maximumTimeOffsetSteps() const;
+    int timeOffsetLimit(double endSeconds) const;
     int velocityAt(float y) const;
     juce::Range<int> overviewPitches() const;
     int noteAt(juce::Point<float> point) const;
     int velocityNoteAt(float x) const;
     void scrubPlayback(juce::Point<float> point);
+    void seekPlayback(double seconds, bool reveal);
     void revealPlaybackCursor(double seconds);
     double cursorPosition() const;
     void updateDurationRange();
@@ -93,10 +108,8 @@ private:
     juce::TextButton clearButton { "Clear" };
     SnapToggle snapButton;
     std::vector<int> controllers;
-    juce::Label tempoLabel;
-    juce::Slider tempoSlider;
-    juce::Label durationLabel;
-    juce::Slider durationSlider;
+    juce::Label tempoValue;
+    juce::ScrollBar automationScroll { true };
     int lowestPitch { 48 };
     int activeNote { -1 };
     int activeVelocity { -1 };
@@ -105,9 +118,8 @@ private:
     int selectedControl { -1 };
     int auditionPitch { -1 };
     int timeOffsetSteps {};
-    double minimumDurationSeconds { 0.01 };
+    double contentEndSeconds {};
     double cursorSeconds {};
-    double durationBeforeDrag {};
     float horizontalWheelRemainder {};
     float verticalWheelRemainder {};
     juce::Point<float> gestureStart;
@@ -116,7 +128,6 @@ private:
     bool draggingPlayback {};
     bool draggingOverview {};
     bool resizingNote {};
-    bool draggingDuration {};
     bool velocitySelected {};
     bool wasPlaybackActive {};
     bool pendingChange {};

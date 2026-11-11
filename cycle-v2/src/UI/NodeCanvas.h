@@ -64,6 +64,7 @@ class NodeCanvas :
     ,   private RenderInvalidationTarget {
 public:
     NodeCanvas();
+    const GraphPresentationSnapshot* performanceWaveformSource() const;
     const String& playbackCursorNodeId() { return editorCoordinator.host().nodeId(); }
     void setPlaybackCursors(const PlaybackCursorFrame& frame) {
         editorCoordinator.host().setPlaybackCursors(frame);
@@ -244,7 +245,6 @@ public:
 
 private:
     void synchronizeSurfaceStyles();
-    int extraMidiControllerCount() const;
     enum class HoverRepaint {
         None,
         Status,
@@ -252,7 +252,6 @@ private:
     };
 
     OpenGLContext openGLContext;
-    TooltipWindow tooltipHost { this, 500 };
     PresetExplanationButton presetInformation;
     Component::SafePointer<ExplanationEditor> explanationEditor;
     ExplanationTarget explanationEditorTarget;
@@ -302,6 +301,7 @@ private:
     Rectangle<int> lastPopupMenuTargetScreenArea;
     MouseCursor addToSelectionCursor;
     String resolvedHoverText;
+    String controlHoverText;
     String hoveredQuickCreatePortId;
     bool pointerInsideCanvas {};
     bool canvasOpenGlAttached {};

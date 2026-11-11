@@ -41,8 +41,7 @@ float xAt(const PresetMidiEditor& editor, double time, double duration) {
 }
 
 float pitch60Y(const PresetMidiEditor& editor) {
-    const auto grid = editor.noteGrid();
-    return grid.getY() + grid.getHeight() * 11.5f / 24.f;
+    return editor.pitchRow(60).getCentreY();
 }
 
 }
@@ -200,7 +199,7 @@ TEST_CASE("Trackpad deltas accumulate and overview seeking preserves pitch navig
     editor.mouseUp(pointer(editor, { grid.getX() + 2.f, grid.getCentreY() }));
     REQUIRE(changed.notes.size() == 1);
     REQUIRE(changed.notes[0].startSeconds == 0.125);
-    REQUIRE(changed.notes[0].pitch == 61);
+    REQUIRE(changed.notes[0].pitch == 67);
     const auto control = editor.controlGrid();
     editor.mouseDown(pointer(editor, { grid.getX() + 2.f, control.getCentreY() }));
     editor.mouseUp(pointer(editor, { grid.getX() + 2.f, control.getCentreY() }));
@@ -275,8 +274,8 @@ TEST_CASE("The enlarged piano roll paints a shared playback cursor",
     PresetMidiEditor editor(phrase, [](PresetMidiSequence) {}, {}, {},
             [&] { return playbackTime; });
     REQUIRE(editor.getWidth() >= 800);
-    REQUIRE(editor.controlGrid().getHeight() >= 90.f);
-    REQUIRE(editor.velocityGrid().getHeight() >= 65.f);
+    REQUIRE(editor.controlGrid().getHeight() == 76.f);
+    REQUIRE(editor.velocityGrid().getHeight() == 48.f);
     REQUIRE(editor.miniMap().getWidth() == editor.noteGrid().getWidth());
     const Image image = editor.createComponentSnapshot(editor.getLocalBounds());
     const int cursorX = roundToInt(xAt(editor, 1.0, 4.0));
@@ -288,39 +287,54 @@ TEST_CASE("The enlarged piano roll paints a shared playback cursor",
             roundToInt(editor.noteGrid().getY() + 20.f)).getBrightness() + 0.3f);
     const auto grid = editor.noteGrid();
     const int stripeX = roundToInt(grid.getX() + 24.f);
-    const float row = grid.getHeight() / 24.f;
     const Colour whiteRow = image.getPixelAt(stripeX,
-            roundToInt(grid.getY() + row * 0.5f));
+            roundToInt(editor.pitchRow(60).getCentreY()));
     const Colour blackRow = image.getPixelAt(stripeX,
-            roundToInt(grid.getY() + row * 1.5f));
+            roundToInt(editor.pitchRow(61).getCentreY()));
     REQUIRE(whiteRow.getBrightness() > blackRow.getBrightness());
 }
 
-TEST_CASE("Roll length is editable independently of the final note",
-        "[cycle-v2][preset][sequence][editor]") {
+TEST_CASE("Tempo entry preserves authored timing and saved trailing silence",
+        "[cycle-v2][preset][sequence][editor][tempo]") {
     ScopedJuceInitialiser_GUI gui;
     PresetMidiSequence phrase;
-    phrase.durationSeconds = 4.0;
+    phrase.durationSeconds = 6.0;
     phrase.notes.push_back({ 60, 100, 0.0, 0.5 });
+    phrase.controls.push_back({ 1, 64, 0.75 });
     PresetMidiSequence changed;
     int publications = 0;
     PresetMidiEditor editor(phrase, [&](PresetMidiSequence sequence) {
         changed = std::move(sequence);
         ++publications;
     });
-    Slider* length = nullptr;
-    for (int index = 0; index < editor.getNumChildComponents(); ++index) {
-        if (auto* slider = dynamic_cast<Slider*>(editor.getChildComponent(index))) {
-            if (slider->getName() == "PresetMidiEditor.Length") {
-                length = slider;
-            }
+    Label* tempo = nullptr;
+    for (auto* child : editor.getChildren()) {
+        REQUIRE(child->getName() != "PresetMidiEditor.Length");
+        if (child->getName() == "PresetMidiEditor.Tempo") {
+            tempo = dynamic_cast<Label*>(child);
         }
     }
-    REQUIRE(length != nullptr);
-    length->setValue(6.0, sendNotificationSync);
+    REQUIRE(tempo != nullptr);
+    editor.addToDesktop(ComponentPeer::windowIsTemporary);
+    editor.setVisible(true);
+    tempo->showEditor();
+    auto* entry = tempo->getCurrentTextEditor();
+    REQUIRE(entry != nullptr);
+    entry->setText("97.3");
+    tempo->hideEditor(false);
     REQUIRE(publications == 1);
+    REQUIRE(changed.tempoBpm == 97.3);
+    REQUIRE(tempo->getText() == "97.3 BPM");
     REQUIRE(changed.durationSeconds == 6.0);
     REQUIRE(changed.notes[0].durationSeconds == 0.5);
+    REQUIRE(changed.controls[0].timeSeconds == 0.75);
+    tempo->setText("invalid", sendNotificationSync);
+    REQUIRE(publications == 1);
+    REQUIRE(tempo->getText() == "97.3 BPM");
+    tempo->setText("999", sendNotificationSync);
+    REQUIRE(changed.tempoBpm == PresetMidiSequence::maximumTempoBpm);
+    tempo->setText("1", sendNotificationSync);
+    REQUIRE(changed.tempoBpm == PresetMidiSequence::minimumTempoBpm);
 }
 
 TEST_CASE("Shift arrows transpose the whole phrase without altering expression",
@@ -372,7 +386,7 @@ TEST_CASE("Creating and dragging moves a fixed length note and hands off auditio
         ++publications;
     }, {}, [&](int pitch, int, bool on) { audition.emplace_back(pitch, on); });
     const float y = pitch60Y(editor);
-    const float nextY = y - editor.noteGrid().getHeight() / 24.f;
+    const float nextY = editor.pitchRow(61).getCentreY();
     editor.mouseDown(pointer(editor, {xAt(editor, 0.5, 4.0), y}));
     editor.mouseDrag(pointer(editor, {xAt(editor, 0.75, 4.0), nextY}));
     REQUIRE(publications == 0);
@@ -525,33 +539,26 @@ TEST_CASE("Ruler and overview scrub a visible stopped playhead without authoring
     REQUIRE(publications == 1);
 }
 
-TEST_CASE("Grid and snapping follow saved tempo independently of pattern Length",
+TEST_CASE("Grid and snapping follow saved tempo independently of saved duration",
         "[cycle-v2][preset][sequence][editor][tempo]") {
     ScopedJuceInitialiser_GUI gui;
     PresetMidiSequence phrase;
-    phrase.durationSeconds = 4.0;
+    phrase.durationSeconds = 7.0;
     phrase.tempoBpm = 100.0;
     phrase.notes = {{60, 90, 0.6, 0.6}};
     PresetMidiSequence changed;
     PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) { changed = std::move(next); });
-    Slider* length = nullptr;
-    Slider* tempo = nullptr;
+    Label* tempo = nullptr;
     for (auto* child : editor.getChildren()) {
-        if (child->getName() == "PresetMidiEditor.Length") {
-            length = dynamic_cast<Slider*>(child);
-        } else if (child->getName() == "PresetMidiEditor.Tempo") {
-            tempo = dynamic_cast<Slider*>(child);
+        if (child->getName() == "PresetMidiEditor.Tempo") {
+            tempo = dynamic_cast<Label*>(child);
         }
     }
-    REQUIRE(length != nullptr);
     REQUIRE(tempo != nullptr);
     const auto grid = editor.noteGrid();
     const int beatX = roundToInt(grid.getX() + grid.getWidth() * 0.25f);
-    const int gridY = roundToInt(grid.getY() + grid.getHeight() / 48.f);
+    const int gridY = roundToInt(grid.getY() + editor.pitchRow(60).getHeight() * 0.5f);
     const Image before = editor.createComponentSnapshot(editor.getLocalBounds());
-    length->setValue(7.0, sendNotificationSync);
-    const Image after = editor.createComponentSnapshot(editor.getLocalBounds());
-    REQUIRE(before.getPixelAt(beatX, gridY) == after.getPixelAt(beatX, gridY));
     const auto place = [&](PresetMidiEditor& roll) {
         const auto area = roll.noteGrid();
         roll.mouseDown(pointer(roll, {area.getX() + area.getWidth() * 0.75f, pitch60Y(roll)}));
@@ -568,7 +575,7 @@ TEST_CASE("Grid and snapping follow saved tempo independently of pattern Length"
     reopened.mouseDown(pointer(reopened, {grid.getX() + grid.getWidth() * 0.875f, pitch60Y(reopened)}));
     reopened.mouseUp(pointer(reopened, {grid.getX() + grid.getWidth() * 0.875f, pitch60Y(reopened)}));
     REQUIRE(std::abs(changed.notes.back().startSeconds - 2.1) < 0.00001);
-    tempo->setValue(120.0, sendNotificationSync);
+    tempo->setText("120.0", sendNotificationSync);
     REQUIRE(changed.tempoBpm == 120.0);
     REQUIRE(changed.notes[0].startSeconds == 0.6);
 }
@@ -617,7 +624,7 @@ TEST_CASE("New notes inherit the last touched note length and edited velocity",
         expectedVelocity = 83;
     }
     const int committed = publications;
-    const float nextY = y - editor.noteGrid().getHeight() * 2.f / 24.f;
+    const float nextY = editor.pitchRow(62).getCentreY();
     const float x = xAt(editor, 1.25, 4.0);
     editor.mouseDown(pointer(editor, {x, nextY}));
     editor.mouseDrag(pointer(editor, {xAt(editor, 1.375, 4.0), nextY}));
@@ -629,4 +636,309 @@ TEST_CASE("New notes inherit the last touched note length and edited velocity",
     REQUIRE(changed.notes.back().velocity == expectedVelocity);
     REQUIRE(changed.notes.back().pitch == 62);
     REQUIRE(changed.notes.back().startSeconds == 1.375);
+}
+
+TEST_CASE("Piano roll keeps two tempo-aware measures available beyond authored content",
+        "[cycle-v2][preset][sequence][editor][scroll-tail]") {
+    ScopedJuceInitialiser_GUI gui;
+    for (const double bpm : { 60.0, 120.0, 240.0 }) {
+        PresetMidiSequence phrase;
+        phrase.tempoBpm = bpm;
+        phrase.durationSeconds = 4.0;
+        phrase.notes.push_back({ 60, 100, 2.5, 0.5 });
+        PresetMidiSequence changed;
+        int publications = 0;
+        PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+            changed = std::move(next);
+            ++publications;
+        });
+        const auto grid = editor.noteGrid();
+        const Point<float> emptyRow(grid.getX() + 0.01f, grid.getY() + grid.getHeight() / 48.f);
+        MouseWheelDetails wheel {};
+        wheel.deltaX = -1000.f;
+        editor.mouseWheelMove(pointer(editor, emptyRow), wheel);
+        REQUIRE(publications == 0);
+        editor.mouseDown(pointer(editor, emptyRow));
+        REQUIRE(publications == 0);
+        editor.mouseUp(pointer(editor, emptyRow));
+        REQUIRE(publications == 1);
+        REQUIRE(changed.notes.size() == 2);
+        const double measure = 240.0 / bpm;
+        REQUIRE(std::abs(changed.notes.back().startSeconds - (3.0 + measure)) < 0.00001);
+        REQUIRE(std::abs(changed.durationSeconds - (3.0 + measure + 15.0 / bpm)) < 0.00001);
+
+        editor.mouseWheelMove(pointer(editor, emptyRow), wheel);
+        REQUIRE(publications == 1);
+        editor.mouseDown(pointer(editor, emptyRow));
+        editor.mouseUp(pointer(editor, emptyRow));
+        REQUIRE(publications == 2);
+        REQUIRE(std::abs(changed.notes.back().startSeconds - (3.0 + 2.0 * measure + 15.0 / bpm)) < 0.00001);
+    }
+}
+
+TEST_CASE("Piano-roll scroll space respects automation tails empty patterns and duration cap",
+        "[cycle-v2][preset][sequence][editor][scroll-tail]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes.push_back({ 60, 100, 2.5, 0.5 });
+    double expectedStart = 12.0;
+    SECTION("Automation after the final note remains reachable with two measures beyond it") {
+        phrase.controls.push_back({ 1, 80, 10.0 });
+    }
+    SECTION("Empty patterns have two blank measures without a floating-point extra grid step") {
+        phrase.notes.clear();
+        phrase.durationSeconds = 0.01;
+        expectedStart = 2.0;
+    }
+    SECTION("Scrolling cannot author beyond the existing duration cap") {
+        phrase.durationSeconds = PresetMidiSequence::maximumDurationSeconds;
+        phrase.notes[0].startSeconds = phrase.durationSeconds - 0.5;
+        expectedStart = phrase.durationSeconds - 0.125;
+    }
+    PresetMidiSequence changed;
+    int publications = 0;
+    PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+        changed = std::move(next);
+        ++publications;
+    });
+    const auto grid = editor.noteGrid();
+    Point<float> point(grid.getX() + 0.01f, grid.getY() + grid.getHeight() / 48.f);
+    if (phrase.durationSeconds == PresetMidiSequence::maximumDurationSeconds) {
+        point.x = grid.getRight() - 0.01f;
+    }
+    MouseWheelDetails wheel {};
+    wheel.deltaX = -1000.f;
+    editor.mouseWheelMove(pointer(editor, point), wheel);
+    REQUIRE(publications == 0);
+    editor.mouseDown(pointer(editor, point));
+    editor.mouseUp(pointer(editor, point));
+    REQUIRE(publications == 1);
+    REQUIRE(std::abs(changed.notes.back().startSeconds - expectedStart) < 0.00001);
+    REQUIRE(changed.durationSeconds <= PresetMidiSequence::maximumDurationSeconds);
+}
+
+TEST_CASE("Backspace returns to the phrase start without deleting the selection",
+        "[cycle-v2][preset][sequence][editor][seek]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes.push_back({ 60, 100, 1.0, 0.5 });
+    phrase.controls.push_back({ 1, 40, 1.0 });
+    PresetMidiSequence changed;
+    int publications = 0;
+    std::vector<double> positions;
+    PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+        changed = std::move(next);
+        ++publications;
+    }, {}, {}, {}, {}, [&](double position) { positions.push_back(position); });
+    bool controlSelected = false;
+    SECTION("Selected note remains available to Delete") {
+        const Point<float> note(xAt(editor, 1.2, 4.0), pitch60Y(editor));
+        editor.mouseDown(pointer(editor, note));
+        editor.mouseUp(pointer(editor, note));
+    }
+    SECTION("Selected automation point remains available to Delete") {
+        controlSelected = true;
+        const auto lane = editor.controlGrid();
+        const Point<float> point(xAt(editor, 1.0, 4.0), lane.getBottom() - lane.getHeight() * 40.f / 127.f);
+        editor.mouseDown(pointer(editor, point));
+        editor.mouseUp(pointer(editor, point));
+    }
+    const auto map = editor.miniMap();
+    const Point<float> seek(map.getX() + map.getWidth() * 0.75f, map.getCentreY());
+    editor.mouseDown(pointer(editor, seek));
+    editor.mouseUp(pointer(editor, seek));
+    REQUIRE(positions.back() == 3.0);
+    MouseWheelDetails wheel {};
+    wheel.deltaX = -1000.f;
+    editor.mouseWheelMove(pointer(editor, editor.noteGrid().getCentre()), wheel);
+    const int before = publications;
+    REQUIRE(editor.keyPressed(KeyPress(KeyPress::backspaceKey)));
+    REQUIRE(positions.back() == 0.0);
+    REQUIRE(publications == before);
+    REQUIRE(editor.keyPressed(KeyPress(KeyPress::deleteKey)));
+    REQUIRE(publications == before + 1);
+    REQUIRE((controlSelected ? changed.controls.empty() : changed.notes.empty()));
+    const auto grid = editor.noteGrid();
+    const Point<float> start(grid.getX() + 0.01f, grid.getY() + grid.getHeight() / 48.f);
+    editor.mouseDown(pointer(editor, start));
+    editor.mouseUp(pointer(editor, start));
+    REQUIRE(changed.notes.back().startSeconds == 0.0);
+}
+
+TEST_CASE("Left and Right seek one measure relative to the live phrase cursor",
+        "[cycle-v2][preset][sequence][editor][seek]") {
+    ScopedJuceInitialiser_GUI gui;
+    for (const double bpm : { 60.0, 100.0, 240.0 }) {
+        for (const bool playing : { false, true }) {
+            PresetMidiSequence phrase;
+            phrase.durationSeconds = 10.0;
+            phrase.tempoBpm = bpm;
+            phrase.notes.push_back({ 60, 100, 1.0, 0.5 });
+            PresetMidiSequence changed;
+            int publications = 0;
+            int toggles = 0;
+            double position = 0.75;
+            PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+                changed = std::move(next);
+                ++publications;
+            }, [&] { ++toggles; }, {}, [&]() -> std::optional<double> {
+                return playing ? std::optional<double>(position) : std::nullopt;
+            }, {}, [&](double target) { position = target; }, position);
+            const double measure = 240.0 / bpm;
+            REQUIRE(editor.keyPressed(KeyPress(KeyPress::rightKey)));
+            REQUIRE(std::abs(position - (0.75 + measure)) < 0.00001);
+            REQUIRE(editor.keyPressed(KeyPress(KeyPress::leftKey)));
+            REQUIRE(std::abs(position - 0.75) < 0.00001);
+            for (int step = 0; step < 12; ++step) {
+                REQUIRE(editor.keyPressed(KeyPress(KeyPress::rightKey)));
+            }
+            REQUIRE(position == 10.0);
+            REQUIRE(editor.keyPressed(KeyPress(KeyPress::leftKey)));
+            REQUIRE(std::abs(position - (10.0 - measure)) < 0.00001);
+            for (int step = 0; step < 12; ++step) {
+                REQUIRE(editor.keyPressed(KeyPress(KeyPress::leftKey)));
+            }
+            REQUIRE(position == 0.0);
+            REQUIRE(publications == 0);
+            REQUIRE(toggles == 0);
+            const auto grid = editor.noteGrid();
+            const Point<float> start(grid.getX() + 0.01f, grid.getY() + grid.getHeight() / 48.f);
+            editor.mouseDown(pointer(editor, start));
+            editor.mouseUp(pointer(editor, start));
+            REQUIRE(publications == 1);
+            REQUIRE(changed.notes.back().startSeconds == 0.0);
+        }
+    }
+}
+
+TEST_CASE("Compact editor aligns plots and exposes 36 editable semitone rows",
+        "[cycle-v2][preset][sequence][editor][ui]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 4.0;
+    phrase.notes = {{60, 100, 0.0, 0.125}};
+    PresetMidiSequence changed;
+    int publications = 0;
+    for (const Point<int> size : {Point<int>(1120, 820), Point<int>(900, 640)}) {
+        PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+            changed = std::move(next);
+            ++publications;
+        });
+        editor.setSize(size.x, size.y);
+        for (auto* child : editor.getChildren()) {
+            if (child->getName() == "PresetMidiEditor.Tempo"
+                    || child->getName() == "PresetMidiEditor.Snap"
+                    || dynamic_cast<TextButton*>(child) != nullptr) {
+                REQUIRE(child->getY() == 8);
+                REQUIRE(child->getHeight() == 28);
+                REQUIRE(child->getBounds().getCentreY() == 22);
+            }
+            if (child->getName() == "PresetMidiEditor.Tempo") {
+                REQUIRE(child->getX() == 16);
+            }
+            if (dynamic_cast<TextButton*>(child) != nullptr) {
+                REQUIRE(editor.getWidth() - child->getRight() == 16);
+            }
+        }
+        const auto roll = editor.noteGrid();
+        const auto velocity = editor.velocityGrid();
+        const auto cc = editor.controlGrid();
+        REQUIRE(roll.getX() == 80.f);
+        REQUIRE((float) editor.getWidth() - roll.getRight() == 16.f);
+        for (const auto plot : {editor.miniMap(), editor.playbackRuler(), velocity, cc}) {
+            REQUIRE(plot.getX() == roll.getX());
+            REQUIRE(plot.getRight() == roll.getRight());
+        }
+        REQUIRE(velocity.getY() - roll.getBottom() == 4.f);
+        REQUIRE(cc.getY() - velocity.getBottom() == 4.f);
+        REQUIRE((float) editor.getHeight() - cc.getBottom() == 4.f);
+        REQUIRE(std::abs(roll.getHeight() / editor.pitchRow(60).getHeight() - 36.f) < 0.001f);
+        for (int pitch = 42; pitch <= 77; ++pitch) {
+            const auto row = editor.pitchRow(pitch);
+            REQUIRE(roll.contains(row));
+            const Point<float> at(roll.getX() + roll.getWidth() * 0.75f, row.getCentreY());
+            editor.mouseDown(pointer(editor, at));
+            editor.mouseUp(pointer(editor, at));
+            REQUIRE(changed.notes.back().pitch == pitch);
+            REQUIRE(changed.notes.back().startSeconds == 1.5);
+        }
+    }
+    REQUIRE(publications == 72);
+}
+
+TEST_CASE("Overview excludes automation while controller lanes retain it",
+        "[cycle-v2][preset][sequence][editor][ui]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence notes;
+    notes.notes = {{60, 100, 0.25, 0.5}};
+    auto automated = notes;
+    automated.controls = {{1, 8, 0.0}, {1, 120, 1.0}, {1, 40, 2.0}};
+    PresetMidiEditor plain(notes, {});
+    PresetMidiEditor withControls(automated, {});
+    const auto a = plain.createComponentSnapshot(plain.getLocalBounds());
+    const auto b = withControls.createComponentSnapshot(withControls.getLocalBounds());
+    const auto overview = plain.miniMap().toNearestInt();
+    for (int y = overview.getY(); y < overview.getBottom(); ++y) {
+        for (int x = overview.getX(); x < overview.getRight(); ++x) {
+            if (a.getPixelAt(x, y) != b.getPixelAt(x, y)) {
+                FAIL("Automation changed the notes-only overview");
+            }
+        }
+    }
+    const auto cc = plain.controlGrid().toNearestInt();
+    bool differs = false;
+    for (int y = cc.getY(); y < cc.getBottom() && !differs; ++y) {
+        for (int x = cc.getX(); x < cc.getRight(); ++x) {
+            differs |= a.getPixelAt(x, y) != b.getPixelAt(x, y);
+        }
+    }
+    REQUIRE(differs);
+}
+
+TEST_CASE("Overflowing controller lanes scroll and remain editable in compact windows",
+        "[cycle-v2][preset][sequence][editor][ui]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.notes = {{60, 100, 0.0, 0.5}};
+    PresetMidiSequence changed;
+    int publications = 0;
+    PresetMidiEditor editor(phrase, [&](PresetMidiSequence next) {
+        changed = std::move(next);
+        ++publications;
+    }, {}, {}, {}, {1, 2, 7, 11, 64, 71, 73, 74});
+    editor.setSize(900, 640);
+    ScrollBar* scroll = nullptr;
+    for (auto* child : editor.getChildren()) {
+        if (auto* bar = dynamic_cast<ScrollBar*>(child)) {
+            scroll = bar;
+        }
+    }
+    REQUIRE(scroll != nullptr);
+    REQUIRE(scroll->isVisible());
+    const auto roll = editor.noteGrid();
+    const auto velocity = editor.velocityGrid();
+    const auto first = editor.controlGrid(1);
+    REQUIRE(editor.controlGrid(74).getY() > (float) editor.getHeight());
+    MouseWheelDetails wheel {};
+    wheel.deltaY = -100.f;
+    for (int step = 0; step < 10; ++step) {
+        editor.mouseWheelMove(pointer(editor, first.getCentre()), wheel);
+    }
+    REQUIRE(scroll->getCurrentRangeStart() > 0.0);
+    REQUIRE(editor.noteGrid() == roll);
+    REQUIRE(editor.velocityGrid() == velocity);
+    const auto last = editor.controlGrid(74);
+    REQUIRE(last.getBottom() == 636.f);
+    const auto point = last.getRelativePoint(0.5f, 0.5f);
+    editor.mouseDown(pointer(editor, point));
+    editor.mouseDrag(pointer(editor, point.translated(20.f, -10.f)));
+    REQUIRE(publications == 0);
+    editor.mouseUp(pointer(editor, point));
+    REQUIRE(publications == 1);
+    REQUIRE(changed.controls.back().controller == 74);
+    REQUIRE(changed.controls.back().value > 64);
+    editor.setSize(1120, 1200);
+    REQUIRE(editor.controlGrid(74).getBottom() <= 1196.f);
 }
