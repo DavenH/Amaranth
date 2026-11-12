@@ -138,7 +138,7 @@ private:
     ReferenceAssetBrowser* assetBrowser {};
     std::unique_ptr<PatternBrowser> patternBrowser;
     SidebarLibraryToolbar toolbar { "Search presets..." };
-    juce::Label tagHeading;
+    juce::TextButton tagHeading { "Filter tags" };
     SidebarTagCloud tagCloud;
     juce::Viewport viewport;
     std::unique_ptr<PresetCardList> list;

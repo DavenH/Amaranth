@@ -65,6 +65,22 @@ def main():
             region = ','.join(str(round(bounds[k])) for k in ('x', 'y', 'width', 'height'))
             subprocess.run(['screencapture', '-x', '-R' + region, str(ROOT / '.context' / name)], check=True)
 
+        def first_preset_top():
+            return min(t['bounds']['y'] for t in targets()
+                       if t['id'].startswith('workspace.sidebar.preset.'))
+
+        assert not any(t['id'].startswith('workspace.sidebar.tag.') for t in targets())
+        collapsed_top = first_preset_top()
+        capture('filter-tags-collapsed.png')
+        native_click('workspace.sidebar.presetFilterToggle')
+        assert any(t['id'].startswith('workspace.sidebar.tag.') for t in targets())
+        assert first_preset_top() > collapsed_top
+        capture('filter-tags-expanded.png')
+        native_click('workspace.sidebar.presetFilterToggle')
+        assert not any(t['id'].startswith('workspace.sidebar.tag.') for t in targets())
+        assert abs(first_preset_top() - collapsed_top) < .001
+        assert json.loads(command(command='exportGraph')['json']) == graph
+
         node_targets = [t for t in targets() if t['kind'] == 'node']
         gain_height = next(t['bounds']['height'] for t in node_targets if t['nodeId'] == gain['id'])
         delay_height = next(t['bounds']['height'] for t in node_targets if t['nodeId'] == delay['id'])

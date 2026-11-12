@@ -176,3 +176,21 @@ Follow-up completed on 2026-11-11:
   decoding/cache policy. No new UI orchestration owner or rendering pass.
   Production style/diff review, architecture audit, code map and whitespace
   checks pass.
+
+## Collapsible preset filters
+
+The preset filter cloud now starts collapsed behind a 24px, keyboard-operable
+Filter tags disclosure. InlinePresetBrowser retains disclosure state across
+sidebar switches and library refreshes. Collapsing releases the cloud's height
+without clearing active tags or Favorites; the heading shows their active count.
+Hidden chips expose no automation targets. PresetBrowserLookAndFeel draws the
+standard caret and left-aligned label using its existing quiet-button treatment.
+
+Debug app/tests and Release app build. The 23 browser cases pass 375 assertions,
+including retained filtering, reclaimed list bounds, hidden targets, active count,
+and tab switching. Native disclosure clicks pass the same height/target checks
+without graph publication; the existing usability sequence also passes. Reviewed
+collapsed/expanded production-size captures under .context/filter-tags-*.png.
+InlinePresetBrowser grows 664->679 lines within its existing composition/layout
+responsibility; its header stays 154 lines. The LookAndFeel grows 98->113 lines
+with button rendering only. Architecture audit, code map and whitespace pass.

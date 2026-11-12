@@ -109,13 +109,20 @@ InlinePresetBrowser::InlinePresetBrowser(
     rename.setComponentID("workspace.sidebar.presetRename");
     rename.setTooltip("Rename the selected preset's display title");
     rename.onClick = [this] { renameSelected(); };
-    SidebarTagCloud::styleHeading(tagHeading);
+    tagHeading.setComponentID("workspace.sidebar.presetFilterToggle");
+    tagHeading.setClickingTogglesState(true);
+    tagHeading.getProperties().set("disclosure", true);
+    tagHeading.getProperties().set("quietAction", true);
+    tagHeading.setColour(juce::TextButton::textColourOffId, CanvasChromePalette::mutedText);
+    tagHeading.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
+    tagHeading.setTooltip("Expand or collapse preset tag filters");
+    tagHeading.onClick = [this] { updateVisibility(); };
     addAndMakeVisible(tagHeading);
     tagCloud.setComponentID("workspace.sidebar.presetTags");
     tagCloud.setFavoritesAvailable(favorites != nullptr);
     tagCloud.setChangeCallback([this] { applyTagFilter(); });
     tagCloud.setEditCallback([this](const juce::String& tag) { toggleSelectedTag(tag); });
-    addAndMakeVisible(tagCloud);
+    addChildComponent(tagCloud);
     remove.setVisible(false);
     remove.setComponentID("workspace.sidebar.delete");
     remove.setTooltip("Move the selected preset to Trash");
@@ -271,9 +278,12 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
                     (float) toolbar.getX(), (float) toolbar.getY()) });
         }
         targets.push_back({ "workspace.sidebar.browse", browse.getBounds().toFloat() });
-        for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
-            targets.push_back({ id, bounds.translated(
-                    (float) tagCloud.getX(), (float) tagCloud.getY()) });
+        targets.push_back({ tagHeading.getComponentID(), tagHeading.getBounds().toFloat() });
+        if (tagCloud.isVisible()) {
+            for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
+                targets.push_back({ id, bounds.translated(
+                        (float) tagCloud.getX(), (float) tagCloud.getY()) });
+            }
         }
         for (const auto& target : list->pointerTargetsForAutomation(
                 viewport.getBounds(), viewport.getViewPositionY())) {
@@ -357,11 +367,13 @@ void InlinePresetBrowser::resized() {
     browse.setBounds(footer.withWidth(juce::jmin(148, footer.getWidth())));
     toolbar.setBounds(bounds.removeFromTop(SidebarLibraryToolbar::height));
     bounds.reduce(6, 0);
-    tagHeading.setBounds(bounds.removeFromTop(16));
-    bounds.removeFromTop(4);
-    const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());
-    tagCloud.setBounds(bounds.removeFromTop(cloudHeight));
-    bounds.removeFromTop(8);
+    tagHeading.setBounds(bounds.removeFromTop(24));
+    if (tagHeading.getToggleState()) {
+        bounds.removeFromTop(4);
+        const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());
+        tagCloud.setBounds(bounds.removeFromTop(cloudHeight));
+    }
+    bounds.removeFromTop(6);
     viewport.setBounds(bounds);
     list->setSize(
             juce::jmax(1, viewport.getMaximumVisibleWidth()),
@@ -429,6 +441,9 @@ void InlinePresetBrowser::updateAvailableTags() {
 }
 
 void InlinePresetBrowser::applyTagFilter() {
+    const int activeFilters = tagCloud.selectedTags().size() + (tagCloud.favoritesOnly() ? 1 : 0);
+    tagHeading.setButtonText(activeFilters > 0
+            ? "Filter tags (" + String(activeFilters) + ")" : "Filter tags");
     std::vector<int> filtered;
     std::vector<juce::StringArray> tags;
     filtered.reserve(searchResults.size());
@@ -632,7 +647,7 @@ void InlinePresetBrowser::updateVisibility() {
     }
     toolbar.setVisible(showingPresets);
     tagHeading.setVisible(showingPresets);
-    tagCloud.setVisible(showingPresets);
+    tagCloud.setVisible(showingPresets && tagHeading.getToggleState());
     viewport.setVisible(showingPresets);
     browse.setVisible(showingPresets);
     if (patternBrowser != nullptr) {

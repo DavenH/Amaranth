@@ -293,6 +293,16 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(create->getX() - search->getX()
             == search->getRight() - rename->getRight());
     REQUIRE(create->getButtonText() == "+ NEW");
+    auto* filterToggle = dynamic_cast<Button*>(
+            browser.findChildWithID("workspace.sidebar.presetFilterToggle"));
+    REQUIRE(filterToggle != nullptr);
+    REQUIRE_FALSE(tagCloud->isVisible());
+    const int collapsedListTop = viewport->getY();
+    REQUIRE(targetBounds(browser, "workspace.sidebar.tag.keys").isEmpty());
+    filterToggle->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(tagCloud->isVisible());
+    REQUIRE(viewport->getY() > collapsedListTop);
     REQUIRE(tagCloud->getY() > search->getY());
     REQUIRE_FALSE(findDescendantWithID(browser, "workspace.sidebar.hero"));
     create->triggerClick();
@@ -332,6 +342,17 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     }
     REQUIRE(browser.visiblePresetCount() > 0);
     REQUIRE(browser.visiblePresetCount() < unfilteredCount);
+    const int filteredCount = browser.visiblePresetCount();
+    filterToggle->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE_FALSE(tagCloud->isVisible());
+    REQUIRE(viewport->getY() == collapsedListTop);
+    REQUIRE(browser.visiblePresetCount() == filteredCount);
+    REQUIRE(filterToggle->getButtonText() == "Filter tags (1)");
+    filterToggle->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(tagCloud->selectedTags().contains("Keys"));
+
     REQUIRE(clickTag(*tagCloud, "Keys"));
     REQUIRE(tagCloud->selectedTags().isEmpty());
 
@@ -443,6 +464,10 @@ TEST_CASE("Preset row star and Favorites filter do not load the sound",
     auto* list = findDescendantWithID(browser, "workspace.sidebar.list");
     REQUIRE(search != nullptr);
     REQUIRE(filter != nullptr);
+    auto* toggle = dynamic_cast<Button*>(browser.findChildWithID("workspace.sidebar.presetFilterToggle"));
+    REQUIRE(toggle != nullptr);
+    toggle->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(list != nullptr);
     search->setText("kicker", true);
     for (int attempt = 0; attempt < 30 && browser.visiblePresetCount() != 1; ++attempt) {
@@ -595,6 +620,10 @@ TEST_CASE("Preset tag cloud separates filtering from selected membership and lef
             MessageManager::getInstance()->runDispatchLoopUntil(50);
         }
         REQUIRE(browser.visiblePresetCount() == 2);
+        auto* toggle = dynamic_cast<Button*>(findDescendantWithID(browser, "workspace.sidebar.presetFilterToggle"));
+        REQUIRE(toggle != nullptr);
+        toggle->triggerClick();
+        MessageManager::getInstance()->runDispatchLoopUntil(40);
         auto* cloud = dynamic_cast<SidebarTagCloud*>(findDescendantWithID(browser, "workspace.sidebar.presetTags"));
         REQUIRE(cloud != nullptr);
         const auto blue = cloud->tagAccent("Bass");
