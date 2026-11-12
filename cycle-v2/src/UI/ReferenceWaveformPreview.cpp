@@ -215,7 +215,7 @@ WaveformPreviewSource::WaveformPreviewSource(Buffer<float> samples) :
         mono(1, samples.size()) {
     Buffer<float> normalized(mono, 0);
     samples.copyTo(normalized);
-    silent = normalizeWaveform(normalized) == 0.f;
+    silent = normalized.empty() || (normalized.max() == 0.f && normalized.min() == 0.f);
     zeroCrossings = PeakCounter::findZeroCrossings(normalized, 0);
 }
 

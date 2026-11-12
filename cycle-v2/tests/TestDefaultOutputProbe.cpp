@@ -7,6 +7,10 @@
 
 #include "Graph/DefaultOutputProbeResolver.h"
 #include "Graph/GraphNodeStateEditor.h"
+#include "Graph/GraphDocument.h"
+#include "Graph/GraphCommandDispatcher.h"
+#include <catch2/catch_approx.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include "Runtime/SignalProbeWaveformCapture.h"
 #include "Graph/GraphCompiler.h"
 #include "Graph/GraphNodeFactory.h"
@@ -15,6 +19,8 @@
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphPreviewExecutor.h"
 #include "UI/PresetPreviewGenerator.h"
+#include "UI/NodePreviewRenderer.h"
+#include "UI/ReferenceWaveformPreview.h"
 
 using namespace CycleV2;
 using namespace juce;
@@ -366,4 +372,102 @@ TEST_CASE("Default output waveform captures include gain before the wet suffix",
     }
     REQUIRE(energy > 0.01f);
     REQUIRE(error / energy < 1e-5f);
+}
+
+TEST_CASE("Gain changes preserve their level in published output Spy data",
+        "[cycle-v2][gain-spy]") {
+    const auto file = File(CYCLE_V2_SOURCE_DIR).getChildFile("content/presets/acidic-2.cyclegraph");
+    const auto loaded = GraphSerializer().loadJsonString(file.loadFileAsString());
+    REQUIRE(loaded.succeeded());
+    auto graph = loaded.graph;
+    const auto gain = std::find_if(graph.getNodes().begin(), graph.getNodes().end(),
+            [](const auto& node) { return node.kind == NodeKind::Gain; });
+    REQUIRE(gain != graph.getNodes().end());
+    const auto id = gain->id;
+    REQUIRE(GraphNodeStateEditor().setNodeParameter(graph, id, "gain", "Gain", "0.5").succeeded());
+    GraphDocument document(graph);
+    GraphCommandDispatcher commands(document);
+    const bool attachSpy = GENERATE(false, true);
+    String spyId;
+    if (attachSpy) {
+        const auto edge = std::find_if(document.graph().getEdges().begin(), document.graph().getEdges().end(),
+                [&](const auto& candidate) { return candidate.sourceNodeId == id; });
+        REQUIRE(edge != document.graph().getEdges().end());
+        REQUIRE(commands.toggleSignalProbe((size_t) std::distance(document.graph().getEdges().begin(), edge)).succeeded());
+        const auto spy = std::find_if(document.graph().getSignalProbes().begin(), document.graph().getSignalProbes().end(),
+                [&](const auto& candidate) { return candidate.sourceNodeId == id; });
+        REQUIRE(spy != document.graph().getSignalProbes().end());
+        spyId = spy->id;
+    }
+    GraphPresentationModel presentation;
+    REQUIRE(presentation.refresh(document.graph(), document.revision()));
+    const auto unity = presentation.previewResult();
+    REQUIRE(unity.defaultOutput.has_value());
+    REQUIRE(unity.defaultOutputSpectrum.has_value());
+    const auto peak = [](const auto& values) {
+        float result {};
+        for (const float value : values) {
+            result = jmax(result, std::abs(value));
+        }
+        return result;
+    };
+    const float timePeak = peak(unity.defaultOutput->values);
+    const float spectralPeak = peak(unity.defaultOutputSpectrum->values);
+    REQUIRE(timePeak > 0.f);
+    REQUIRE(spectralPeak > 0.f);
+    REQUIRE(commands.setNodeParameter(id, "gain", "Gain", "0.4").succeeded());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    const auto& quiet = presentation.previewResult();
+    const float scale = CycleDsp::outputGain(0.4f);
+    REQUIRE(peak(quiet.defaultOutput->values) / timePeak == Catch::Approx(scale).margin(1e-4));
+    REQUIRE(peak(quiet.defaultOutputSpectrum->values) / spectralPeak == Catch::Approx(scale).margin(1e-4));
+    const auto probePeak = [&](const GraphPreviewResult& preview) {
+        const auto found = std::find_if(preview.probes.begin(), preview.probes.end(),
+                [&](const auto& candidate) { return candidate.probeId == spyId; });
+        REQUIRE(found != preview.probes.end());
+        return peak(found->values);
+    };
+    if (attachSpy) {
+        REQUIRE(probePeak(quiet) / probePeak(unity) == Catch::Approx(scale).margin(1e-4));
+    }
+    for (const auto& original : unity.probes) {
+        if (original.probeId == spyId) {
+            continue;
+        }
+        const auto unchanged = std::find_if(quiet.probes.begin(), quiet.probes.end(),
+                [&](const auto& candidate) { return candidate.probeId == original.probeId; });
+        REQUIRE(unchanged != quiet.probes.end());
+        REQUIRE(unchanged->values == original.values);
+    }
+    const auto imageFor = [](const auto& preview) {
+        return NodePreviewRenderer::createRuntimeHeatmapImage({
+                "spy", PreviewModuleRole::SignalSpy, preview.values, {}, preview.gridColumns,
+                preview.gridRows, preview.domain, preview.frequencySampling, preview.frequencyMidiNote });
+    };
+    for (const bool spectral : { false, true }) {
+        const auto bright = imageFor(spectral ? *unity.defaultOutputSpectrum : *unity.defaultOutput);
+        const auto dim = imageFor(spectral ? *quiet.defaultOutputSpectrum : *quiet.defaultOutput);
+        REQUIRE(bright.isValid());
+        REQUIRE(dim.isValid());
+        bool different = false;
+        for (int y = 0; y < bright.getHeight(); ++y) {
+            for (int x = 0; x < bright.getWidth(); ++x) {
+                different = different || bright.getPixelAt(x, y) != dim.getPixelAt(x, y);
+            }
+        }
+        REQUIRE(different);
+    }
+    REQUIRE(document.undo());
+    REQUIRE(presentation.refresh(document.graph(), document.revision(), document.lastChange()));
+    REQUIRE(peak(presentation.previewResult().defaultOutput->values) == Catch::Approx(timePeak));
+}
+
+
+TEST_CASE("Signal waveform geometry retains measured amplitude", "[cycle-v2][gain-spy]") {
+    std::vector<float> samples { 0.f, 0.1f, -0.2f, 0.05f, 0.f };
+    WaveformPreviewSource source(Buffer<float>(samples.data(), (int) samples.size()));
+    REQUIRE_FALSE(source.silent);
+    for (size_t index = 0; index < samples.size(); ++index) {
+        REQUIRE(source.mono.getSample(0, (int) index) == samples[index]);
+    }
 }

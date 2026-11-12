@@ -9,6 +9,7 @@
 #include "Runtime/GraphPresentationModel.h"
 #include "Runtime/GraphPresentationFacts.h"
 #include "UI/PresetPreviewGenerator.h"
+#include "Runtime/DefaultOutputPreview.h"
 #include "Graph/DefaultOutputProbeResolver.h"
 #include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromePalette.h"
@@ -140,7 +141,7 @@ bool SignalProbeDetailState::capture(
     }
     const bool output = id == DefaultOutputProbeResolver::probeId;
     if (output || preview->domain == PortDomain::TimeSignal && view == PresetPreviewView::Spectrum) {
-        *preview = PresetPreviewGenerator::forView(*preview, view);
+        *preview = DefaultOutputPreview::forView(*preview, view);
     }
 
     NodeRenderSemantic semantic;

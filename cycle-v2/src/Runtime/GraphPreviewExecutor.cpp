@@ -486,10 +486,6 @@ void appendProbePreviews(
             ? std::optional<GraphPreviewResult::SignalProbePreview>(
                     DefaultOutputPreview::spectrum(*result.defaultOutput))
             : std::nullopt;
-    if (result.defaultOutput.has_value() && result.defaultOutput->connected) {
-        result.defaultOutput = DefaultOutputPreview::normalizedTime(
-                *result.defaultOutput);
-    }
 
     result.probes.clear();
     result.probes.reserve(probes.size());
@@ -532,11 +528,7 @@ GraphPreviewResult::SignalProbePreview GraphPreviewExecutor::captureProbe(
             break;
         }
     }
-    auto preview = captureCompiledProbe(plan, source, address);
-    if (address.probeId == DefaultOutputProbeResolver::probeId && preview.connected) {
-        preview = DefaultOutputPreview::normalizedTime(preview);
-    }
-    return preview;
+    return captureCompiledProbe(plan, source, address);
 }
 
 GraphPreviewResult GraphPreviewExecutor::render(const GraphExecutionPlan& plan, size_t pointCount) const {

@@ -194,3 +194,45 @@ collapsed/expanded production-size captures under .context/filter-tags-*.png.
 InlinePresetBrowser grows 664->679 lines within its existing composition/layout
 responsibility; its header stays 154 lines. The LookAndFeel grows 98->113 lines
 with button rendering only. Architecture audit, code map and whitespace pass.
+
+
+## Gain and downstream Spy amplitude regression
+
+Reproduced: editing Gain from unity to unit 0.4 publishes the same output Spy
+peak (ratio 1.0 instead of 0.5488117). Automatic per-capture contrast normalization
+cancels signal-level changes. Keep monitoring data in signal units and apply
+fixed display transfer functions for cyclograms, harmonic spectra and waveforms.
+Library JPEG generation may normalize explicitly; reference-file audition keeps
+its existing normalization. Retain signal amplitude through compact, expanded,
+tray and exported Spy rendering, plus toolbar waveform geometry. Do not introduce
+a second gain multiplier. Preserve realtime smoothing; analysis grids use the
+authored target rather than one audio block's ramp endpoint. Verify published amplitude, rendered
+pixels, gesture commit, undo, upstream isolation and reusable waveform caches.
+
+
+Gain/Spy regression completed on 2026-11-11:
+
+- The default output tap is now an observed dependency even when explicit Spies
+  observe only upstream nodes. Gain edits schedule its traversal and publication.
+- Monitoring data keeps its amplitude. DefaultOutputPreview owns level-preserving
+  view conversion; compact, expanded, comparison and exported Spies use fixed
+  transfers. PresetPreviewGenerator alone normalizes static library images.
+  Signal waveform sources retain sample amplitude; reference-file normalization
+  stays with the existing StereoBuffer path. The obsolete normalizedTime API and
+  live uses of the asset-preview normalization policy are deleted.
+- Gain's analysis grid uses its target value, while block audio keeps its smooth
+  ramp. No realtime allocations, traversal duplication or synthetic gain stage.
+- Regression first failed with peak ratio 1.0 instead of 0.5488117. It now checks
+  exact time/spectral levels, explicit/default taps, upstream isolation, pixels
+  and undo, both with and without a Spy directly observing Gain. Native drag to
+  0.15 changes exported pixels; undo restores the original PNG byte-for-byte.
+- Debug app/tests and Release app build. 25 focused cases / 54,096 assertions
+  pass. Native evidence: .context/gain-spy-native/{unity,quiet,undo}.png and
+  results.json. The scratch-cable fixture's pre-existing empty-mesh failure was
+  reproduced independently on b87afb37; no full-suite-green claim is made.
+- Architecture/style/whitespace/code-map checks pass. NodePreviewRenderer shrinks
+  1039->1028 lines by removing adaptive normalization; its existing rendering
+  owner retains transfer/heatmap work. GraphPreviewExecutor shrinks 680->672 by
+  removing default-only scaling; capture/extraction remain there. The 429-line
+  PresentationPreviewRenderer changes publication only. The observation builder
+  adds one compiled tap lookup, bounded by its existing observed-probe work.

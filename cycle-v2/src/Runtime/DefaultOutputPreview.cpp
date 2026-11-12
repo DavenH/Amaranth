@@ -1,14 +1,18 @@
 #include "Runtime/DefaultOutputPreview.h"
 
 #include "Nodes/FFT/FftGridwiseDsp.h"
-#include "Runtime/PreviewContrastNormalization.h"
 
 namespace CycleV2 {
 
-GraphPreviewResult::SignalProbePreview DefaultOutputPreview::normalizedTime(
-        const GraphPreviewResult::SignalProbePreview& preview) {
+GraphPreviewResult::SignalProbePreview DefaultOutputPreview::forView(
+        const GraphPreviewResult::SignalProbePreview& preview, PresetPreviewView view) {
+    if (view == PresetPreviewView::Spectrum) {
+        return spectrum(preview);
+    }
     auto result = preview;
-    PreviewContrastNormalization::apply(result.values, 3.f);
+    if (view != PresetPreviewView::Waveform) {
+        result.waveform.reset();
+    }
     return result;
 }
 
@@ -49,11 +53,6 @@ GraphPreviewResult::SignalProbePreview DefaultOutputPreview::spectrum(
                 column.magnitude.block.samples.begin(),
                 column.magnitude.block.samples.end());
     }
-    PreviewContrastNormalization::applySpectralMagnitude(
-            result.values,
-            result.gridColumns,
-            result.gridRows,
-            1.f);
     return result;
 }
 

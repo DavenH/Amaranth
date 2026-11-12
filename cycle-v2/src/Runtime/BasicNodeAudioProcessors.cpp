@@ -215,7 +215,7 @@ public:
             auto& grid = payloadTraversalGrid(output, channel);
             if (grid.isValid()) {
                 Buffer<float>(grid.values.data(), (int) grid.values.size())
-                        .mul(gain.getCurrentValue());
+                        .mul(gain.getTargetValue());
             }
         }
 

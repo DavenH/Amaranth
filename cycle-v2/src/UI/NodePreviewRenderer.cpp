@@ -10,7 +10,6 @@
 #include "UI/ReferenceWaveformPreview.h"
 #include "Graph/MeshDimensionality.h"
 
-#include "Runtime/PreviewContrastNormalization.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
@@ -183,13 +182,6 @@ std::vector<float> mappedSurface(
                 preview.frequencyMidiNote);
     }
     if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
-        if (signalSpy) {
-            PreviewContrastNormalization::applySpectralMagnitude(
-                    surface,
-                    preview.gridColumns,
-                    preview.gridRows,
-                    1.f);
-        }
         return profile.mapSpectrum2DGridToDisplay(
                 surface,
                 preview.gridColumns,
@@ -210,11 +202,10 @@ std::vector<float> mappedSurface(
         const auto material = profile.getSurfaceStyle().surfaceMaterial();
         if (ScalarSurfaceProgram::isProgram(material)
                 || material.palette == ScalarSurfacePalette::Greyscale) {
-            PreviewContrastNormalization::apply(surface, 1.f);
-            buffer.mul(0.5f).add(0.5f);
+            buffer.clip(-1.f, 1.f).mul(0.5f).add(0.5f);
             return surface;
         }
-        PreviewContrastNormalization::apply(surface, 3.f);
+        buffer.mul(3.f);
         std::vector<float> magnitude = surface;
         Buffer<float> magnitudeBuffer(magnitude.data(), (int) magnitude.size());
         magnitudeBuffer.abs().add(1.f);
@@ -495,8 +486,6 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
         data.midiNote = preview.frequencyMidiNote;
         if (usesHarmonicLanes(preview)) {
             data.surface = values;
-            PreviewContrastNormalization::applySpectralMagnitude(
-                    data.surface, preview.gridColumns, preview.gridRows, 1.f);
             data.surface = profile.mapSpectrumValuesToDisplay(
                     data.surface, preview.gridColumns, preview.gridRows);
             data.firstHarmonicRow = 1; // FFT bins include DC; Trimesh lanes start at harmonic one.

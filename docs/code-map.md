@@ -83,6 +83,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime audio/cursors and pre-wet monitoring; GraphPreviewTiming measures PreviewTraversal tails.
 - `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Scoped preview extraction, full-band spectrum sizing and view-specific row reduction.
 - `cycle-v2/src/Runtime/SignalProbeWaveformCapture.h` — Snapshot-scoped continuous Spy audition reuse and compatible multi-probe capture.
+- `scripts/test_cycle_v2_gain_spies.py` — Native Gain-to-Spy amplitude and undo regression with exported frames.
 - `cycle-v2/src/Runtime/NodeModuleRegistry.h` — Registration boundary for node model, DSP, preview, and view modules.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.

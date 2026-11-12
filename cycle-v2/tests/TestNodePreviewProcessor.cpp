@@ -591,7 +591,7 @@ TEST_CASE("Spectrum Spy harmonics retain solid lanes at different notes and disp
     }
 }
 
-TEST_CASE("Spectral spies normalize visible magnitude contrast across gain",
+TEST_CASE("Spectral spies preserve visible magnitude differences across gain",
         "[cycle-v2][runtime][probe][spectral][ui]") {
     const auto render = [](float gain) {
         NodePreviewResult spy;
@@ -611,7 +611,7 @@ TEST_CASE("Spectral spies normalize visible magnitude contrast across gain",
     const Image loud = render(0.5f);
     REQUIRE(quiet.isValid());
     REQUIRE(loud.isValid());
-    REQUIRE(imagesMatch(quiet, loud));
+    REQUIRE_FALSE(imagesMatch(quiet, loud));
 }
 
 TEST_CASE("Disabled compact effect previews are greyscale",

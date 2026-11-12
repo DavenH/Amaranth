@@ -268,7 +268,7 @@ void PresentationPreviewRenderer::publishProbePreview(
     auto& result = snapshot.previewResult;
     if (preview.probeId == DefaultOutputProbeResolver::probeId) {
         result.defaultOutputSpectrum = spectrum;
-        result.defaultOutput = DefaultOutputPreview::normalizedTime(preview);
+        result.defaultOutput = std::move(preview);
         return;
     }
     for (size_t index = 0; index < result.probes.size(); ++index) {

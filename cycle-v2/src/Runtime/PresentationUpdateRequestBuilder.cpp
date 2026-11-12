@@ -113,6 +113,15 @@ CausalUpdateRequest PresentationUpdateRequestBuilder::build(
             observedNodeIds.push_back(probe.sourceNodeId);
         }
     }
+    if (plan.defaultOutputProbe.has_value()) {
+        const int index = plan.defaultOutputProbe->sourceStepIndex;
+        if (index >= 0 && (size_t) index < plan.steps.size()) {
+            const auto& id = plan.steps[(size_t) index].nodeId;
+            if (std::find(observedNodeIds.begin(), observedNodeIds.end(), id) == observedNodeIds.end()) {
+                observedNodeIds.push_back(id);
+            }
+        }
+    }
     const bool filterToActiveProbes = scope != PresentationRefreshScope::LocalEditor
             && !observedNodeIds.empty();
     return {

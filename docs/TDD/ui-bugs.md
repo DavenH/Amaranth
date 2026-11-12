@@ -1470,3 +1470,12 @@ reproduces SIGSEGV on that baseline (`.context/polish-baseline-crash.log`).
 Several broader graph fixtures also reference missing/changed factory presets.
 These fixtures need current populated domain data; new output regressions use
 populated factory or mesh-owner fixtures. No production fallback is justified.
+
+
+### Existing scratch-cable Spy test fixture has empty source data
+
+2026-11-11: `Deleting a scratch cable refreshes an observed spectral Trimesh`
+fails at TestNodeCanvasAuthoring.cpp:422 because attached/detached captures both
+contain only zeroes. Independently reproduced on b87afb37 with its separate
+baseline executable; evidence: .context/gain-spy-baseline-debt.log. Encountered
+while checking Gain-to-Spy amplitude; no production workaround added.

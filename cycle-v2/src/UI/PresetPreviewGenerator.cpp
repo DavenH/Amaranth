@@ -3,6 +3,7 @@
 #include "UI/PresetPreviewGenerator.h"
 
 #include "Runtime/DefaultOutputPreview.h"
+#include "Runtime/PreviewContrastNormalization.h"
 #include "UI/CanvasChromePalette.h"
 #include "UI/NodePreviewRenderer.h"
 #include "UI/ReferenceWaveformPreview.h"
@@ -66,13 +67,16 @@ size_t PresetPreviewGenerator::sourceRowCountForView(
 GraphPreviewResult::SignalProbePreview PresetPreviewGenerator::forView(
         const GraphPreviewResult::SignalProbePreview& timePreview,
         PresetPreviewView view) {
+    auto result = DefaultOutputPreview::forView(timePreview, view);
     if (view == PresetPreviewView::Spectrum) {
-        return DefaultOutputPreview::spectrum(timePreview);
-    }
-    auto result = view == PresetPreviewView::Time
-            ? DefaultOutputPreview::normalizedTime(timePreview) : timePreview;
-    if (view != PresetPreviewView::Waveform) {
-        result.waveform.reset();
+        PreviewContrastNormalization::applySpectralMagnitude(
+                result.values, result.gridColumns, result.gridRows, 1.f);
+    } else if (view == PresetPreviewView::Time) {
+        PreviewContrastNormalization::apply(result.values, 1.f);
+    } else if (result.waveform != nullptr) {
+        auto samples = std::make_shared<std::vector<float>>(*result.waveform);
+        PreviewContrastNormalization::apply(*samples, 1.f);
+        result.waveform = std::move(samples);
     }
     return result;
 }
