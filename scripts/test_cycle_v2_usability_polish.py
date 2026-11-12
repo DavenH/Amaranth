@@ -27,6 +27,15 @@ def main():
         delay = next(n for n in graph['nodes'] if n['kind'] == 'delay')
         assert outgoing[gain['id']] == delay['id']
         assert outgoing[delay['id']] == output['id']
+        nodes = {n['id']: n for n in graph['nodes']}
+        for node in nodes.values():
+            edges = [e for e in graph['edges'] if e['sourceNodeId'] == node['id']]
+            if node['kind'] != 'envelope' or len(edges) != 1:
+                continue
+            consumer = nodes[edges[0]['destNodeId']]
+            if edges[0].get('attachmentType') == 'scratchEnvelope' and consumer['kind'] == 'trilinearMesh':
+                assert node['position']['y'] == consumer['position']['y']
+
         deletion = session.command({'command': 'deleteNode', 'nodeId': output['id']}, require_ok=False)
         assert not deletion['result']['ok']
         assert json.loads(command(command='exportGraph')['json']) == graph
@@ -56,6 +65,10 @@ def main():
             region = ','.join(str(round(bounds[k])) for k in ('x', 'y', 'width', 'height'))
             subprocess.run(['screencapture', '-x', '-R' + region, str(ROOT / '.context' / name)], check=True)
 
+        node_targets = [t for t in targets() if t['kind'] == 'node']
+        gain_height = next(t['bounds']['height'] for t in node_targets if t['nodeId'] == gain['id'])
+        delay_height = next(t['bounds']['height'] for t in node_targets if t['nodeId'] == delay['id'])
+        assert abs(gain_height - delay_height) < .001
         closed = area('canvas')['bounds']
         assert closed['height'] == area('workspace')['bounds']['height']
         assert target('comparison.drop')['bounds']['width'] == 190

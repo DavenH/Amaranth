@@ -908,7 +908,7 @@ NodeDefinitionRegistry::NodeDefinitionRegistry() {
                     .help("Sets the signal level. Put Gain before wet effects to leave their tails audible.")
                     .globalProcessing()
                     .runtime(AudioModuleRole::Gain, PreviewModuleRole::OutputMeters)
-                    .presentation({}, { 190.f, 160.f })
+                    .presentation({}, { 190.f, 194.f })
                     .finish(),
             buildDefinition(definition("globalOutput", NodeKind::GlobalOutput, "Global Out", "audio output", "globalOutput",
                     { input("time", "Time L/R", PortDomain::TimeSignal, ChannelLayout::LinkedStereo) }, {}))

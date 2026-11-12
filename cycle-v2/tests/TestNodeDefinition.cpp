@@ -87,7 +87,8 @@ TEST_CASE("Gain owns a unity-default level independently of Global Out", "[cycle
     REQUIRE(node.parameters.front().id == "gain");
     REQUIRE(node.parameters.front().value == "0.5");
     REQUIRE(node.bounds.getWidth() == 190.f);
-    REQUIRE(node.bounds.getHeight() == 160.f);
+    REQUIRE(node.bounds.getHeight() == GraphNodeFactory().createNode(NodeKind::Delay, "delay", {}).bounds.getHeight());
+    REQUIRE(node.bounds.getHeight() == GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", {}).bounds.getHeight());
 }
 
 TEST_CASE("Global audio graph nodes expose fixed singleton contracts",

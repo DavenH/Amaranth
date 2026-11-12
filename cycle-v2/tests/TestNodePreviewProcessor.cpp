@@ -1135,7 +1135,7 @@ TEST_CASE("Output meters report captured mono and stereo peaks", "[cycle-v2][run
     REQUIRE(stereoContext.secondary == std::vector<float> { 1.f, 1.f, 1.f });
 }
 
-TEST_CASE("Output gain dial stays compact between symmetric stereo meters", "[cycle-v2][ui][output]") {
+TEST_CASE("Gain dial stays compact with paired stereo meters on its right", "[cycle-v2][ui][output]") {
     for (const auto area : { Rectangle<float>(0.f, 0.f, 72.f, 64.f),
             Rectangle<float>(0.f, 0.f, 190.f, 104.f), Rectangle<float>(0.f, 0.f, 320.f, 220.f) }) {
         const auto layout = OutputMeterPresentation::layout(area);
@@ -1145,9 +1145,14 @@ TEST_CASE("Output gain dial stays compact between symmetric stereo meters", "[cy
         REQUIRE(layout.left.getWidth() == Catch::Approx(layout.right.getWidth()));
         REQUIRE(layout.gainHitTarget.getWidth() == layout.gainHitTarget.getHeight());
         REQUIRE(layout.gainHitTarget.getWidth() <= 58.f);
-        REQUIRE(layout.gainHitTarget.getCentreX() == Catch::Approx(area.getCentreX()));
-        REQUIRE(layout.gainHitTarget.getX() - layout.left.getRight()
-                == Catch::Approx(layout.right.getX() - layout.gainHitTarget.getRight()));
+        REQUIRE(layout.gainHitTarget.getRight() < layout.left.getX());
+        REQUIRE(layout.left.getRight() < layout.right.getX());
+        REQUIRE(layout.left.getY() == layout.right.getY());
+        REQUIRE(layout.left.getHeight() == layout.right.getHeight());
+        const auto group = layout.gainHitTarget.getUnion(layout.gainLabel).getUnion(layout.right);
+        REQUIRE(group.getCentreX() == Catch::Approx(area.getCentreX()));
+        REQUIRE(group.getCentreY() == Catch::Approx(area.getCentreY()));
+        REQUIRE(layout.gainLabel.getCentreX() == layout.gainHitTarget.getCentreX());
         REQUIRE(layout.gainLabel.getY() >= layout.gainHitTarget.getBottom());
         const auto low = OutputMeterPresentation::gainIndicatorBounds(area, 0.f);
         const auto unity = OutputMeterPresentation::gainIndicatorBounds(area, 0.5f);

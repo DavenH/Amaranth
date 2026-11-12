@@ -1306,12 +1306,6 @@ void NodeCanvasPresentation::paintNode(
                 : existingReservation;
         Rectangle<float> titleBounds = header.reduced(13.f * zoom, 4.f * zoom)
                 .withTrimmedRight(titleRightReservation * zoom);
-        if (node.kind == NodeKind::Gain) {
-            const Rectangle<float> speaker = Rectangle<float>(28.f * zoom, 28.f * zoom)
-                    .withCentre({ header.getX() + 27.f * zoom, header.getCentreY() });
-            NodeIconRenderer::paint(graphics, node.kind, speaker, 1.f);
-            titleBounds = titleBounds.withTrimmedLeft(40.f * zoom);
-        }
         graphics.drawText(
                 labelForNodeKind(node.kind),
                 titleBounds,

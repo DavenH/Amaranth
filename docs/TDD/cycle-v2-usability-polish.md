@@ -130,3 +130,49 @@ NodeDefinition 1010->1025 remains the declarative registry. NodeCanvas.h
 These additions stay with their existing responsibilities; new card and
 migration policy live in focused owners. Existing large-file extraction work
 remains tracked in refactors.md.
+
+
+## Gain and preset hierarchy follow-up
+
+Match Gain's fixed height to Delay/Reverb (194 world units); retain its width.
+Place a compact knob and its value together, with a paired stereo meter to their
+right. Center the occupied group in the body; keep the existing relative drag,
+fine adjustment, semantic command, and undo behavior. Remove the redundant Gain
+header symbol while retaining the normal global-processing and explanation
+controls. NodeDefinition owns natural sizing; OutputMeterPresentation owns the
+shared paint/hit geometry.
+
+PresetThumbnailCache desaturates decoded library thumbnails once in its existing
+worker, retaining cache/revision handling and authored preview data. The active
+canvas and toolbar keep their semantic colors. No per-paint image conversion.
+
+The one-time align_cycle_v2_scratch_envelopes.py migration changes only envelope
+position.y when an explicit scratch attachment targets a Trimesh and that Trimesh
+is its only consumer. Count consumer identities, not just edges. Preserve shared
+and Voice Context default envelopes, x coordinates, graph versions, DSP/models,
+metadata and embedded previews. Reuse the existing scalar JSON encoding and
+preserve all other source bytes; loading never forces a user's layout. Verify semantic equivalence after applying
+just those y edits, rerun for idempotence, and preserve user-owned Trombone edits.
+
+
+Follow-up completed on 2026-11-11:
+
+- 110 envelopes aligned in 77 factory presets. Every diff changes only the
+  intended position.y token; 5 Python cases cover content/text preservation,
+  idempotence, shared/default envelopes, other uses, and multiple routes to one
+  consumer. The second migration pass reports zero changes. Trombone is intact.
+- Debug app/tests and Release app build. 39 focused C++ cases / 2,499 assertions
+  pass, including actual cached monochrome pixels, Gain/FX height equality,
+  centered control-group geometry, meter ordering, live gain and undo.
+- Native production/compact captures confirm hierarchy, aligned scratch ports,
+  meter grouping and removed header symbol. Native knob drag and undo pass;
+  the full usability fixture still verifies tray, Trash, endpoint protection and
+  released cursor/cache behavior. Evidence: gain-refinement-before.png,
+  gain-refinement-after.png, gain-refinement-compact.png and
+  gain-refinement-native-results.json under .context/.
+- NodeCanvasPresentation shrinks 1545->1539 lines by deleting the header branch;
+  NodeDefinition stays 1025 declarative lines. OutputMeterPresentation 197->203
+  retains paint/hit geometry, and PresetThumbnailCache 43->45 retains async
+  decoding/cache policy. No new UI orchestration owner or rendering pass.
+  Production style/diff review, architecture audit, code map and whitespace
+  checks pass.

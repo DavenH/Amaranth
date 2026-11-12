@@ -94,18 +94,24 @@ OutputMeterLayout OutputMeterPresentation::layout(
         float zoom) {
     const auto content = area.reduced(6.f * zoom);
     const float labelHeight = jmin(20.f * zoom, content.getHeight() * 0.25f);
-    const auto controls = content.withTrimmedBottom(labelHeight);
-    const float diameter = jmax(0.f, jmin(58.f * zoom,
-            jmin(controls.getHeight(), controls.getWidth() - 32.f * zoom)));
-    const auto dial = juce::Rectangle<float>(diameter, diameter).withCentre(controls.getCentre());
     const float meterWidth = jmin(9.f * zoom, content.getWidth() * 0.1f);
-    const float gap = jmin(8.f * zoom, content.getWidth() * 0.05f);
+    const float meterGap = jmin(3.f * zoom, content.getWidth() * 0.04f);
+    const float controlGap = jmin(10.f * zoom, content.getWidth() * 0.08f);
+    const float meterPairWidth = meterWidth * 2.f + meterGap;
+    const float diameter = jmax(0.f, jmin(58.f * zoom,
+            jmin(content.getHeight() - labelHeight,
+                    content.getWidth() - meterPairWidth - controlGap)));
+    const float groupWidth = diameter + controlGap + meterPairWidth;
+    const float left = content.getCentreX() - groupWidth * 0.5f;
+    const juce::Rectangle<float> dial(left,
+            content.getCentreY() - (diameter + labelHeight) * 0.5f, diameter, diameter);
+    const float meterLeft = dial.getRight() + controlGap;
     return {
-            { dial.getX() - gap - meterWidth, controls.getY(), meterWidth, controls.getHeight() },
-            { dial.getRight() + gap, controls.getY(), meterWidth, controls.getHeight() },
+            { meterLeft, content.getY(), meterWidth, content.getHeight() },
+            { meterLeft + meterWidth + meterGap, content.getY(), meterWidth, content.getHeight() },
             dial,
             dial.reduced(3.f * zoom),
-            content.withTop(content.getBottom() - labelHeight)
+            { dial.getX(), dial.getBottom(), diameter, labelHeight }
     };
 }
 
