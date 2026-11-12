@@ -113,7 +113,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/PresetMidiEditor.h`, `cycle-v2/src/UI/PresetMidiEditor.cpp`, `cycle-v2/src/UI/PresetMidiEditorView.cpp`, `scripts/fixtures/cycle-v2-agent-midi-editor-layout.json` — Compact MIDI authoring, aligned timelines, notes-only overview and scrollable CC lanes.
 - `cycle-v2/src/UI/PerformanceKeyboard.cpp`, `cycle-v2/src/UI/PerformanceKeyboardKeys.cpp`, `cycle-v2/src/UI/PerformanceKeyboardChrome.cpp`, `cycle-v2/src/UI/PatternPlaybackSchedule.h`, `cycle-v2/src/UI/PerformanceWaveformPreview.h`, `scripts/test_cycle_v2_performance_waveform.py`, `scripts/fixtures/cycle-v2-agent-midi-playhead.json`, `scripts/fixtures/cycle-v2-agent-midi-scroll-tail.json` — MIDI authoring/transport, keys, CC dials, cached waveform/cursors, playhead seeking and two-bar scroll padding.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
-- `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.
+- `cycle-v2/content/`, `scripts/align_cycle_v2_scratch_envelopes.py` — Factory assets and single-consumer scratch alignment.
 
 ## Other Products
 

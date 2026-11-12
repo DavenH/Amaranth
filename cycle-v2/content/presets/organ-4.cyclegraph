@@ -1048,7 +1048,7 @@
             "id": "scratchEnvelope2",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 3727.68237, "y": -14.07342 },
+            "position": { "x": 3727.68237, "y": 387.0 },
             "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.5, "blue": 0.0, "level": 1.0 },
             "model": {
                 "schema": "envelope",
