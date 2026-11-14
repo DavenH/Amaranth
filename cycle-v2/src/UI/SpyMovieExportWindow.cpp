@@ -6,11 +6,37 @@
 namespace CycleV2 {
 using namespace juce;
 
+void SpyMovieExportWindow::ExportLookAndFeel::fillResizableWindowBackground(
+        Graphics& graphics, int, int, const BorderSize<int>&, ResizableWindow& window) {
+    graphics.fillAll(window.findColour(ResizableWindow::backgroundColourId));
+}
+
+void SpyMovieExportWindow::ExportLookAndFeel::drawProgressBar(
+        Graphics& graphics, ProgressBar& bar, int width, int height, double value, const String& text) {
+    graphics.fillAll(bar.findColour(ProgressBar::backgroundColourId));
+    graphics.setColour(bar.findColour(ProgressBar::foregroundColourId));
+    if (value >= 0.0 && value <= 1.0) {
+        graphics.fillRect(0, 0, roundToInt(width * value), height);
+    } else {
+        const int segment = jmax(1, width / 5);
+        const int position = (int) ((Time::getMillisecondCounter() / 16) % (width + segment)) - segment;
+        graphics.fillRect(position, 0, segment, height);
+    }
+    graphics.setColour(CanvasChromePalette::text);
+    graphics.setFont(FontOptions(12.f));
+    graphics.drawText(text, 0, 0, width, height, Justification::centred);
+}
+
 SpyMovieExportWindow::SpyMovieExportWindow(Component& parent, Snapshot snapshot) :
-        DocumentWindow("Export Movie", CanvasChromePalette::dockSurface, closeButton)
+        DocumentWindow("Export Movie", Colour(0xff333333), closeButton)
     ,   capture(std::move(snapshot)) {
+    lookAndFeel.setColour(Slider::textBoxBackgroundColourId, lookAndFeel.findColour(TextEditor::backgroundColourId));
+    lookAndFeel.setColour(Slider::textBoxTextColourId, lookAndFeel.findColour(TextEditor::textColourId));
+    lookAndFeel.setColour(Slider::textBoxOutlineColourId, lookAndFeel.findColour(TextEditor::outlineColourId));
+    lookAndFeel.setColour(ProgressBar::backgroundColourId, CanvasChromePalette::restingControlSurface);
+    lookAndFeel.setColour(ProgressBar::foregroundColourId, CanvasChromePalette::areaSelection);
     setLookAndFeel(&lookAndFeel);
-    setColour(ResizableWindow::backgroundColourId, CanvasChromePalette::dockSurface);
+    setColour(ResizableWindow::backgroundColourId, Colour(0xff333333));
     setName("SpyMovieExport");
     setUsingNativeTitleBar(true);
     setContentNonOwned(&content, false);
@@ -18,7 +44,6 @@ SpyMovieExportWindow::SpyMovieExportWindow(Component& parent, Snapshot snapshot)
         content.addAndMakeVisible(target);
         target.setText(text, dontSendNotification);
         target.setColour(Label::textColourId, CanvasChromePalette::text);
-        target.setFont(FontOptions(13.f));
     };
     label(heading, "Export an automated Cyclogram movie");
     heading.setFont(FontOptions(18.f, Font::bold));
@@ -58,7 +83,6 @@ SpyMovieExportWindow::SpyMovieExportWindow(Component& parent, Snapshot snapshot)
     destination.setName("SpyMovieExport.Output");
     ffmpeg.setName("SpyMovieExport.FFmpeg");
     start.setName("SpyMovieExport.Start");
-    DialogLookAndFeel::markPrimary(start);
     cancel.setName("SpyMovieExport.Cancel");
     outputBrowse.onClick = [this] { chooseFile(false); };
     encoderBrowse.onClick = [this] { chooseFile(true); };
@@ -99,9 +123,9 @@ void SpyMovieExportWindow::resized() {
     ffmpeg.setBounds(24, 346, width - 130, 27);
     encoderBrowse.setBounds(width - 94, 346, 70, 27);
     progressBar.setBounds(24, 418, width - 48, 18);
-    cancel.setBounds(24, 452, 80, 32);
-    reveal.setBounds(116, 452, 116, 32);
-    start.setBounds(width - 166, 452, 142, 32);
+    cancel.setBounds(24, 452, 80, 28);
+    reveal.setBounds(116, 452, 116, 28);
+    start.setBounds(width - 166, 452, 142, 28);
 }
 
 void SpyMovieExportWindow::chooseFile(bool executable) {

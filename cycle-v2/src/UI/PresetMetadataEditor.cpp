@@ -16,7 +16,6 @@ void PresetMetadataEditor::editTags(
     prompt->addTextEditor("tags", currentTags.joinIntoString(", "), "Tags");
     prompt->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
     prompt->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
-    DialogLookAndFeel::markPrimary(*prompt->getButton(0));
     prompt->enterModalState(true,
             juce::ModalCallbackFunction::create([
                     prompt, file, onSaved = std::move(onSaved)](int result) {
@@ -50,7 +49,6 @@ void PresetMetadataEditor::rename(
     prompt->addTextEditor("title", currentTitle, "Preset title");
     prompt->addButton("Rename", 1, juce::KeyPress(juce::KeyPress::returnKey));
     prompt->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
-    DialogLookAndFeel::markPrimary(*prompt->getButton(0));
     prompt->enterModalState(true,
             juce::ModalCallbackFunction::create([
                     prompt, file, onSaved = std::move(onSaved)](int result) {

@@ -167,7 +167,6 @@ void NodeWorkspace::savePatternCopy(const String& sourceId,
         prompt->addButton("Discard", 2);
     }
     prompt->addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
-    DialogLookAndFeel::markPrimary(*prompt->getButton(0));
     auto* nameEditor = prompt->getTextEditor("name");
     nameEditor->onTextChange = [prompt, nameEditor] {
         prompt->getButton(0)->setEnabled(nameEditor->getText().trim().isNotEmpty());

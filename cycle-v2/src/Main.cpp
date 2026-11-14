@@ -418,7 +418,6 @@ public:
                     this);
             presetChangePrompt = prompt;
             prompt->addButton("Save", 1, KeyPress(KeyPress::returnKey));
-            CycleV2::DialogLookAndFeel::markPrimary(*prompt->getButton(0));
             prompt->addButton("Don't Save", 2);
             prompt->addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
             prompt->enterModalState(true, ModalCallbackFunction::create([

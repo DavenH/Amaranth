@@ -1,7 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
-#include "UI/DialogLookAndFeel.h"
+#include <UI/AmaranthLookAndFeel.h>
 #include "App/SpyMovieExport.h"
 
 namespace CycleV2 {
@@ -16,13 +16,22 @@ public:
     void resized() override;
 
 private:
+    class ExportLookAndFeel final : public AmaranthLookAndFeel {
+    public:
+        ExportLookAndFeel() : AmaranthLookAndFeel(nullptr, false) {}
+        void fillResizableWindowBackground(juce::Graphics&, int, int,
+                const juce::BorderSize<int>&, juce::ResizableWindow&) override;
+        void drawProgressBar(juce::Graphics&, juce::ProgressBar&, int, int,
+                double, const juce::String&) override;
+    };
+
     void timerCallback() override;
     void beginExport();
     void cancelExport();
     void chooseFile(bool executable);
     void setRunning(bool active);
 
-    DialogLookAndFeel lookAndFeel;
+    ExportLookAndFeel lookAndFeel;
     Snapshot capture;
     juce::Component content;
     juce::ComboBox gradient;

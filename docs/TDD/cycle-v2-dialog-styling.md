@@ -4,61 +4,47 @@ Status: Complete.
 
 ## Contract
 
-Unify the pattern-copy prompt and movie exporter with the Cycle 2 canvas/preset
-controls. Reuse PresetBrowserLookAndFeel's button and text-field painting through
-a dialog-specific subclass, rather than copying widget drawing or altering
-Cycle 1's shared AmaranthLookAndFeel. Use CanvasChromePalette and metrics.
+The movie exporter and existing preset-save controls are visual references.
+Preserve the movie exporter exactly as it was before 21215885. Match its
+square-edged AmaranthLookAndFeel controls in routine pattern-copy and preset
+save/rename/tag prompts. Do not replace the references with a new style.
 
-Dialogs use an 18px heading, 13px message/field text, 32px action buttons and
-4px control radii. Remove decorative stock question icons from routine save,
-rename and tag prompts. Use one blue primary action, readable disabled controls,
-boxed text editors and a flat progress track. Preserve existing JUCE alert
-layout, modal callbacks, keyboard shortcuts, validation and export worker state.
-Alert windows own/detach their theme so asynchronous dismissal cannot outlive it.
+DialogLookAndFeel derives directly from AmaranthLookAndFeel, with default
+installation disabled. It inherits existing button/text-editor drawing, colours,
+keyboard focus and dimensions. Only alert typography/background and icon-free
+text painting are specialized: 18px heading, 13px body, exporter grey background.
+No browser-derived rounded controls or custom blue primary treatment.
 
-The exporter retains its 24px content insets and 12px footer action gap; controls
-and progress share the same left/right content edges. The form's content,
-progress and action bands retain their semantic scope. No global button redesign
-or graph/audio changes. Preserve all incoming preset modifications.
+StyledAlertWindow retains owned/detached theme lifetime. Existing JUCE layout,
+modal callbacks, save/discard/cancel shortcuts and name validation remain owners
+of behavior. Preserve all user preset edits and the preset-browser theme.
 
 ## Verification
 
-Build exact Debug app/tests and Release app. Exercise pattern-copy Save, Cancel,
-Discard and blank-name validation using existing UI routes with isolated library
-storage; review actual-size prompt and exporter screenshots, including disabled
-export state. Run existing relevant pattern/export checks. Review size and
-responsibility, architecture audit, code-map and whitespace; commit the slice.
+Compare exporter source/header byte for byte against 21215885's parent. Build
+Debug app/tests and Release app. Capture corrected pattern and restored exporter
+at production size; exercise native blank-name validation, cancel/save/discard
+and export cancellation. Run existing draft/movie checks, architecture audit,
+code map and whitespace review. Commit the correction.
 
 
-## Outcome and evidence
+## Outcome
 
-Pattern copy, preset replacement, rename/tags and movie export share the new
-DialogLookAndFeel. StyledAlertWindow owns/detaches its theme; existing JUCE
-modal state, text layout and callbacks remain the behavior owners. The exporter
-loses its private look-and-feel and reuses its existing flat progress painter
-through the shared theme. Cycle 1 look-and-feel is unchanged.
+Exporter source/header and preset-browser theme declaration exactly match the
+parent of 21215885. DialogLookAndFeel now only specializes alert typography and
+icon-free text presentation; all field/button painting is inherited from the
+reference AmaranthLookAndFeel. No references or library controls are restyled.
 
-Native screenshots: .context/dialog-style/pattern-copy.png, pattern-blank.png,
-movie-settings.png and movie-running.png. The pattern prompt is 373x186 logical
-pixels, with 18px title/13px message, boxed field and 32px actions. Movie settings
-retain 620x530 window size. Native assertions verify the footer's 32px common
-button height/baseline and balanced 24px left/right insets.
+Corrected native captures: .context/dialog-style/pattern-copy-corrected.png,
+pattern-blank-corrected.png, movie-restored.png and movie-restored-running.png.
+The native workflow verifies blank-name Return cannot save, Escape cancellation,
+copy save, Discard restoring the saved phrase, original 28px exporter action
+alignment with 24px opposing insets, and export cancellation. Evidence:
+.context/dialog-style/correction.log. Existing movie/draft checks pass; Debug
+app/tests and Release app build. Code-map, whitespace and architecture audit pass.
 
-The isolated native workflow verifies blank names cannot save with Return,
-Escape retains the draft, Save creates a user copy, Discard restores the saved
-phrase, export disables its settings and Cancel returns to editable settings.
-Evidence: .context/dialog-style/final-review.log and review.py. An optional AX
-button lookup returned no result; blank-name behavior was then verified through
-native Return plus unchanged modal/pattern state, not the missing AX query.
-
-Existing movie settings, library validation and MIDI draft-save checks pass.
-Debug app/tests and Release app build. Code-map, whitespace and architecture
-audit complete. No new unit tests for the visual-only change; actual rendering
-and existing behavioral checks provide the relevant verification.
-
-Responsibility review: shared dialog presentation occupies a 108-line source
-and 36-line header, reusing browser control painting. SpyMovieExportWindow
-shrinks 235->208 lines and loses its private theme. Main remains 670 lines and
-only constructs the themed alert; NodeWorkspacePatterns and PresetMetadataEditor
-retain their existing persistence/callback policies. No domain behavior or
-realtime work moves into the presentation layer. Incoming presets remain unstaged.
+Responsibility review: DialogLookAndFeel shrinks 108->43 source lines and
+36->27 header lines. Removed browser-control inheritance, custom primary-button
+styling, focus painting and duplicated dialog progress/window painting. The
+exporter regains its original private theme. No callback, graph, persistence,
+audio or user preset behavior changes.
