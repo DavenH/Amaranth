@@ -1479,3 +1479,12 @@ fails at TestNodeCanvasAuthoring.cpp:422 because attached/detached captures both
 contain only zeroes. Independently reproduced on b87afb37 with its separate
 baseline executable; evidence: .context/gain-spy-baseline-debt.log. Encountered
 while checking Gain-to-Spy amplitude; no production workaround added.
+
+
+### Existing editor-centering assertion in dock fixture
+
+2026-11-14: `Canvas spies leave the full canvas available` fails the expanded
+editor center equality in TestNodeCanvasArchitecture.cpp:179. Independently
+reproduced on b87afb37 at the same assertion (line 178 there); evidence is
+.context/curve-sidebar-baseline.log. Found during sidebar alignment checks;
+no editor-placement workaround added.

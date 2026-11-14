@@ -54,7 +54,22 @@ end tell'''
         command(command='waitForIdle', idleDelayMs=350)
         subprocess.run([str(compiled_helper('launch_cycle_app.swift')), '--focus', os.environ['CYCLE_APP_PID']], check=True)
         time.sleep(.2)
-        click('workspace.sidebar.curves')
+        def check_list_alignment():
+            click('workspace.sidebar.presets')
+            preset_targets = command(command='inspectPointerTargets')['targets']
+            preset_slot = next(t['bounds'] for t in preset_targets
+                               if t['id'].startswith('workspace.sidebar.preset.'))
+            click('workspace.sidebar.curves')
+            curve_targets = command(command='inspectPointerTargets')['targets']
+            first_curve = next(t['bounds'] for t in curve_targets if t['id'] == 'guide:guide1')
+            curve_tab = next(t['bounds'] for t in curve_targets if t['id'] == 'workspace.sidebar.curves')
+            assert abs(first_curve['x'] - (preset_slot['x'] + 2)) < .001
+            shelf = next(t['bounds'] for t in curve_targets if t['id'] == 'guideShelf')
+            assert abs(first_curve['x'] + first_curve['width']
+                       - (shelf['x'] + shelf['width'] - 8)) < .001
+            assert abs(first_curve['y'] - (curve_tab['y'] + curve_tab['height'] + 8)) < .001
+
+        check_list_alignment()
         check_count(2)
         capture('curves-two')
         created = command(command='createGuideCurve', expectedDocumentRevision=state()['documentRevision'])['guideId']
@@ -100,6 +115,9 @@ end tell'''
         ended = state()['performance']
         assert not ended['previewPlaying'] and ended['previewProgress'] == 1., ended
         capture('transport-ended')
+        command(command='resizeWindow', width=1000, height=700)
+        check_list_alignment()
+        capture('curves-compact')
         result = {'countLoadAddDeleteUndoRedo': True, 'octaveNativeClicks': True,
                   'playingAfterLastNote': after_note['previewProgress'], 'staysAtPatternEnd': True}
         (output / 'results.json').write_text(json.dumps(result, indent=2) + '\n')

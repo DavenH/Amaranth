@@ -71,3 +71,34 @@ The macOS AX focus query returned missing values during an optional keyboard-foc
 capture attempt (.context/octave-tab.log), so that capture is not claimed as
 verification. Native octave click/range behavior and expanded editing-handle
 visibility were verified separately. Button keyboard event handling is unchanged.
+
+
+## Sidebar alignment correction
+
+The Curves view retained the floating shelf's 18px outer canvas inset, nested
+padding and a 36px header reservation although its actions moved to the footer.
+Treat the expanded shelf as sidebar content: use the full sidebar width, begin
+below the shared 46px tab row, give cards equal 8px left/right/top insets, and
+align footer actions with those edges. Keep minimized-drawer placement and the
+canvas's available width unchanged. Remove the unused floating header API.
+
+CanvasChromeMetrics owns tab-row height for both the tab component and shelf
+layout. WorkspaceDock owns card padding/spacing. GuideCurveShelf exposes its
+list viewport for hit testing, wheel routing, paint clipping and keyboard reveal;
+the footer is excluded from all four. Extend existing geometry checks and native
+verification to compare the curve-card left edge with preset cards, check balanced
+side insets, and ensure the last keyboard-revealed curve is clear of the footer.
+
+Debug app/tests and Release app build. Existing focused sidebar/browser cases
+pass, including the extended layout assertions. Native alignment checks pass at
+the initial and 1000x700 window sizes; screenshots are under
+.context/curve-transport/ (curves-two.png and curves-compact.png). The broader dock
+fixture exposes a pre-existing editor-centering assertion, independently
+reproduced on b87afb37 and recorded in ui-bugs.md. Architecture audit, code map
+and whitespace checks pass.
+
+Responsibility/size review: shared tab height stays in CanvasChromeMetrics;
+WorkspaceDock owns geometry and loses the obsolete floating header API.
+GuideCurveShelf owns its list viewport, reused by interaction routing and keyboard
+reveal. NodeCanvas shrinks by four lines; GuideCurveShelf remains 439 lines and
+WorkspaceDock 212. No domain algorithm, persisted format or graph edit changes.

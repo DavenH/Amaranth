@@ -104,7 +104,7 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/UI/SurfaceAppearanceDialog.h`, `cycle-v2/src/UI/WaveformColourStyles.h`, `scripts/test_cycle_v2_surface_appearance.py` — Modal palette selectors, waveform gradient identity, and UI verification.
 - `cycle-v2/src/UI/NodePreviewRenderer.h`, `cycle-v2/src/UI/ComparisonSurfaceView.h`, `cycle-v2/src/UI/SignalProbeDetailPanel.h`, `cycle-v2/src/UI/SpyFrameRenderer.h`, `cycle-v2/src/UI/SpyPlaybackRipple.h` — Preview plots, expanded Spy capture and palette-preserving saturation playback ripples.
 - `cycle-v2/src/UI/SignalProbeCanvas.h`, `scripts/test_cycle_v2_spy_refresh.py` — Spy views; refresh-count, tray update and retained-waveform regression checks.
-- `cycle-v2/src/UI/InlinePresetBrowser.h` — Library/authoring tabs; PresetCardList owns cards; ReferenceTrayBar owns Visual Reference.
+- `cycle-v2/src/UI/InlinePresetBrowser.h`, `cycle-v2/src/UI/GuideCurveShelf.h` — Sidebar tabs, library cards and curve list; WorkspaceDock owns shared geometry.
 - `scripts/test_cycle_v2_console_sidebar.py`, `scripts/test_cycle_v2_curve_transport_polish.py` — Native sidebar, curve summaries, octave controls and transport checks.
 - `cycle-v2/src/UI/LibraryThumbnailCache.h` — Async reference-asset thumbnails.
 - `cycle-v2/src/UI/ReferenceWaveformPreview.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Shared waveform analysis/cache and async indexed density/path views.

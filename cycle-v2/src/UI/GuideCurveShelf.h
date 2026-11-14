@@ -33,6 +33,9 @@ public:
             Rectangle<float> workspace,
             const SignalProbeCanvasState& dockState,
             const GuideCurveShelfState& state);
+    static Rectangle<float> listBoundsFor(
+            Rectangle<float> workspace, const SignalProbeCanvasState& dockState,
+            const GuideCurveShelfState& state);
     static Rectangle<float> addButtonBounds(
             Rectangle<float> workspace,
             const SignalProbeCanvasState& dockState,

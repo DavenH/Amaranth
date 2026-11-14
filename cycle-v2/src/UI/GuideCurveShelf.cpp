@@ -26,12 +26,6 @@ Rectangle<float> previewBoundsFor(Rectangle<float> tile) {
     return tile.reduced(7.f);
 }
 
-Rectangle<float> visibleTileBounds(Rectangle<float> shelf) {
-    return shelf
-            .withTrimmedTop(WorkspaceDock::headerHeight)
-            .withTrimmedBottom(footerHeight);
-}
-
 WorkspaceDockState workspaceDockState(
         const SignalProbeCanvasState& dockState,
         const GuideCurveShelfState& guideState) {
@@ -69,6 +63,13 @@ Rectangle<float> GuideCurveShelf::boundsFor(
     return WorkspaceDock::layout(
             workspace,
             workspaceDockState(dockState, state)).leftShelf;
+}
+
+Rectangle<float> GuideCurveShelf::listBoundsFor(
+        Rectangle<float> workspace, const SignalProbeCanvasState& dockState,
+        const GuideCurveShelfState& state) {
+    return state.minimized ? Rectangle<float>() : boundsFor(workspace, dockState, state)
+            .withTrimmedTop(WorkspaceDock::guideTopInset).withTrimmedBottom(footerHeight);
 }
 
 Rectangle<float> GuideCurveShelf::addButtonBounds(
@@ -129,8 +130,7 @@ String GuideCurveShelf::guideAt(
     if (state.minimized || state.presetBrowserVisible) {
         return {};
     }
-    const Rectangle<float> visibleTiles = visibleTileBounds(
-            boundsFor(workspace, dockState, state));
+    const Rectangle<float> visibleTiles = listBoundsFor(workspace, dockState, state);
     if (visibleTiles.getHeight()
             < WorkspaceDock::guideTileHeight + WorkspaceDock::tileBottomPadding) {
         return {};
@@ -182,13 +182,13 @@ float GuideCurveShelf::maximumVerticalOffset(
         return 0.f;
     }
     const Rectangle<float> shelf = boundsFor(workspace, dockState, state);
-    if (shelf.getHeight() < WorkspaceDock::headerHeight
+    if (shelf.getHeight() < WorkspaceDock::guideTopInset
             + WorkspaceDock::guideTileHeight
             + WorkspaceDock::tileBottomPadding
             + footerHeight) {
         return 0.f;
     }
-    const float contentHeight = WorkspaceDock::headerHeight
+    const float contentHeight = WorkspaceDock::guideTopInset
             + guideCount * WorkspaceDock::guideTileHeight
             + jmax(0, guideCount - 1) * WorkspaceDock::tileGap
             + WorkspaceDock::tileBottomPadding
@@ -234,9 +234,6 @@ void GuideCurveShelf::paint(
     Rectangle<float> shelf = boundsFor(workspace, dockState, state);
     graphics.setColour(CanvasChromePalette::dockSurface);
     graphics.fillRect(guideWorkspace(workspace, state.minimized));
-
-    graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.96f));
-    graphics.fillRoundedRectangle(shelf, CanvasChromeMetrics::panelCornerRadius);
 
     if (state.minimized) {
         graphics.setColour(CanvasChromePalette::dockSurface.withAlpha(0.92f));
@@ -285,7 +282,7 @@ void GuideCurveShelf::paint(
     graphics.setFont(FontOptions(CanvasChromeMetrics::labelFontSize));
     graphics.drawText("+  Add curve", add, Justification::centred);
 
-    if (shelf.getHeight() < WorkspaceDock::headerHeight
+    if (shelf.getHeight() < WorkspaceDock::guideTopInset
             + WorkspaceDock::guideTileHeight
             + WorkspaceDock::tileBottomPadding
             + footerHeight) {
@@ -309,7 +306,7 @@ void GuideCurveShelf::paint(
     }
 
     Graphics::ScopedSaveState clip(graphics);
-    const Rectangle<float> visibleTiles = visibleTileBounds(shelf);
+    const Rectangle<float> visibleTiles = listBoundsFor(workspace, dockState, state);
     graphics.reduceClipRegion(visibleTiles.toNearestInt());
     for (int index = 0; index < (int) graph.getGuideCurves().size(); ++index) {
         const GuideCurveResource& guide = graph.getGuideCurves()[(size_t) index];

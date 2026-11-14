@@ -1407,17 +1407,13 @@ void NodeCanvas::mouseWheelMove(const MouseEvent& event, const MouseWheelDetails
         return;
     }
     const Rectangle<float> workspace = getLocalBounds().toFloat();
-    const Rectangle<float> guideShelf = GuideCurveShelf::boundsFor(
-            workspace,
-            probeCanvasState,
-            guideShelfState);
     const float maximumGuideOffset = GuideCurveShelf::maximumVerticalOffset(
             workspace,
             probeCanvasState,
             guideShelfState,
             (int) graph.getGuideCurves().size());
     if (!guideShelfState.minimized && maximumGuideOffset > 0.f
-            && guideShelf.withTrimmedTop(WorkspaceDock::headerHeight)
+            && GuideCurveShelf::listBoundsFor(workspace, probeCanvasState, guideShelfState)
                     .contains(event.position)) {
         const float wheelDelta = wheel.deltaY;
         guideShelfState.verticalOffset = jlimit(

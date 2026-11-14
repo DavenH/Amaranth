@@ -168,7 +168,7 @@ TEST_CASE("Canvas spies leave the full canvas available", "[cycle-v2][canvas][pr
     const Rectangle<float> content = dock.content;
     REQUIRE(content == workspace);
     REQUIRE(dock.leftShelf.getBottom() == Catch::Approx(
-            workspace.getBottom() - CanvasUtilityDock::margin));
+            workspace.getBottom()));
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -189,9 +189,9 @@ TEST_CASE("Guide shelf occupies the left side without a Spy tray",
     const WorkspaceDockLayout balanced = WorkspaceDock::layout(workspace, state);
 
     REQUIRE(balanced.content == workspace);
-    REQUIRE(balanced.leftShelf.getY() == workspace.getY() + CanvasUtilityDock::margin);
-    REQUIRE(balanced.leftShelf.getX() == workspace.getX() + CanvasUtilityDock::margin);
-    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(256.f));
+    REQUIRE(balanced.leftShelf.getY() == workspace.getY() + CanvasChromeMetrics::sidebarTabHeight);
+    REQUIRE(balanced.leftShelf.getX() == workspace.getX());
+    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(274.f));
     REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);
 
     const auto first = WorkspaceDock::guideTileBounds(balanced.leftShelf, 0, 0.f);
@@ -213,7 +213,7 @@ TEST_CASE("Guide shelf occupies the left side without a Spy tray",
     const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
     const WorkspaceDockLayout narrow = WorkspaceDock::layout(narrowWorkspace, state);
     REQUIRE(narrow.leftShelf.getHeight()
-            >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
+            >= WorkspaceDock::guideTopInset + WorkspaceDock::guideTileHeight);
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});

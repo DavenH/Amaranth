@@ -2,6 +2,7 @@
 #include "UI/PresetCardList.h"
 
 #include "UI/CanvasChromePalette.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/CanvasChromeIcons.h"
 #include "UI/PresetBrowserComponents.h"
 #include "UI/PresetMetadataEditor.h"
@@ -310,7 +311,7 @@ bool InlinePresetBrowser::hitTest(int x, int y) {
         return false;
     }
     return tab != WorkspaceSidebarTab::Curves
-            || juce::Rectangle<int>(0, 0, getWidth(), 46).contains(x, y);
+            || juce::Rectangle<int>(0, 0, getWidth(), CanvasChromeMetrics::sidebarTabHeight).contains(x, y);
 }
 
 void InlinePresetBrowser::paint(juce::Graphics& graphics) {
@@ -320,11 +321,11 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
         graphics.fillRect(bounds);
     }
     graphics.setColour(CanvasChromePalette::dockSurface);
-    graphics.fillRect(bounds.withHeight(46.f));
+    graphics.fillRect(bounds.withHeight((float) CanvasChromeMetrics::sidebarTabHeight));
     graphics.setColour(CanvasChromePalette::border);
-    graphics.drawHorizontalLine(46, 0.f, bounds.getRight());
+    graphics.drawHorizontalLine(CanvasChromeMetrics::sidebarTabHeight, 0.f, bounds.getRight());
     graphics.drawVerticalLine(patterns.getRight() + 8, 10.f, 36.f);
-    graphics.drawVerticalLine(getWidth() - 1, 0.f, 46.f);
+    graphics.drawVerticalLine(getWidth() - 1, 0.f, (float) CanvasChromeMetrics::sidebarTabHeight);
     const auto selectedTab = tab == WorkspaceSidebarTab::Curves
             ? curves.getBounds().toFloat()
             : tab == WorkspaceSidebarTab::Presets
@@ -355,7 +356,7 @@ void InlinePresetBrowser::setCurveCount(size_t count) {
 
 void InlinePresetBrowser::resized() {
     auto bounds = getLocalBounds();
-    auto tabs = bounds.removeFromTop(46).reduced(8, 0);
+    auto tabs = bounds.removeFromTop(CanvasChromeMetrics::sidebarTabHeight).reduced(8, 0);
     const int tabWidth = juce::jmin(100, (tabs.getWidth() - 16) / 5);
     assets.setBounds(tabs.removeFromLeft(tabWidth));
     presets.setBounds(tabs.removeFromLeft(tabWidth));

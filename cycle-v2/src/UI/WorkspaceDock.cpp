@@ -44,13 +44,16 @@ WorkspaceDockLayout WorkspaceDock::layout(
 
     const float guideWidth = juce::jmin(maximumGuideShelfWidth,
             juce::jmax(drawerWidth, workspace.getWidth() * guideShelfWidthFraction));
-    const float activeGuideWidth = state.leftMinimized ? drawerWidth : guideWidth;
-    const float guideLeft = workspace.getX() + CanvasUtilityDock::margin;
-    const float guideTop = workspace.getY() + CanvasUtilityDock::margin;
-    const float guideHeight = juce::jmax(0.f,
-            workspace.getBottom() - CanvasUtilityDock::margin - guideTop);
-    result.leftShelf = { guideLeft,
-            guideTop, activeGuideWidth, guideHeight };
+    if (state.leftMinimized) {
+        result.leftShelf = { workspace.getX() + CanvasUtilityDock::margin,
+                workspace.getY() + CanvasUtilityDock::margin, drawerWidth,
+                juce::jmax(0.f, workspace.getHeight() - CanvasUtilityDock::margin * 2.f) };
+    } else {
+        result.leftShelf = { workspace.getX(),
+                workspace.getY() + CanvasChromeMetrics::sidebarTabHeight,
+                guideWidth + CanvasUtilityDock::margin,
+                juce::jmax(0.f, workspace.getHeight() - CanvasChromeMetrics::sidebarTabHeight) };
+    }
     return result;
 }
 
@@ -68,22 +71,13 @@ bool WorkspaceDock::isOverlayComponentVisible(
     return overlayBounds.isEmpty() || !overlayBounds.intersects(componentBounds);
 }
 
-juce::Rectangle<float> WorkspaceDock::headerBounds(juce::Rectangle<float> shelf) {
-    return {
-            shelf.getX() + shelfPadding,
-            shelf.getY() + 5.f,
-            juce::jmax(0.f, shelf.getWidth() - shelfPadding * 2.f),
-            controlSize
-    };
-}
-
 juce::Rectangle<float> WorkspaceDock::guideTileBounds(
         juce::Rectangle<float> shelf,
         int tileIndex,
         float verticalOffset) {
     return {
             shelf.getX() + shelfPadding,
-            shelf.getY() + headerHeight
+            shelf.getY() + guideTopInset
                     + (float) tileIndex * (guideTileHeight + tileGap) - verticalOffset,
             juce::jmax(0.f, shelf.getWidth() - shelfPadding * 2.f),
             guideTileHeight
@@ -95,10 +89,10 @@ float WorkspaceDock::offsetToRevealGuideTile(
         float maximumOffset,
         float shelfHeight,
         int tileIndex) {
-    const float tileTop = headerHeight + (float) tileIndex * (guideTileHeight + tileGap);
+    const float tileTop = guideTopInset + (float) tileIndex * (guideTileHeight + tileGap);
     const float visibleBottom = currentOffset + shelfHeight - tileBottomPadding;
-    if (tileTop < currentOffset + headerHeight) {
-        currentOffset = tileTop - headerHeight;
+    if (tileTop < currentOffset + guideTopInset) {
+        currentOffset = tileTop - guideTopInset;
     } else if (tileTop + guideTileHeight > visibleBottom) {
         currentOffset = tileTop + guideTileHeight - shelfHeight + tileBottomPadding;
     }
@@ -106,12 +100,12 @@ float WorkspaceDock::offsetToRevealGuideTile(
 }
 
 juce::Rectangle<float> WorkspaceDock::vacancyBounds(juce::Rectangle<float> shelf) {
-    const float width = juce::jmin(tileWidth, juce::jmax(40.f, shelf.getWidth() - shelfPadding * 2.f));
+    const float width = juce::jmax(0.f, shelf.getWidth() - shelfPadding * 2.f);
     return {
             shelf.getX() + shelfPadding,
-            shelf.getY() + headerHeight,
+            shelf.getY() + guideTopInset,
             width,
-            juce::jmin(58.f, juce::jmax(36.f, shelf.getHeight() - headerHeight - tileBottomPadding))
+            juce::jmin(58.f, juce::jmax(36.f, shelf.getHeight() - guideTopInset - tileBottomPadding))
     };
 }
 
@@ -201,9 +195,9 @@ void WorkspaceDock::paintVerticalOverflowFeedback(
         return;
     }
     const auto track = shelf.withTrimmedRight(5.f).removeFromRight(3.f)
-            .withTrimmedTop(headerHeight)
+            .withTrimmedTop(guideTopInset)
             .withTrimmedBottom(tileBottomPadding);
-    const float visibleHeight = shelf.getHeight() - headerHeight - tileBottomPadding;
+    const float visibleHeight = shelf.getHeight() - guideTopInset - tileBottomPadding;
     const float thumbHeight = juce::jmax(22.f,
             track.getHeight() * visibleHeight / (visibleHeight + maximumOffset));
     const float travel = juce::jmax(0.f, track.getHeight() - thumbHeight);
