@@ -24,7 +24,7 @@ NodeGraph routingGraph() {
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply-a", {}));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply-b", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     graph.addEdge({ "wave", "out", "multiply-a", "left", PortDomain::TimeSignal });
     graph.addEdge({ "env-a", "env", "multiply-b", "right", PortDomain::EnvelopeSignal });
     graph.addEdge({ "voice", "context", "wave", "context", PortDomain::DomainContext });

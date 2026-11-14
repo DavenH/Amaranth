@@ -644,6 +644,10 @@ TEST_CASE("Trimesh keyboard diamonds stay on the primary axis until voices end",
     overlay.appendAutomation(state, Vertex::Red, false, true);
     REQUIRE(state.getProperty("playbackDots").getArray()->size() == 1);
     REQUIRE((float) state.getProperty("playbackDots")[0]["x"] == Catch::Approx(0.75f));
+    frame.voices[0].released = true;
+    REQUIRE(overlay.setFrame(frame));
+    overlay.appendAutomation(state, Vertex::Red, false, true);
+    REQUIRE((bool) state.getProperty("playbackDots")[0]["released"]);
     overlay.setFrame({});
     overlay.appendAutomation(state, Vertex::Red, false, true);
     REQUIRE(state.getProperty("playbackDots").getArray()->isEmpty());

@@ -2,6 +2,7 @@
 #include "UI/SpyMovieExportWindow.h"
 #include "UI/SurfaceAppearanceDialog.h"
 #include "UI/CanvasChromePalette.h"
+#include "UI/CanvasUtilityDock.h"
 
 #include "Reference/ReferenceAutomation.h"
 
@@ -59,7 +60,7 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     ,   referenceAssets(referenceLibrary, engine)
     ,   keyboard(keyboardState, engine) {
     setOpaque(true);
-    addAndMakeVisible(referenceTrayBar);
+    canvas.addAndMakeVisible(referenceTrayBar);
     referenceTrayBar.onToggle = [this] { toggleComparisonShelf(); };
     referenceTrayBar.onBrowse = [this] { canvas.showReferenceAssets(); };
     referenceTrayBar.onImport = [this] { importWaveReference(); };
@@ -97,6 +98,14 @@ NodeWorkspace::NodeWorkspace(StandaloneAudioEngine& engine) :
     keyboard.setPreviewNote(canvas.previewMidiNote());
     keyboard.setSequence(canvas.presetSequence());
     keyboard.setMappedControllers(canvas.mappedMidiControllers());
+    keyboard.setSequenceEditorRequestedCallback([this] {
+        const auto id = canvas.presetPatternId();
+        if (patternLibrary == nullptr || patternLibrary->find(id) == nullptr) {
+            return false;
+        }
+        editPattern(id);
+        return true;
+    });
     keyboard.setSequenceChangedCallback([this](PresetMidiSequence sequence) {
         saveEditedSequence(std::move(sequence), canvas.presetPatternId());
     });
@@ -216,144 +225,6 @@ void NodeWorkspace::setCurrentPresetTags(StringArray tags) {
     canvas.setCurrentPresetTags(std::move(tags));
 }
 
-void NodeWorkspace::configurePatternLibrary(File factoryDirectory, File userDirectory) {
-    patternLibrary = std::make_unique<PatternLibrary>(
-            std::move(factoryDirectory), std::move(userDirectory));
-    keyboard.setSequence(resolvedPresetSequence());
-    refreshPatternSidebar();
-}
-
-std::optional<PresetMidiSequence> NodeWorkspace::resolvedPresetSequence() const {
-    if (patternLibrary != nullptr && canvas.presetPatternId().isNotEmpty()) {
-        if (const auto* pattern = patternLibrary->find(canvas.presetPatternId())) {
-            return pattern->sequence;
-        }
-    }
-    return canvas.presetSequence();
-}
-
-void NodeWorkspace::refreshPatternSidebar() {
-    if (patternLibrary != nullptr) {
-        canvas.setPatternSidebarRecords(
-                patternLibrary->records(), canvas.presetPatternId());
-    }
-}
-
-void NodeWorkspace::selectPattern(const String& id) {
-    if (patternLibrary == nullptr) {
-        return;
-    }
-    const auto* pattern = patternLibrary->find(id);
-    if (pattern == nullptr) {
-        return;
-    }
-    if (canvas.setPresetPatternId(id)) {
-        keyboard.setSequence(pattern->sequence);
-        refreshPatternSidebar();
-    }
-}
-
-void NodeWorkspace::createPattern(const String& name, const StringArray& tags) {
-    if (patternLibrary == nullptr) {
-        return;
-    }
-    const auto sequence = resolvedPresetSequence().value_or(PresetMidiSequence {});
-    const auto saved = patternLibrary->saveUserPattern(
-            patternLibrary->newUserId(), name, sequence,
-            tags.isEmpty() ? String("Other") : tags[0], tags);
-    if (saved.has_value()) {
-        selectPattern(saved->id);
-        editPattern(saved->id);
-    } else {
-        showPatternSaveError();
-    }
-}
-
-void NodeWorkspace::editPattern(const String& id) {
-    if (patternLibrary == nullptr) {
-        return;
-    }
-    const auto* pattern = patternLibrary->find(id);
-    if (pattern == nullptr) {
-        return;
-    }
-    selectPattern(id);
-    auto editingId = std::make_shared<String>(id);
-    keyboard.showSequenceEditor(pattern->sequence,
-            [safeThis = Component::SafePointer<NodeWorkspace>(this), editingId](
-                    PresetMidiSequence sequence) {
-                if (safeThis != nullptr) {
-                    safeThis->saveEditedSequence(std::move(sequence), *editingId);
-                    *editingId = safeThis->canvas.presetPatternId();
-                }
-    });
-}
-
-void NodeWorkspace::renamePattern(const String& id, const String& name) {
-    if (patternLibrary == nullptr) {
-        return;
-    }
-    if (patternLibrary->renameUserPattern(id, name).has_value()) {
-        refreshPatternSidebar();
-        return;
-    }
-    AlertWindow::showMessageBoxAsync(
-            MessageBoxIconType::WarningIcon,
-            "Pattern not renamed",
-            "The selected user pattern could not be renamed.",
-            "OK");
-}
-
-void NodeWorkspace::deletePattern(const String& id) {
-    if (patternLibrary == nullptr) {
-        return;
-    }
-    if (patternLibrary->deleteUserPattern(id)) {
-        keyboard.setSequence(resolvedPresetSequence());
-        refreshPatternSidebar();
-        return;
-    }
-    AlertWindow::showMessageBoxAsync(
-            MessageBoxIconType::WarningIcon,
-            "Pattern not deleted",
-            "The selected user pattern could not be moved to Trash.",
-            "OK");
-}
-
-void NodeWorkspace::saveEditedSequence(
-        PresetMidiSequence sequence, const String& sourceId) {
-    if (patternLibrary == nullptr) {
-        canvas.setPresetSequence(std::move(sequence));
-        return;
-    }
-    const auto* source = patternLibrary->find(sourceId);
-    const bool updateUserPattern = source != nullptr && !source->factory;
-    const String id = updateUserPattern
-            ? sourceId : patternLibrary->newUserId();
-    const String presetName = canvas.graphFile().getFileNameWithoutExtension();
-    const String name = source != nullptr
-            ? source->name + (updateUserPattern ? "" : " Variation")
-            : (presetName.isNotEmpty() ? presetName : "Untitled") + " Pattern";
-    const auto saved = patternLibrary->saveUserPattern(id, name, sequence,
-            source != nullptr ? source->tag : juce::String(),
-            source != nullptr ? source->tags : juce::StringArray());
-    if (saved.has_value()) {
-        canvas.setPresetPatternId(saved->id);
-        refreshPatternSidebar();
-    } else {
-        keyboard.setSequence(resolvedPresetSequence());
-        showPatternSaveError();
-    }
-}
-
-void NodeWorkspace::showPatternSaveError() {
-    AlertWindow::showMessageBoxAsync(
-            MessageBoxIconType::WarningIcon,
-            "Pattern not saved",
-            "The pattern library could not save this phrase.",
-            "OK");
-}
-
 bool NodeWorkspace::saveGraphToFile(const File& file) {
     return canvas.saveGraphToFile(file);
 }
@@ -369,7 +240,6 @@ bool NodeWorkspace::loadGraphFromFile(const File& file) {
     canvas.presetLoadWorkspaceStageCompleted(
             CanvasPerformanceMetrics::PresetLoadWorkspaceStage::KeyboardAndSidebar);
     const auto status = audioEngine.status();
-    audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     publishAudioPlan(status, true);
     layoutPerformanceKeyboard();
     if (comparisonDockVisible) {
@@ -788,6 +658,8 @@ var NodeWorkspace::performanceStateForAutomation() const {
     object->setProperty("rms", status.renderer.rms);
     object->setProperty("leftPeak", status.renderer.leftPeak);
     object->setProperty("rightPeak", status.renderer.rightPeak);
+    object->setProperty("monitorLeftPeak", status.renderer.monitorLeftPeak);
+    object->setProperty("monitorRightPeak", status.renderer.monitorRightPeak);
     object->setProperty(
             "hostedByCanvas",
             keyboard.getParentComponent() == &canvas);
@@ -933,8 +805,16 @@ void NodeWorkspace::resized() {
         comparisonDock.setBounds(bounds.removeFromBottom(
                 juce::jmin(comparisonDockHeight, juce::jmax(0, bounds.getHeight() - 380))));
     }
-    referenceTrayBar.setBounds(bounds.removeFromBottom(30));
+    if (comparisonDockVisible) {
+        referenceTrayBar.setBounds(bounds.removeFromBottom(30));
+    }
     canvas.setBounds(bounds);
+    if (!comparisonDockVisible) {
+        const int left = canvas.performanceKeyboardDockBounds().getX() + 8;
+        referenceTrayBar.setBounds(left, bounds.getBottom() - (int) CanvasUtilityDock::footerHeight - 28,
+                jmin(190, jmax(0, bounds.getRight() - left)), 28);
+    }
+    referenceTrayBar.toFront(false);
     layoutPerformanceKeyboard();
 }
 
@@ -943,6 +823,11 @@ void NodeWorkspace::setComparisonShelfVisible(bool shouldShow) {
         return;
     }
     comparisonDockVisible = shouldShow;
+    if (shouldShow) {
+        addAndMakeVisible(referenceTrayBar);
+    } else {
+        canvas.addAndMakeVisible(referenceTrayBar);
+    }
     comparisonDock.setVisible(shouldShow);
     referenceTrayBar.setExpanded(shouldShow);
     resized();
@@ -963,7 +848,6 @@ void NodeWorkspace::timerCallback() {
     if (const auto* source = canvas.performanceWaveformSource()) {
         keyboard.waveformPreview().setSource(*source);
     }
-    audioEngine.setGraphOutputGain(canvas.graphOutputGain());
     if (previousDeviceReady && !status.deviceReady) {
         keyboard.releaseAllNotes();
     }
@@ -1043,8 +927,8 @@ void NodeWorkspace::updateOutputMeter(const StandaloneAudioEngine::Status& statu
     std::optional<OutputMeterLevels> meterLevels;
     if (status.deviceReady) {
         meterLevels = OutputMeterLevels {
-                status.renderer.leftPeak,
-                status.renderer.rightPeak
+                status.renderer.monitorLeftPeak,
+                status.renderer.monitorRightPeak
         };
     }
     canvas.setRealtimeOutputMeterLevels(meterLevels);

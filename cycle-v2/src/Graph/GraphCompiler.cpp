@@ -300,7 +300,7 @@ std::vector<GraphExecutionStep> buildExecutionSteps(
                         ? RuntimeOwnershipScope::Global
                         : RuntimeOwnershipScope::SynthVoice,
                 -1,
-                node.kind == NodeKind::Output,
+                node.kind == NodeKind::GlobalOutput,
                 node.kind == NodeKind::Envelope
                         && envelopePurposeFor(node) == EnvelopePurpose::Volume,
                 descriptor.audioRole,
@@ -1366,7 +1366,6 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
         return result;
     }
 
-    result.plan.outputGain = outputGainFor(graph);
 
     const std::vector<Edge> inferredContextEdges = implicitVoiceContextEdges(graph);
     std::vector<Edge> orderingEdges = graph.getEdges();
@@ -1478,16 +1477,6 @@ GraphCompileResult GraphCompiler::compile(const NodeGraph& graph) const {
     }
 
     return result;
-}
-
-float GraphCompiler::outputGainFor(const NodeGraph& graph) {
-    const auto output = std::find_if(
-            graph.getNodes().begin(),
-            graph.getNodes().end(),
-            [](const Node& node) { return node.kind == NodeKind::Output; });
-    return output != graph.getNodes().end()
-            ? CycleDsp::outputGain(NodeParameterMap(*output).floatValue("gain", 0.5f))
-            : 1.f;
 }
 
 void GraphCompiler::refreshSignalProbes(

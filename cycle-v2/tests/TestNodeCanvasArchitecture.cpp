@@ -168,7 +168,7 @@ TEST_CASE("Canvas spies leave the full canvas available", "[cycle-v2][canvas][pr
     const Rectangle<float> content = dock.content;
     REQUIRE(content == workspace);
     REQUIRE(dock.leftShelf.getBottom() == Catch::Approx(
-            workspace.getBottom() - CanvasUtilityDock::margin));
+            workspace.getBottom()));
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -189,9 +189,9 @@ TEST_CASE("Guide shelf occupies the left side without a Spy tray",
     const WorkspaceDockLayout balanced = WorkspaceDock::layout(workspace, state);
 
     REQUIRE(balanced.content == workspace);
-    REQUIRE(balanced.leftShelf.getY() == workspace.getY() + CanvasUtilityDock::margin);
-    REQUIRE(balanced.leftShelf.getX() == workspace.getX() + CanvasUtilityDock::margin);
-    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(256.f));
+    REQUIRE(balanced.leftShelf.getY() == workspace.getY() + CanvasChromeMetrics::sidebarTabHeight);
+    REQUIRE(balanced.leftShelf.getX() == workspace.getX());
+    REQUIRE(balanced.leftShelf.getWidth() == Catch::Approx(274.f));
     REQUIRE(balanced.leftShelf.getHeight() > WorkspaceDock::guideTileHeight);
 
     const auto first = WorkspaceDock::guideTileBounds(balanced.leftShelf, 0, 0.f);
@@ -213,7 +213,7 @@ TEST_CASE("Guide shelf occupies the left side without a Spy tray",
     const Rectangle<float> narrowWorkspace { 0.f, 0.f, 800.f, 600.f };
     const WorkspaceDockLayout narrow = WorkspaceDock::layout(narrowWorkspace, state);
     REQUIRE(narrow.leftShelf.getHeight()
-            >= WorkspaceDock::headerHeight + WorkspaceDock::guideTileHeight);
+            >= WorkspaceDock::guideTopInset + WorkspaceDock::guideTileHeight);
 
     GraphNodeFactory factory;
     const Node trimesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
@@ -644,7 +644,7 @@ TEST_CASE("Signal probe preview pitch defaults to C3 without a Modulation Triple
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "voice", "context", "wave", "context",
             PortDomain::DomainContext, ConnectionKind::Signal
@@ -818,7 +818,7 @@ TEST_CASE("Signal probe detail capture lazily reruns the addressed traversal at 
     mesh->destroy();
     graph.addNode(std::move(meshNode));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", { 400.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", { 800.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", { 800.f, 0.f }));
     graph.addEdge({
             "triple", "modulation", "voice", "modulation",
             PortDomain::VoiceControlSignal, ConnectionKind::ConfigurationAttachment,
@@ -949,7 +949,7 @@ TEST_CASE("Compact spectral probes retain the shared high-resolution traversal",
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
     graph.addNode(factory.createNode(NodeKind::Fft, "fft", {}));
     graph.addNode(factory.createNode(NodeKind::Ifft, "ifft", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "voice", "context", "mesh", "context",
             PortDomain::DomainContext, ConnectionKind::Signal
@@ -1425,7 +1425,7 @@ TEST_CASE("Node canvas scene shares geometry with typed hit testing", "[cycle-v2
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 100.f, 80.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", { 500.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", { 500.f, 80.f }));
     graph.addEdge({ "wave", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     NodeCanvasViewport viewport;
@@ -1679,10 +1679,10 @@ TEST_CASE("Rich node views are selected through the view module registry", "[cyc
     REQUIRE(registry.moduleFor(NodeKind::Envelope).capabilities().hostedEditor);
     REQUIRE(registry.moduleFor(NodeKind::TrilinearMesh).capabilities().outputSideControl);
     REQUIRE(registry.moduleFor(NodeKind::Add).capabilities().operationLayoutControl);
-    REQUIRE_FALSE(registry.moduleFor(NodeKind::Output).capabilities().hostedEditor);
+    REQUIRE_FALSE(registry.moduleFor(NodeKind::GlobalOutput).capabilities().hostedEditor);
     REQUIRE(registry.moduleFor(NodeKind::Envelope).editorFactory() != nullptr);
     REQUIRE(registry.moduleFor(NodeKind::TrilinearMesh).editorFactory() != nullptr);
-    REQUIRE(registry.moduleFor(NodeKind::Output).editorFactory() == nullptr);
+    REQUIRE(registry.moduleFor(NodeKind::GlobalOutput).editorFactory() == nullptr);
 
     const auto bounds = registry.moduleFor(NodeKind::ImpulseResponse)
             .expandedEditorBounds({ 0.f, 0.f, 1400.f, 800.f }, 18.f);
@@ -1751,7 +1751,7 @@ TEST_CASE("Cable endpoints follow node movement before a drag transaction commit
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "source", { 40.f, 80.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", { 420.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", { 420.f, 80.f }));
     graph.addEdge({
             "source", "out", "output", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal });

@@ -75,14 +75,15 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Graph/GraphDocument.h` — Committed graph ownership, publication, and document observers.
 - `cycle-v2/src/Graph/GraphCommandDispatcher.h` — Semantic values, topology, Guides, gestures and staged undoable publication.
 - `cycle-v2/src/Graph/GraphDelta.h` — Ordered semantic deltas for atomic graph edits, rollback, undo, and redo.
-- `cycle-v2/src/Graph/GraphSerializer.h` — Current graph persistence and migration-facing serialization.
+- `cycle-v2/src/Graph/GraphSerializer.h` — Graph persistence; OutputStageRepresentationMigration splits legacy Gain and Global Out.
 - `cycle-v2/src/Graph/GraphCompiler.h` — Compiles graph topology into executable runtime structure.
 - `cycle-v2/src/Graph/GraphValidator.h` — Coordinates graph validation; reuse focused validators beneath it.
 - `cycle-v2/src/Graph/NodeDefinition.h` — Node types, ports, defaults, constraints, and synthesis capability metadata.
 - `cycle-v2/src/Runtime/GraphRuntime.h` — Owns compiled runtime state and graph execution lifecycle.
-- `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime audio and cursor capture; GraphPreviewTiming measures tails for shared PreviewTraversal coordinates.
+- `cycle-v2/src/Runtime/GraphAudioExecutor.h` — Realtime audio/cursors and pre-wet monitoring; GraphPreviewTiming measures PreviewTraversal tails.
 - `cycle-v2/src/Runtime/GraphPreviewExecutor.h` — Scoped preview extraction, full-band spectrum sizing and view-specific row reduction.
 - `cycle-v2/src/Runtime/SignalProbeWaveformCapture.h` — Snapshot-scoped continuous Spy audition reuse and compatible multi-probe capture.
+- `scripts/test_cycle_v2_gain_spies.py` — Native Gain-to-Spy amplitude and undo regression with exported frames.
 - `cycle-v2/src/Runtime/NodeModuleRegistry.h` — Registration boundary for node model, DSP, preview, and view modules.
 - `cycle-v2/src/Runtime/NodeUpdateGraph.h` — Dependency-driven invalidation and preparation scheduling.
 - `cycle-v2/src/Nodes/Trimesh/` — Trimesh model, DSP, panels, editors, and rendering; reuse shared rasterization cores.
@@ -92,26 +93,29 @@ characters. Run `python3 scripts/check_code_map.py` after editing this file.
 - `cycle-v2/src/Nodes/Envelope/` — State/playback, shared section palette, surfaces and EnvelopeEditCore for panel and headless edits.
 - `cycle-v2/src/Nodes/Guide/` — Guide attachments, snapshots, heatmaps, preparation, and editing.
 - `cycle-v2/src/Nodes/ImpulseResponse/` — Canonical IR import/analysis; effect processors prepare playback-rate kernels.
-- `cycle-v2/src/UI/NodeWorkspace.h` — Workspace composition, ephemeral controllers, and audio playback cursor delivery.
+- `cycle-v2/src/UI/NodeWorkspace.h`, `cycle-v2/src/UI/NodeWorkspacePatterns.cpp` — Workspace composition and pattern-library persistence.
 - `cycle-v2/src/UI/NodeCanvas.h` — Canvas orchestrator; delegate interaction, scene, presentation, and commands.
+- `cycle-v2/src/UI/NodeCanvasNodeMenu.cpp`, `scripts/test_cycle_v2_daily_usability.py` — Empty-canvas node creation menu reuses palette catalogue and authoring commands.
 - `cycle-v2/src/UI/NodeCanvasInteraction.h` — Pointer/gesture routing; preserve semantic command and cost boundaries.
 - `cycle-v2/src/UI/NodeCanvasPresentation.h` — Canvas presentation from graph/runtime facts; shared single-line console and right-aligned legend footer.
 - `cycle-v2/src/UI/NodeCanvasScene.h` — Retained node scene and geometry used by hit-testing and rendering.
 - `cycle-v2/src/UI/NodeEditorHost.h` — Expanded editor lifecycle and factory-owned placement; PanelPlaybackOverlay draws bounded audio cursor frames.
 - `cycle-v2/src/UI/NodeCanvasExplanations.cpp` — Preset/node/group explanations, shared editor and attached card orchestration.
+- `cycle-v2/src/UI/DialogLookAndFeel.h` — Icon-free save prompts reuse the exporter’s Amaranth controls with owned theme lifetime.
 - `cycle-v2/src/UI/SurfaceAppearanceDialog.h`, `cycle-v2/src/UI/WaveformColourStyles.h`, `scripts/test_cycle_v2_surface_appearance.py` — Modal palette selectors, waveform gradient identity, and UI verification.
 - `cycle-v2/src/UI/NodePreviewRenderer.h`, `cycle-v2/src/UI/ComparisonSurfaceView.h`, `cycle-v2/src/UI/SignalProbeDetailPanel.h`, `cycle-v2/src/UI/SpyFrameRenderer.h`, `cycle-v2/src/UI/SpyPlaybackRipple.h` — Preview plots, expanded Spy capture and palette-preserving saturation playback ripples.
 - `cycle-v2/src/UI/SignalProbeCanvas.h`, `scripts/test_cycle_v2_spy_refresh.py` — Spy views; refresh-count, tray update and retained-waveform regression checks.
-- `cycle-v2/src/UI/InlinePresetBrowser.h` — Grouped library/authoring tabs; ReferenceAssetBrowser and ReferenceTrayBar own assets and tray.
-- `scripts/test_cycle_v2_console_sidebar.py` — Native sidebar, single-line console hover and resize regression checks.
+- `cycle-v2/src/UI/InlinePresetBrowser.h`, `cycle-v2/src/UI/GuideCurveShelf.h` — Sidebar tabs, library cards and curve list; WorkspaceDock owns shared geometry.
+- `scripts/test_cycle_v2_console_sidebar.py`, `scripts/test_cycle_v2_curve_transport_polish.py` — Native sidebar, curve summaries, octave controls and transport checks.
 - `cycle-v2/src/UI/LibraryThumbnailCache.h` — Async reference-asset thumbnails.
 - `cycle-v2/src/UI/ReferenceWaveformPreview.h`, `cycle-v2/src/UI/ReferenceWaveformView.h` — Shared waveform analysis/cache and async indexed density/path views.
 - `scripts/fixtures/cycle-v2-agent-spy-waveform-reuse.json` — Checks unchanged tray analysis and presentation invalidation.
 - `cycle-v2/src/UI/WaveformHeatRenderer.h`, `scripts/fixtures/cycle-v2-agent-waveform-zoom-performance.json` — GPU waveform coverage/heat composition and zoom performance workload.
+- `cycle-v2/src/UI/MidiPatternEditorWindow.h`, `cycle-v2/src/UI/PresetMidiEditorSelection.cpp` — Pattern drafts, explicit copy saves and MIDI group selection.
 - `cycle-v2/src/UI/PresetMidiEditor.h`, `cycle-v2/src/UI/PresetMidiEditor.cpp`, `cycle-v2/src/UI/PresetMidiEditorView.cpp`, `scripts/fixtures/cycle-v2-agent-midi-editor-layout.json` — Compact MIDI authoring, aligned timelines, notes-only overview and scrollable CC lanes.
 - `cycle-v2/src/UI/PerformanceKeyboard.cpp`, `cycle-v2/src/UI/PerformanceKeyboardKeys.cpp`, `cycle-v2/src/UI/PerformanceKeyboardChrome.cpp`, `cycle-v2/src/UI/PatternPlaybackSchedule.h`, `cycle-v2/src/UI/PerformanceWaveformPreview.h`, `scripts/test_cycle_v2_performance_waveform.py`, `scripts/fixtures/cycle-v2-agent-midi-playhead.json`, `scripts/fixtures/cycle-v2-agent-midi-scroll-tail.json` — MIDI authoring/transport, keys, CC dials, cached waveform/cursors, playhead seeking and two-bar scroll padding.
 - `cycle-v2/tests/` — Graph, runtime, node, UI, serialization, operation-count, and automation contracts.
-- `cycle-v2/content/` — Factory graphs, presets, patterns, and samples; product data, not source examples.
+- `cycle-v2/content/`, `scripts/align_cycle_v2_scratch_envelopes.py` — Factory assets and single-consumer scratch alignment.
 
 ## Other Products
 

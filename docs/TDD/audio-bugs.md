@@ -1333,3 +1333,46 @@ cases but logs three `SignalBuffer.h:123` assertions after empty
 painting; no app assertion or crash was observed in the isolated annotation
 fixture. Evidence: `.context/spy-adsr-tests.log`. Investigate empty Guide input
 materialization separately from the passing release-duration assertions.
+
+## Resolved: Trombone without an IFFT phase input played at callback cadence
+
+The factory Trombone graph connects spectral magnitude to IFFT without a phase
+input. Ordinary `FftBlockwiseDsp::inverse` supplies zero phase in that case, but
+`SpectralOscillatorFrameRenderer` required both inputs. Its rejection reproduced
+in the factory preparation regression and allowed ordinary callback-block output
+instead of pitched oscillator reconstruction.
+
+The prepared renderer now accepts an absent phase input and zeros its existing
+phase scratch buffer. Connected phase inputs must still come from the region.
+Factory preparation and rendered periodicity regressions cover Trombone, including
+127/256/512-frame host partitions. Live 44.1 kHz/512 captures of MIDI 60 and 72
+showed median normalized period correlations of 0.9969 and 0.9972 at the expected
+169- and 84-sample periods. Evidence: `.context/trombone-live-pitch.json` and
+`scripts/fixtures/cycle-v2-agent-trombone-pitch.json`. This fixes optional-phase
+preparation; the general unsupported-region fallback follow-up above remains open.
+Status: resolved 2026-11-11.
+
+## Resolved: output waveform overflow did not indicate device-output clipping
+
+2026-11-14: ten working-tree presets at MIDI 60/full velocity have default-output
+waveform peaks 1.134–4.896, but actual single-note audio peaks only 0.074–0.327.
+Live callback captures confirm Subbass 0.262, Fuzz Square 0.196 and Bright Lead 4
+0.302. The pre-wet waveform sums stereo channels and precedes the renderer's
+fixed 0.125 output gain (-18.06 dB). Its +/-1 viewport therefore crops signals
+well below final output unity. This is a display calibration/semantics mismatch;
+removing attenuation would hit the final limiter for nine of the ten captures.
+Method, complete table and ownership: cycle-v2-output-amplitude-validation.md.
+Raw evidence: .context/output-amplitude/results.json and live-results.json.
+No production audio/gain changes made.
+
+Resolution 2026-11-14: at the user's direction, live/offline output now defaults
+to unity and continuous waveform capture averages stereo L+R. All ten measured
+waveform peaks halve exactly; new default WAVs equal the prior explicit-unity
+captures byte for byte. Three live callback checks reach the final 1.0 clamp.
+The pre-wet tap and final +/-1 clamp are retained.
+
+The broader offline checks retain eight pre-existing failing cases (missing
+legacy preset fixtures and the spectral secondary-value expectation). The same
+eight reproduce in the independent b87afb37 binary; evidence:
+.context/output-amplitude/offline-baseline-tests.log. Focused gain and waveform
+regressions pass. No workaround for unrelated baseline failures was added.

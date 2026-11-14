@@ -1458,3 +1458,44 @@ visible peer, producing JUCE `Component.cpp:2694` focus assertions. Mounting the
 fixture on a temporary desktop peer before editing resolves them; 1,632 focused
 assertions and native tempo-entry/cancel verification pass without assertions.
 No production focus workaround was added.
+
+## Open: pre-existing empty demo-model graph fixtures fail and one serializer test crashes
+
+During the usability-polish run, `Compiled Output gain changes the graph audio
+payload` produced only zeros and `Trimesh guide gain gesture publishes prepared
+gain and undoes as one edit` could not attach its Guide. Both reproduce on the
+untouched b87afb37 baseline in `.context/polish-baseline-failures.log`.
+`A Trimesh vertex edit has a localized canonical JSON diff` independently
+reproduces SIGSEGV on that baseline (`.context/polish-baseline-crash.log`).
+Several broader graph fixtures also reference missing/changed factory presets.
+These fixtures need current populated domain data; new output regressions use
+populated factory or mesh-owner fixtures. No production fallback is justified.
+
+
+### Existing scratch-cable Spy test fixture has empty source data
+
+2026-11-11: `Deleting a scratch cable refreshes an observed spectral Trimesh`
+fails at TestNodeCanvasAuthoring.cpp:422 because attached/detached captures both
+contain only zeroes. Independently reproduced on b87afb37 with its separate
+baseline executable; evidence: .context/gain-spy-baseline-debt.log. Encountered
+while checking Gain-to-Spy amplitude; no production workaround added.
+
+
+### Existing editor-centering assertion in dock fixture
+
+2026-11-14: `Canvas spies leave the full canvas available` fails the expanded
+editor center equality in TestNodeCanvasArchitecture.cpp:179. Independently
+reproduced on b87afb37 at the same assertion (line 178 there); evidence is
+.context/curve-sidebar-baseline.log. Found during sidebar alignment checks;
+no editor-placement workaround added.
+
+### Existing time-Spy contrast fixtures disagree with current material defaults
+
+2026-11-14: `Signal spy heatmaps reveal low-amplitude time signals`, `Signal spy
+heatmaps normalize time-signal contrast across gain`, and `Signal spy heatmaps
+preserve detail above unity gain` fail four assertions with the current default
+material. Rebuilt the tests with the exact unchanged HEAD NodePreviewRenderer
+and reproduced all three failures before the Spy display-gain change. Evidence:
+.context/spy-clarity/exact-baseline-tests.log. Explicit-style display-gain and
+spectral mapping coverage is verified separately; no unrelated material-default
+change was added.

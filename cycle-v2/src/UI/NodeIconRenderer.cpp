@@ -82,6 +82,9 @@ const Icon* iconFor(const String& semanticId) {
 }
 
 const Icon* iconFor(NodeKind kind) {
+    if (kind == NodeKind::GlobalOutput) {
+        return iconFor("voiceOutput");
+    }
     if (kind == NodeKind::Fft) {
         return iconFor("fourier");
     }

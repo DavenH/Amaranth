@@ -26,7 +26,7 @@ bool isLegacyGlobalKind(const String& kind) {
             || kind == "equalizer"
             || kind == "delay"
             || kind == "reverb"
-            || kind == "output";
+            || kind == "output" || kind == "gain" || kind == "globalOutput";
 }
 
 bool isSelectableKind(const String& kind) {
@@ -124,7 +124,8 @@ String relocatePreEnvelopeEffectChain(Array<var>& nodes, Array<var>& edges) {
             const auto* output = edges.getReference(effectOutputIndex).getDynamicObject();
             const String destination = output->getProperty("destNodeId").toString();
             if (isLegacyGlobalKind(kindForNode(nodes, destination))
-                    && kindForNode(nodes, destination) != "output") {
+                    && kindForNode(nodes, destination) != "output"
+                    && kindForNode(nodes, destination) != "globalOutput") {
                 current = destination;
                 continue;
             }
@@ -140,9 +141,8 @@ String relocatePreEnvelopeEffectChain(Array<var>& nodes, Array<var>& edges) {
                     continue;
                 }
                 if (edge->getProperty("sourceNodeId").toString() == destination
-                        && kindForNode(
-                                nodes,
-                                edge->getProperty("destNodeId").toString()) == "output") {
+                        && (kindForNode(nodes, edge->getProperty("destNodeId").toString()) == "output"
+                            || kindForNode(nodes, edge->getProperty("destNodeId").toString()) == "globalOutput")) {
                     combinerOutputIndex = index;
                 }
                 if (edge->getProperty("destNodeId").toString() == destination
@@ -527,7 +527,7 @@ GlobalAudioGraphRepresentationMigration::migrate(var& graph) const {
         return result;
     }
     const int version = (int) root->getProperty("formatVersion");
-    if (version == 6 || version == 7 || version == 8 || version == 9) {
+    if (version == 6 || version == 7 || version == 8 || version == 9 || version == 10) {
         return result;
     }
     if (version == 5) {
@@ -611,7 +611,8 @@ GlobalAudioGraphRepresentationMigration::migrate(var& graph) const {
     } else if (destinationNodeId.isEmpty()) {
         for (const auto& encoded : *nodes) {
             const auto* node = encoded.getDynamicObject();
-            if (node != nullptr && node->getProperty("kind").toString() == "output") {
+            if (node != nullptr && (node->getProperty("kind").toString() == "output"
+                    || node->getProperty("kind").toString() == "globalOutput")) {
                 destinationNodeId = node->getProperty("id").toString();
                 break;
             }

@@ -172,7 +172,6 @@ public:
     var captureAudioForAutomation(size_t frameCount) const;
     bool copyAudioPlan(GraphExecutionPlan& plan, uint64_t& revision) const;
     uint64_t audioPlanRevision() const { return presentation.audioPlanRevision(); }
-    float graphOutputGain() const;
     int previewMidiNote() const { return presentation.previewMidiNote(); }
     bool hasTrimeshEditorOpen() const;
     std::vector<ComparisonSpyOption> comparisonSpyOptions() const;
@@ -411,6 +410,7 @@ private:
     Rectangle<float> canvasUtilityBounds() const;
     Rectangle<float> editorContentBounds() const;
     WorkspaceDockLayout workspaceDockLayout() const;
+    void showNodeCreationMenu(Point<float> canvasPosition);
     void showEdgeMenu(int edgeIndex, Point<float> canvasPosition);
     void showNodeGroupMenu(const String& groupId, Point<float> canvasPosition);
     void promptRenameNodeGroup(const String& groupId);

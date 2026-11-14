@@ -20,7 +20,7 @@ TEST_CASE("Node definitions have unique coherent schemas", "[cycle-v2][graph][de
     const auto& registry = NodeDefinitionRegistry::instance();
     std::set<String> typeIds;
 
-    REQUIRE(registry.definitions().size() == 25);
+    REQUIRE(registry.definitions().size() == 26);
     for (const auto& definition : registry.definitions()) {
         REQUIRE(definition.typeId.isNotEmpty());
         REQUIRE(definition.defaultInstanceIdPrefix.isNotEmpty());
@@ -80,14 +80,15 @@ TEST_CASE("Pan presents as an inline cable control", "[cycle-v2][graph][definiti
             == node.bounds.getCentreY());
 }
 
-TEST_CASE("Output owns a unity-default master gain", "[cycle-v2][graph][definitions][output]") {
-    const Node node = GraphNodeFactory().createNode(NodeKind::Output, "output", {});
+TEST_CASE("Gain owns a unity-default level independently of Global Out", "[cycle-v2][graph][definitions][output]") {
+    const Node node = GraphNodeFactory().createNode(NodeKind::Gain, "output", {});
 
     REQUIRE(node.parameters.size() == 1);
     REQUIRE(node.parameters.front().id == "gain");
     REQUIRE(node.parameters.front().value == "0.5");
     REQUIRE(node.bounds.getWidth() == 190.f);
-    REQUIRE(node.bounds.getHeight() == 320.f);
+    REQUIRE(node.bounds.getHeight() == GraphNodeFactory().createNode(NodeKind::Delay, "delay", {}).bounds.getHeight());
+    REQUIRE(node.bounds.getHeight() == GraphNodeFactory().createNode(NodeKind::Reverb, "reverb", {}).bounds.getHeight());
 }
 
 TEST_CASE("Global audio graph nodes expose fixed singleton contracts",
@@ -95,7 +96,7 @@ TEST_CASE("Global audio graph nodes expose fixed singleton contracts",
     const auto& registry = NodeDefinitionRegistry::instance();
     const auto* voiceOutput = registry.find(NodeKind::VoiceOutput);
     const auto* globalInput = registry.find(NodeKind::GlobalInput);
-    const auto* output = registry.find(NodeKind::Output);
+    const auto* output = registry.find(NodeKind::GlobalOutput);
 
     REQUIRE(voiceOutput != nullptr);
     REQUIRE(voiceOutput->typeId == "voiceOutput");
@@ -115,6 +116,11 @@ TEST_CASE("Global audio graph nodes expose fixed singleton contracts",
     REQUIRE(globalInput->processingCapability == AudioProcessingCapability::GlobalOnly);
     REQUIRE(globalInput->requiredSingleton);
     REQUIRE_FALSE(globalInput->removable);
+    REQUIRE(output->typeId == "globalOutput");
+    REQUIRE(output->parameters.empty());
+    REQUIRE(output->outputs.empty());
+    REQUIRE(output->inputs.size() == 1);
+    REQUIRE_FALSE(output->previewable);
     REQUIRE(output->processingCapability == AudioProcessingCapability::GlobalOnly);
     REQUIRE(output->requiredSingleton);
     REQUIRE_FALSE(output->removable);
@@ -152,11 +158,11 @@ TEST_CASE("Required audio graph nodes cannot be duplicated or removed",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
 
     REQUIRE_FALSE(editor.addNode(graph, NodeKind::VoiceOutput, {}).succeeded());
     REQUIRE_FALSE(editor.addNode(graph, NodeKind::GlobalInput, {}).succeeded());
-    REQUIRE_FALSE(editor.addNode(graph, NodeKind::Output, {}).succeeded());
+    REQUIRE_FALSE(editor.addNode(graph, NodeKind::GlobalOutput, {}).succeeded());
     REQUIRE_FALSE(editor.removeNode(graph, "voiceOut").succeeded());
     REQUIRE_FALSE(editor.removeNode(graph, "globalIn").succeeded());
     REQUIRE_FALSE(editor.removeNode(graph, "out").succeeded());

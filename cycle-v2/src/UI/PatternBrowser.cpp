@@ -109,7 +109,7 @@ public:
         selectedId = records[(size_t) index].id;
         repaint();
         onSelect(selectedId);
-        if (event.getNumberOfClicks() > 1) {
+        if (onEdit) {
             onEdit(selectedId);
         }
     }
@@ -364,9 +364,7 @@ void PatternBrowser::editSelected() {
     if (record == nullptr) {
         return;
     }
-    if (record->factory) {
-        createPattern(record);
-    } else if (onEdit) {
+    if (onEdit) {
         onEdit(record->id);
     }
 }

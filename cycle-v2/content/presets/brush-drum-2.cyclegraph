@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 7,
+    "formatVersion": 10,
     "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
@@ -12,7 +12,10 @@
                 "octave": 0,
                 "voiceLength": 0.31458,
                 "pitch": 0.0,
+                "noteMode": "polyphonic",
                 "portamento": false,
+                "portamentoSeconds": 0.06,
+                "envelopeModulation": "latched",
                 "pitchIndependentSpectralControl": true,
                 "oversampling": "1x",
                 "controlInterval": "64"
@@ -32,7 +35,16 @@
                 "redConstant": 0.5,
                 "blueSource": "inverseVelocity",
                 "blueController": 1,
-                "blueConstant": 0.5
+                "blueConstant": 0.5,
+                "envelopeYellowSource": "unmapped",
+                "envelopeYellowController": 1,
+                "envelopeYellowConstant": 0.5,
+                "envelopeRedSource": "keyScale",
+                "envelopeRedController": 1,
+                "envelopeRedConstant": 0.5,
+                "envelopeBlueSource": "inverseVelocity",
+                "envelopeBlueController": 1,
+                "envelopeBlueConstant": 0.5
             }
         },
         {
@@ -48,6 +60,7 @@
             "definitionVersion": 1,
             "position": { "x": 1644.0, "y": 666.0 },
             "parameters": {
+                "dimensionCount": 3,
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.575,
@@ -135,6 +148,7 @@
             "definitionVersion": 1,
             "position": { "x": 1644.0, "y": 1050.0 },
             "parameters": {
+                "dimensionCount": 3,
                 "enabled": true,
                 "gain": 0.5,
                 "range": 0.625,
@@ -227,15 +241,25 @@
             "kind": "envelope",
             "definitionVersion": 1,
             "position": { "x": 2022.80005, "y": 1084.0 },
-            "parameters": { "enabled": true, "purpose": "volume", "logarithmic": false, "declick": false, "red": 0.0, "blue": 0.0, "level": 1.0 },
+            "parameters": {
+                "dimensionCount": 2,
+                "yellow": 0.0,
+                "enabled": true,
+                "purpose": "volume",
+                "logarithmic": false,
+                "declick": false,
+                "red": 0.0,
+                "blue": 0.0,
+                "level": 1.0
+            },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 91,
+                "revision": 92,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 91,
+                    "revision": 92,
                     "mesh": {
                         "name": "Mesh",
                         "mainMesh": {
@@ -246,58 +270,58 @@
                                 { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 1 },
                                 { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 2 },
                                 { "time": 0.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 3 },
-                                { "time": 1.0, "phase": 0.0026871394, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 4 },
-                                { "time": 1.0, "phase": 0.0026871394, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 5 },
-                                { "time": 1.0, "phase": 0.0026871394, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 6 },
-                                { "time": 1.0, "phase": 0.0026871394, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 7 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 4 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 5 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 6 },
+                                { "time": 1.0, "phase": 0.0, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 7 },
                                 { "time": 0.0, "phase": 0.014507523, "amp": 0.6108373, "key": 0.0, "mod": 0.0, "weight": 0.5306351, "id": 8 },
                                 { "time": 0.0, "phase": 0.011138635, "amp": 0.79800296, "key": 0.0, "mod": 1.0, "weight": 0.36210722, "id": 9 },
                                 { "time": 0.0, "phase": 0.0011963989, "amp": 0.5763545, "key": 1.0, "mod": 0.0, "weight": 0.5306351, "id": 10 },
                                 { "time": 0.0, "phase": 2.195727e-06, "amp": 0.7635202, "key": 1.0, "mod": 1.0, "weight": 0.36210722, "id": 11 },
-                                { "time": 1.0, "phase": 0.010822302, "amp": 0.6108373, "key": 0.0, "mod": 0.0, "weight": 0.5306351, "id": 12 },
-                                { "time": 1.0, "phase": 0.007453411, "amp": 0.7733724, "key": 0.0, "mod": 1.0, "weight": 0.36210722, "id": 13 },
-                                { "time": 1.0, "phase": 0.0009185177, "amp": 0.5763545, "key": 1.0, "mod": 0.0, "weight": 0.5306351, "id": 14 },
-                                { "time": 1.0, "phase": 0.0, "amp": 0.73888963, "key": 1.0, "mod": 1.0, "weight": 0.36210722, "id": 15 },
+                                { "time": 1.0, "phase": 0.014507523, "amp": 0.6108373, "key": 0.0, "mod": 0.0, "weight": 0.5306351, "id": 12 },
+                                { "time": 1.0, "phase": 0.011138635, "amp": 0.79800296, "key": 0.0, "mod": 1.0, "weight": 0.36210722, "id": 13 },
+                                { "time": 1.0, "phase": 0.0011963989, "amp": 0.5763545, "key": 1.0, "mod": 0.0, "weight": 0.5306351, "id": 14 },
+                                { "time": 1.0, "phase": 2.195727e-06, "amp": 0.7635202, "key": 1.0, "mod": 1.0, "weight": 0.36210722, "id": 15 },
                                 { "time": 0.0, "phase": 1.0, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 16 },
                                 { "time": 0.0, "phase": 1.0, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 17 },
                                 { "time": 0.0, "phase": 0.39406046, "amp": 0.024630561, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 18 },
                                 { "time": 0.0, "phase": 0.39406046, "amp": 0.024630561, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 19 },
                                 { "time": 1.0, "phase": 1.0, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 1.0, "id": 20 },
                                 { "time": 1.0, "phase": 1.0, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 1.0, "id": 21 },
-                                { "time": 1.0, "phase": 0.42584154, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 22 },
-                                { "time": 1.0, "phase": 0.42584154, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 23 },
+                                { "time": 1.0, "phase": 0.39406046, "amp": 0.024630561, "key": 1.0, "mod": 0.0, "weight": 1.0, "id": 22 },
+                                { "time": 1.0, "phase": 0.39406046, "amp": 0.024630561, "key": 1.0, "mod": 1.0, "weight": 1.0, "id": 23 },
                                 { "time": 0.0, "phase": 1.1807692, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 24 },
                                 { "time": 0.0, "phase": 1.1807692, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 25 },
                                 { "time": 0.0, "phase": 0.4654803, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 26 },
                                 { "time": 0.0, "phase": 0.4654803, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 27 },
-                                { "time": 1.0, "phase": 1.1825515, "amp": 0.113300495, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 28 },
-                                { "time": 1.0, "phase": 1.1825515, "amp": 0.113300495, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 29 },
-                                { "time": 1.0, "phase": 0.45713997, "amp": 0.113300495, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 30 },
-                                { "time": 1.0, "phase": 0.45713997, "amp": 0.113300495, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 31 },
+                                { "time": 1.0, "phase": 1.1807692, "amp": 0.0, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 28 },
+                                { "time": 1.0, "phase": 1.1807692, "amp": 0.0, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 29 },
+                                { "time": 1.0, "phase": 0.4654803, "amp": 0.0, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 30 },
+                                { "time": 1.0, "phase": 0.4654803, "amp": 0.0, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 31 },
                                 { "time": 0.0, "phase": 1.047914, "amp": 0.019704435, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 32 },
                                 { "time": 0.0, "phase": 1.047914, "amp": 0.019704435, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 33 },
                                 { "time": 0.0, "phase": 0.40778244, "amp": 0.009852223, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 34 },
                                 { "time": 0.0, "phase": 0.40778244, "amp": 0.009852223, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 35 },
-                                { "time": 1.0, "phase": 1.1157867, "amp": 0.073891625, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 36 },
-                                { "time": 1.0, "phase": 1.1157867, "amp": 0.073891625, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 37 },
-                                { "time": 1.0, "phase": 0.4334732, "amp": 0.073891625, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 38 },
-                                { "time": 1.0, "phase": 0.4334732, "amp": 0.073891625, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 39 },
+                                { "time": 1.0, "phase": 1.047914, "amp": 0.019704435, "key": 0.0, "mod": 0.0, "weight": 0.0, "id": 36 },
+                                { "time": 1.0, "phase": 1.047914, "amp": 0.019704435, "key": 0.0, "mod": 1.0, "weight": 0.0, "id": 37 },
+                                { "time": 1.0, "phase": 0.40778244, "amp": 0.009852223, "key": 1.0, "mod": 0.0, "weight": 0.0, "id": 38 },
+                                { "time": 1.0, "phase": 0.40778244, "amp": 0.009852223, "key": 1.0, "mod": 1.0, "weight": 0.0, "id": 39 },
                                 { "time": 0.0, "phase": 0.044105675, "amp": 0.95566493, "key": 0.0, "mod": 0.0, "weight": 0.45805195, "id": 40 },
                                 { "time": 0.0, "phase": 0.08229253, "amp": 0.8701034, "key": 0.0, "mod": 1.0, "weight": 0.45805195, "id": 41 },
                                 { "time": 0.0, "phase": 0.015634563, "amp": 0.95566493, "key": 1.0, "mod": 0.0, "weight": 0.45805195, "id": 42 },
                                 { "time": 0.0, "phase": 0.029171024, "amp": 0.8701034, "key": 1.0, "mod": 1.0, "weight": 0.45805195, "id": 43 },
-                                { "time": 1.0, "phase": 0.12952483, "amp": 0.9014778, "key": 0.0, "mod": 0.0, "weight": 0.8890066, "id": 44 },
-                                { "time": 1.0, "phase": 0.16771169, "amp": 0.8159163, "key": 0.0, "mod": 1.0, "weight": 0.8890066, "id": 45 },
-                                { "time": 1.0, "phase": 0.04591391, "amp": 0.9014778, "key": 1.0, "mod": 0.0, "weight": 0.8890066, "id": 46 },
-                                { "time": 1.0, "phase": 0.059450373, "amp": 0.8159163, "key": 1.0, "mod": 1.0, "weight": 0.8890066, "id": 47 },
+                                { "time": 1.0, "phase": 0.044105675, "amp": 0.95566493, "key": 0.0, "mod": 0.0, "weight": 0.45805195, "id": 44 },
+                                { "time": 1.0, "phase": 0.08229253, "amp": 0.8701034, "key": 0.0, "mod": 1.0, "weight": 0.45805195, "id": 45 },
+                                { "time": 1.0, "phase": 0.015634563, "amp": 0.95566493, "key": 1.0, "mod": 0.0, "weight": 0.45805195, "id": 46 },
+                                { "time": 1.0, "phase": 0.029171024, "amp": 0.8701034, "key": 1.0, "mod": 1.0, "weight": 0.45805195, "id": 47 },
                                 { "time": 0.0, "phase": 0.57854664, "amp": 0.33931345, "key": 0.0, "mod": 0.0, "weight": 0.14929666, "id": 48 },
                                 { "time": 0.0, "phase": 0.60052276, "amp": 0.44294038, "key": 0.0, "mod": 1.0, "weight": 0.7345836, "id": 49 },
                                 { "time": 0.0, "phase": 0.22513528, "amp": 0.33931345, "key": 1.0, "mod": 0.0, "weight": 0.14929666, "id": 50 },
                                 { "time": 0.0, "phase": 0.23633173, "amp": 0.44294038, "key": 1.0, "mod": 1.0, "weight": 0.7345836, "id": 51 },
-                                { "time": 1.0, "phase": 0.6159006, "amp": 0.33931345, "key": 0.0, "mod": 0.0, "weight": 0.14929666, "id": 52 },
-                                { "time": 1.0, "phase": 0.63787675, "amp": 0.44294038, "key": 0.0, "mod": 1.0, "weight": 0.7345836, "id": 53 },
-                                { "time": 1.0, "phase": 0.25625965, "amp": 0.33931345, "key": 1.0, "mod": 0.0, "weight": 0.14929666, "id": 54 },
-                                { "time": 1.0, "phase": 0.26745608, "amp": 0.44294038, "key": 1.0, "mod": 1.0, "weight": 0.7345836, "id": 55 }
+                                { "time": 1.0, "phase": 0.57854664, "amp": 0.33931345, "key": 0.0, "mod": 0.0, "weight": 0.14929666, "id": 52 },
+                                { "time": 1.0, "phase": 0.60052276, "amp": 0.44294038, "key": 0.0, "mod": 1.0, "weight": 0.7345836, "id": 53 },
+                                { "time": 1.0, "phase": 0.22513528, "amp": 0.33931345, "key": 1.0, "mod": 0.0, "weight": 0.14929666, "id": 54 },
+                                { "time": 1.0, "phase": 0.23633173, "amp": 0.44294038, "key": 1.0, "mod": 1.0, "weight": 0.7345836, "id": 55 }
                             ],
                             "cubes": [
                                 {
@@ -343,7 +367,8 @@
                     "logarithmic": false,
                     "red": 0.0,
                     "blue": 0.0,
-                    "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ]
+                    "cubeIds": [ 1, 2, 3, 4, 5, 6, 7 ],
+                    "nextCubeIdentity": 8
                 }
             },
             "editor": { "selectedCubeId": 1 }
@@ -352,16 +377,26 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 1251.80737, "y": 700.0 },
-            "parameters": { "enabled": true, "purpose": "scratch", "logarithmic": false, "declick": false, "red": 0.0, "blue": 1.0, "level": 1.0 },
+            "position": { "x": 1251.80737, "y": 666.0 },
+            "parameters": {
+                "dimensionCount": 2,
+                "yellow": 0.0,
+                "enabled": true,
+                "purpose": "scratch",
+                "logarithmic": false,
+                "declick": false,
+                "red": 0.0,
+                "blue": 1.0,
+                "level": 1.0
+            },
             "model": {
                 "schema": "envelope",
                 "version": 2,
-                "revision": 54,
+                "revision": 55,
                 "state": {
                     "version": 2,
                     "type": "envelope",
-                    "revision": 54,
+                    "revision": 55,
                     "mesh": {
                         "name": "ScratchMesh0",
                         "mainMesh": {
@@ -417,7 +452,8 @@
                     "logarithmic": false,
                     "red": 0.0,
                     "blue": 1.0,
-                    "cubeIds": [ 1, 2, 3 ]
+                    "cubeIds": [ 1, 2, 3 ],
+                    "nextCubeIdentity": 4
                 }
             },
             "editor": { "selectedCubeId": 3 }
@@ -516,21 +552,21 @@
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 786.16296, "y": 1357.95801 },
+            "position": { "x": 1024.16296, "y": 1357.95801 },
             "parameters": { "enabled": true, "size": 0.3333, "damp": 1.0, "width": 0.91724, "wet": 0.70633, "highPass": 0.0 }
         },
         {
             "id": "output",
-            "kind": "output",
+            "kind": "gain",
             "definitionVersion": 1,
-            "position": { "x": 1050.16296, "y": 1357.95801 },
-            "parameters": { "gain": 0.779517 }
+            "position": { "x": 786.16296, "y": 1357.95801 },
+            "parameters": { "gain": 0.63785 }
         },
         {
             "id": "globalInput",
             "kind": "globalInput",
             "definitionVersion": 1,
-            "position": { "x": 244.16296, "y": 1357.95801 },
+            "position": { "x": 292.21582, "y": 1357.95801 },
             "parameters": {}
         },
         {
@@ -538,6 +574,13 @@
             "kind": "voiceOutput",
             "definitionVersion": 1,
             "position": { "x": 2596.0, "y": 886.0 },
+            "parameters": {}
+        },
+        {
+            "id": "globalOutput",
+            "kind": "globalOutput",
+            "definitionVersion": 1,
+            "position": { "x": 1288.16296, "y": 1357.95801 },
             "parameters": {}
         }
     ],
@@ -733,24 +776,25 @@
         { "sourceNodeId": "phaseLayer1Process", "sourcePortId": "out", "destNodeId": "ifft", "destPortId": "phase", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "ifft", "sourcePortId": "time", "destNodeId": "volumeMultiply", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeEnvelope1", "sourcePortId": "env", "destNodeId": "volumeMultiply", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "impulseResponse", "sourcePortId": "time", "destNodeId": "reverb", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "impulseResponse", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "magnitudeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "reverb", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "reverb", "sourcePortId": "time", "destNodeId": "globalOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "impulseResponse", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "output", "sourcePortId": "time", "destNodeId": "reverb", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": [
         {
-            "id": "probe2",
-            "sourceNodeId": "impulseResponse",
+            "id": "probe",
+            "sourceNodeId": "output",
             "sourcePortId": "time",
             "anchorDestNodeId": "reverb",
             "anchorDestPortId": "time",
-            "label": "Spy 2",
+            "label": "Spy 1",
             "tapPosition": 0.5,
-            "railOrder": 1,
-            "canvasX": 804.86719,
-            "canvasY": 1060.55054
+            "railOrder": 0,
+            "canvasX": 1026.28833,
+            "canvasY": 1068.61133
         }
     ],
     "presetPresentation": {
@@ -764,7 +808,7 @@
             "data": "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"
         },
         "patternId": "factory-basic-rhythm",
-        "outputSpyX": 449.15472,
-        "outputSpyY": 1053.11401
+        "outputSpyX": 696.81171,
+        "outputSpyY": 1060.50671
     }
 }

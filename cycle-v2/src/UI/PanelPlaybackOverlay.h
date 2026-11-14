@@ -19,11 +19,16 @@ private:
     struct Line {
         float position {};
         bool horizontal {};
+        bool released {};
     };
     std::array<Line, 2 * PlaybackCursorFrame::capacity> lines(
             int morphAxis, bool envelope, bool surface, size_t& count) const;
 
-    std::array<Point<float>, PlaybackCursorFrame::capacity> dots(int morphAxis, bool envelope, size_t& count) const;
+    struct Marker {
+        Point<float> position;
+        bool released {};
+    };
+    std::array<Marker, PlaybackCursorFrame::capacity> dots(int morphAxis, bool envelope, size_t& count) const;
 
     PlaybackCursorFrame frame;
     float slice {};

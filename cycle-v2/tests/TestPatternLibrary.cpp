@@ -48,7 +48,7 @@ bool clickTarget(SidebarTagCloud& cloud, const String& target) {
 TEST_CASE("Pattern IDs round trip without embedding MIDI events",
         "[cycle-v2][pattern][serialization]") {
     NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "output", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "output", {}));
     PresetPresentation presentation;
     presentation.patternId = "factory-basic-sustained";
     PresetMidiSequence legacy;
@@ -175,9 +175,10 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
     phrase.notes.push_back({ 55, 105, 1.5, 0.5 });
     String selected;
     String createdName;
+    String edited;
     PatternBrowser browser(
             [&](const String& id) { selected = id; },
-            [](const String&) {},
+            [&](const String& id) { edited = id; },
             [&](const String& name, const StringArray& tags) {
                 createdName = name + ":" + tags.joinIntoString(",");
             });
@@ -208,6 +209,7 @@ TEST_CASE("Pattern browser rows show notes and assign their stable ID",
             now, rowPosition, now, 1, false);
     list->mouseUp(click);
     REQUIRE(selected == "factory-3");
+    REQUIRE(edited == selected);
     browser.setRecords(records, selected);
     REQUIRE(viewport->getViewPositionY() == scrollBeforeSelection);
     auto* filter = dynamic_cast<SidebarTagCloud*>(
@@ -365,24 +367,8 @@ TEST_CASE("Pattern browser renames and deletes only selected user patterns",
     REQUIRE_FALSE(remove->isEnabled());
     edit->triggerClick();
     MessageManager::getInstance()->runDispatchLoopUntil(40);
-    auto* copyPrompt = dynamic_cast<AlertWindow*>(
-            ModalComponentManager::getInstance()->getModalComponent(0));
-    REQUIRE(copyPrompt != nullptr);
-    REQUIRE(copyPrompt->getTextEditorContents("name") == "Factory Pad Variation");
-    copyPrompt->exitModalState(0);
-    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(editedId == "factory-pad");
     REQUIRE(created == 0);
-
-    edit->triggerClick();
-    MessageManager::getInstance()->runDispatchLoopUntil(40);
-    copyPrompt = dynamic_cast<AlertWindow*>(
-            ModalComponentManager::getInstance()->getModalComponent(0));
-    REQUIRE(copyPrompt != nullptr);
-    copyPrompt->getTextEditor("name")->setText("Custom Pad");
-    copyPrompt->exitModalState(1);
-    MessageManager::getInstance()->runDispatchLoopUntil(40);
-    REQUIRE(created == 1);
-    REQUIRE(createdTitle == "Custom Pad");
 
     browser.setRecords(records, "user-pad");
     REQUIRE(rename->isEnabled());
@@ -390,7 +376,7 @@ TEST_CASE("Pattern browser renames and deletes only selected user patterns",
     edit->triggerClick();
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(editedId == "user-pad");
-    REQUIRE(created == 1);
+    REQUIRE(created == 0);
     rename->triggerClick();
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     auto* renamePrompt = dynamic_cast<AlertWindow*>(

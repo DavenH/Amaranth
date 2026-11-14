@@ -48,8 +48,8 @@ public:
     static constexpr float drawerWidth = 36.f;
     static constexpr float guideShelfWidthFraction = 0.256f;
     static constexpr float maximumGuideShelfWidth = 272.f;
-    static constexpr float shelfPadding = 10.f;
-    static constexpr float headerHeight = 36.f;
+    static constexpr float shelfPadding = 8.f;
+    static constexpr float guideTopInset = 8.f;
     static constexpr float tileWidth = 190.f;
     static constexpr float guideTileHeight = 92.f;
     static constexpr float tileGap = 8.f;
@@ -64,7 +64,6 @@ public:
     static bool isOverlayComponentVisible(
             juce::Rectangle<float> componentBounds,
             juce::Rectangle<float> overlayBounds);
-    static juce::Rectangle<float> headerBounds(juce::Rectangle<float> shelf);
     static juce::Rectangle<float> guideTileBounds(
             juce::Rectangle<float> shelf,
             int tileIndex,
@@ -84,6 +83,7 @@ public:
             const std::vector<WorkspaceDockFocus>& order,
             const WorkspaceDockFocus& current,
             int direction);
+    static void paintIcon(juce::Graphics& graphics, juce::Rectangle<float> bounds, WorkspaceDockIcon icon);
     static void paintIconButton(
             juce::Graphics& graphics,
             juce::Rectangle<float> bounds,

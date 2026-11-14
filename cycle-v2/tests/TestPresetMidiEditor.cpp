@@ -337,7 +337,7 @@ TEST_CASE("Tempo entry preserves authored timing and saved trailing silence",
     REQUIRE(changed.tempoBpm == PresetMidiSequence::minimumTempoBpm);
 }
 
-TEST_CASE("Shift arrows transpose the whole phrase without altering expression",
+TEST_CASE("Shift arrows transpose selected notes without altering expression",
         "[cycle-v2][preset][sequence][editor]") {
     ScopedJuceInitialiser_GUI gui;
     PresetMidiSequence phrase;
@@ -350,6 +350,13 @@ TEST_CASE("Shift arrows transpose the whole phrase without altering expression",
         changed = std::move(next);
         ++publications;
     });
+    for (const auto& note : phrase.notes) {
+        const Point<float> point { xAt(editor, note.startSeconds + 0.125, 4.0),
+                editor.pitchRow(note.pitch).getCentreY() };
+        const auto modifiers = ModifierKeys::leftButtonModifier | ModifierKeys::shiftModifier;
+        editor.mouseDown(pointer(editor, point, modifiers));
+        editor.mouseUp(pointer(editor, point, modifiers));
+    }
     REQUIRE(editor.keyPressed(KeyPress(KeyPress::upKey, ModifierKeys::shiftModifier, 0)));
     REQUIRE(publications == 1);
     REQUIRE(changed.notes[0].pitch == 61);
@@ -365,11 +372,16 @@ TEST_CASE("Shift arrows transpose the whole phrase without altering expression",
     REQUIRE(changed.notes[0].pitch == 60);
     REQUIRE(changed.notes[1].pitch == 64);
 
-    phrase.notes[0].pitch = 0;
-    phrase.notes[1].pitch = 127;
-    PresetMidiEditor bounded(phrase, [&](PresetMidiSequence) { ++publications; });
-    bounded.keyPressed(KeyPress(KeyPress::upKey, ModifierKeys::shiftModifier, 0));
-    bounded.keyPressed(KeyPress(KeyPress::downKey, ModifierKeys::shiftModifier, 0));
+    for (const int pitch : { 0, 127 }) {
+        phrase.notes = {{pitch, 80, 0.0, 0.5}};
+        PresetMidiEditor bounded(phrase, [&](PresetMidiSequence) { ++publications; });
+        const Point<float> point { xAt(bounded, 0.125, 4.0),
+                bounded.pitchRow(pitch).getCentreY() };
+        bounded.mouseDown(pointer(bounded, point));
+        bounded.mouseUp(pointer(bounded, point));
+        bounded.keyPressed(KeyPress(pitch == 0 ? KeyPress::downKey : KeyPress::upKey,
+                ModifierKeys::shiftModifier, 0));
+    }
     REQUIRE(publications == 2);
 }
 

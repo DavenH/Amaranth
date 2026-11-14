@@ -42,10 +42,14 @@ TEST_CASE("Node module registry describes transform, math, and output previews",
     REQUIRE(multiply.previewRole == PreviewModuleRole::None);
     REQUIRE_FALSE(multiply.previewable);
 
-    const auto output = registry.descriptorFor(NodeKind::Output);
-    REQUIRE(output.audioRole == AudioModuleRole::Output);
-    REQUIRE(output.previewRole == PreviewModuleRole::OutputMeters);
-    REQUIRE(output.previewable);
+    const auto output = registry.descriptorFor(NodeKind::GlobalOutput);
+    REQUIRE(output.audioRole == AudioModuleRole::GlobalOutput);
+    REQUIRE(output.previewRole == PreviewModuleRole::None);
+    REQUIRE_FALSE(output.previewable);
+    const auto gain = registry.descriptorFor(NodeKind::Gain);
+    REQUIRE(gain.audioRole == AudioModuleRole::Gain);
+    REQUIRE(gain.previewRole == PreviewModuleRole::OutputMeters);
+    REQUIRE(gain.previewable);
 
 }
 

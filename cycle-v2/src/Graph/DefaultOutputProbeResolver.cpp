@@ -32,7 +32,7 @@ std::optional<DefaultOutputProbeAddress> DefaultOutputProbeResolver::resolve(
         const NodeGraph& graph) const {
     const Node* output {};
     for (const auto& node : graph.getNodes()) {
-        if (node.kind != NodeKind::Output) {
+        if (node.kind != NodeKind::GlobalOutput) {
             continue;
         }
         if (output != nullptr) {
@@ -48,8 +48,13 @@ std::optional<DefaultOutputProbeAddress> DefaultOutputProbeResolver::resolve(
     if (input == nullptr) {
         return std::nullopt;
     }
+    std::vector<String> excluded;
     const Node* source = graph.findNode(input->sourceNodeId);
     while (source != nullptr && isExcludedOutputEffect(source->kind)) {
+        if (excluded.size() >= graph.getNodes().size()) {
+            return std::nullopt;
+        }
+        excluded.push_back(source->id);
         input = uniqueSignalInput(graph, source->id);
         if (input == nullptr) {
             return std::nullopt;
@@ -63,7 +68,8 @@ std::optional<DefaultOutputProbeAddress> DefaultOutputProbeResolver::resolve(
             input->sourceNodeId,
             input->sourcePortId,
             input->destNodeId,
-            input->destPortId
+            input->destPortId,
+            std::move(excluded)
     };
 }
 

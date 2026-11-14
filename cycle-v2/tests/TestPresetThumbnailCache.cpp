@@ -106,6 +106,15 @@ TEST_CASE("Preset thumbnails decode asynchronously and cache by file revision",
     REQUIRE(image.isValid());
     REQUIRE(image.getWidth() == 320);
     REQUIRE(image.getHeight() == 180);
+    bool monochrome = true;
+    for (int y = 0; y < image.getHeight(); ++y) {
+        for (int x = 0; x < image.getWidth(); ++x) {
+            const auto pixel = image.getPixelAt(x, y);
+            monochrome = monochrome && pixel.getRed() == pixel.getGreen()
+                    && pixel.getGreen() == pixel.getBlue();
+        }
+    }
+    REQUIRE(monochrome);
     REQUIRE(cache.pendingCount() == 0);
     REQUIRE(cache.cachedImageCount() == 1);
     REQUIRE(readyCount == 1);

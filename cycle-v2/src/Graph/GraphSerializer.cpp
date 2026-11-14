@@ -5,6 +5,7 @@
 #include <unordered_set>
 
 #include "Graph/GraphSerializer.h"
+#include "Graph/OutputStageRepresentationMigration.h"
 #include "Graph/MeshDimensionalityMigration.h"
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphValidator.h"
@@ -765,6 +766,11 @@ GraphLoadResult GraphSerializer::readJSON(const var& value) const {
     const auto dimensionalityMigration = MeshDimensionalityMigration().migrate(migratedValue);
     if (!dimensionalityMigration.succeeded()) {
         result.issues.push_back({ GraphLoadCode::InvalidSchema, dimensionalityMigration.error });
+        return result;
+    }
+    const auto outputMigration = OutputStageRepresentationMigration().migrate(migratedValue);
+    if (outputMigration.failed()) {
+        result.issues.push_back({ GraphLoadCode::InvalidSchema, outputMigration.getErrorMessage() });
         return result;
     }
     const auto* root = migratedValue.getDynamicObject();

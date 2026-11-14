@@ -127,7 +127,7 @@ TEST_CASE("Boundary-free graph fragments retain legacy validation semantics",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "wave", "out", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -161,7 +161,7 @@ TEST_CASE("Demo graph exposes stable node kinds", "[cycle-v2][graph]") {
     REQUIRE(findKind("addPhase") == NodeKind::Add);
     REQUIRE(findKind("ifft") == NodeKind::Ifft);
     REQUIRE(findKind("multiply") == NodeKind::Multiply);
-    REQUIRE(findKind("out") == NodeKind::Output);
+    REQUIRE(findKind("out") == NodeKind::GlobalOutput);
 }
 
 TEST_CASE("Demo graph uses one canonical trilinear mesh port schema", "[cycle-v2][graph]") {
@@ -836,7 +836,7 @@ TEST_CASE("Explicit global audio graph accepts zero or one voice terminal",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "globalIn", "time", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -864,7 +864,7 @@ TEST_CASE("Explicit global audio graph rejects cross-scope signal edges",
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shaper", {}));
     graph.addEdge({
@@ -906,7 +906,7 @@ TEST_CASE("Proposed edge validation matches the committed graph without copying 
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addEdge({
             "globalIn", "time", "out", "time",
@@ -1044,7 +1044,7 @@ TEST_CASE("Validation context incrementally preserves explicit audio policy",
         graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
         graph.addNode(factory.createNode(NodeKind::GenericProcessor, "a", {}));
         graph.addNode(factory.createNode(NodeKind::GenericProcessor, "b", {}));
-        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
         graph.addEdge({ "globalIn", "time", "a", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
         graph.addEdge({ "globalIn", "time", "b", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
         graph.addEdge({ "b", "out", "a", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
@@ -1060,7 +1060,7 @@ TEST_CASE("Validation context incrementally preserves explicit audio policy",
         graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
         graph.addNode(factory.createNode(NodeKind::GenericProcessor, "a", {}));
         graph.addNode(factory.createNode(NodeKind::GenericProcessor, "b", {}));
-        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
         graph.addEdge({ "globalIn", "time", "a", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
         graph.addEdge({ "a", "out", "b", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
         graph.addEdge({ "b", "out", "a", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
@@ -1075,7 +1075,7 @@ TEST_CASE("Validation context incrementally preserves explicit audio policy",
         graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
         graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
         graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
-        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
         graph.addEdge({ "globalIn", "time", "route", "in", PortDomain::TimeSignal, ConnectionKind::Signal });
         graph.addEdge({ "route", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
         const Edge voiceRoute { "wave", "out", "route", "in", PortDomain::TimeSignal, ConnectionKind::Signal };
@@ -1094,7 +1094,7 @@ TEST_CASE("Neutral routing cannot participate in both audio partitions",
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "globalIn", "time", "route", "in",
             PortDomain::TimeSignal, ConnectionKind::Signal
@@ -1162,7 +1162,7 @@ TEST_CASE("Every explicit global node belongs to the Global Input to Output path
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "globalIn", "time", "out", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal

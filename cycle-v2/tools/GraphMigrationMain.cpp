@@ -2,6 +2,7 @@
 
 #include "Graph/GraphSerializer.h"
 #include "Graph/MeshDimensionalityMigration.h"
+#include "Graph/OutputStageRepresentationMigration.h"
 #include "Graph/GlobalAudioGraphRepresentationMigration.h"
 #include "Graph/TrimeshSemanticRepresentationMigration.h"
 
@@ -43,6 +44,11 @@ int main(int argc, char* argv[]) {
         const auto dimensions = MeshDimensionalityMigration().migrate(encoded);
         if (!dimensions.succeeded()) {
             std::cerr << dimensions.error << "\n";
+            return 1;
+        }
+        const auto output = OutputStageRepresentationMigration().migrate(encoded);
+        if (output.failed()) {
+            std::cerr << output.getErrorMessage() << "\n";
             return 1;
         }
         if (!destination.replaceWithText(

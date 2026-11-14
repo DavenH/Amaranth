@@ -5,6 +5,7 @@
 #include "Graph/DefaultOutputProbeResolver.h"
 #include "Runtime/GraphPreviewExecutor.h"
 #include "UI/PresetPreviewGenerator.h"
+#include "Runtime/DefaultOutputPreview.h"
 
 namespace CycleV2 {
 
@@ -162,7 +163,7 @@ NodeCanvas::captureComparisonSpies(int midiNote) {
         const auto* probe = graph.findSignalProbe(preview->probeId);
         const auto view = probe != nullptr ? probe->view : probeCanvasState.defaultOutputView;
         if (view == PresetPreviewView::Spectrum) {
-            *preview = PresetPreviewGenerator::forView(*preview, view);
+            *preview = DefaultOutputPreview::forView(*preview, view);
         }
     }
     return previews;

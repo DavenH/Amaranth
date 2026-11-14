@@ -18,7 +18,7 @@ NodeGraph explanationGraph(int unrelatedNodes = 0) {
     NodeGraph graph;
     GraphNodeFactory factory;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", { 300.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", { 300.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOutput", { 200.f, 0.f }));
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalInput", { 250.f, 0.f }));
     graph.addEdge({ "wave", "out", "voiceOutput", "time", PortDomain::TimeSignal });

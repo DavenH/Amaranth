@@ -549,6 +549,9 @@ void PerformanceKeyboardPanel::releaseAllNotes() {
 }
 
 void PerformanceKeyboardPanel::openSequenceEditor() {
+    if (sequenceEditorRequested && sequenceEditorRequested()) {
+        return;
+    }
     showSequenceEditor(sequence.value_or(PresetMidiSequence {}),
             [safeThis = Component::SafePointer<PerformanceKeyboardPanel>(this)](
                     PresetMidiSequence edited) {
@@ -560,14 +563,20 @@ void PerformanceKeyboardPanel::openSequenceEditor() {
 
 void PerformanceKeyboardPanel::showSequenceEditor(
         PresetMidiSequence initial,
-        std::function<void(PresetMidiSequence)> onEdit) {
+        std::function<void(PresetMidiSequence)> onEdit,
+        MidiPatternEditorWindow::SaveCallback onSave,
+        std::function<void()> onDismiss) {
     if (recording) {
         stopRecording();
     }
     Component::SafePointer<PerformanceKeyboardPanel> safeThis(this);
+    auto dialogPointer = std::make_shared<Component::SafePointer<MidiPatternEditorWindow>>();
     auto editor = std::make_unique<PresetMidiEditor>(
-            std::move(initial),
-            [safeThis, onEdit = std::move(onEdit)](PresetMidiSequence edited) {
+            initial,
+            [safeThis, dialogPointer, onEdit = std::move(onEdit)](PresetMidiSequence edited) {
+                if (*dialogPointer != nullptr) {
+                    (*dialogPointer)->draftChanged(edited);
+                }
                 if (safeThis == nullptr) {
                     return;
                 }
@@ -609,16 +618,11 @@ void PerformanceKeyboardPanel::showSequenceEditor(
         editor->setSize(jmin(editor->getWidth(), display->userArea.getWidth() - 64),
                 jmin(editor->getHeight(), display->userArea.getHeight() - 100));
     }
-    DialogWindow::LaunchOptions options;
-    options.content.setOwned(editor.release());
-    options.dialogTitle = "MIDI Pattern";
-    options.dialogBackgroundColour = CanvasChromePalette::dockSurface;
-    options.componentToCentreAround = parent;
-    options.useNativeTitleBar = true;
-    options.resizable = true;
-    options.escapeKeyTriggersCloseButton = true;
-    auto* dialog = options.launchAsync();
-    dialog->setComponentID("PresetMidiEditor.Dialog");
+    auto* dialog = new MidiPatternEditorWindow(std::move(editor), std::move(initial),
+            std::move(onSave), std::move(onDismiss));
+    *dialogPointer = dialog;
+    dialog->centreAroundComponent(parent, dialog->getWidth(), dialog->getHeight());
+    dialog->enterModalState(true, nullptr, true);
     dialog->setResizeLimits(jmin(900, editorContent->getWidth()),
             jmin(640, editorContent->getHeight()),
             display != nullptr ? display->userArea.getWidth() : 1920,

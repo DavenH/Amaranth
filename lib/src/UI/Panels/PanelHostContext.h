@@ -49,6 +49,7 @@ public:
     float scaleFactor = 1.f;
     bool usesCachedSurface = false;
     bool visible = true;
+    bool editingOverlaysVisible = true;
 
     PanelHostCallbacks callbacks;
 

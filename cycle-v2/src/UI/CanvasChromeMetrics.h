@@ -12,6 +12,8 @@ inline constexpr float restingBorderWidth = 1.f;
 inline constexpr float activeBorderWidth = 1.5f;
 inline constexpr float focusRingWidth = 2.f;
 
+inline constexpr int sidebarTabHeight = 46;
+
 inline constexpr int panelOverlayButtonSize = 24;
 inline constexpr int panelOverlayButtonGap = 4;
 inline constexpr float panelOverlayBorderInset = 0.75f;

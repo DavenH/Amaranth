@@ -31,7 +31,7 @@ namespace {
 NodeGraph scaledGraph(int unrelatedNodeCount, size_t audioSampleCount) {
     GraphNodeFactory factory;
     NodeGraph graph;
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     for (int index = 0; index < unrelatedNodeCount; ++index) {
         graph.addNode(factory.createNode(
                 NodeKind::Add,
@@ -186,7 +186,7 @@ TEST_CASE("Proposed audio scope analysis ignores disconnected graph scale",
         graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
         graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
         graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
-        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
         graph.addEdge({
                 "globalIn", "time", "route", "in",
                 PortDomain::TimeSignal, ConnectionKind::Signal
@@ -254,7 +254,7 @@ TEST_CASE("Proposed validation ignores disconnected graph scale",
     uint64_t expectedDomainTransfers {};
     for (const int unrelatedNodes : { 0, 128 }) {
         NodeGraph graph;
-        graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
         Node mesh = factory.createNode(NodeKind::TrilinearMesh, "mesh", {});
         const auto signalType = std::find_if(
                 mesh.parameters.begin(),
@@ -309,7 +309,7 @@ TEST_CASE("Explicit audio proposal validation ignores disconnected graph scale",
         NodeGraph graph;
         graph.addNode(factory.createNode(NodeKind::VoiceOutput, "voiceOut", {}));
         graph.addNode(factory.createNode(NodeKind::GlobalInput, "globalIn", {}));
-        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
         graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
         graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
         graph.addEdge({

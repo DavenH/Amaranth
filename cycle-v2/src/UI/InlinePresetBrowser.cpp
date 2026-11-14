@@ -1,6 +1,9 @@
 #include "UI/InlinePresetBrowser.h"
+#include "UI/PresetCardList.h"
 
 #include "UI/CanvasChromePalette.h"
+#include "UI/CanvasChromeMetrics.h"
+#include "UI/CanvasChromeIcons.h"
 #include "UI/PresetBrowserComponents.h"
 #include "UI/PresetMetadataEditor.h"
 #include "UI/SidebarMediaRow.h"
@@ -8,12 +11,6 @@
 #include "Graph/PresetMetadataStore.h"
 
 namespace CycleV2 {
-
-namespace {
-
-constexpr int contentInset = 10;
-
-}
 
 std::optional<WorkspaceSidebarTab> workspaceSidebarTabForShortcut(
         const juce::KeyPress& key) {
@@ -48,185 +45,6 @@ juce::String workspaceSidebarTabName(WorkspaceSidebarTab tab) {
     return {};
 }
 
-class InlinePresetBrowser::CompactList final : public juce::Component {
-public:
-    using Callback = std::function<void()>;
-
-    explicit CompactList(PresetThumbnailCache& thumbnailsToUse) :
-            thumbnails(thumbnailsToUse) {
-        setComponentID("workspace.sidebar.list");
-    }
-
-    void setResults(
-            const std::vector<PresetLibraryRecord>& records,
-            const std::vector<int>& visibleIndices,
-            std::vector<juce::StringArray> visibleTags) {
-        juce::File selectedFile;
-        if (const auto* current = selectedRecord()) {
-            selectedFile = current->file;
-        }
-        library = records;
-        indices = visibleIndices;
-        tags = std::move(visibleTags);
-        selected = indices.empty() ? -1 : 0;
-        for (int index = 0; index < (int) indices.size(); ++index) {
-            if (library[(size_t) indices[(size_t) index]].file == selectedFile) {
-                selected = index;
-                break;
-            }
-        }
-        updateHeight();
-        repaint();
-    }
-
-    Callback onSelectionChanged;
-
-    void setCallbacks(Callback openCallback,
-            std::function<void(const juce::File&)> favoriteCallback) {
-        onOpen = std::move(openCallback);
-        onFavorite = std::move(favoriteCallback);
-    }
-
-    void setFavorites(LibraryFavorites* store) {
-        favorites = store;
-        repaint();
-    }
-
-    const PresetLibraryRecord* selectedRecord() const {
-        if (!juce::isPositiveAndBelow(selected, (int) indices.size())) {
-            return nullptr;
-        }
-        const int recordIndex = indices[(size_t) selected];
-        return juce::isPositiveAndBelow(recordIndex, (int) library.size())
-                ? &library[(size_t) recordIndex]
-                : nullptr;
-    }
-
-    int count() const { return (int) indices.size(); }
-
-    std::vector<std::pair<juce::String, juce::Rectangle<float>>>
-            pointerTargetsForAutomation(
-                    const juce::Rectangle<int>& viewportBounds,
-                    int viewPositionY) const {
-        std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets;
-        for (int index = 0; index < (int) indices.size(); ++index) {
-            const auto row = rowBounds(index).toFloat().translated(
-                    (float) viewportBounds.getX(),
-                    (float) viewportBounds.getY() - viewPositionY);
-            if (row.intersects(viewportBounds.toFloat())) {
-                const auto& record = library[(size_t) indices[(size_t) index]];
-                targets.push_back({ "workspace.sidebar.preset."
-                                + record.file.getFileNameWithoutExtension(),
-                        row.getIntersection(viewportBounds.toFloat()) });
-                targets.push_back({ "workspace.sidebar.presetFavorite."
-                                + record.file.getFileNameWithoutExtension(),
-                        SidebarMediaRow::favoriteBounds(row) });
-            }
-        }
-        return targets;
-    }
-
-    void moveSelection(int delta) {
-        if (indices.empty()) {
-            return;
-        }
-        select(juce::jlimit(0, (int) indices.size() - 1, selected + delta));
-    }
-
-    void paint(juce::Graphics& graphics) override {
-        const auto clip = graphics.getClipBounds();
-        for (int visibleIndex = 0; visibleIndex < (int) indices.size(); ++visibleIndex) {
-            const auto bounds = rowBounds(visibleIndex).toFloat();
-            if (clip.intersects(bounds.toNearestInt())) {
-                paintRow(graphics, visibleIndex, bounds);
-            }
-        }
-    }
-
-    void mouseUp(const juce::MouseEvent& event) override {
-        if (event.getNumberOfClicks() > 1) {
-            return;
-        }
-        const int hit = indexAt(event.getPosition());
-        if (hit >= 0) {
-            if (SidebarMediaRow::favoriteBounds(rowBounds(hit).toFloat())
-                    .contains(event.position) && onFavorite) {
-                onFavorite(library[(size_t) indices[(size_t) hit]].file);
-                return;
-            }
-            select(hit);
-            if (onOpen) {
-                onOpen();
-            }
-        }
-    }
-
-private:
-    juce::Rectangle<int> rowBounds(int index) const {
-        return {
-                0,
-                contentInset + index * SidebarMediaRow::presetHeight,
-                getWidth(),
-                SidebarMediaRow::presetHeight
-        };
-    }
-
-    int indexAt(juce::Point<int> position) const {
-        for (int index = 0; index < (int) indices.size(); ++index) {
-            if (rowBounds(index).contains(position)) {
-                return index;
-            }
-        }
-        return -1;
-    }
-
-    void select(int index) {
-        if (!juce::isPositiveAndBelow(index, (int) indices.size()) || selected == index) {
-            return;
-        }
-        selected = index;
-        repaint();
-        if (onSelectionChanged) {
-            onSelectionChanged();
-        }
-    }
-
-    void updateHeight() {
-        const int height = contentInset * 2
-                + (int) indices.size() * SidebarMediaRow::presetHeight;
-        setSize(juce::jmax(1, getWidth()), juce::jmax(1, height));
-    }
-
-    void paintRow(
-            juce::Graphics& graphics,
-            int visibleIndex,
-            juce::Rectangle<float> bounds) {
-        const auto& record = library[(size_t) indices[(size_t) visibleIndex]];
-        const bool isSelected = visibleIndex == selected;
-        const auto preview = SidebarMediaRow::paintFrame(graphics, bounds,
-                isSelected);
-        {
-            juce::Graphics::ScopedSaveState save(graphics);
-            juce::Path clip;
-            clip.addRoundedRectangle(preview, 3.f);
-            graphics.reduceClipRegion(clip);
-            PresetBrowserPainting::drawPreview(
-                    graphics, record, thumbnails, preview, false);
-        }
-        SidebarMediaRow::paintLabels(graphics, bounds, record.name,
-                tags[(size_t) visibleIndex],
-                favorites != nullptr && favorites->isPresetFavorite(record.file));
-    }
-
-    PresetThumbnailCache& thumbnails;
-    std::vector<PresetLibraryRecord> library;
-    std::vector<int> indices;
-    std::vector<juce::StringArray> tags;
-    Callback onOpen;
-    std::function<void(const juce::File&)> onFavorite;
-    LibraryFavorites* favorites {};
-    int selected { -1 };
-};
 
 InlinePresetBrowser::InlinePresetBrowser(
         std::vector<juce::File> directories,
@@ -244,7 +62,7 @@ InlinePresetBrowser::InlinePresetBrowser(
     ,   onDelete(std::move(deleteCallback))
     ,   onConfirmDelete(std::move(confirmDeleteCallback))
     ,   favorites(favoriteStore)
-    ,   list(std::make_unique<CompactList>(thumbnails)) {
+    ,   list(std::make_unique<PresetCardList>(thumbnails)) {
     setComponentID("workspace.presetSidebar");
     setLookAndFeel(&lookAndFeel);
     setWantsKeyboardFocus(true);
@@ -285,24 +103,36 @@ InlinePresetBrowser::InlinePresetBrowser(
             onCreate();
         }
     };
+    edit.setButtonText("TAGS...");
     edit.setComponentID("workspace.sidebar.presetEdit");
     edit.setTooltip("Edit the selected preset's tags");
     edit.onClick = [this] { editSelectedTags(); };
     rename.setComponentID("workspace.sidebar.presetRename");
     rename.setTooltip("Rename the selected preset's display title");
     rename.onClick = [this] { renameSelected(); };
-    SidebarTagCloud::styleHeading(tagHeading);
+    tagHeading.setComponentID("workspace.sidebar.presetFilterToggle");
+    tagHeading.setClickingTogglesState(true);
+    tagHeading.getProperties().set("disclosure", true);
+    tagHeading.getProperties().set("quietAction", true);
+    tagHeading.setColour(juce::TextButton::textColourOffId, CanvasChromePalette::mutedText);
+    tagHeading.setColour(juce::TextButton::textColourOnId, CanvasChromePalette::text);
+    tagHeading.setTooltip("Expand or collapse preset tag filters");
+    tagHeading.onClick = [this] { updateVisibility(); };
     addAndMakeVisible(tagHeading);
     tagCloud.setComponentID("workspace.sidebar.presetTags");
     tagCloud.setFavoritesAvailable(favorites != nullptr);
     tagCloud.setChangeCallback([this] { applyTagFilter(); });
     tagCloud.setEditCallback([this](const juce::String& tag) { toggleSelectedTag(tag); });
-    addAndMakeVisible(tagCloud);
+    addChildComponent(tagCloud);
+    remove.setVisible(false);
     remove.setComponentID("workspace.sidebar.delete");
     remove.setTooltip("Move the selected preset to Trash");
     remove.onClick = [this] { requestDeleteSelected(); };
     addAndMakeVisible(toolbar);
 
+    list->onDelete = [this](const juce::File& file, const juce::String& name) {
+        requestDelete(file, name);
+    };
     list->setFavorites(favorites);
     list->onSelectionChanged = [this] { updateSelectedTags(); };
     list->setCallbacks([this] { openSelected(); },
@@ -314,9 +144,9 @@ InlinePresetBrowser::InlinePresetBrowser(
             CanvasChromePalette::strongBorder.withAlpha(0.72f));
     addAndMakeVisible(viewport);
     browse.setComponentID("workspace.sidebar.browse");
+    browse.getProperties().set("quietAction", true);
     browse.onClick = [this] { onBrowse(); };
-    browse.setColour(juce::TextButton::buttonColourId,
-            CanvasChromePalette::restingControlSurface);
+    browse.setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
     browse.setColour(juce::TextButton::buttonOnColourId,
             CanvasChromePalette::strongBorder);
     browse.setColour(juce::TextButton::textColourOffId,
@@ -449,9 +279,12 @@ InlinePresetBrowser::pointerTargetsForAutomation() const {
                     (float) toolbar.getX(), (float) toolbar.getY()) });
         }
         targets.push_back({ "workspace.sidebar.browse", browse.getBounds().toFloat() });
-        for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
-            targets.push_back({ id, bounds.translated(
-                    (float) tagCloud.getX(), (float) tagCloud.getY()) });
+        targets.push_back({ tagHeading.getComponentID(), tagHeading.getBounds().toFloat() });
+        if (tagCloud.isVisible()) {
+            for (const auto& [id, bounds] : tagCloud.pointerTargetsForAutomation()) {
+                targets.push_back({ id, bounds.translated(
+                        (float) tagCloud.getX(), (float) tagCloud.getY()) });
+            }
         }
         for (const auto& target : list->pointerTargetsForAutomation(
                 viewport.getBounds(), viewport.getViewPositionY())) {
@@ -478,7 +311,7 @@ bool InlinePresetBrowser::hitTest(int x, int y) {
         return false;
     }
     return tab != WorkspaceSidebarTab::Curves
-            || juce::Rectangle<int>(0, 0, getWidth(), 46).contains(x, y);
+            || juce::Rectangle<int>(0, 0, getWidth(), CanvasChromeMetrics::sidebarTabHeight).contains(x, y);
 }
 
 void InlinePresetBrowser::paint(juce::Graphics& graphics) {
@@ -488,10 +321,11 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
         graphics.fillRect(bounds);
     }
     graphics.setColour(CanvasChromePalette::dockSurface);
-    graphics.fillRect(bounds.withHeight(46.f));
+    graphics.fillRect(bounds.withHeight((float) CanvasChromeMetrics::sidebarTabHeight));
     graphics.setColour(CanvasChromePalette::border);
-    graphics.drawHorizontalLine(46, 0.f, bounds.getRight());
+    graphics.drawHorizontalLine(CanvasChromeMetrics::sidebarTabHeight, 0.f, bounds.getRight());
     graphics.drawVerticalLine(patterns.getRight() + 8, 10.f, 36.f);
+    graphics.drawVerticalLine(getWidth() - 1, 0.f, (float) CanvasChromeMetrics::sidebarTabHeight);
     const auto selectedTab = tab == WorkspaceSidebarTab::Curves
             ? curves.getBounds().toFloat()
             : tab == WorkspaceSidebarTab::Presets
@@ -510,9 +344,19 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
     }
 }
 
+void InlinePresetBrowser::setCurveCount(size_t count) {
+    if ((int64) curves.getProperties().getWithDefault("libraryCount", -1) == (int64) count) {
+        return;
+    }
+    curves.getProperties().set("libraryCount", (int64) count);
+    curves.setTooltip("Curves (" + String((int64) count) + " in this preset)");
+    curves.setTitle(curves.getTooltip());
+    curves.repaint();
+}
+
 void InlinePresetBrowser::resized() {
     auto bounds = getLocalBounds();
-    auto tabs = bounds.removeFromTop(46).reduced(8, 0);
+    auto tabs = bounds.removeFromTop(CanvasChromeMetrics::sidebarTabHeight).reduced(8, 0);
     const int tabWidth = juce::jmin(100, (tabs.getWidth() - 16) / 5);
     assets.setBounds(tabs.removeFromLeft(tabWidth));
     presets.setBounds(tabs.removeFromLeft(tabWidth));
@@ -530,15 +374,17 @@ void InlinePresetBrowser::resized() {
         return;
     }
 
-    auto footer = bounds.removeFromBottom(54).reduced(10, 8);
-    browse.setBounds(footer);
+    auto footer = bounds.removeFromBottom(42).reduced(10, 7);
+    browse.setBounds(footer.withWidth(juce::jmin(148, footer.getWidth())));
     toolbar.setBounds(bounds.removeFromTop(SidebarLibraryToolbar::height));
     bounds.reduce(6, 0);
-    tagHeading.setBounds(bounds.removeFromTop(16));
-    bounds.removeFromTop(4);
-    const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());
-    tagCloud.setBounds(bounds.removeFromTop(cloudHeight));
-    bounds.removeFromTop(8);
+    tagHeading.setBounds(bounds.removeFromTop(24));
+    if (tagHeading.getToggleState()) {
+        bounds.removeFromTop(4);
+        const int cloudHeight = tagCloud.preferredHeightForWidth(bounds.getWidth());
+        tagCloud.setBounds(bounds.removeFromTop(cloudHeight));
+    }
+    bounds.removeFromTop(6);
     viewport.setBounds(bounds);
     list->setSize(
             juce::jmax(1, viewport.getMaximumVisibleWidth()),
@@ -606,6 +452,9 @@ void InlinePresetBrowser::updateAvailableTags() {
 }
 
 void InlinePresetBrowser::applyTagFilter() {
+    const int activeFilters = tagCloud.selectedTags().size() + (tagCloud.favoritesOnly() ? 1 : 0);
+    tagHeading.setButtonText(activeFilters > 0
+            ? "Filter tags (" + String(activeFilters) + ")" : "Filter tags");
     std::vector<int> filtered;
     std::vector<juce::StringArray> tags;
     filtered.reserve(searchResults.size());
@@ -741,8 +590,10 @@ void InlinePresetBrowser::requestDeleteSelected() {
         return;
     }
 
-    const juce::File file = record->file;
-    const juce::String name = record->name;
+    requestDelete(record->file, record->name);
+}
+
+void InlinePresetBrowser::requestDelete(const juce::File& file, const juce::String& name) {
     auto completion = [
             safeThis = juce::Component::SafePointer<InlinePresetBrowser>(this),
             file](bool confirmed) {
@@ -807,7 +658,7 @@ void InlinePresetBrowser::updateVisibility() {
     }
     toolbar.setVisible(showingPresets);
     tagHeading.setVisible(showingPresets);
-    tagCloud.setVisible(showingPresets);
+    tagCloud.setVisible(showingPresets && tagHeading.getToggleState());
     viewport.setVisible(showingPresets);
     browse.setVisible(showingPresets);
     if (patternBrowser != nullptr) {

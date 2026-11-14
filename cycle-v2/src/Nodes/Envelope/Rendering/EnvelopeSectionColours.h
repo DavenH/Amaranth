@@ -11,4 +11,9 @@ inline std::array<Color, 3> envelopeSectionColours() {
              Color(0.5f, 0.2f, 0.25f, 0.75f) };
 }
 
+inline Color playbackCursorColour(bool released) {
+    return released ? envelopeSectionColours()[2].withAlpha(1.f)
+            : Color(0.66f, 0.85f, 1.f, 0.85f);
+}
+
 }

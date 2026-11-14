@@ -49,6 +49,7 @@ public:
             Buffer<float>(const_cast<float*>(payload->block.samples.data()), target.size()).copyTo(target);
             if (payload->isStereo() && payload->secondaryBlock.samples.size() >= frames) {
                 target.add(Buffer<float>(const_cast<float*>(payload->secondaryBlock.samples.data()), target.size()));
+                target.mul(0.5f);
             }
             output.captured = true;
         }

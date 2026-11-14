@@ -25,6 +25,7 @@ private:
         void setFrame(const PlaybackCursorFrame& frame, float span);
         void paint(juce::Graphics& graphics) override;
         std::array<float, PlaybackCursorFrame::capacity> positions {};
+        std::array<bool, PlaybackCursorFrame::capacity> released {};
         size_t count {};
     };
     void publish(uint64_t revision, std::shared_ptr<const std::vector<float>> samples, float span);

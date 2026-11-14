@@ -22,7 +22,9 @@ juce::Image loadThumbnail(const juce::File& file) {
         return {};
     }
     const auto& jpeg = decoded.presentation.preview->jpegData;
-    return juce::ImageFileFormat::loadFrom(jpeg.getData(), jpeg.getSize());
+    auto image = juce::ImageFileFormat::loadFrom(jpeg.getData(), jpeg.getSize());
+    image.desaturate();
+    return image;
 }
 
 }

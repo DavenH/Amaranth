@@ -77,7 +77,8 @@ String labelForAudioModuleRole(AudioModuleRole role) {
         case AudioModuleRole::StereoSplit:       return "Stereo Split";
         case AudioModuleRole::StereoJoin:        return "Stereo Join";
         case AudioModuleRole::GlobalInput:       return "Global Input";
-        case AudioModuleRole::Output:            return "Output";
+        case AudioModuleRole::GlobalOutput:      return "Global Out";
+        case AudioModuleRole::Gain:              return "Gain";
         case AudioModuleRole::GenericProcessor:  return "Generic Processor";
         default:                                 return "Unknown";
     }

@@ -371,7 +371,7 @@ Rectangle<float> SignalProbeCanvas::cardBoundsFor(
     }
     if (defaultOutput && !outputAddress.has_value()) {
         const auto output = std::find_if(graph.getNodes().begin(), graph.getNodes().end(),
-                [](const Node& node) { return node.kind == NodeKind::Output; });
+                [](const Node& node) { return node.kind == NodeKind::GlobalOutput; });
         if (output != graph.getNodes().end() && !graph.isNodeVisible(output->id)) {
             return {};
         }
@@ -432,7 +432,7 @@ Rectangle<float> SignalProbeCanvas::cardBoundsFor(
                                 : Point<float>(52.f, -242.f)))));
     }
     const auto output = std::find_if(graph.getNodes().begin(), graph.getNodes().end(),
-            [](const Node& node) { return node.kind == NodeKind::Output; });
+            [](const Node& node) { return node.kind == NodeKind::GlobalOutput; });
     if (defaultOutput && output != graph.getNodes().end()) {
         return visibleDefaultCard(viewport.toScreen(cardSize.withPosition(
                 output->bounds.getPosition() + Point<float>(58.f, -245.f))));

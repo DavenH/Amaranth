@@ -679,7 +679,6 @@ void GraphPresentationModel::refreshConfigurations(
         GraphExecutionPlan& plan,
         const std::vector<String>& nodeIds) {
     const uint64_t startedAt = performance.timestamp();
-    plan.outputGain = GraphCompiler::outputGainFor(graph);
     compiler.refreshVoiceContexts(graph, plan);
     for (auto& step : plan.steps) {
         const bool directlyChanged = nodeIds.empty()

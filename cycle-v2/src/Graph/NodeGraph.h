@@ -57,7 +57,8 @@ enum class NodeKind {
     StereoJoin,
     VoiceOutput,
     GlobalInput,
-    Output
+    GlobalOutput,
+    Gain
 };
 
 enum class ChannelLayout {

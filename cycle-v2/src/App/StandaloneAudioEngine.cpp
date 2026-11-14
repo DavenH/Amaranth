@@ -120,9 +120,6 @@ void StandaloneAudioEngine::setVoiceDurationSeconds(float durationSeconds) {
     renderer.setVoiceDurationSeconds(durationSeconds);
 }
 
-void StandaloneAudioEngine::setGraphOutputGain(float gain) {
-    renderer.setGraphOutputGain(gain);
-}
 
 StandaloneAudioEngine::Status StandaloneAudioEngine::status() const {
     return {

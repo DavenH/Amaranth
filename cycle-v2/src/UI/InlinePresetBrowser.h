@@ -20,6 +20,7 @@
 namespace CycleV2 {
 
 class ReferenceAssetBrowser;
+class PresetCardList;
 
 enum class WorkspaceSidebarTab {
     Curves,
@@ -91,12 +92,11 @@ public:
 
     bool hitTest(int x, int y) override;
     void paint(juce::Graphics& graphics) override;
+    void setCurveCount(size_t count);
     void resized() override;
     bool keyPressed(const juce::KeyPress& key) override;
 
 private:
-    class CompactList;
-
     bool keyPressed(const juce::KeyPress& key, juce::Component*) override;
     void textEditorTextChanged(juce::TextEditor&) override;
     void textEditorReturnKeyPressed(juce::TextEditor&) override;
@@ -113,6 +113,7 @@ private:
     void updateSelectedTags();
     void renameSelected();
     void requestDeleteSelected();
+    void requestDelete(const juce::File& file, const juce::String& name);
     void deletePreset(const juce::File& file);
     void focusPresetSearch();
     void updateVisibility();
@@ -138,11 +139,11 @@ private:
     ReferenceAssetBrowser* assetBrowser {};
     std::unique_ptr<PatternBrowser> patternBrowser;
     SidebarLibraryToolbar toolbar { "Search presets..." };
-    juce::Label tagHeading;
+    juce::TextButton tagHeading { "Filter tags" };
     SidebarTagCloud tagCloud;
     juce::Viewport viewport;
-    std::unique_ptr<CompactList> list;
-    juce::TextButton browse { "BROWSE FILES..." };
+    std::unique_ptr<PresetCardList> list;
+    juce::TextButton browse { "Preset Manager..." };
     std::unique_ptr<PresetLibraryIndex> index;
     std::vector<PresetLibraryRecord> library;
     std::vector<int> searchResults;

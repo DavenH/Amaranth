@@ -15,7 +15,7 @@ void PlaybackCursorExchange::publish(const PlaybackCursorFrame& frame) {
         }
         destination.envelopeTime.store(source.envelopeTime);
         destination.flags.store((source.hasMorph ? 1u : 0u)
-                | (source.hasEnvelopeTime ? 2u : 0u));
+                | (source.hasEnvelopeTime ? 2u : 0u) | (source.released ? 4u : 0u));
     }
     timelineCount.store(frame.timelineCount);
     for (size_t index = 0; index < frame.timelineCount; ++index) {
@@ -44,6 +44,7 @@ PlaybackCursorFrame PlaybackCursorExchange::read() const {
         const unsigned flags = voices[index].flags.load();
         destination.hasMorph = (flags & 1u) != 0;
         destination.hasEnvelopeTime = (flags & 2u) != 0;
+        destination.released = (flags & 4u) != 0;
     }
     frame.timelineCount = timelineCount.load();
     for (size_t index = 0; index < frame.timelineCount; ++index) {

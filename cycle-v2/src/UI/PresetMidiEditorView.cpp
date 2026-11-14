@@ -152,6 +152,12 @@ void PresetMidiEditor::paint(Graphics& graphics) {
     }
     paintNoteGrid(graphics);
     paintNotes(graphics);
+    if (selectionBox.has_value()) {
+        graphics.setColour(CanvasChromePalette::focus.withAlpha(0.15f));
+        graphics.fillRect(*selectionBox);
+        graphics.setColour(CanvasChromePalette::focus);
+        graphics.drawRect(*selectionBox, 1.f);
+    }
     paintVelocity(graphics);
     paintModulation(graphics);
     paintPlaybackCursor(graphics);
@@ -225,9 +231,9 @@ void PresetMidiEditor::paintNotes(Graphics& graphics) const {
         const Rectangle<float> bar(x, y + 1.5f,
                 jmax(3.f, right - x), rowHeight - 3.f);
         graphics.setColour(CanvasChromePalette::focus.withAlpha(
-                (int) index == selectedNote ? 1.f : 0.77f));
+                isNoteSelected((int) index) ? 1.f : 0.77f));
         graphics.fillRoundedRectangle(bar, 2.f);
-        if ((int) index == selectedNote) {
+        if (isNoteSelected((int) index)) {
             graphics.setColour(Colours::white.withAlpha(0.9f));
             graphics.drawRoundedRectangle(bar, 2.f, 1.f);
             if (right >= grid.getX() && right <= grid.getRight()) {
@@ -256,9 +262,9 @@ void PresetMidiEditor::paintVelocity(Graphics& graphics) const {
         const float x = xForTime(note.startSeconds);
         const float height = grid.getHeight() * note.velocity / 127.f;
         graphics.setColour(CanvasChromePalette::focus.withAlpha(
-                (int) index == selectedNote ? 0.96f : 0.54f));
+                isNoteSelected((int) index) ? 0.96f : 0.54f));
         graphics.fillRect(Rectangle<float>(x - 1.f, grid.getBottom() - height, 2.f, height));
-        graphics.setColour((int) index == selectedNote ? CanvasChromePalette::text
+        graphics.setColour(isNoteSelected((int) index) ? CanvasChromePalette::text
                 : CanvasChromePalette::focus);
         graphics.fillRect(Rectangle<float>(x - 2.5f, grid.getBottom() - height, 5.f, 2.f));
     }

@@ -9,7 +9,7 @@ TrimeshSemanticRepresentationMigrationResult MeshDimensionalityMigration::migrat
     TrimeshSemanticRepresentationMigrationResult result;
     auto* root = graph.getDynamicObject();
     const int version = root != nullptr ? (int) root->getProperty("formatVersion") : 9;
-    if (root == nullptr || version == 9) {
+    if (root == nullptr || version == 9 || version == 10) {
         return result;
     }
     if (version != 7 && version != 8) {

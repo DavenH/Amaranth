@@ -37,7 +37,7 @@ TEST_CASE("Node canvas interaction resolves compatible connection targets by pro
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 0.f, 0.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", { 300.f, 0.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", { 300.f, 0.f }));
 
     const PortAddress source { "wave", "out", false };
     const PortAddress target { "output", "time", true };
@@ -239,7 +239,7 @@ TEST_CASE("Node canvas interaction keeps one screen-space area selection rectang
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "inside", { 50.f, 60.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "outside", { 500.f, 600.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "outside", { 500.f, 600.f }));
     NodeCanvasViewport viewport;
     viewport.setTransform({ 10.f, 20.f }, 0.5f);
     const GraphEdgeIndex edgeIndex(graph.getEdges());

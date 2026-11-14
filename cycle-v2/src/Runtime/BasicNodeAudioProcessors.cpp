@@ -165,17 +165,18 @@ public:
     void process(AudioProcessContext&) override {}
 };
 
-class OutputAudioProcessor final : public NodeAudioProcessor {
+class GainAudioProcessor final : public NodeAudioProcessor {
 public:
-    AudioModuleRole role() const override { return AudioModuleRole::Output; }
+    AudioModuleRole role() const override { return AudioModuleRole::Gain; }
 
     void prepareExecution(const AudioExecutionSpec& spec) override {
         rampMemory.resize((int) spec.maximumFrameCount);
     }
 
     void adoptConfiguration(const PublishedNodeConfiguration& published) override {
-        const auto configuration = std::dynamic_pointer_cast<const OutputNodeConfiguration>(
+        const auto configuration = std::dynamic_pointer_cast<const GainNodeConfiguration>(
                 published.value);
+        liveGain = configuration != nullptr ? configuration->liveGain : nullptr;
         const float nextGain = configuration != nullptr ? configuration->gain : 1.f;
         if (!initialized) {
             gain.setValueDirect(nextGain);
@@ -201,6 +202,9 @@ public:
 
         copyPayloadBlockExpandingScalars(output, *input, context.frameCount);
         copyPayloadTraversalGrids(output, *input);
+        if (liveGain != nullptr) {
+            gain = liveGain->load(std::memory_order_acquire);
+        }
         gain.update((int) context.frameCount);
 
         const size_t channelCount = payloadChannelCount(output);
@@ -211,7 +215,7 @@ public:
             auto& grid = payloadTraversalGrid(output, channel);
             if (grid.isValid()) {
                 Buffer<float>(grid.values.data(), (int) grid.values.size())
-                        .mul(gain.getCurrentValue());
+                        .mul(gain.getTargetValue());
             }
         }
 
@@ -219,6 +223,7 @@ public:
     }
 
 private:
+    std::shared_ptr<std::atomic<float>> liveGain;
     bool initialized {};
     SmoothedParameter gain { 1.f };
     ScopedAlloc<float> rampMemory;
@@ -308,8 +313,12 @@ std::unique_ptr<NodeAudioProcessor> createStereoSplitAudioProcessor() {
     return std::make_unique<StereoSplitAudioProcessor>();
 }
 
-std::unique_ptr<NodeAudioProcessor> createOutputAudioProcessor() {
-    return std::make_unique<OutputAudioProcessor>();
+std::unique_ptr<NodeAudioProcessor> createGainAudioProcessor() {
+    return std::make_unique<GainAudioProcessor>();
+}
+
+std::unique_ptr<NodeAudioProcessor> createGlobalOutputAudioProcessor() {
+    return std::make_unique<PassthroughAudioProcessor>(AudioModuleRole::GlobalOutput);
 }
 
 std::unique_ptr<NodeAudioProcessor> createGenericAudioProcessor() {

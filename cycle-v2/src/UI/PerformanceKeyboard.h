@@ -10,6 +10,7 @@
 
 #include "Graph/PresetPresentation.h"
 #include "Runtime/RealtimeMidiEventQueue.h"
+#include "UI/MidiPatternEditorWindow.h"
 #include "UI/PatternPlaybackSchedule.h"
 #include "UI/PerformanceWaveformPreview.h"
 
@@ -140,9 +141,14 @@ public:
     bool isRecording() const { return recording; }
     void setSequence(std::optional<PresetMidiSequence> sequence);
     void setSequenceChangedCallback(std::function<void(PresetMidiSequence)> callback);
+    void setSequenceEditorRequestedCallback(std::function<bool()> callback) {
+        sequenceEditorRequested = std::move(callback);
+    }
     void setMappedControllers(std::vector<int> controllers);
     void showSequenceEditor(PresetMidiSequence initial,
-            std::function<void(PresetMidiSequence)> onEdit);
+            std::function<void(PresetMidiSequence)> onEdit,
+            MidiPatternEditorWindow::SaveCallback onSave = {},
+            std::function<void()> onDismiss = {});
     void setRecordingChangedCallback(std::function<void(bool)> callback) {
         recordingChanged = std::move(callback);
     }
@@ -256,6 +262,7 @@ private:
     std::vector<PatternControlScheduler> controlSchedulers;
 
     std::function<void(PresetMidiSequence)> sequenceChanged;
+    std::function<bool()> sequenceEditorRequested;
     std::vector<int> mappedControllers;
     std::function<void(bool)> recordingChanged;
     std::function<void()> flushRecordingInput;

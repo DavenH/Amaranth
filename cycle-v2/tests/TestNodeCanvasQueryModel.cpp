@@ -14,7 +14,7 @@ TEST_CASE("Node canvas queries expose graph execution and presentation semantics
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 20.f, 40.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", { 340.f, 40.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", { 340.f, 40.f }));
     graph.addEdge({ "wave", "out", "output", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
 
     const auto compileResult = GraphCompiler().compile(graph);
@@ -135,7 +135,7 @@ TEST_CASE("Indexed canvas presentation queries ignore disconnected graph scale",
         GraphNodeFactory factory;
         NodeGraph graph;
         graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-        graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
         graph.addEdge({
                 "wave", "out", "output", "time",
                 PortDomain::TimeSignal, ConnectionKind::Signal

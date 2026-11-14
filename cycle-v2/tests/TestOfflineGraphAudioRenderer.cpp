@@ -501,7 +501,7 @@ TEST_CASE("Scheduled audio capture replaces existing WAV and raw recordings",
     TemporaryFile reusedRaw(".f32");
     TemporaryFile freshRaw(".f32");
     auto graph = TestSupport::authoredTrimeshGraph(0);
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "mesh", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());
@@ -586,7 +586,7 @@ TEST_CASE("Strictly ported subbass fixture renders through the realtime path",
 TEST_CASE("Offline movie snapshots follow native sample voice allocation without changing PCM",
         "[cycle-v2][offline-audio][spy-movie]") {
     auto graph = TestSupport::authoredTrimeshGraph(0);
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "mesh", "out", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     const auto compiled = GraphCompiler().compile(graph);
     REQUIRE(compiled.succeeded());

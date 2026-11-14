@@ -18,6 +18,7 @@
     { "command": "pointer", "targetId": "workspace.sidebar.pattern.factory-basic-keys", "event": "click" },
     { "command": "assertState", "path": "performance.previewPatternId", "equals": "factory-basic-keys" },
     { "command": "assertState", "path": "performance.previewSequenceNoteCount", "equals": 6 },
+    { "command": "key", "area": "presetMidiEditor", "key": "escape" },
     { "command": "saveGraph", "path": "/private/tmp/cycle-v2-pattern-assigned.cyclegraph" },
     { "command": "openGraph", "path": "/private/tmp/cycle-v2-pattern-assigned.cyclegraph" },
     { "command": "assertState", "path": "performance.previewPatternId", "equals": "factory-basic-keys" },

@@ -18,7 +18,8 @@ void PresetBrowserLookAndFeel::drawButtonBackground(
         const juce::Colour& backgroundColour,
         bool isHighlighted,
         bool isDown) {
-    if (button.getProperties().contains("libraryIcon")
+    if ((button.getProperties().contains("libraryIcon")
+                || (bool) button.getProperties()["quietAction"])
             && !isHighlighted && !isDown && !button.hasKeyboardFocus(false)) {
         return;
     }
@@ -58,6 +59,21 @@ void PresetBrowserLookAndFeel::drawButtonText(
     }
     graphics.setColour(text);
     graphics.setFont(getTextButtonFont(button, button.getHeight()));
+    if ((bool) button.getProperties()["disclosure"]) {
+        const float x = 9.f;
+        const float y = button.getHeight() * 0.5f;
+        juce::Path arrow;
+        if (button.getToggleState()) {
+            arrow.addTriangle(x - 3.f, y - 2.f, x + 3.f, y - 2.f, x, y + 2.f);
+        } else {
+            arrow.addTriangle(x - 2.f, y - 3.f, x - 2.f, y + 3.f, x + 2.f, y);
+        }
+        graphics.fillPath(arrow);
+        graphics.drawFittedText(button.getButtonText(),
+                button.getLocalBounds().withTrimmedLeft(21).withTrimmedRight(6),
+                juce::Justification::centredLeft, 1);
+        return;
+    }
     graphics.drawFittedText(
             button.getButtonText(),
             button.getLocalBounds().reduced((bool) button.getProperties().getWithDefault("sidebarTab", false) ? 2 : 10, 0),

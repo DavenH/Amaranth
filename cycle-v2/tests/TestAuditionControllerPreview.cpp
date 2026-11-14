@@ -37,7 +37,7 @@ NodeGraph controllerGraph(int unrelated) {
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::ModulationSource, "cc", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     REQUIRE(state.setNodeParameter(graph, "cc", "source", "Source", "midiCC").succeeded());
     REQUIRE(state.setNodeParameter(graph, "cc", "controller", "Controller", "73").succeeded());
     REQUIRE(state.setNodeParameter(graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
@@ -124,7 +124,7 @@ TEST_CASE("Envelope-only default controllers refresh downstream spies through ef
         graph.addNode(factory.createNode(NodeKind::ModulationSource, "constant", {}));
         graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
         graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", {}));
-        graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+        graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
         REQUIRE(state.setNodeParameter(graph, "constant", "source", "Source", "constant").succeeded());
         REQUIRE(state.setNodeParameter(graph, "morph", "blueSource", "Blue Source", "constant").succeeded());
         REQUIRE(state.setNodeParameter(graph, "morph", "envelopeYellowSource", "Envelope Yellow Source", "midiCC").succeeded());
@@ -306,7 +306,7 @@ TEST_CASE("A live controller updates held audio without adding a voice",
     GraphNodeStateEditor state;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::ModulationSource, "cc", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     REQUIRE(state.setNodeParameter(graph, "cc", "source", "Source", "midiCC").succeeded());
     REQUIRE(state.setNodeParameter(graph, "cc", "controller", "Controller", "73").succeeded());
     graph.addEdge({ "cc", "value", "out", "time", PortDomain::ControlSignal, ConnectionKind::Signal });

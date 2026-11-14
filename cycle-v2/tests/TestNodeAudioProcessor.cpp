@@ -297,7 +297,7 @@ TEST_CASE("Node audio processor factory creates executable modules", "[cycle-v2]
             AudioModuleRole::Equalizer,
             AudioModuleRole::StereoSplit,
             AudioModuleRole::StereoJoin,
-            AudioModuleRole::Output,
+            AudioModuleRole::GlobalOutput,
             AudioModuleRole::GenericProcessor
     };
 
@@ -1466,7 +1466,7 @@ TEST_CASE("Signal buffers preserve value semantics outside realtime storage", "[
 
 TEST_CASE("Transparent audio processors pass through first input", "[cycle-v2][runtime]") {
     NodeAudioProcessorFactory factory;
-    auto processor = factory.create(AudioModuleRole::Output);
+    auto processor = factory.create(AudioModuleRole::GlobalOutput);
     REQUIRE(processor != nullptr);
 
     AudioProcessContext context;
@@ -1478,10 +1478,10 @@ TEST_CASE("Transparent audio processors pass through first input", "[cycle-v2][r
     REQUIRE_FALSE(output(context).traversalGrid.isValid());
 }
 
-TEST_CASE("Output processor maps and smooths the persisted master gain",
+TEST_CASE("Gain processor maps and smooths its persisted level",
         "[cycle-v2][runtime][output][gain]") {
     NodeAudioProcessorFactory factory;
-    auto processor = factory.create(AudioModuleRole::Output);
+    auto processor = factory.create(AudioModuleRole::Gain);
     REQUIRE(processor != nullptr);
 
     AudioProcessContext quiet;
@@ -1493,7 +1493,7 @@ TEST_CASE("Output processor maps and smooths the persisted master gain",
     stereo.secondaryTraversalGrid = stereo.traversalGrid;
     stereo.secondaryTraversalGrid.values = SignalBuffer { -1.f, 0.5f, -0.25f };
     quiet.inputs = { std::move(stereo) };
-    prepareProcessor(*processor, AudioModuleRole::Output, quiet, 128);
+    prepareProcessor(*processor, AudioModuleRole::Gain, quiet, 128);
     processor->process(quiet);
 
     const float quietGain = CycleDsp::outputGain(0.f);
@@ -1507,7 +1507,7 @@ TEST_CASE("Output processor maps and smooths the persisted master gain",
     raised.frameCount = 128;
     raised.parameters = { { "gain", "Gain", "1" } };
     raised.inputs = { payload(std::vector<float>(128, 1.f)) };
-    prepareProcessor(*processor, AudioModuleRole::Output, raised, 128, 2);
+    prepareProcessor(*processor, AudioModuleRole::Gain, raised, 128, 2);
     processor->process(raised);
 
     const auto& ramp = output(raised).block.samples;
@@ -1522,7 +1522,7 @@ TEST_CASE("Passthrough audio processors expand scalar input safely", "[cycle-v2]
     AudioProcessContext context;
     context.frameCount = 4;
     context.inputs = { payload({ 0.25f }) };
-    factory.create(AudioModuleRole::Output)->process(context);
+    factory.create(AudioModuleRole::GlobalOutput)->process(context);
 
     REQUIRE(output(context).block.samples == std::vector<float> { 0.25f, 0.25f, 0.25f, 0.25f });
 }

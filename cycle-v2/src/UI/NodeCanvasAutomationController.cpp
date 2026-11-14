@@ -252,8 +252,10 @@ std::optional<NodeKind> NodeCanvasAutomationController::parseNodeKind(const Stri
         { "voiceOut", NodeKind::VoiceOutput },
         { "globalInput", NodeKind::GlobalInput },
         { "globalIn", NodeKind::GlobalInput },
-        { "output", NodeKind::Output },
-        { "out", NodeKind::Output }
+        { "gain", NodeKind::Gain },
+        { "globalOutput", NodeKind::GlobalOutput },
+        { "output", NodeKind::GlobalOutput },
+        { "out", NodeKind::GlobalOutput }
     };
 
     for (const auto& identifier : identifiers) {

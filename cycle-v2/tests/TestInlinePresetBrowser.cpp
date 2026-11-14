@@ -155,37 +155,19 @@ TEST_CASE("Sidebar tag chips narrow results across selected tags",
     REQUIRE(cloud.matches({ "Keys" }));
 }
 
-TEST_CASE("Preset and pattern actions occupy the same sidebar positions",
+TEST_CASE("Preset toolbar reserves deletion for cards while sharing the search row",
         "[cycle-v2][preset][browser][inline][layout]") {
     ScopedJuceInitialiser_GUI gui;
-    InlinePresetBrowser browser({},
-            [](const File&) { return true; },
+    InlinePresetBrowser browser({}, [](const File&) { return true; },
             [] {}, [](WorkspaceSidebarTab) {});
     browser.configurePatterns({}, {}, {}, {}, {});
     browser.setBounds(0, 0, 272, 600);
-    const std::array<String, 5> presetIds {
-            "workspace.sidebar.search",
-            "workspace.sidebar.presetNew",
-            "workspace.sidebar.presetEdit",
-            "workspace.sidebar.presetRename",
-            "workspace.sidebar.delete"
-    };
-    const std::array<String, 5> patternIds {
-            "workspace.sidebar.patternSearch",
-            "workspace.sidebar.patternNew",
-            "workspace.sidebar.patternEdit",
-            "workspace.sidebar.patternRename",
-            "workspace.sidebar.patternDelete"
-    };
-    std::array<Rectangle<float>, 5> presetBounds;
-    for (size_t index = 0; index < presetBounds.size(); ++index) {
-        presetBounds[index] = targetBounds(browser, presetIds[index]);
-        REQUIRE_FALSE(presetBounds[index].isEmpty());
-    }
+    const auto search = targetBounds(browser, "workspace.sidebar.search");
+    REQUIRE_FALSE(search.isEmpty());
+    REQUIRE(targetBounds(browser, "workspace.sidebar.delete").isEmpty());
     browser.setActiveTab(WorkspaceSidebarTab::Patterns);
-    for (size_t index = 0; index < patternIds.size(); ++index) {
-        REQUIRE(targetBounds(browser, patternIds[index]) == presetBounds[index]);
-    }
+    REQUIRE(targetBounds(browser, "workspace.sidebar.patternSearch") == search);
+    REQUIRE_FALSE(targetBounds(browser, "workspace.sidebar.patternDelete").isEmpty());
 }
 
 TEST_CASE("Preset header sits above a full-width spectrogram at sidebar widths",
@@ -200,7 +182,7 @@ TEST_CASE("Preset header sits above a full-width spectrogram at sidebar widths",
         REQUIRE(card.contains(layout.favorite));
         REQUIRE_FALSE(layout.labels.title.intersects(layout.favorite));
         REQUIRE(layout.labels.title.getX() == layout.preview.getX());
-        REQUIRE(layout.labels.tagCount == 2);
+        REQUIRE(layout.labels.tagCount == 1);
         REQUIRE(layout.favorite.getRight() == layout.preview.getRight());
         REQUIRE(layout.favorite.getY() == layout.labels.title.getY());
         REQUIRE(layout.preview.getY() - layout.favorite.getBottom() == 4.f);
@@ -217,7 +199,7 @@ TEST_CASE("Preset header sits above a full-width spectrogram at sidebar widths",
         REQUIRE_FALSE(layout.labels.tags[0].intersects(layout.labels.tags[1]));
         REQUIRE(SidebarMediaRow::favoriteBounds(row) == layout.favorite);
         const auto multiple = SidebarMediaRow::presetLayout(row, { "Pad", "Air", "FX", "Bass" });
-        REQUIRE(multiple.labels.tagCount >= 3);
+        REQUIRE(multiple.labels.tagCount == 1);
         REQUIRE(multiple.labels.tags[0].getX() >= card.getX() + 5.f);
     }
 }
@@ -299,16 +281,28 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(search->getFont().getHeight() >= 14.f);
     REQUIRE(search->getHeight() == 30);
     REQUIRE(create->getHeight() == 28);
-    const auto actions = create->getBounds().getUnion(remove->getBounds());
+    const auto actions = create->getBounds().getUnion(rename->getBounds());
     REQUIRE(actions.getCentreX() == search->getBounds().getCentreX());
     REQUIRE(create->getX() == search->getX());
     REQUIRE(create->getY() > search->getBottom());
     REQUIRE(create->getX() < edit->getX());
     REQUIRE(edit->getX() < rename->getX());
-    REQUIRE(rename->getX() < remove->getX());
+    REQUIRE_FALSE(remove->isVisible());
+    REQUIRE(edit->getButtonText() == "TAGS...");
+    REQUIRE(browse->getButtonText() == "Preset Manager...");
     REQUIRE(create->getX() - search->getX()
-            == search->getRight() - remove->getRight());
+            == search->getRight() - rename->getRight());
     REQUIRE(create->getButtonText() == "+ NEW");
+    auto* filterToggle = dynamic_cast<Button*>(
+            browser.findChildWithID("workspace.sidebar.presetFilterToggle"));
+    REQUIRE(filterToggle != nullptr);
+    REQUIRE_FALSE(tagCloud->isVisible());
+    const int collapsedListTop = viewport->getY();
+    REQUIRE(targetBounds(browser, "workspace.sidebar.tag.keys").isEmpty());
+    filterToggle->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(tagCloud->isVisible());
+    REQUIRE(viewport->getY() > collapsedListTop);
     REQUIRE(tagCloud->getY() > search->getY());
     REQUIRE_FALSE(findDescendantWithID(browser, "workspace.sidebar.hero"));
     create->triggerClick();
@@ -348,6 +342,17 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     }
     REQUIRE(browser.visiblePresetCount() > 0);
     REQUIRE(browser.visiblePresetCount() < unfilteredCount);
+    const int filteredCount = browser.visiblePresetCount();
+    filterToggle->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE_FALSE(tagCloud->isVisible());
+    REQUIRE(viewport->getY() == collapsedListTop);
+    REQUIRE(browser.visiblePresetCount() == filteredCount);
+    REQUIRE(filterToggle->getButtonText() == "Filter tags (1)");
+    filterToggle->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
+    REQUIRE(tagCloud->selectedTags().contains("Keys"));
+
     REQUIRE(clickTag(*tagCloud, "Keys"));
     REQUIRE(tagCloud->selectedTags().isEmpty());
 
@@ -383,7 +388,13 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     REQUIRE(opened.getFileNameWithoutExtension() == "kicker");
     REQUIRE(browser.keyPressed(KeyPress(KeyPress::returnKey)));
 
-    remove->triggerClick();
+    const auto trash = SidebarMediaRow::deleteBounds({ 0.f, 10.f,
+            (float) list->getWidth(), (float) SidebarMediaRow::presetHeight }).getCentre();
+    MouseEvent trashClick(Desktop::getInstance().getMainMouseSource(), trash,
+            ModifierKeys::leftButtonModifier, 1.f, 0.f, 0.f, 0.f, 0.f, list, list,
+            now, trash, now, 1, false);
+    list->mouseMove(trashClick);
+    list->mouseUp(trashClick);
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(deleteConfirmationName == "kicker");
     REQUIRE(finishDeleteConfirmation);
@@ -391,7 +402,7 @@ TEST_CASE("Inline preset sidebar switches views filters and loads with Return",
     finishDeleteConfirmation(false);
     REQUIRE(deleted == File());
 
-    remove->triggerClick();
+    list->mouseUp(trashClick);
     MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(finishDeleteConfirmation);
     finishDeleteConfirmation(true);
@@ -453,6 +464,10 @@ TEST_CASE("Preset row star and Favorites filter do not load the sound",
     auto* list = findDescendantWithID(browser, "workspace.sidebar.list");
     REQUIRE(search != nullptr);
     REQUIRE(filter != nullptr);
+    auto* toggle = dynamic_cast<Button*>(browser.findChildWithID("workspace.sidebar.presetFilterToggle"));
+    REQUIRE(toggle != nullptr);
+    toggle->triggerClick();
+    MessageManager::getInstance()->runDispatchLoopUntil(40);
     REQUIRE(list != nullptr);
     search->setText("kicker", true);
     for (int attempt = 0; attempt < 30 && browser.visiblePresetCount() != 1; ++attempt) {
@@ -605,6 +620,10 @@ TEST_CASE("Preset tag cloud separates filtering from selected membership and lef
             MessageManager::getInstance()->runDispatchLoopUntil(50);
         }
         REQUIRE(browser.visiblePresetCount() == 2);
+        auto* toggle = dynamic_cast<Button*>(findDescendantWithID(browser, "workspace.sidebar.presetFilterToggle"));
+        REQUIRE(toggle != nullptr);
+        toggle->triggerClick();
+        MessageManager::getInstance()->runDispatchLoopUntil(40);
         auto* cloud = dynamic_cast<SidebarTagCloud*>(findDescendantWithID(browser, "workspace.sidebar.presetTags"));
         REQUIRE(cloud != nullptr);
         const auto blue = cloud->tagAccent("Bass");

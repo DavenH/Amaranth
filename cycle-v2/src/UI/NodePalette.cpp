@@ -41,6 +41,7 @@ const NodePalette::Entry kControlEntries[] = {
 };
 
 const NodePalette::Entry kFxEntries[] = {
+        { NodeKind::Gain, "Gain" },
         { NodeKind::ImpulseResponse, "IR" },
         { NodeKind::Waveshaper, "Waveshaper" },
         { NodeKind::Unison, "Unison" },

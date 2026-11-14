@@ -391,7 +391,7 @@ TEST_CASE("Preview MIDI note refreshes key-scale previews without publishing aud
             { "controller", "Controller", "1" },
             { "constant", "Constant", "0.5" }
     });
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({
             "key", "value", "out", "time",
             PortDomain::ControlSignal, ConnectionKind::Signal
@@ -439,7 +439,7 @@ TEST_CASE("Preview mod wheel refreshes modulation source without publishing audi
     });
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
     graph.addEdge({
@@ -510,7 +510,7 @@ TEST_CASE("Mapped CC73 refreshes modulation previews and its bound morph axis",
             graph, "constant", "source", "Source", "constant").succeeded());
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", {}));
     graph.addNode(factory.createNode(NodeKind::TrilinearMesh, "mesh", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph, "mesh", "dimensionCount", "Dimensions", "3").succeeded());
     graph.addEdge({ "cc73", "value", "mesh", "red",
@@ -971,7 +971,7 @@ TEST_CASE("Ordinary DSP edits refresh configuration without compiling topology",
     REQUIRE(presentation.previewRenderCount() == 2);
 }
 
-TEST_CASE("Output gain edits refresh the renderer-owned compiled value",
+TEST_CASE("Gain edits refresh the node configuration without recompiling",
         "[cycle-v2][runtime][causal][output][gain]") {
     GraphDocument document(NodeGraph::createDemoGraph());
     GraphCommandDispatcher commands(document);
@@ -986,8 +986,13 @@ TEST_CASE("Output gain edits refresh the renderer-owned compiled value",
             document.lastChange()));
 
     REQUIRE(presentation.compilationCount() == initialCompilations);
-    REQUIRE(presentation.compileResult().plan.outputGain
-            == Catch::Approx(CycleDsp::outputGain(0.25f)));
+    const auto& steps = presentation.compileResult().plan.steps;
+    const auto step = std::find_if(steps.begin(), steps.end(),
+            [](const auto& candidate) { return candidate.nodeId == "out"; });
+    REQUIRE(step != steps.end());
+    const auto gain = std::dynamic_pointer_cast<const GainNodeConfiguration>(step->configuration.value);
+    REQUIRE(gain != nullptr);
+    REQUIRE(gain->gain == Catch::Approx(CycleDsp::outputGain(0.25f)));
 }
 
 TEST_CASE("On-release Reverb edits publish local spectrograms before commit",
@@ -1101,7 +1106,7 @@ TEST_CASE("Adding a second signal probe refreshes its compiled preview address",
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
     graph.addNode(factory.createNode(NodeKind::Reverb, "reverb", {}));
     graph.addNode(factory.createNode(NodeKind::Equalizer, "equalizer", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "wave", "out", "reverb", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "reverb", "time", "equalizer", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({ "equalizer", "time", "out", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
@@ -1395,7 +1400,7 @@ TEST_CASE("Root-note refresh prepares mapped configuration changes in one previe
         "[cycle-v2][runtime][preview-note][refresh-continuity]") {
     NodeGraph graph;
     graph.addNode(GraphNodeFactory().createNode(NodeKind::ModulationSource, "source", {}));
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "out", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "source", "value", "out", "time", PortDomain::ControlSignal, ConnectionKind::Signal });
     GraphDocument document(std::move(graph));
     GraphCommandDispatcher commands(document);

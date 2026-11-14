@@ -14,7 +14,7 @@ TEST_CASE("Node canvas hit routing preserves action edge and palette placement s
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", { 40.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", { 40.f, 520.f }));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", { 500.f, 80.f }));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", { 500.f, 80.f }));
     graph.addNode(factory.createNode(NodeKind::Multiply, "multiply", { 620.f, 520.f }));
     graph.addNode(factory.createNode(NodeKind::StereoJoin, "join", { 710.f, 320.f }));
     graph.addNode(factory.createNode(NodeKind::VoiceContext, "voice", { 500.f, 300.f }));

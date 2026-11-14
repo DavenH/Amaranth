@@ -9,6 +9,7 @@
 #include "Graph/GraphNodeFactory.h"
 #include "Graph/GraphNodeStateEditor.h"
 #include "UI/NodeCanvasPresentation.h"
+#include "UI/CanvasChromeMetrics.h"
 #include "UI/NodePortLayout.h"
 
 using namespace CycleV2;
@@ -164,7 +165,7 @@ TEST_CASE("Node canvas marks only authored global processing",
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "global", {}));
     graph.addNode(factory.createNode(NodeKind::GenericProcessor, "route", {}));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "wave", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({
             "global", "time", "route", "in",
@@ -258,6 +259,15 @@ TEST_CASE("Guide column retains its full-height scroll room",
     REQUIRE(guides.getWidth() == Catch::Approx(274.f));
     REQUIRE(guides.getX() == Catch::Approx(workspace.getX()));
     REQUIRE(guides.getY() == Catch::Approx(workspace.getY()));
+    const auto shelf = GuideCurveShelf::boundsFor(workspace, dockState, guideState);
+    const auto tile = GuideCurveShelf::tileBoundsFor(workspace, dockState, guideState, 0);
+    REQUIRE(shelf.getX() == guides.getX());
+    REQUIRE(shelf.getWidth() == guides.getWidth());
+    REQUIRE(shelf.getY() == workspace.getY() + CanvasChromeMetrics::sidebarTabHeight);
+    REQUIRE(tile.getX() - guides.getX() == Catch::Approx(8.f));
+    REQUIRE(guides.getRight() - tile.getRight() == Catch::Approx(8.f));
+    REQUIRE(tile.getY() - shelf.getY() == Catch::Approx(8.f));
+
     REQUIRE(GuideCurveShelf::maximumVerticalOffset(
             workspace,
             dockState,
@@ -268,6 +278,15 @@ TEST_CASE("Guide column retains its full-height scroll room",
             dockState,
             guideState,
             8) > 0.f);
+
+    const auto list = GuideCurveShelf::listBoundsFor(workspace, dockState, guideState);
+    const auto maximum = GuideCurveShelf::maximumVerticalOffset(workspace, dockState, guideState, 8);
+    const auto offset = WorkspaceDock::offsetToRevealGuideTile(
+            0.f, maximum, list.getBottom() - shelf.getY(), 7);
+    guideState.verticalOffset = offset;
+    const auto last = GuideCurveShelf::tileBoundsFor(workspace, dockState, guideState, 7);
+    REQUIRE(last.getBottom() <= list.getBottom());
+    REQUIRE(last.getY() >= list.getY());
 
     guideState.minimized = true;
     REQUIRE(GuideCurveShelf::boundsFor(workspace, dockState, guideState).getWidth()

@@ -108,8 +108,8 @@ TEST_CASE("Demo graph compiles to a stable execution order", "[cycle-v2][graph]"
 
     REQUIRE(result.succeeded());
     REQUIRE(result.plan.attachments.size() == 2);
-    REQUIRE(result.plan.signalEdges.size() == 14);
-    REQUIRE(result.plan.buffers.size() == 15);
+    REQUIRE(result.plan.signalEdges.size() == 15);
+    REQUIRE(result.plan.buffers.size() == 16);
     REQUIRE(result.plan.steps.size() == result.plan.nodeOrder.size());
     REQUIRE(result.plan.voiceContexts.size() == 1);
 
@@ -1063,7 +1063,7 @@ TEST_CASE("Compiler derives neutral global processing from Global Input",
             NodeKind::GenericProcessor,
             "downstream",
             {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "wave", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     graph.addEdge({
             "globalInput", "time", "delay", "time",
@@ -1104,7 +1104,7 @@ TEST_CASE("Compiler derives runtime ownership from the authored global graph",
     graph.addNode(factory.createNode(NodeKind::GlobalInput, "boundary", {}));
     graph.addNode(factory.createNode(NodeKind::Waveshaper, "shaper", {}));
     graph.addNode(factory.createNode(NodeKind::Delay, "delay", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "out", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "out", {}));
     graph.addEdge({ "voiceTerminal", "out", "voiceOut", "time", PortDomain::TimeSignal, ConnectionKind::Signal });
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,

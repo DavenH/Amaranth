@@ -67,7 +67,7 @@ WorkspaceDockKeyboardLayout WorkspaceDockInteractionController::keyboardLayout(
     const Rectangle<float> guides = GuideCurveShelf::boundsFor(
             workspace, probeState, guideState);
     return {
-            guides.getHeight(),
+            GuideCurveShelf::listBoundsFor(workspace, probeState, guideState).getBottom() - guides.getY(),
             GuideCurveShelf::maximumVerticalOffset(
                     workspace, probeState, guideState,
                     (int) graph.getGuideCurves().size())

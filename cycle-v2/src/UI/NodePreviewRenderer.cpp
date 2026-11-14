@@ -10,7 +10,6 @@
 #include "UI/ReferenceWaveformPreview.h"
 #include "Graph/MeshDimensionality.h"
 
-#include "Runtime/PreviewContrastNormalization.h"
 
 #include "Graph/GraphRenderSemanticResolver.h"
 #include "Graph/NodeParameterMap.h"
@@ -173,8 +172,18 @@ std::vector<float> mappedSurface(
 
     const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
     const bool signalSpy = preview.role == PreviewModuleRole::SignalSpy;
+    if (signalSpy && preview.domain == PortDomain::SpectralMagnitudeSignal) {
+        // Display-only +12 dB before logarithmic colour mapping.
+        Buffer<float>(surface.data(), (int) surface.size()).mul(3.9810717f);
+    } else if (signalSpy && preview.domain == PortDomain::TimeSignal) {
+        // Cyclogram contrast; continuous waveform samples bypass this mapping.
+        Buffer<float>(surface.data(), (int) surface.size()).mul(2.f);
+    }
     const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
             || preview.domain == PortDomain::SpectralPhaseSignal;
+    if (usesHarmonicLanes(preview)) {
+        return profile.mapSpectrumValuesToDisplay(surface, preview.gridColumns, preview.gridRows);
+    }
     if (meshSurface && spectral) {
         return profile.mapGridToDisplay(
                 surface,
@@ -183,13 +192,6 @@ std::vector<float> mappedSurface(
                 preview.frequencyMidiNote);
     }
     if (preview.domain == PortDomain::SpectralMagnitudeSignal) {
-        if (signalSpy) {
-            PreviewContrastNormalization::applySpectralMagnitude(
-                    surface,
-                    preview.gridColumns,
-                    preview.gridRows,
-                    1.f);
-        }
         return profile.mapSpectrum2DGridToDisplay(
                 surface,
                 preview.gridColumns,
@@ -210,11 +212,10 @@ std::vector<float> mappedSurface(
         const auto material = profile.getSurfaceStyle().surfaceMaterial();
         if (ScalarSurfaceProgram::isProgram(material)
                 || material.palette == ScalarSurfacePalette::Greyscale) {
-            PreviewContrastNormalization::apply(surface, 1.f);
-            buffer.mul(0.5f).add(0.5f);
+            buffer.clip(-1.f, 1.f).mul(0.5f).add(0.5f);
             return surface;
         }
-        PreviewContrastNormalization::apply(surface, 3.f);
+        buffer.mul(3.f);
         std::vector<float> magnitude = surface;
         Buffer<float> magnitudeBuffer(magnitude.data(), (int) magnitude.size());
         magnitudeBuffer.abs().add(1.f);
@@ -493,15 +494,9 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
                                      const std::vector<float>& values) {
         TrimeshRenderData data;
         data.midiNote = preview.frequencyMidiNote;
+        data.surface = mappedSurface(preview, values, profile);
         if (usesHarmonicLanes(preview)) {
-            data.surface = values;
-            PreviewContrastNormalization::applySpectralMagnitude(
-                    data.surface, preview.gridColumns, preview.gridRows, 1.f);
-            data.surface = profile.mapSpectrumValuesToDisplay(
-                    data.surface, preview.gridColumns, preview.gridRows);
             data.firstHarmonicRow = 1; // FFT bins include DC; Trimesh lanes start at harmonic one.
-        } else {
-            data.surface = mappedSurface(preview, values, profile);
         }
         data.domain = preview.domain;
         data.columns = (int) preview.gridColumns;
@@ -556,7 +551,9 @@ Rectangle<float> NodePreviewRenderer::boundsFor(
 }
 
 void NodePreviewRenderer::paint(Graphics& graphics, const NodePreviewRenderRequest& request) {
-    const float minimumDimension = request.node.kind == NodeKind::SpectralLayer ? 8.f : 20.f;
+    const bool compactSymbol = request.node.kind == NodeKind::SpectralLayer
+            || request.node.kind == NodeKind::Add || request.node.kind == NodeKind::Multiply;
+    const float minimumDimension = compactSymbol ? 6.f : 20.f;
     if (request.area.getWidth() < minimumDimension || request.area.getHeight() < minimumDimension) {
         return;
     }
@@ -957,7 +954,7 @@ void NodePreviewRenderer::paintQualitative(
         return;
     }
 
-    if (kind == NodeKind::Output) {
+    if (kind == NodeKind::Gain) {
         const NodePreviewResult meters {
                 request.node.id,
                 PreviewModuleRole::OutputMeters

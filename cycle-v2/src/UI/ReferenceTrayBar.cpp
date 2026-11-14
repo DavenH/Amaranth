@@ -8,14 +8,14 @@ namespace CycleV2 {
 
 ReferenceTrayBar::ReferenceTrayBar() {
     setLookAndFeel(&lookAndFeel);
-    LibraryIconRenderer::configure(disclosure, LibraryIcon::Tray, "Expand or collapse Wave References");
+    LibraryIconRenderer::configure(disclosure, LibraryIcon::Tray, "Expand or collapse Visual Reference");
     disclosure.getProperties().set("leadingIcon", true);
     LibraryIconRenderer::configure(browse, LibraryIcon::Assets, "Browse audio assets");
     LibraryIconRenderer::configure(import, LibraryIcon::Import, "Import audio...");
     disclosure.setComponentID("comparison.toggle");
     browse.setComponentID("comparison.assets");
     import.setComponentID("comparison.import");
-    disclosure.setTooltip("Expand or collapse wave references and pinned Spies");
+    disclosure.setTooltip("Expand or collapse visual references and pinned Spies");
     browse.setTooltip("Browse audio assets to audition or add a wave reference");
     for (auto* button : { &disclosure, &browse, &import }) {
         button->setColour(juce::TextButton::buttonColourId, juce::Colours::transparentBlack);
@@ -47,6 +47,8 @@ ReferenceTrayBar::~ReferenceTrayBar() {
 
 void ReferenceTrayBar::setExpanded(bool value) {
     expanded = value;
+    browse.setVisible(value);
+    import.setVisible(value);
     disclosure.setToggleState(value, juce::dontSendNotification);
     repaint();
 }
@@ -76,12 +78,15 @@ void ReferenceTrayBar::itemDragExit(const SourceDetails&) {
 
 std::vector<std::pair<juce::String, juce::Rectangle<float>>>
 ReferenceTrayBar::pointerTargetsForAutomation() const {
-    return {
+    std::vector<std::pair<juce::String, juce::Rectangle<float>>> targets {
             { disclosure.getComponentID(), disclosure.getBounds().toFloat() },
-            { browse.getComponentID(), browse.getBounds().toFloat() },
-            { import.getComponentID(), import.getBounds().toFloat() },
             { "comparison.drop", getLocalBounds().toFloat() }
     };
+    if (expanded) {
+        targets.push_back({ browse.getComponentID(), browse.getBounds().toFloat() });
+        targets.push_back({ import.getComponentID(), import.getBounds().toFloat() });
+    }
+    return targets;
 }
 
 void ReferenceTrayBar::paint(juce::Graphics& graphics) {
@@ -91,7 +96,7 @@ void ReferenceTrayBar::paint(juce::Graphics& graphics) {
     graphics.drawHorizontalLine(0, 0.f, (float) getWidth());
     graphics.setColour(CanvasChromePalette::text);
     graphics.setFont(juce::FontOptions(12.f).withStyle("Bold"));
-    graphics.drawText("Wave References", 44, 0, 116, getHeight(),
+    graphics.drawText("Visual Reference", 44, 0, 116, getHeight(),
             juce::Justification::centredLeft);
     juce::Path chevron;
     const float y = (float) getHeight() * 0.5f;

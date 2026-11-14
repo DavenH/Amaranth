@@ -30,7 +30,7 @@ PresetPreviewImage jpegPreview() {
 
 NodeGraph graphWithOutput() {
     NodeGraph graph;
-    graph.addNode(GraphNodeFactory().createNode(NodeKind::Output, "output", {}));
+    graph.addNode(GraphNodeFactory().createNode(NodeKind::GlobalOutput, "output", {}));
     return graph;
 }
 
@@ -112,7 +112,7 @@ TEST_CASE("Ordered Spy pins switch with presets and retain disconnected probes",
     GraphNodeFactory factory;
     NodeGraph graph;
     graph.addNode(factory.createNode(NodeKind::WaveSource, "wave", {}));
-    graph.addNode(factory.createNode(NodeKind::Output, "output", {}));
+    graph.addNode(factory.createNode(NodeKind::GlobalOutput, "output", {}));
     graph.addEdge({ "wave", "out", "output", "time",
             PortDomain::TimeSignal, ConnectionKind::Signal });
     REQUIRE(GraphEditor().toggleSignalProbe(graph, 0, 0.5f).succeeded());

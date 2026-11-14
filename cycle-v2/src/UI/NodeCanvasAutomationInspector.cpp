@@ -207,8 +207,10 @@ public:
     static var probePreviewStatsToVar(const GraphPreviewResult::SignalProbePreview& preview) {
         auto* object = new DynamicObject();
         double absoluteTotal = 0.0;
+        float gridPeak {};
         for (float value : preview.values) {
             absoluteTotal += (double) (value >= 0.f ? value : -value);
+            gridPeak = jmax(gridPeak, std::abs(value));
         }
         object->setProperty("probeId", preview.probeId);
         object->setProperty("connected", preview.connected);
@@ -219,7 +221,19 @@ public:
         object->setProperty("releaseDuration", preview.releaseDuration);
         object->setProperty("sampleCount", (int) preview.values.size());
         object->setProperty("absoluteSum", absoluteTotal);
+        object->setProperty("gridPeak", gridPeak);
         object->setProperty("waveformSamples", preview.waveform != nullptr ? (int) preview.waveform->size() : 0);
+        float waveformPeak {};
+        int waveformOverUnitySamples {};
+        if (preview.waveform != nullptr) {
+            for (const float sample : *preview.waveform) {
+                const float magnitude = std::abs(sample);
+                waveformPeak = jmax(waveformPeak, magnitude);
+                waveformOverUnitySamples += magnitude > 1.f ? 1 : 0;
+            }
+        }
+        object->setProperty("waveformPeak", waveformPeak);
+        object->setProperty("waveformOverUnitySamples", waveformOverUnitySamples);
         return object;
     }
 
@@ -1207,7 +1221,7 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
         const Node* node = context.document.graph().findNode(sceneTarget.nodeId);
         if (sceneTarget.kind == NodeSceneTargetKind::Node
                 && node != nullptr
-                && node->kind == NodeKind::Output) {
+                && node->kind == NodeKind::Gain) {
             const auto preview = NodePreviewRenderer::boundsFor(
                     *node,
                     sceneTarget.bounds,
@@ -1215,7 +1229,7 @@ var NodeCanvasAutomationInspector::inspectPointerTargets(const NodeCanvasAutomat
             targets.add(AutomationValueEncoder::pointerTargetToVar(
                     "outputGain:" + node->id,
                     "outputGain",
-                    OutputMeterPresentation::layout(preview).faderHitTarget,
+                    OutputMeterPresentation::layout(preview).gainHitTarget,
                     node->id));
         }
     }

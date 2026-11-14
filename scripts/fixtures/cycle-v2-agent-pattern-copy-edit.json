@@ -1,0 +1,106 @@
+{
+  "commands": [
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/trombone.cyclegraph"
+    },
+    {
+      "command": "pointer",
+      "targetId": "workspace.sidebar.patterns",
+      "event": "click"
+    },
+    {
+      "command": "pointer",
+      "targetId": "workspace.sidebar.patternEdit",
+      "event": "click"
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "pointer",
+      "area": "presetMidiEditor",
+      "event": "down",
+      "x": 900,
+      "y": 250
+    },
+    {
+      "command": "pointer",
+      "area": "presetMidiEditor",
+      "event": "up",
+      "x": 900,
+      "y": 250
+    },
+    {
+      "command": "key",
+      "area": "presetMidiEditor",
+      "key": "up",
+      "shift": true
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewPatternId",
+      "equals": "factory-basic-sustained"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewSequenceNoteCount",
+      "equals": 5
+    },
+    {
+      "command": "screenshot",
+      "area": "presetMidiEditor",
+      "path": "../../.context/midi-pattern-selection.png"
+    },
+    {
+      "command": "key",
+      "area": "presetMidiEditor",
+      "key": "escape"
+    },
+    {
+      "command": "screenshot",
+      "area": "modal",
+      "path": "../../.context/pattern-copy-prompt.png"
+    },
+    {
+      "command": "key",
+      "area": "modal",
+      "key": "return"
+    },
+    {
+      "command": "waitForIdle",
+      "delayMs": 150
+    },
+    {
+      "command": "snapshotState"
+    },
+    {
+      "command": "exportGraph",
+      "path": "../../.context/pattern-copy-saved.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewPatternId",
+      "op": "notEquals",
+      "value": "factory-basic-sustained"
+    },
+    {
+      "command": "openGraph",
+      "path": "../../cycle-v2/content/presets/trombone.cyclegraph"
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewSequenceNoteCount",
+      "equals": 4
+    },
+    {
+      "command": "assertState",
+      "path": "performance.previewPatternId",
+      "equals": "factory-basic-sustained"
+    }
+  ],
+  "quit": true
+}

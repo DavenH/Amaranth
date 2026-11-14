@@ -115,7 +115,7 @@ PerformanceKeyboardPanel::ModWheel::ModWheel(int controller) :
     setSliderStyle(Slider::RotaryVerticalDrag);
     setTextBoxStyle(Slider::NoTextBox, false, 0, 0);
     setRange(0, 127, 1);
-    setMouseDragSensitivity(254);
+    setMouseDragSensitivity(32);
     setVelocityBasedMode(false);
     setVelocityModeParameters(0.1, 1, 0.0, false);
     setWantsKeyboardFocus(true);
@@ -123,7 +123,7 @@ PerformanceKeyboardPanel::ModWheel::ModWheel(int controller) :
 }
 
 void PerformanceKeyboardPanel::ModWheel::mouseDown(const MouseEvent& event) {
-    setMouseDragSensitivity(event.mods.isShiftDown() ? 2540 : 254);
+    setMouseDragSensitivity(event.mods.isShiftDown() ? 2540 : 32);
     Slider::mouseDown(event);
 }
 
@@ -204,6 +204,7 @@ PerformanceKeyboardPanel::OctaveButton::OctaveButton(bool advancesOctave) :
     setName(advances ? "PerformanceKeyboard.OctaveUp" : "PerformanceKeyboard.OctaveDown");
     setMouseCursor(MouseCursor::PointingHandCursor);
     setWantsKeyboardFocus(true);
+    setMouseClickGrabsKeyboardFocus(false);
 }
 
 void PerformanceKeyboardPanel::OctaveButton::paintButton(
@@ -211,15 +212,20 @@ void PerformanceKeyboardPanel::OctaveButton::paintButton(
         bool highlighted,
         bool down) {
     const Rectangle<float> bounds = getLocalBounds().toFloat().reduced(0.5f);
-    WorkspaceDock::paintIconButton(
-            graphics,
-            bounds,
-            advances ? WorkspaceDockIcon::ChevronRight : WorkspaceDockIcon::ChevronLeft,
-            highlighted || hasKeyboardFocus(true));
-    if (down) {
-        graphics.setColour(Colours::white.withAlpha(0.08f));
+    const bool focused = hasKeyboardFocus(true);
+    if (highlighted || down) {
+        graphics.setColour(CanvasChromePalette::raisedSurface.withAlpha(down ? 0.9f : 0.5f));
         graphics.fillRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius);
     }
+    if (focused) {
+        graphics.setColour(CanvasChromePalette::focus);
+        graphics.drawRoundedRectangle(bounds, CanvasChromeMetrics::controlCornerRadius,
+                CanvasChromeMetrics::focusRingWidth);
+    }
+    graphics.setColour(highlighted || down || focused
+            ? CanvasChromePalette::text : CanvasChromePalette::mutedText);
+    WorkspaceDock::paintIcon(graphics, bounds,
+            advances ? WorkspaceDockIcon::ChevronRight : WorkspaceDockIcon::ChevronLeft);
 }
 
 
