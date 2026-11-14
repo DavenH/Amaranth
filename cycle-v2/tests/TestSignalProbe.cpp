@@ -498,6 +498,27 @@ TEST_CASE("Waveform capture retains continuous samples independently of folded S
     REQUIRE(samples.min() < -0.1f);
     REQUIRE(samples[500] != samples[500 + 256]);
 
+    GraphAudioExecutor executor;
+    AudioExecutionSpec spec;
+    spec.maximumFrameCount = 256;
+    spec.prewarmTraversalGrid = false;
+    const auto& plan = presentation.compileResult().plan;
+    executor.prepareExecution(plan, spec);
+    AudioVoiceContext voice;
+    voice.controls.noteNumber = presentation.previewMidiNote();
+    voice.controls.normalizedVoiceTimeIncrement = 1. / 44100.;
+    voice.controls.normalizedVolumeEnvelopeTimeIncrement = 1. / 44100.;
+    voice.events = {{ NoteLifecycleType::NoteOn, 0, 0 }};
+    const auto audio = executor.processRealtime(plan, 256, {}, voice);
+    REQUIRE(audio.isValid());
+    const auto& payload = *audio.payload;
+    for (size_t index = 0; index < 256; ++index) {
+        const float left = payload.block.samples[index];
+        const float mono = payload.isStereo()
+                ? (left + payload.secondaryBlock.samples[index]) * 0.5f : left;
+        REQUIRE((*waveform)[index] == Catch::Approx(mono).margin(1e-5f));
+    }
+
     auto expanded = presentation.captureProbePreview(document.graph(), id, 512, 48, 0.25);
     REQUIRE(expanded.has_value());
     REQUIRE(expanded->waveform != nullptr);

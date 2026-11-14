@@ -156,7 +156,6 @@ private:
             int outputChannelCount,
             int frameCount);
 
-    static constexpr float defaultOutputGain = 0.125f;
     static constexpr size_t maximumEventsPerChannel = 128;
     static constexpr size_t maximumScheduledEvents = RealtimeMidiEventQueue::capacity * 2;
 
@@ -174,7 +173,7 @@ private:
     double volumeEnvelopeClockSampleRate {};
     double currentSampleRate { 44100.0 };
     double currentBlockStartSeconds {};
-    float outputGain { defaultOutputGain };
+    float outputGain { 1.f };
     int64_t deterministicRandomSeed {};
     bool hasDeterministicRandomSeed {};
     int controlNoteOffset {};

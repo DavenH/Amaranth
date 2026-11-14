@@ -99,8 +99,16 @@ const GainNodeConfiguration& gainConfiguration(const GraphExecutionPlan& plan) {
     return *configuration;
 }
 
-std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain) {
+std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain,
+        bool explicitUnity = false) {
     NodeGraph graph = NodeGraph::createDemoGraph();
+    const auto* source = graph.findNode("waveMesh");
+    REQUIRE(source != nullptr);
+    auto mesh = TrimeshMeshFactory::createDefaultMesh("OutputGainWaveform");
+    REQUIRE(GraphNodeStateEditor().replaceNodeModel(
+            graph, source->id, source->model->revision(),
+            TrimeshNodeModelState::copyOf(*mesh, source->model->revision() + 1)).succeeded());
+    mesh->destroy();
     REQUIRE(GraphNodeStateEditor().setNodeParameter(
             graph,
             "out",
@@ -117,6 +125,9 @@ std::vector<float> renderOutputGain(float gainUnitValue, float& compiledGain) {
     REQUIRE(spec.prewarmTraversalGrid);
     REQUIRE_FALSE(prepared->spec.prewarmTraversalGrid);
     RealtimeGraphRenderer renderer;
+    if (explicitUnity) {
+        renderer.setOutputGain(1.f);
+    }
     RealtimeMidiEventQueue queue;
     renderer.setPreparedGraph(prepared.get());
     REQUIRE(queue.enqueue(
@@ -367,7 +378,7 @@ TEST_CASE("Realtime audio telemetry does not change rendered output",
             }) == 0.f);
 }
 
-TEST_CASE("Realtime graph renderer applies Output gain separately from safety headroom",
+TEST_CASE("Realtime graph renderer applies the Gain node without hidden attenuation",
         "[cycle-v2][audio-device][realtime][output][gain]") {
     float quietGain {};
     float unityGain {};
@@ -376,6 +387,10 @@ TEST_CASE("Realtime graph renderer applies Output gain separately from safety he
 
     REQUIRE(quietGain == Catch::Approx(CycleDsp::outputGain(0.4f)));
     REQUIRE(unityGain == Catch::Approx(1.f));
+    float explicitGain {};
+    const auto explicitUnity = renderOutputGain(0.5f, explicitGain, true);
+    REQUIRE(unity == explicitUnity);
+    REQUIRE(*std::max_element(unity.begin(), unity.end()) > 0.01f);
     float maximumResidual = 0.f;
     for (size_t index = 0; index < quiet.size(); ++index) {
         maximumResidual = std::max(

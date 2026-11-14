@@ -32,7 +32,7 @@ struct OfflineGraphAudioRequest {
     int blockSize { 512 };
     int channelCount { 2 };
     float voiceDurationSeconds { 7.f };
-    float outputGain { 0.125f };
+    float outputGain { 1.f };
     int controlNoteOffset {};
     int keyScaleNoteOverride { -1 };
     std::vector<size_t> playbackSamples;

@@ -150,7 +150,7 @@ bool parseRequest(
     request.outputGain = jlimit(
             0.f,
             16.f,
-            (float) doubleProperty(command, "outputGain", 0.125));
+            (float) doubleProperty(command, "outputGain", request.outputGain));
     request.controlNoteOffset = jlimit(
             -127,
             127,

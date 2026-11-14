@@ -1,6 +1,6 @@
 # Output waveform amplitude validation
 
-Status: investigation complete; display/output level mismatch remains open.
+Status: Complete. Initial investigation and subsequent user-directed correction are recorded below.
 
 ## Question and scope
 
@@ -92,3 +92,50 @@ Size review: NodeCanvasAutomationInspector grows 1351->1362 lines. It remains th
 existing snapshot encoder; the loop is diagnostic-only and is neither audio-thread
 work nor a new DSP policy. Extracting this small reduction would not remove an
 owner or responsibility; no domain behavior moves into the encoder.
+
+## Unity-output correction
+
+Status: Complete.
+
+User-directed contract: remove fixed attenuation from actual audio and display
+stereo waveform samples as (L+R)/2. Mono samples retain their original level.
+The canvas Gain node remains the explicit level control. Preserve the final
++/-1 clamp, existing wet-effect tap policy and preset bytes.
+
+RealtimeGraphRenderer defaults to unity. OfflineGraphAudioRequest also defaults
+to unity; automation uses that request default rather than a second gain policy.
+SignalProbeWaveformCapture averages stereo with the existing Buffer operations,
+covering toolbar, compact, expanded and comparison consumers through their shared
+capture owner. No new format, node, framework utility or DSP algorithm.
+
+Extend existing waveform publication coverage to compare retained samples with
+the raw graph signal on the simple dry graph (including its global
+boundary). Check the explicit Gain node and final output clamp in the realtime
+path. Repeat actual-app capture on the measured presets; verify old versus new
+waveform peaks halve, and default audio equals the prior gain-1 diagnostic.
+
+
+### Correction outcome
+
+All ten waveform peaks halve exactly. The new default WAVs match the previous
+explicit-unity WAVs byte for byte. Nine now reach the final 1.0 clamp; Trombone
+peaks at 0.592567. Live callback captures of Subbass, Fuzz Square and Bright Lead 4
+all reach 1.0. Evidence: .context/output-amplitude/after/results.json,
+live-results.json, after-run.log and after-live.log in the parent directory.
+The original measurements above describe the pre-correction behavior.
+
+The focused existing gain/waveform cases pass with two extended regressions:
+waveform samples equal the graph's mono average, and the realtime default equals
+explicit unity with a populated waveform (the old empty demo made gain ratios
+vacuous). Debug app/tests and Release app build; architecture audit, code map and
+whitespace checks complete. Broader offline coverage has eight failures: missing
+legacy preset fixtures and the previously recorded spectral secondary-value
+expectation. The same eight failures reproduce in the independent b87afb37
+baseline binary (.context/output-amplitude/offline-baseline-tests.log).
+
+Production responsibility review: four production files change only the defaults
+and stereo reduction. SignalProbeWaveformCapture remains the shared audition/capture
+owner at 170 lines. OfflineAudioCaptureAutomation (456 lines) reads the request's
+default; OfflineGraphAudioRequest (63 lines) and RealtimeGraphRenderer (195-line
+header) carry unity defaults. No duplicated attenuation policy, realtime
+allocation, per-sample scalar math, format migration or preset edit is added.

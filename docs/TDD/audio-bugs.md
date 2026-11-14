@@ -1352,7 +1352,7 @@ showed median normalized period correlations of 0.9969 and 0.9972 at the expecte
 preparation; the general unsupported-region fallback follow-up above remains open.
 Status: resolved 2026-11-11.
 
-## Open: output waveform overflow does not indicate device-output clipping
+## Resolved: output waveform overflow did not indicate device-output clipping
 
 2026-11-14: ten working-tree presets at MIDI 60/full velocity have default-output
 waveform peaks 1.134–4.896, but actual single-note audio peaks only 0.074–0.327.
@@ -1364,3 +1364,15 @@ removing attenuation would hit the final limiter for nine of the ten captures.
 Method, complete table and ownership: cycle-v2-output-amplitude-validation.md.
 Raw evidence: .context/output-amplitude/results.json and live-results.json.
 No production audio/gain changes made.
+
+Resolution 2026-11-14: at the user's direction, live/offline output now defaults
+to unity and continuous waveform capture averages stereo L+R. All ten measured
+waveform peaks halve exactly; new default WAVs equal the prior explicit-unity
+captures byte for byte. Three live callback checks reach the final 1.0 clamp.
+The pre-wet tap and final +/-1 clamp are retained.
+
+The broader offline checks retain eight pre-existing failing cases (missing
+legacy preset fixtures and the spectral secondary-value expectation). The same
+eight reproduce in the independent b87afb37 binary; evidence:
+.context/output-amplitude/offline-baseline-tests.log. Focused gain and waveform
+regressions pass. No workaround for unrelated baseline failures was added.
