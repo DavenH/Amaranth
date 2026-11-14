@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 
-#include <UI/AmaranthLookAndFeel.h>
+#include "UI/DialogLookAndFeel.h"
 
 #include "App/Automation/CycleV2Automation.h"
 #include "App/GraphDocumentReplacement.h"
@@ -411,15 +411,14 @@ public:
             const String graphName = file == File()
                     ? "Untitled"
                     : file.getFileNameWithoutExtension();
-            auto* prompt = new AlertWindow(
+            auto* prompt = new CycleV2::StyledAlertWindow(
                     "Save Current Preset",
                     "Save changes to \"" + graphName
                             + "\" before opening another preset?",
-                    MessageBoxIconType::QuestionIcon,
                     this);
             presetChangePrompt = prompt;
-            prompt->setLookAndFeel(&presetChangeLookAndFeel);
-            prompt->addButton("Save", 1);
+            prompt->addButton("Save", 1, KeyPress(KeyPress::returnKey));
+            CycleV2::DialogLookAndFeel::markPrimary(*prompt->getButton(0));
             prompt->addButton("Don't Save", 2);
             prompt->addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
             prompt->enterModalState(true, ModalCallbackFunction::create([
@@ -643,7 +642,6 @@ public:
 
         const String applicationName;
         ApplicationCommandManager commandManager;
-        AmaranthLookAndFeel presetChangeLookAndFeel { nullptr, false };
         std::unique_ptr<PropertiesFile> properties;
         CycleV2::LibraryFavorites favorites;
         CycleV2::GraphFileHistory fileHistory;

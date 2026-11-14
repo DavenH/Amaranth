@@ -1,4 +1,5 @@
 #include "UI/PresetMetadataEditor.h"
+#include "UI/DialogLookAndFeel.h"
 
 #include "Graph/PresetMetadataStore.h"
 
@@ -9,13 +10,13 @@ void PresetMetadataEditor::editTags(
         const juce::File& file,
         const juce::StringArray& currentTags,
         TagsSaved onSaved) {
-    auto* prompt = new juce::AlertWindow(
+    auto* prompt = new StyledAlertWindow(
             "Edit preset tags", "Separate tags with commas.",
-            juce::MessageBoxIconType::QuestionIcon,
             owner.getTopLevelComponent());
     prompt->addTextEditor("tags", currentTags.joinIntoString(", "), "Tags");
     prompt->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
     prompt->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    DialogLookAndFeel::markPrimary(*prompt->getButton(0));
     prompt->enterModalState(true,
             juce::ModalCallbackFunction::create([
                     prompt, file, onSaved = std::move(onSaved)](int result) {
@@ -43,13 +44,13 @@ void PresetMetadataEditor::rename(
         const juce::File& file,
         const juce::String& currentTitle,
         TitleSaved onSaved) {
-    auto* prompt = new juce::AlertWindow(
+    auto* prompt = new StyledAlertWindow(
             "Rename preset", "Choose a display title for this preset.",
-            juce::MessageBoxIconType::QuestionIcon,
             owner.getTopLevelComponent());
     prompt->addTextEditor("title", currentTitle, "Preset title");
     prompt->addButton("Rename", 1, juce::KeyPress(juce::KeyPress::returnKey));
     prompt->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+    DialogLookAndFeel::markPrimary(*prompt->getButton(0));
     prompt->enterModalState(true,
             juce::ModalCallbackFunction::create([
                     prompt, file, onSaved = std::move(onSaved)](int result) {

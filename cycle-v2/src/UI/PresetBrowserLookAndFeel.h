@@ -4,7 +4,7 @@
 
 namespace CycleV2 {
 
-class PresetBrowserLookAndFeel final : public juce::LookAndFeel_V4 {
+class PresetBrowserLookAndFeel : public juce::LookAndFeel_V4 {
 public:
     juce::Font getTextButtonFont(juce::TextButton& button, int buttonHeight) override;
     void drawButtonBackground(

@@ -300,6 +300,7 @@ set(CANVAS_ARCHITECTURE_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/LibraryIconRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserComponents.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetBrowserLookAndFeel.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/DialogLookAndFeel.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetLibraryIndex.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetPreviewGenerator.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/UI/PresetThumbnailCache.cpp"

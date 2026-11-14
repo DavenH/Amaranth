@@ -1,4 +1,5 @@
 #include "UI/NodeWorkspace.h"
+#include "UI/DialogLookAndFeel.h"
 
 namespace CycleV2 {
 
@@ -156,9 +157,9 @@ void NodeWorkspace::savePatternCopy(const String& sourceId,
     }
     const auto tag = source->tag;
     const auto tags = source->tags;
-    auto* prompt = new AlertWindow("Save pattern copy",
+    auto* prompt = new StyledAlertWindow("Save pattern copy",
             "Name a new pattern. The original pattern will stay unchanged.",
-            MessageBoxIconType::QuestionIcon, getTopLevelComponent());
+            getTopLevelComponent());
     prompt->setComponentID("PatternCopy.Prompt");
     prompt->addTextEditor("name", source->name + " Variation", "Pattern name");
     prompt->addButton("Save copy", 1, KeyPress(KeyPress::returnKey));
@@ -166,6 +167,7 @@ void NodeWorkspace::savePatternCopy(const String& sourceId,
         prompt->addButton("Discard", 2);
     }
     prompt->addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
+    DialogLookAndFeel::markPrimary(*prompt->getButton(0));
     auto* nameEditor = prompt->getTextEditor("name");
     nameEditor->onTextChange = [prompt, nameEditor] {
         prompt->getButton(0)->setEnabled(nameEditor->getText().trim().isNotEmpty());
