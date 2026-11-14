@@ -7,6 +7,8 @@ namespace CycleV2 {
 class DialogLookAndFeel final : public AmaranthLookAndFeel {
 public:
     DialogLookAndFeel();
+    void drawButtonBackground(juce::Graphics&, juce::Button&, const juce::Colour&,
+            bool, bool) override;
     juce::Font getAlertWindowTitleFont() override;
     juce::Font getAlertWindowMessageFont() override;
     juce::Font getAlertWindowFont() override;

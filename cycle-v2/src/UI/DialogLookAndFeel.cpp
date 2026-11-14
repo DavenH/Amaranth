@@ -7,8 +7,18 @@ namespace CycleV2 {
 using namespace juce;
 
 DialogLookAndFeel::DialogLookAndFeel() : AmaranthLookAndFeel(nullptr, false) {
-    setColour(AlertWindow::backgroundColourId, Colour(0xff333333));
+    setColour(AlertWindow::backgroundColourId, CanvasChromePalette::dockSurface);
     setColour(AlertWindow::textColourId, CanvasChromePalette::text);
+}
+
+void DialogLookAndFeel::drawButtonBackground(Graphics& graphics, Button& button,
+        const Colour& colour, bool over, bool down) {
+    AmaranthLookAndFeel::drawButtonBackground(graphics, button, colour, over, down);
+    if (button.isEnabled() && button.hasKeyboardFocus(true)) {
+        graphics.setColour(down ? CanvasChromePalette::areaSelection.darker(0.18f)
+                               : CanvasChromePalette::areaSelection);
+        graphics.fillRect(button.getLocalBounds().reduced(3));
+    }
 }
 
 Font DialogLookAndFeel::getAlertWindowTitleFont() {
