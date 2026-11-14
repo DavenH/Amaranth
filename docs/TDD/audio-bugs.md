@@ -1351,3 +1351,16 @@ showed median normalized period correlations of 0.9969 and 0.9972 at the expecte
 `scripts/fixtures/cycle-v2-agent-trombone-pitch.json`. This fixes optional-phase
 preparation; the general unsupported-region fallback follow-up above remains open.
 Status: resolved 2026-11-11.
+
+## Open: output waveform overflow does not indicate device-output clipping
+
+2026-11-14: ten working-tree presets at MIDI 60/full velocity have default-output
+waveform peaks 1.134–4.896, but actual single-note audio peaks only 0.074–0.327.
+Live callback captures confirm Subbass 0.262, Fuzz Square 0.196 and Bright Lead 4
+0.302. The pre-wet waveform sums stereo channels and precedes the renderer's
+fixed 0.125 output gain (-18.06 dB). Its +/-1 viewport therefore crops signals
+well below final output unity. This is a display calibration/semantics mismatch;
+removing attenuation would hit the final limiter for nine of the ten captures.
+Method, complete table and ownership: cycle-v2-output-amplitude-validation.md.
+Raw evidence: .context/output-amplitude/results.json and live-results.json.
+No production audio/gain changes made.

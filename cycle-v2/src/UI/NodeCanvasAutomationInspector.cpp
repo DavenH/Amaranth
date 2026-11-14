@@ -220,6 +220,17 @@ public:
         object->setProperty("sampleCount", (int) preview.values.size());
         object->setProperty("absoluteSum", absoluteTotal);
         object->setProperty("waveformSamples", preview.waveform != nullptr ? (int) preview.waveform->size() : 0);
+        float waveformPeak {};
+        int waveformOverUnitySamples {};
+        if (preview.waveform != nullptr) {
+            for (const float sample : *preview.waveform) {
+                const float magnitude = std::abs(sample);
+                waveformPeak = jmax(waveformPeak, magnitude);
+                waveformOverUnitySamples += magnitude > 1.f ? 1 : 0;
+            }
+        }
+        object->setProperty("waveformPeak", waveformPeak);
+        object->setProperty("waveformOverUnitySamples", waveformOverUnitySamples);
         return object;
     }
 
