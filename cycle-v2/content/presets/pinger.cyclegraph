@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 9,
+    "formatVersion": 10,
     "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
@@ -904,15 +904,15 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 574.9574, "y": 1350.03821 },
+            "position": { "x": 812.9574, "y": 1350.03821 },
             "parameters": { "enabled": true, "time": 0.336, "feedback": 0.5, "wet": 0.5, "spin": 1.0, "spinIters": 0.5 }
         },
         {
             "id": "output",
-            "kind": "output",
+            "kind": "gain",
             "definitionVersion": 1,
-            "position": { "x": 838.95703, "y": 1350.03821 },
-            "parameters": { "gain": 0.605633803 }
+            "position": { "x": 574.9574, "y": 1350.03821 },
+            "parameters": { "gain": 0.488967 }
         },
         {
             "id": "globalInput",
@@ -926,6 +926,13 @@
             "kind": "voiceOutput",
             "definitionVersion": 1,
             "position": { "x": 3175.6001, "y": 886.0 },
+            "parameters": {}
+        },
+        {
+            "id": "globalOutput",
+            "kind": "globalOutput",
+            "definitionVersion": 1,
+            "position": { "x": 1076.95703, "y": 1350.03821 },
             "parameters": {}
         }
     ],
@@ -1032,9 +1039,10 @@
         { "sourceNodeId": "pitchEnvelope1", "sourcePortId": "env", "destNodeId": "voice", "destPortId": "pitch", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "timeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
         { "sourceNodeId": "scratchEnvelope2", "sourcePortId": "env", "destNodeId": "timeLayer2", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "globalOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "output", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": [
         {

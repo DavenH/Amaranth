@@ -1,6 +1,6 @@
 {
     "format": "cycle-v2-graph",
-    "formatVersion": 9,
+    "formatVersion": 10,
     "unisonWidthLayoutVersion": 1,
     "nodes": [
         {
@@ -80,7 +80,7 @@
             "id": "timeLayer1",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1079.45605, "y": 932.53906 },
+            "position": { "x": 1154.38342, "y": 809.53906 },
             "parameters": {
                 "dimensionCount": 3,
                 "enabled": true,
@@ -478,7 +478,7 @@
             "id": "scratchEnvelope1",
             "kind": "envelope",
             "definitionVersion": 1,
-            "position": { "x": 730.67358, "y": 932.53906 },
+            "position": { "x": 805.60095, "y": 809.53906 },
             "parameters": {
                 "dimensionCount": 2,
                 "yellow": 0.0,
@@ -695,22 +695,22 @@
             "id": "delay",
             "kind": "delay",
             "definitionVersion": 1,
-            "position": { "x": 1231.59998, "y": 1571.0 },
+            "position": { "x": 1469.59998, "y": 1571.0 },
             "parameters": { "enabled": true, "time": 0.5, "feedback": 0.5, "wet": 0.40876, "spin": 1.0, "spinIters": 0.588 }
         },
         {
             "id": "reverb",
             "kind": "reverb",
             "definitionVersion": 1,
-            "position": { "x": 1495.59998, "y": 1571.0 },
+            "position": { "x": 1733.59998, "y": 1571.0 },
             "parameters": { "enabled": true, "size": 0.756000003, "damp": 0.292000003, "width": 1.0, "wet": 0.26907, "highPass": 0.05 }
         },
         {
             "id": "output",
-            "kind": "output",
+            "kind": "gain",
             "definitionVersion": 1,
-            "position": { "x": 1759.59998, "y": 1571.0 },
-            "parameters": { "gain": 0.298077 }
+            "position": { "x": 1175.45605, "y": 1571.0 },
+            "parameters": { "gain": 0.189743 }
         },
         {
             "id": "globalInput",
@@ -730,7 +730,7 @@
             "id": "mesh",
             "kind": "trilinearMesh",
             "definitionVersion": 1,
-            "position": { "x": 1079.45605, "y": 1264.71912 },
+            "position": { "x": 1154.38342, "y": 1082.0 },
             "parameters": {
                 "dimensionCount": 1,
                 "enabled": true,
@@ -792,7 +792,14 @@
             "id": "add",
             "kind": "add",
             "definitionVersion": 1,
-            "position": { "x": 1495.59998, "y": 1230.71912 },
+            "position": { "x": 1553.96094, "y": 886.0 },
+            "parameters": {}
+        },
+        {
+            "id": "globalOutput",
+            "kind": "globalOutput",
+            "definitionVersion": 1,
+            "position": { "x": 1997.59998, "y": 1571.0 },
             "parameters": {}
         }
     ],
@@ -875,25 +882,26 @@
         { "sourceNodeId": "delay", "sourcePortId": "time", "destNodeId": "reverb", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "scratchEnvelope1", "sourcePortId": "env", "destNodeId": "timeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
         { "sourceNodeId": "scratchEnvelope2", "sourcePortId": "env", "destNodeId": "magnitudeLayer1", "destPortId": "scratch", "connectionKind": "processingAttachment", "attachmentType": "scratchEnvelope" },
-        { "sourceNodeId": "reverb", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "reverb", "sourcePortId": "time", "destNodeId": "globalOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "globalInput", "sourcePortId": "time", "destNodeId": "output", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "volumeMultiply", "sourcePortId": "out", "destNodeId": "voiceOutput", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "mesh", "sourcePortId": "out", "destNodeId": "add", "destPortId": "right", "connectionKind": "signal", "attachmentType": "none" },
         { "sourceNodeId": "timeLayer1", "sourcePortId": "out", "destNodeId": "add", "destPortId": "left", "connectionKind": "signal", "attachmentType": "none" },
-        { "sourceNodeId": "add", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
+        { "sourceNodeId": "add", "sourcePortId": "out", "destNodeId": "fft", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" },
+        { "sourceNodeId": "output", "sourcePortId": "time", "destNodeId": "delay", "destPortId": "time", "connectionKind": "signal", "attachmentType": "none" }
     ],
     "probes": [
         {
             "id": "probe",
-            "sourceNodeId": "volumeMultiply",
-            "sourcePortId": "out",
-            "anchorDestNodeId": "voiceOutput",
+            "sourceNodeId": "output",
+            "sourcePortId": "time",
+            "anchorDestNodeId": "delay",
             "anchorDestPortId": "time",
             "label": "Spy 1",
             "tapPosition": 0.5,
             "railOrder": 0,
-            "canvasX": 2725.31348,
-            "canvasY": 1130.42102
+            "canvasX": 1396.49988,
+            "canvasY": 1368.26819
         }
     ],
     "presetPresentation": {
