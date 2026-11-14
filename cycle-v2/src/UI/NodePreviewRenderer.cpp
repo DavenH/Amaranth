@@ -172,8 +172,18 @@ std::vector<float> mappedSurface(
 
     const bool meshSurface = preview.role == PreviewModuleRole::MeshSurface;
     const bool signalSpy = preview.role == PreviewModuleRole::SignalSpy;
+    if (signalSpy && preview.domain == PortDomain::SpectralMagnitudeSignal) {
+        // Display-only +12 dB before logarithmic colour mapping.
+        Buffer<float>(surface.data(), (int) surface.size()).mul(3.9810717f);
+    } else if (signalSpy && preview.domain == PortDomain::TimeSignal) {
+        // Cyclogram contrast; continuous waveform samples bypass this mapping.
+        Buffer<float>(surface.data(), (int) surface.size()).mul(2.f);
+    }
     const bool spectral = preview.domain == PortDomain::SpectralMagnitudeSignal
             || preview.domain == PortDomain::SpectralPhaseSignal;
+    if (usesHarmonicLanes(preview)) {
+        return profile.mapSpectrumValuesToDisplay(surface, preview.gridColumns, preview.gridRows);
+    }
     if (meshSurface && spectral) {
         return profile.mapGridToDisplay(
                 surface,
@@ -484,13 +494,9 @@ Image NodePreviewRenderer::createRuntimeHeatmapImage(
                                      const std::vector<float>& values) {
         TrimeshRenderData data;
         data.midiNote = preview.frequencyMidiNote;
+        data.surface = mappedSurface(preview, values, profile);
         if (usesHarmonicLanes(preview)) {
-            data.surface = values;
-            data.surface = profile.mapSpectrumValuesToDisplay(
-                    data.surface, preview.gridColumns, preview.gridRows);
             data.firstHarmonicRow = 1; // FFT bins include DC; Trimesh lanes start at harmonic one.
-        } else {
-            data.surface = mappedSurface(preview, values, profile);
         }
         data.domain = preview.domain;
         data.columns = (int) preview.gridColumns;

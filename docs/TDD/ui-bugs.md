@@ -1488,3 +1488,14 @@ editor center equality in TestNodeCanvasArchitecture.cpp:179. Independently
 reproduced on b87afb37 at the same assertion (line 178 there); evidence is
 .context/curve-sidebar-baseline.log. Found during sidebar alignment checks;
 no editor-placement workaround added.
+
+### Existing time-Spy contrast fixtures disagree with current material defaults
+
+2026-11-14: `Signal spy heatmaps reveal low-amplitude time signals`, `Signal spy
+heatmaps normalize time-signal contrast across gain`, and `Signal spy heatmaps
+preserve detail above unity gain` fail four assertions with the current default
+material. Rebuilt the tests with the exact unchanged HEAD NodePreviewRenderer
+and reproduced all three failures before the Spy display-gain change. Evidence:
+.context/spy-clarity/exact-baseline-tests.log. Explicit-style display-gain and
+spectral mapping coverage is verified separately; no unrelated material-default
+change was added.

@@ -207,8 +207,10 @@ public:
     static var probePreviewStatsToVar(const GraphPreviewResult::SignalProbePreview& preview) {
         auto* object = new DynamicObject();
         double absoluteTotal = 0.0;
+        float gridPeak {};
         for (float value : preview.values) {
             absoluteTotal += (double) (value >= 0.f ? value : -value);
+            gridPeak = jmax(gridPeak, std::abs(value));
         }
         object->setProperty("probeId", preview.probeId);
         object->setProperty("connected", preview.connected);
@@ -219,6 +221,7 @@ public:
         object->setProperty("releaseDuration", preview.releaseDuration);
         object->setProperty("sampleCount", (int) preview.values.size());
         object->setProperty("absoluteSum", absoluteTotal);
+        object->setProperty("gridPeak", gridPeak);
         object->setProperty("waveformSamples", preview.waveform != nullptr ? (int) preview.waveform->size() : 0);
         float waveformPeak {};
         int waveformOverUnitySamples {};

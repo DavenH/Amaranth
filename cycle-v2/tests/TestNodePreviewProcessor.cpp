@@ -186,6 +186,28 @@ TEST_CASE("Signal spy heatmaps reveal low-amplitude time signals",
     REQUIRE(maximumBrightness > 0.45f);
 }
 
+TEST_CASE("Cyclogram display gain preserves raw sample amplitudes",
+        "[cycle-v2][runtime][spy-display-gain]") {
+    NodePreviewResult result;
+    result.role = PreviewModuleRole::SignalSpy;
+    result.primary = { -0.01f, 0.01f, -0.005f, 0.005f };
+    result.gridColumns = 2;
+    result.gridRows = 2;
+    result.domain = PortDomain::TimeSignal;
+    const auto profile = TrimeshRenderProfile::fromDomain(result.domain)
+            .withTimeStyle(ScalarSurfaceTimeStyle::Greyscale);
+    TrimeshRenderData expected;
+    expected.surface = { 0.49f, 0.51f, 0.495f, 0.505f };
+    expected.columns = 2;
+    expected.rows = 2;
+    expected.domain = result.domain;
+    expected.cyclic = true;
+    const auto boosted = NodePreviewRenderer::createRuntimeHeatmapImage(result, profile);
+    const auto reference = TrimeshSurfaceRenderer::createHeatmapImage(expected, profile);
+    REQUIRE(imagesMatch(boosted, reference));
+    REQUIRE(result.primary == std::vector<float> { -0.01f, 0.01f, -0.005f, 0.005f });
+}
+
 TEST_CASE("Signal spy heatmaps normalize time-signal contrast across gain",
         "[cycle-v2][runtime][probe][ui]") {
     const auto render = [](float gain) {
@@ -463,7 +485,7 @@ TEST_CASE("Phase mesh heatmaps convert bipolar values exactly once",
     }
 }
 
-TEST_CASE("Spectral spy heatmaps map the raw Trimesh grid exactly once",
+TEST_CASE("Spectral spy heatmaps apply twelve dB before mapping the raw grid once",
         "[cycle-v2][runtime][probe][spectral][ui]") {
     NodePreviewResult mesh;
     mesh.role = PreviewModuleRole::MeshSurface;
@@ -489,6 +511,8 @@ TEST_CASE("Spectral spy heatmaps map the raw Trimesh grid exactly once",
     const Image spyImage = NodePreviewRenderer::createRuntimeHeatmapImage(spy, profile);
     TrimeshRenderData expectedData;
     expectedData.surface = mesh.primary;
+    Buffer<float>(expectedData.surface.data(), (int) expectedData.surface.size()).mul(
+            Decibels::decibelsToGain(12.f));
     expectedData.columns = (int) mesh.gridColumns;
     expectedData.rows = (int) mesh.gridRows;
     expectedData.domain = mesh.domain;
@@ -534,8 +558,10 @@ TEST_CASE("FFT magnitude spy heatmaps map linear bins and amplitude once",
 
     const TrimeshRenderProfile profile = TrimeshRenderProfile::fromDomain(spy.domain);
     TrimeshRenderData expected;
+    auto boosted = spy.primary;
+    Buffer<float>(boosted.data(), (int) boosted.size()).mul(Decibels::decibelsToGain(12.f));
     expected.surface = profile.mapSpectrumValuesToDisplay(
-            spy.primary, spy.gridColumns, spy.gridRows);
+            boosted, spy.gridColumns, spy.gridRows);
     expected.firstHarmonicRow = 1;
     expected.columns = (int) spy.gridColumns;
     expected.rows = (int) spy.gridRows;
