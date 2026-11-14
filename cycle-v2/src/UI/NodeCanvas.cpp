@@ -299,6 +299,7 @@ void NodeCanvas::configurePresetSidebar(
             InlinePresetBrowser::DeleteCallback {},
             InlinePresetBrowser::ConfirmDeleteCallback {},
             std::move(createCallback), favorites);
+    presetSidebar->setCurveCount(graph.getGuideCurves().size());
     presetSidebar->setPlaybackToggleCallback([this] {
         if (previewPlaybackToggle) {
             previewPlaybackToggle();
@@ -3551,6 +3552,9 @@ void NodeCanvas::refreshNodeEditorPresentation() {
 }
 
 void NodeCanvas::notifyGraphDocumentStateChanged() {
+    if (presetSidebar != nullptr) {
+        presetSidebar->setCurveCount(graph.getGuideCurves().size());
+    }
     if (explanationEditor != nullptr && explanationEditorRevision != document.revision()) {
         explanationEditor->dismiss();
     }

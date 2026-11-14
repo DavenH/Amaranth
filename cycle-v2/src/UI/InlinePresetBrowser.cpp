@@ -343,6 +343,16 @@ void InlinePresetBrowser::paint(juce::Graphics& graphics) {
     }
 }
 
+void InlinePresetBrowser::setCurveCount(size_t count) {
+    if ((int64) curves.getProperties().getWithDefault("libraryCount", -1) == (int64) count) {
+        return;
+    }
+    curves.getProperties().set("libraryCount", (int64) count);
+    curves.setTooltip("Curves (" + String((int64) count) + " in this preset)");
+    curves.setTitle(curves.getTooltip());
+    curves.repaint();
+}
+
 void InlinePresetBrowser::resized() {
     auto bounds = getLocalBounds();
     auto tabs = bounds.removeFromTop(46).reduced(8, 0);

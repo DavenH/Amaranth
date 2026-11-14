@@ -8,9 +8,7 @@
 
 namespace CycleV2 {
 
-namespace {
-
-void paintIconGlyph(
+void WorkspaceDock::paintIcon(
         juce::Graphics& graphics,
         juce::Rectangle<float> bounds,
         WorkspaceDockIcon icon) {
@@ -32,8 +30,6 @@ void paintIconGlyph(
             1.8f,
             juce::PathStrokeType::curved,
             juce::PathStrokeType::rounded));
-}
-
 }
 
 WorkspaceDockLayout WorkspaceDock::layout(
@@ -156,7 +152,7 @@ void WorkspaceDock::paintIconButton(
                     ? CanvasChromeMetrics::focusRingWidth
                     : CanvasChromeMetrics::restingBorderWidth);
     graphics.setColour(colours.text);
-    paintIconGlyph(graphics, bounds, icon);
+    paintIcon(graphics, bounds, icon);
 }
 
 void WorkspaceDock::paintTileChrome(

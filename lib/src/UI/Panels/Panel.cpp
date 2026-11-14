@@ -264,7 +264,9 @@ void Panel::render() {
         bakeTextures();
     }
 
-    bool drawVerts = ! getSetting(ViewVertsOnlyOnHover) || mouseFlag(MouseOver);
+    const bool drawEditingOverlays = !hasExplicitHostContext || hostContext.editingOverlaysVisible;
+    const bool drawVerts = drawEditingOverlays
+            && (!getSetting(ViewVertsOnlyOnHover) || mouseFlag(MouseOver));
 
     if (shouldDrawPanelPass("pre-draw")) {
         preDraw();
@@ -290,7 +292,8 @@ void Panel::render() {
         postCurveDraw();
     }
 
-    if ((drawVerts || alwaysDrawDepthLines) && shouldDrawPanelPass("depth-lines")) {
+    if (drawEditingOverlays && (drawVerts || alwaysDrawDepthLines)
+            && shouldDrawPanelPass("depth-lines")) {
         drawDepthLinesAndVerts();
     }
 

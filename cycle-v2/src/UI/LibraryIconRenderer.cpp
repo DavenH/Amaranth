@@ -81,8 +81,22 @@ bool LibraryIconRenderer::paintButton(juce::Graphics& graphics, juce::Button& bu
     if ((bool) button.getProperties().getWithDefault("leadingIcon", false)) {
         canvas.setX(8.f);
     }
-    paint(graphics, (LibraryIcon) (int) value, canvas,
-            button.getToggleState() || button.isMouseOver() || button.hasKeyboardFocus(false));
+    const bool hasCount = button.getProperties().contains("libraryCount");
+    if (hasCount) {
+        canvas.translate(-4.f, 0.f);
+    }
+    const bool highlighted = button.getToggleState() || button.isMouseOver()
+            || button.hasKeyboardFocus(false);
+    paint(graphics, (LibraryIcon) (int) value, canvas, highlighted);
+    if (hasCount) {
+        graphics.setColour(highlighted
+                ? CanvasChromePalette::text : CanvasChromePalette::mutedText);
+        graphics.setFont(juce::FontOptions(9.f).withStyle("Bold"));
+        const auto count = button.getProperties()["libraryCount"].toString();
+        const juce::Rectangle<float> badge(canvas.getRight() - 1.f, canvas.getY() - 2.f,
+                button.getWidth() - canvas.getRight() - 1.f, 11.f);
+        graphics.drawFittedText(count, badge.toNearestInt(), juce::Justification::centredLeft, 1);
+    }
     return true;
 }
 

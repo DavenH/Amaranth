@@ -92,6 +92,7 @@ public:
 
     bool hitTest(int x, int y) override;
     void paint(juce::Graphics& graphics) override;
+    void setCurveCount(size_t count);
     void resized() override;
     bool keyPressed(const juce::KeyPress& key) override;
 

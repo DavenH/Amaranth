@@ -376,6 +376,7 @@ bool CurvePanelHost::renderPreviewUncached(
     context.clip = bounds;
     context.scaleFactor = scaleFactor;
     context.visible = true;
+    context.editingOverlaysVisible = false;
     context.callbacks = callbacks();
     panel.setHostContext(context);
     updateRenderLayout(bounds, scaleFactor);

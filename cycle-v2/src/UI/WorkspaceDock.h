@@ -84,6 +84,7 @@ public:
             const std::vector<WorkspaceDockFocus>& order,
             const WorkspaceDockFocus& current,
             int direction);
+    static void paintIcon(juce::Graphics& graphics, juce::Rectangle<float> bounds, WorkspaceDockIcon icon);
     static void paintIconButton(
             juce::Graphics& graphics,
             juce::Rectangle<float> bounds,
