@@ -14,6 +14,18 @@ void PresetMidiEditor::selectNote(int index) {
     }
 }
 
+void PresetMidiEditor::selectAllNotes() {
+    releaseAudition();
+    selectedNotes.clear();
+    for (size_t index = 0; index < sequence.notes.size(); ++index) {
+        selectedNotes.insert((int) index);
+    }
+    selectedNote = selectedNotes.empty() ? -1 : *selectedNotes.begin();
+    selectedControl = -1;
+    velocitySelected = false;
+    repaint();
+}
+
 juce::Rectangle<float> PresetMidiEditor::noteBounds(const PresetMidiNote& note) const {
     const auto row = pitchRow(note.pitch);
     return { xForTime(note.startSeconds), row.getY(),

@@ -69,6 +69,31 @@ TEST_CASE("MIDI box selection moves only selected notes and publishes on release
     REQUIRE(publications == before);
 }
 
+TEST_CASE("Shift A selects all notes without publishing and preserves controllers",
+        "[cycle-v2][midi-editing][pattern]") {
+    ScopedJuceInitialiser_GUI gui;
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 20.0;
+    phrase.notes = {{60, 100, 0.0, 0.25}, {64, 80, 2.0, 0.5}, {72, 90, 16.0, 1.0}};
+    phrase.controls = {{1, 100, 1.0}};
+    PresetMidiSequence changed;
+    int publications {};
+    PresetMidiEditor editor(phrase, [&](auto edit) { changed = edit; ++publications; });
+    REQUIRE(editor.keyPressed(KeyPress('A', ModifierKeys::shiftModifier, 0)));
+    REQUIRE(publications == 0);
+    REQUIRE(editor.keyPressed(KeyPress(KeyPress::upKey, ModifierKeys::shiftModifier, 0)));
+    REQUIRE(publications == 1);
+    REQUIRE(changed.notes[0].pitch == 61);
+    REQUIRE(changed.notes[1].pitch == 65);
+    REQUIRE(changed.notes[2].pitch == 73);
+    REQUIRE(editor.keyPressed(KeyPress(KeyPress::deleteKey)));
+    REQUIRE(changed.notes.empty());
+    REQUIRE(changed.controls.size() == 1);
+    REQUIRE(changed.controls[0].value == 100);
+    REQUIRE(editor.keyPressed(KeyPress('A', ModifierKeys::shiftModifier, 0)));
+    REQUIRE(publications == 2);
+}
+
 TEST_CASE("MIDI pattern draft saves only on request and cancellation retains the draft",
         "[cycle-v2][midi-editing][pattern]") {
     ScopedJuceInitialiser_GUI gui;

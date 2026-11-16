@@ -7,6 +7,23 @@
 
 using namespace CycleV2;
 
+TEST_CASE("Pattern loop duration follows the last note and tempo",
+        "[cycle-v2][pattern-schedule][loop]") {
+    PresetMidiSequence phrase;
+    phrase.durationSeconds = 100.0;
+    phrase.controls = {{1, 127, 99.0}};
+    phrase.notes = {{60, 100, 0.0, 0.5}};
+    REQUIRE(PatternPlaybackSchedule::loopDuration(phrase) == 2.0);
+    phrase.notes.push_back({64, 100, 1.5, 0.5});
+    REQUIRE(PatternPlaybackSchedule::loopDuration(phrase) == 2.0);
+    phrase.notes.back().durationSeconds = 0.501;
+    REQUIRE(PatternPlaybackSchedule::loopDuration(phrase) == 4.0);
+    phrase.tempoBpm = 60.0;
+    REQUIRE(PatternPlaybackSchedule::loopDuration(phrase) == 4.0);
+    phrase.notes.clear();
+    REQUIRE(PatternPlaybackSchedule::loopDuration(phrase) == 100.0);
+}
+
 TEST_CASE("Pattern schedule export retains interpolated controllers and note boundary order",
         "[cycle-v2][pattern-schedule][automation]") {
     PresetMidiSequence sequence;

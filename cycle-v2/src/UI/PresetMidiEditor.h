@@ -99,6 +99,7 @@ private:
     bool moveSelectedNotes(int semitones, double seconds);
     bool isNoteSelected(int index) const;
     void selectNote(int index);
+    void selectAllNotes();
     juce::Rectangle<float> noteBounds(const PresetMidiNote& note) const;
     void updateBoxSelection(juce::Point<float> position);
     void dragSelectedNotes(juce::Point<float> position);

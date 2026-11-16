@@ -13,7 +13,9 @@ struct PatternPlaybackSchedule {
     std::vector<PatternPlaybackEvent> notes;
     std::vector<PatternControlScheduler> controls;
 
-    static PatternPlaybackSchedule prepare(const PresetMidiSequence& sequence, double startSeconds = 0.0);
+    static double loopDuration(const PresetMidiSequence& sequence);
+    static PatternPlaybackSchedule prepare(const PresetMidiSequence& sequence,
+            double startSeconds = 0.0, std::optional<double> durationSeconds = {});
     static std::optional<std::vector<PatternPlaybackEvent>> expand(
             const PresetMidiSequence& sequence, juce::String& error);
     static bool precedes(const PatternPlaybackEvent& first, const PatternPlaybackEvent& second);

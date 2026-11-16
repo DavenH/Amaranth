@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 
 #include "UI/PerformanceKeyboard.h"
 #include "UI/CanvasChromePalette.h"
@@ -220,6 +221,7 @@ void PerformanceKeyboardPanel::setSequence(std::optional<PresetMidiSequence> nex
     releaseEditorAudition();
     usePatternDuration = false;
     sequence = std::move(nextSequence);
+    patternLoopDuration = sequence.has_value() ? PatternPlaybackSchedule::loopDuration(*sequence) : 0.0;
     rebuildPlaybackEvents();
     if (sequence.has_value() && !sequence->notes.empty()) {
         int lowest = 127;
@@ -313,13 +315,16 @@ void PerformanceKeyboardPanel::rebuildPlaybackEvents(double startSeconds) {
     if (!sequence.has_value()) {
         return;
     }
-    auto prepared = PatternPlaybackSchedule::prepare(*sequence, startSeconds);
+    auto prepared = PatternPlaybackSchedule::prepare(*sequence, startSeconds, playbackLength());
     playbackEvents = std::move(prepared.notes);
     controlSchedulers = std::move(prepared.controls);
 }
 
 double PerformanceKeyboardPanel::playbackLength() const {
-    return sequence.has_value() && (hasSequenceNotes() || usePatternDuration)
+    if (hasSequenceNotes()) {
+        return patternLoopDuration;
+    }
+    return sequence.has_value() && usePatternDuration
             ? sequence->durationSeconds : (double) playbackDuration;
 }
 
@@ -329,6 +334,8 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
     stopPlayback(false);
     stopRecording();
     nextPlaybackEvent = 0;
+    scheduledLoopStartSeconds = 0.0;
+    displayedLoopStartSeconds = 0.0;
     rebuildPlaybackEvents(startPosition);
     activePlaybackNoteCounts.fill(0);
     playbackNote = selectedPreviewNote;
@@ -351,11 +358,11 @@ bool PerformanceKeyboardPanel::startPlayback(double nowMilliseconds) {
         stopPlayback();
         return false;
     }
-    if (!scheduleControlEventsUntil(startPosition + automationLookaheadSeconds, scheduleOrigin)) {
+    if (!schedulePlaybackWindow(startPosition)) {
         stopPlayback();
         return false;
     }
-    if (hasSequenceNotes() && !scheduleSequenceEvents(scheduleOrigin)) {
+    if (hasSequenceNotes() && !scheduleSequenceEvents(scheduleOrigin, playbackEvents)) {
         stopPlayback();
         return false;
     }
@@ -423,17 +430,23 @@ void PerformanceKeyboardPanel::updatePlayback(double nowMilliseconds) {
             0.0,
             (nowMilliseconds - playbackStartedAtMilliseconds) / 1000.0);
     if (sequence.has_value()) {
-        dispatchSequenceEvents(elapsedSeconds);
-        if (!scheduleControlEventsUntil(
-                elapsedSeconds + automationLookaheadSeconds,
-                playbackStartedAtMilliseconds / 1000.0)) {
+        const double loopStart = hasSequenceNotes()
+                ? std::floor(elapsedSeconds / playbackLength()) * playbackLength() : 0.0;
+        if (loopStart > displayedLoopStartSeconds) {
+            dispatchSequenceEvents(playbackLength());
+            playbackEvents = PatternPlaybackSchedule::prepare(*sequence).notes;
+            nextPlaybackEvent = 0;
+            displayedLoopStartSeconds = loopStart;
+        }
+        dispatchSequenceEvents(elapsedSeconds - displayedLoopStartSeconds);
+        if (!schedulePlaybackWindow(elapsedSeconds)) {
             stopPlayback();
             return;
         }
     }
-    playbackPosition = jmin(playbackLength(), elapsedSeconds);
+    playbackPosition = jmin(playbackLength(), elapsedSeconds - displayedLoopStartSeconds);
     progress = (float) (playbackPosition / playbackLength());
-    if (progress >= 1.f) {
+    if (!hasSequenceNotes() && progress >= 1.f) {
         stopPlayback(false);
     }
 }
@@ -457,8 +470,9 @@ void PerformanceKeyboardPanel::dispatchSequenceEvents(double elapsedSeconds) {
     }
 }
 
-bool PerformanceKeyboardPanel::scheduleSequenceEvents(double startSeconds) {
-    for (const auto& event : playbackEvents) {
+bool PerformanceKeyboardPanel::scheduleSequenceEvents(double startSeconds,
+        const std::vector<PatternPlaybackEvent>& events) {
+    for (const auto& event : events) {
         if (!eventSink.enqueueMidiMessageAt(
                 event.message,
                 MidiEventSource::PatternPlayback,
@@ -466,6 +480,37 @@ bool PerformanceKeyboardPanel::scheduleSequenceEvents(double startSeconds) {
             eventSink.releaseMidiSource(MidiEventSource::PatternPlayback);
             return false;
         }
+    }
+    return true;
+}
+
+bool PerformanceKeyboardPanel::schedulePlaybackWindow(double elapsedSeconds) {
+    const double origin = playbackStartedAtMilliseconds / 1000.0;
+    const double length = playbackLength();
+    const double horizon = elapsedSeconds + automationLookaheadSeconds;
+    const auto beginLoop = [&](double start, double position) {
+        auto prepared = PatternPlaybackSchedule::prepare(*sequence, position, length);
+        scheduledLoopStartSeconds = start;
+        controlSchedulers = std::move(prepared.controls);
+        return scheduleSequenceEvents(origin + start, prepared.notes);
+    };
+    if (hasSequenceNotes()) {
+        const double currentLoop = std::floor(elapsedSeconds / length) * length;
+        if (currentLoop > scheduledLoopStartSeconds
+                && !beginLoop(currentLoop, elapsedSeconds - currentLoop)) {
+            return false;
+        }
+    }
+    if (!scheduleControlEventsUntil(horizon - scheduledLoopStartSeconds,
+            origin + scheduledLoopStartSeconds)) {
+        return false;
+    }
+    if (hasSequenceNotes() && horizon >= scheduledLoopStartSeconds + length) {
+        if (!beginLoop(scheduledLoopStartSeconds + length, 0.0)) {
+            return false;
+        }
+        return scheduleControlEventsUntil(horizon - scheduledLoopStartSeconds,
+                origin + scheduledLoopStartSeconds);
     }
     return true;
 }

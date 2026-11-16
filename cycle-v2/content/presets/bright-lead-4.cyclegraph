@@ -833,7 +833,7 @@
             "kind": "gain",
             "definitionVersion": 1,
             "position": { "x": 1231.59998, "y": 1571.0 },
-            "parameters": { "gain": 0.327672 }
+            "parameters": { "gain": 0.261005 }
         },
         {
             "id": "globalInput",
