@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <utility>
 
@@ -32,8 +33,21 @@ public:
 
 }
 
+double PatternPlaybackSchedule::loopDuration(const PresetMidiSequence& sequence) {
+    if (sequence.notes.empty()) {
+        return sequence.durationSeconds;
+    }
+    double end {};
+    for (const auto& note : sequence.notes) {
+        end = juce::jmax(end, note.startSeconds + note.durationSeconds);
+    }
+    const double measure = 240.0 / sequence.tempoBpm;
+    return juce::jmax(measure, std::ceil(end / measure - 1e-9) * measure);
+}
+
 PatternPlaybackSchedule PatternPlaybackSchedule::prepare(
-        const PresetMidiSequence& sequence, double startSeconds) {
+        const PresetMidiSequence& sequence, double startSeconds,
+        std::optional<double> durationSeconds) {
     PatternPlaybackSchedule result;
     for (const auto& note : sequence.notes) {
         if (note.startSeconds + note.durationSeconds <= startSeconds) {
@@ -53,7 +67,7 @@ PatternPlaybackSchedule PatternPlaybackSchedule::prepare(
     result.controls.reserve(controlLanes.size());
     for (auto& lane : controlLanes) {
         PatternControlScheduler scheduler;
-        scheduler.reset(std::move(lane.second), lane.first, sequence.durationSeconds);
+        scheduler.reset(std::move(lane.second), lane.first, durationSeconds.value_or(sequence.durationSeconds));
         scheduler.seekTo(startSeconds);
         result.controls.push_back(std::move(scheduler));
     }

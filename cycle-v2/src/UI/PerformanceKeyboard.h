@@ -236,7 +236,8 @@ private:
     void auditionSequenceNote(int pitch, int velocity, bool noteOn);
     void releaseEditorAudition();
     void dispatchSequenceEvents(double elapsedSeconds);
-    bool scheduleSequenceEvents(double startSeconds);
+    bool scheduleSequenceEvents(double startSeconds, const std::vector<PatternPlaybackEvent>& events);
+    bool schedulePlaybackWindow(double elapsedSeconds);
     void rebuildPlaybackEvents(double startSeconds = 0.0);
     double playbackLength() const;
     bool scheduleControlEventsUntil(double elapsedSeconds, double startSeconds);
@@ -252,6 +253,9 @@ private:
     float progress {};
     double playbackStartedAtMilliseconds {};
     double playbackPosition {};
+    double scheduledLoopStartSeconds {};
+    double displayedLoopStartSeconds {};
+    double patternLoopDuration {};
     double recordingStartedAtSeconds {};
     size_t nextPlaybackEvent {};
     std::array<double, 128> recordedNoteStarts {};

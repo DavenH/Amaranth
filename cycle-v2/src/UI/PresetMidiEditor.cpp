@@ -537,6 +537,13 @@ void PresetMidiEditor::editControl(Point<float> point, int controller) {
 }
 
 bool PresetMidiEditor::keyPressed(const KeyPress& key) {
+    if (CharacterFunctions::toUpperCase((juce_wchar) key.getKeyCode()) == 'A'
+            && key.getModifiers().isShiftDown()
+            && !key.getModifiers().isCommandDown() && !key.getModifiers().isCtrlDown()
+            && !key.getModifiers().isAltDown()) {
+        selectAllNotes();
+        return true;
+    }
     if ((key.getModifiers().isCommandDown() || key.getModifiers().isCtrlDown())
             && key.getKeyCode() == 'S' && onSaveRequest) {
         onSaveRequest();

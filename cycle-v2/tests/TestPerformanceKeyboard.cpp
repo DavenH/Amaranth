@@ -777,42 +777,52 @@ TEST_CASE("Performance keyboard preview transport follows its configured duratio
     REQUIRE(sink.messages.size() == messageCount);
 }
 
-TEST_CASE("Preset playback lasts for the roll length after its last note ends",
+TEST_CASE("Note patterns loop after their last measure without trailing roll padding",
         "[cycle-v2][keyboard][sequence][transport]") {
     ScopedJuceInitialiser_GUI gui;
     MidiKeyboardState state;
     RecordingMidiSink sink;
     PerformanceKeyboardPanel panel(state, sink);
     PresetMidiSequence phrase;
-    phrase.durationSeconds = 4.0;
+    phrase.durationSeconds = 10.0;
     phrase.notes.push_back({ 60, 100, 0.0, 0.5 });
-    phrase.controls = { { 1, 20, 0.0 }, { 1, 100, 3.5 } };
+    phrase.controls = {{1, 20, 0.0}, {1, 100, 8.0}};
     panel.setSequence(phrase);
-
-    REQUIRE(panel.startPlayback(1'000.0));
-    panel.updatePlayback(2'000.0);
+    REQUIRE(panel.startPlayback(1000.0));
+    panel.updatePlayback(2000.0);
     REQUIRE(panel.isPlaying());
-    REQUIRE(panel.playbackProgress() == Catch::Approx(0.25f));
-    REQUIRE(std::any_of(sink.messages.begin(), sink.messages.end(),
-            [](const auto& message) { return message.isNoteOff() && message.getNoteNumber() == 60; }));
-    panel.updatePlayback(4'500.0);
-    REQUIRE(panel.isPlaying());
-    bool endpointScheduled = false;
+    REQUIRE(panel.heldNote() == -1);
+    REQUIRE(panel.playbackProgress() == Catch::Approx(0.5f));
+    REQUIRE(std::count(sink.releasedSources.begin(), sink.releasedSources.end(),
+            MidiEventSource::PatternPlayback) == 0);
+    panel.updatePlayback(2500.0);
+    int noteOns = 0;
     for (size_t index = 0; index < sink.messages.size(); ++index) {
-        const auto& message = sink.messages[index];
-        endpointScheduled |= message.isController() && message.getControllerNumber() == 1
-                && message.getControllerValue() == 100
-                && sink.timestamps[index] >= 4.45 && sink.timestamps[index] <= 4.5;
+        if (sink.messages[index].isNoteOn()) {
+            REQUIRE(sink.timestamps[index] == Catch::Approx(1.0 + 2.0 * noteOns));
+            ++noteOns;
+        }
     }
-    REQUIRE(endpointScheduled);
-    panel.updatePlayback(5'000.0);
-    REQUIRE_FALSE(panel.isPlaying());
-    REQUIRE(panel.playbackProgress() == 1.f);
+    REQUIRE(noteOns == 2); // Next note-on is queued before the measure ends.
+    panel.updatePlayback(3001.0);
+    REQUIRE(panel.isPlaying());
+    REQUIRE(panel.heldNote() == 60);
+    REQUIRE(panel.playbackPositionSeconds() == Catch::Approx(0.001));
+    panel.updatePlayback(12000.0); // Skip expired loops after a stalled UI tick.
+    REQUIRE(panel.isPlaying());
+    REQUIRE(panel.playbackPositionSeconds() == Catch::Approx(1.0));
+    REQUIRE(panel.heldNote() == -1);
+    panel.updatePlayback(12500.0);
+    bool nextLoopQueued = false;
+    for (size_t index = 0; index < sink.messages.size(); ++index) {
+        nextLoopQueued |= sink.messages[index].isNoteOn() && sink.timestamps[index] == 13.0;
+    }
+    REQUIRE(nextLoopQueued);
+    panel.stopPlayback();
     REQUIRE(sink.releasedSources.back() == MidiEventSource::PatternPlayback);
     const auto eventCount = sink.messages.size();
-    panel.updatePlayback(8'000.0);
+    panel.updatePlayback(14000.0);
     REQUIRE_FALSE(panel.isPlaying());
-    REQUIRE(panel.playbackProgress() == 1.f);
     REQUIRE(sink.messages.size() == eventCount);
 }
 
